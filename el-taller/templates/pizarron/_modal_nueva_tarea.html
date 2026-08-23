@@ -87,6 +87,13 @@ apilados):
                         <div data-nt-runner class="hidden">
                             <label for="{{ form.destino_etiqueta.id_for_label }}" class="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">📍 Lugar (opcional)</label>
                             {{ form.destino_etiqueta }}
+                            {% comment %}
+                            El pin también aquí: sin él la tarea nace con la
+                            dirección escrita pero sin punto, y el planeador no
+                            la puede rutear.
+                            {% endcomment %}
+                            {{ form.destino_lat }}{{ form.destino_lng }}
+                            {% include "_componentes_tailadmin/_geo_picker.html" with modo="texto" objetivo_texto=form.destino_etiqueta.id_for_label lat_id=form.destino_lat.auto_id lng_id=form.destino_lng.auto_id con_pois=True acotado=True %}
                             {% if form.destino_etiqueta.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.destino_etiqueta.errors.0 }}</p>{% endif %}
                             <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                                 <input type="checkbox" name="runner_auto" {% if form.runner_auto.value|default:True %}checked{% endif %} class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">

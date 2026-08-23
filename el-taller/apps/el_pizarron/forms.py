@@ -82,6 +82,25 @@ class TareaForm(forms.ModelForm):
             "placeholder": "Dirección o lugar de entrega/recolección (opcional)",
         }),
     )
+    # El PIN del lugar. Van ocultos porque los llena el geo-picker al elegir un
+    # resultado del buscador o al picar el mapa.
+    #
+    # Antes NO existían (Oscar, 2026-08-23: «las ubicaciones siguen sin
+    # guardarse»): el picker iba en `modo="texto"`, que sólo autocompleta la
+    # dirección, así que la tarea guardaba el TEXTO y perdía el punto. Y sin
+    # punto el planeador no la puede rutear, el mapa no la muestra y el botón de
+    # «cómo llegar» no existe — o sea que el lugar estaba escrito pero no
+    # servía para nada.
+    destino_lat = forms.FloatField(required=False, widget=forms.HiddenInput())
+    destino_lng = forms.FloatField(required=False, widget=forms.HiddenInput())
+
+    def clean(self):
+        """Un pin a medias no se guarda: o las dos coordenadas o ninguna."""
+        datos = super().clean()
+        lat, lng = datos.get("destino_lat"), datos.get("destino_lng")
+        if lat is None or lng is None:
+            datos["destino_lat"] = datos["destino_lng"] = None
+        return datos
 
     def clean_tipo(self):
         return self.cleaned_data.get("tipo") or "tarea"
@@ -94,7 +113,9 @@ class TareaForm(forms.ModelForm):
 
     class Meta:
         model = Tarea
-        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a", "responsables", "fecha_compromiso", "hora", "destino_etiqueta"]
+        fields = ["titulo", "descripcion", "estado", "prioridad", "tipo", "asignada_a",
+                  "responsables", "fecha_compromiso", "hora",
+                  "destino_etiqueta", "destino_lat", "destino_lng"]
         widgets = {
             # S-LC-Feedback-V4: autocomplete @#$ en título y descripción.
             "titulo": forms.TextInput(attrs={"data-referencias": "1"}),
@@ -138,7 +159,8 @@ class TareaGlobalForm(TareaForm):
 
     class Meta(TareaForm.Meta):
         fields = ["proyecto", "titulo", "descripcion", "prioridad", "tipo",
-                  "asignada_a", "responsables", "fecha_compromiso", "hora", "destino_etiqueta"]
+                  "asignada_a", "responsables", "fecha_compromiso", "hora",
+                  "destino_etiqueta", "destino_lat", "destino_lng"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

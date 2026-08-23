@@ -367,3 +367,61 @@ solo desaloja lo que sí caduca (caché de imágenes y sesiones).
 | `infra/scripts/sync_crons.sh` | Sustituye `@@RAIZ@@` por la raíz real, así los crons siguen al proyecto |
 | `.github/workflows/el-mensajero.yml` | `mudanza` despliega al NUC entrando al tailnet; job nuevo `ventana` para el Caddyfile, con validación previa y smoke test de la cadena completa |
 | `.github/workflows/la-limpieza.yml` | Apunta al NUC |
+
+## Que el deploy al NUC sea automático (lo que falta)
+
+`🚚 La Mudanza` sale **VERDE aunque no despliegue nada**: sin credencial del
+tailnet sus dos pasos reales quedan en `skipped`. Desde 2026-08-23 el job lo grita
+—hay un paso llamado «⚠️ NO SE DESPLEGÓ» y un aviso en el resumen de la corrida—
+pero mientras falte la credencial el deploy es **a mano**.
+
+**Por qué hace falta si el NUC ya está en el tailnet:** el que no está es el
+**runner de GitHub**. Es una máquina virtual desechable en la nube de GitHub, y
+para alcanzar la IP del tailnet tiene que entrar él mismo. Las llaves del NUC
+autentican al NUC.
+
+Ya están puestos `NUC_HOST`, `NUC_USER` y `NUC_SSH_KEY`. Falta **una** de estas dos:
+
+### Opción corta — una auth key (un secreto, ~3 clics)
+
+1. `login.tailscale.com/admin/settings/keys` → **Generate auth key**.
+2. Marcar **Reusable** y **Ephemeral**. Sin tag: así el nodo entra como un
+   dispositivo del propio usuario y las reglas que ya permiten SSH entre sus
+   máquinas aplican — **no hay que tocar la ACL**.
+3. Guardarla en el repo:
+
+       gh secret set TS_AUTHKEY     # pega el valor, Enter, Ctrl-D
+
+**El precio:** las auth keys **caducan** (máximo 90 días). El día que caduque, el
+deploy vuelve a saltarse — y ahora se ve, pero hay que renovarla.
+
+### Opción larga — cliente OAuth (dos secretos, no caduca)
+
+1. `login.tailscale.com/admin/acls`: que `tag:ci` exista en `tagOwners` y pueda
+   llegar al NUC por SSH.
+2. `login.tailscale.com/admin/settings/oauth` → **Generate OAuth client**, scope
+   **Auth Keys → Write**, tag `tag:ci`. El secreto se muestra una sola vez.
+3. `gh secret set TS_OAUTH_CLIENT_ID` y `gh secret set TS_OAUTH_SECRET`.
+
+El workflow prefiere la auth key si están las dos.
+
+### Comprobar que de verdad desplegó
+
+La conclusión del job NO lo dice. Dos formas que sí:
+
+    # 1. La versión que sirve producción (página pública)
+    curl -s https://taller.learningcenter.mx/acerca/ | grep -oE "v2026\.[0-9]{2}\.[0-9]+"
+
+    # 2. Los PASOS del job, no su conclusión
+    gh api repos/Yosoyobo/el-despacho/actions/runs/<ID>/jobs \
+      --jq '.jobs[]|select(.name|test("Mudanza"))|.steps[]|"\(.name): \(.conclusion)"'
+
+### Deploy a mano, mientras
+
+    cd /mnt/el-despacho && git fetch origin main && git reset --hard origin/main
+    F="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml -f docker-compose.nuc.yml"
+    docker compose $F pull && docker compose $F up -d
+
+**Ojo con el orden:** hay que esperar a que la corrida de `main` termine
+«Build & push» y «Pin digests». Si se despliega antes, el NUC baja las imágenes
+**anteriores** — el compose todavía apunta a los digests viejos.

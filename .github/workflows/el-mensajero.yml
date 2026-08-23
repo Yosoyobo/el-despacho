@@ -260,9 +260,24 @@ jobs:
         id: creds
         env:
           TS_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_KEY: ${{ secrets.TS_AUTHKEY }}
         run: |
-          if [ -n "${TS_ID:-}" ]; then
+          # Dos formas de entrar al tailnet, y basta con UNA:
+          #
+          #   · TS_AUTHKEY  — una auth key reutilizable y efímera. UN solo secreto,
+          #     tres clics en la consola, sin scopes ni tocar la ACL (el nodo entra
+          #     como un dispositivo del propio usuario, así que las reglas que ya
+          #     permiten SSH entre sus máquinas aplican). Es la vía corta.
+          #   · TS_OAUTH_*  — cliente OAuth con `tag:ci`. No expira, pero pide
+          #     scope `auth_keys` y que la ACL deje a `tag:ci` llegar al NUC.
+          #
+          # Se prefiere la auth key si está: menos piezas que puedan faltar.
+          if [ -n "${TS_KEY:-}" ]; then
             echo "listo=si" >> "$GITHUB_OUTPUT"
+            echo "modo=authkey" >> "$GITHUB_OUTPUT"
+          elif [ -n "${TS_ID:-}" ]; then
+            echo "listo=si" >> "$GITHUB_OUTPUT"
+            echo "modo=oauth" >> "$GITHUB_OUTPUT"
           else
             echo "listo=no" >> "$GITHUB_OUTPUT"
             # Era `::notice` (gris, enterrado) y el job igual salía VERDE: eso hizo
@@ -270,7 +285,7 @@ jobs:
             # 2026-08-23, con la versión vieja sirviéndose en producción mientras
             # todos los jobs decían «success». Un job que reporta éxito sin hacer
             # nada es peor que uno rojo. Ahora grita.
-            echo "::warning title=NO SE DESPLEGO A PRODUCCION::Faltan los secretos del tailnet (TS_OAUTH_CLIENT_ID). Las imagenes se construyeron y subieron, pero el NUC sigue con la version anterior. Ver docs/MUDANZA-AL-NUC-LC.md"
+            echo "::warning title=NO SE DESPLEGO A PRODUCCION::Falta la credencial del tailnet (basta TS_AUTHKEY, o el par TS_OAUTH_CLIENT_ID/TS_OAUTH_SECRET). Las imagenes se construyeron y subieron, pero el NUC sigue con la version anterior. Ver docs/MUDANZA-AL-NUC-LC.md"
             {
               echo "## ⚠️ NO SE DESPLEGÓ A PRODUCCIÓN"
               echo ""
@@ -299,8 +314,14 @@ jobs:
           echo "El NUC sigue con la versión anterior. Las imágenes SÍ están en GHCR."
           echo "Ver el resumen de la corrida para el comando de deploy manual."
 
-      - name: 🔌 Entrar al tailnet (nodo efímero; se va al terminar el job)
-        if: steps.creds.outputs.listo == 'si'
+      - name: 🔌 Entrar al tailnet con la auth key (nodo efímero)
+        if: steps.creds.outputs.listo == 'si' && steps.creds.outputs.modo == 'authkey'
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: 🔌 Entrar al tailnet con el cliente OAuth (nodo efímero)
+        if: steps.creds.outputs.listo == 'si' && steps.creds.outputs.modo == 'oauth'
         uses: tailscale/github-action@v3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}

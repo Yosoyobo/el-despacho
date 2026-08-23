@@ -184,3 +184,87 @@ def test_sin_nada_que_guardar_el_error_SE_VE(client, proyecto_factory, usuario_f
     assert b"Escribe una direcci" in r.content
     m.tarea.refresh_from_db()
     assert not m.tarea.destino_etiqueta
+
+
+# ── 4. El PIN del lugar se guarda (Oscar: «siguen sin guardarse») ─────────────
+
+def test_la_tarea_guarda_el_pin_del_lugar(client, proyecto_factory, usuario_factory):
+    """El texto ya se guardaba; el PUNTO se tiraba porque no estaba en el form.
+
+    Sin punto el lugar no sirve de nada: el planeador no lo rutea, el mapa no lo
+    muestra y no hay «cómo llegar».
+    """
+    from apps.el_pizarron.models import Tarea
+    u = _admin(usuario_factory, "pin1@lc.mx")
+    p = proyecto_factory(estado="en_proceso_diseno")
+    client.force_login(u)
+    client.post(f"/proyectos/{p.pk}/tareas/nueva", {
+        "titulo": "Entregar en Insurgentes", "tipo": "entrega", "estado": "pendiente",
+        "prioridad": "media", "asignada_a": u.pk, "fecha_compromiso": "2026-08-26",
+        "destino_etiqueta": "Av. Insurgentes Sur 123",
+        "destino_lat": "19.4100", "destino_lng": "-99.1700",
+    })
+    t = Tarea.objects.get(titulo="Entregar en Insurgentes")
+    assert t.destino_etiqueta == "Av. Insurgentes Sur 123"
+    assert t.destino_lat == pytest.approx(19.4100)
+    assert t.destino_lng == pytest.approx(-99.1700)
+
+
+def test_editar_una_tarea_conserva_el_pin(client, proyecto_factory, usuario_factory):
+    u = _admin(usuario_factory, "pin2@lc.mx")
+    p = proyecto_factory(estado="en_proceso_diseno")
+    t = _tarea(p, destino_etiqueta="Zócalo", destino_lat=19.4326, destino_lng=-99.1332)
+    client.force_login(u)
+    client.post(f"/tareas/{t.pk}/editar", {
+        "titulo": t.titulo, "tipo": "entrega", "estado": "pendiente",
+        "prioridad": "media", "asignada_a": u.pk, "fecha_compromiso": "2026-08-26",
+        "destino_etiqueta": "Zócalo", "destino_lat": "19.4326", "destino_lng": "-99.1332",
+    })
+    t.refresh_from_db()
+    assert t.destino_lat == pytest.approx(19.4326)
+
+
+def test_un_pin_a_medias_no_se_guarda(client, proyecto_factory, usuario_factory):
+    """Media coordenada no ubica nada; se descarta en vez de guardar basura."""
+    from apps.el_pizarron.models import Tarea
+    u = _admin(usuario_factory, "pin3@lc.mx")
+    p = proyecto_factory(estado="en_proceso_diseno")
+    client.force_login(u)
+    client.post(f"/proyectos/{p.pk}/tareas/nueva", {
+        "titulo": "Media coordenada", "tipo": "entrega", "estado": "pendiente",
+        "prioridad": "media", "asignada_a": u.pk, "fecha_compromiso": "2026-08-26",
+        "destino_etiqueta": "Algún lado", "destino_lat": "19.41",
+    })
+    t = Tarea.objects.get(titulo="Media coordenada")
+    assert t.destino_lat is None and t.destino_lng is None
+    assert t.destino_etiqueta == "Algún lado"      # el texto sí
+
+
+def test_con_el_pin_el_planeador_ya_puede_rutear(proyecto_factory, usuario_factory):
+    """El porqué de todo esto: sin punto, la entrega no entra a ninguna ruta."""
+    from apps.el_pizarron.planeador import candidatos_del_dia, planear_dia
+
+    from cuentas.models.rol import Rol
+
+    r = usuario_factory(rol="disenador", email="pin4@lc.mx")
+    r.roles_extra.add(Rol.objects.get(nombre="Runner"))
+    p = proyecto_factory(estado="en_proceso_diseno")
+    _tarea(p, titulo="Con pin", destino_lat=19.43, destino_lng=-99.13)
+    _tarea(p, titulo="Sin pin", destino_etiqueta="Sólo texto")
+
+    assert len(candidatos_del_dia(dt.date(2026, 8, 24))) == 2
+    res = planear_dia(dt.date(2026, 8, 24), origen_modo="runner_abierta")
+    # La que trae punto entra a la ruta; la otra se reporta como no ubicable.
+    assert sum(x.total_paradas for x in res["rutas"]) == 1
+    assert len(res["sin_ubicar"]) == 1
+
+
+def test_los_botones_de_ruta_viajan_con_el_tablero(client, proyecto_factory, usuario_factory):
+    """Se quedaron atrás al mudar el tablero a Tareas — «no veo los botones»."""
+    u = _admin(usuario_factory, "btn@lc.mx")
+    _tarea(proyecto_factory(estado="en_proceso_diseno"))
+    client.force_login(u)
+    for url, params in (("/tareas/", {"cat": "mandados"}), ("/mandados/", {})):
+        r = client.get(url, params)
+        assert b"Planear rutas" in r.content, url
+        assert b"Mi ruta de hoy" in r.content, url
