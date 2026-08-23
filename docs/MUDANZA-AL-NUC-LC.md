@@ -368,60 +368,57 @@ solo desaloja lo que sí caduca (caché de imágenes y sesiones).
 | `.github/workflows/el-mensajero.yml` | `mudanza` despliega al NUC entrando al tailnet; job nuevo `ventana` para el Caddyfile, con validación previa y smoke test de la cadena completa |
 | `.github/workflows/la-limpieza.yml` | Apunta al NUC |
 
-## Que el deploy al NUC sea automático (lo que falta)
+## El deploy al NUC es automático (resuelto 2026-08-23)
 
-`🚚 La Mudanza` sale **VERDE aunque no despliegue nada**: sin credencial del
-tailnet sus dos pasos reales quedan en `skipped`. Desde 2026-08-23 el job lo grita
-—hay un paso llamado «⚠️ NO SE DESPLEGÓ» y un aviso en el resumen de la corrida—
-pero mientras falte la credencial el deploy es **a mano**.
+**Cada push verde a `main` despliega solo.** No hace falta ninguna credencial
+nueva, y no hay secretos de Tailscale en el repo.
 
-**Por qué hace falta si el NUC ya está en el tailnet:** el que no está es el
-**runner de GitHub**. Es una máquina virtual desechable en la nube de GitHub, y
-para alcanzar la IP del tailnet tiene que entrar él mismo. Las llaves del NUC
-autentican al NUC.
+### Cómo llega el CI hasta el NUC
 
-Ya están puestos `NUC_HOST`, `NUC_USER` y `NUC_SSH_KEY`. Falta **una** de estas dos:
+El NUC sólo existe en el tailnet, y el runner de GitHub es una máquina desechable
+en la nube de GitHub que **no** está ahí. En vez de meterlo al tailnet —que pedía
+una credencial nueva— el deploy **salta por La Sede**, que sí está en el tailnet y
+cuyos secretos `SEDE_*` existían y estaban aprobados desde mayo:
 
-### Opción corta — una auth key (un secreto, ~3 clics)
+```
+GitHub Actions ──SSH (SEDE_*)──▶ La Sede ──SSH por el tailnet──▶ NUC
+```
 
-1. `login.tailscale.com/admin/settings/keys` → **Generate auth key**.
-2. Marcar **Reusable** y **Ephemeral**. Sin tag: así el nodo entra como un
-   dispositivo del propio usuario y las reglas que ya permiten SSH entre sus
-   máquinas aplican — **no hay que tocar la ACL**.
-3. Guardarla en el repo:
+- La llave del salto vive **sólo en el Droplet**: `~/.ssh/sede-nuc-deploy`.
+- En el NUC está autorizada con `from="<IP de La Sede en el tailnet>"`, así que
+  **no sirve desde ningún otro lugar**, ni siquiera con la llave en mano.
+- Nunca pasa por el repo ni por un chat.
 
-       gh secret set TS_AUTHKEY     # pega el valor, Enter, Ctrl-D
+### El script vive en el repo, no en el YAML
 
-**El precio:** las auth keys **caducan** (máximo 90 días). El día que caduque, el
-deploy vuelve a saltarse — y ahora se ve, pero hay que renovarla.
+La lógica de deploy (pull, up, healthcheck de los 3 hosts, rollback) salió del
+`script:` del YAML a **`infra/scripts/deploy_nuc.sh`**. Así se puede leer, revisar
+con `bash -n` y correr a mano exactamente igual que lo corre el CI. Un script de
+deploy embutido en un YAML no se puede probar.
 
-### Opción larga — cliente OAuth (dos secretos, no caduca)
+**Detalle que importa:** el paso remoto trae **sólo el script**
+(`git checkout origin/main -- infra/scripts/deploy_nuc.sh`) y NO mueve `HEAD`. El
+script captura el commit previo para poder revertir; si se actualizara el repo
+antes, ese "previo" sería el commit nuevo y **el rollback no revertiría nada**.
 
-1. `login.tailscale.com/admin/acls`: que `tag:ci` exista en `tagOwners` y pueda
-   llegar al NUC por SSH.
-2. `login.tailscale.com/admin/settings/oauth` → **Generate OAuth client**, scope
-   **Auth Keys → Write**, tag `tag:ci`. El secreto se muestra una sola vez.
-3. `gh secret set TS_OAUTH_CLIENT_ID` y `gh secret set TS_OAUTH_SECRET`.
+### Antes de esto: un job verde que no desplegaba
 
-El workflow prefiere la auth key si están las dos.
+La versión anterior entraba al tailnet con una credencial de Tailscale que nunca
+se configuró. Sus pasos quedaban en `skipped` y **el job reportaba `success`**, así
+que durante días pareció que se desplegaba cuando el NUC seguía con la versión
+vieja. Con esta vía, si algo falla el job se pone **rojo**.
 
-### Comprobar que de verdad desplegó
+De todos modos, para comprobar que de verdad desplegó, lo único que no es
+inferencia es la versión que sirve producción:
 
-La conclusión del job NO lo dice. Dos formas que sí:
+```
+curl -s https://taller.learningcenter.mx/acerca/ | grep -oE "v2026\.[0-9]{2}\.[0-9]+"
+```
 
-    # 1. La versión que sirve producción (página pública)
-    curl -s https://taller.learningcenter.mx/acerca/ | grep -oE "v2026\.[0-9]{2}\.[0-9]+"
+### Deploy a mano, si hace falta
 
-    # 2. Los PASOS del job, no su conclusión
-    gh api repos/Yosoyobo/el-despacho/actions/runs/<ID>/jobs \
-      --jq '.jobs[]|select(.name|test("Mudanza"))|.steps[]|"\(.name): \(.conclusion)"'
-
-### Deploy a mano, mientras
-
-    cd /mnt/el-despacho && git fetch origin main && git reset --hard origin/main
-    F="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.site.yml -f docker-compose.nuc.yml"
-    docker compose $F pull && docker compose $F up -d
+    cd /mnt/el-despacho && bash infra/scripts/deploy_nuc.sh
 
 **Ojo con el orden:** hay que esperar a que la corrida de `main` termine
-«Build & push» y «Pin digests». Si se despliega antes, el NUC baja las imágenes
-**anteriores** — el compose todavía apunta a los digests viejos.
+«Build & push» y «Pin digests». Antes de eso el compose todavía apunta a los
+digests anteriores y se desplegarían las imágenes **viejas**.

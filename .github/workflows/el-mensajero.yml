@@ -243,211 +243,48 @@ jobs:
   mudanza:
     name: 🚚 La Mudanza (deploy al NUC de Learning Center, con rollback automático)
     needs: [actualizar_digests]
-    # Desde la mudanza del 2026-08-21 las apps viven en el NUC, que SOLO existe en
-    # el tailnet: el runner de GitHub no lo alcanza sin entrar primero. La ventana
-    # (La Sede) NO se usa como salto — es solo ventana, y su Caddyfile se despliega
-    # en el job `ventana` de abajo.
+    # El NUC sólo existe en el tailnet y el runner de GitHub es una máquina
+    # desechable que NO está ahí. En vez de meterlo (que pedía una credencial
+    # nueva), se salta por **La Sede**, que sí está en el tailnet y cuyos secretos
+    # `SEDE_*` ya existían y estaban aprobados desde mayo. Cero secretos nuevos.
     #
+    # La llave del salto (`~/.ssh/sede-nuc-deploy`) vive SÓLO en el Droplet y en
+    # el NUC está autorizada con `from=` a la IP de La Sede en el tailnet: no
+    # sirve desde ningún otro lugar. Nunca pasa por el repo ni por un chat.
+    #
+    # Antes esto entraba al tailnet con una credencial de Tailscale que nunca se
+    # puso, así que el job salía VERDE sin desplegar nada durante días. Con esta
+    # vía, si algo falla el job se pone ROJO — que es lo que uno quiere.
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     steps:
-      # OJO: el contexto `secrets` NO existe en el `if:` de un job — GitHub rechaza
-      # el workflow ENTERO ("Unrecognized named-value: secrets") y la corrida muere
-      # en 0 s sin ejecutar nada. Por eso la comprobación vive en un paso, que sí
-      # puede leer secretos vía `env`. Así el deploy al NUC se SALTA mientras no
-      # exista el cliente OAuth, en vez de fallar en rojo en cada push.
-      - name: ¿Están los secretos del tailnet?
-        id: creds
-        env:
-          TS_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          TS_KEY: ${{ secrets.TS_AUTHKEY }}
-        run: |
-          # Dos formas de entrar al tailnet, y basta con UNA:
-          #
-          #   · TS_AUTHKEY  — una auth key reutilizable y efímera. UN solo secreto,
-          #     tres clics en la consola, sin scopes ni tocar la ACL (el nodo entra
-          #     como un dispositivo del propio usuario, así que las reglas que ya
-          #     permiten SSH entre sus máquinas aplican). Es la vía corta.
-          #   · TS_OAUTH_*  — cliente OAuth con `tag:ci`. No expira, pero pide
-          #     scope `auth_keys` y que la ACL deje a `tag:ci` llegar al NUC.
-          #
-          # Se prefiere la auth key si está: menos piezas que puedan faltar.
-          if [ -n "${TS_KEY:-}" ]; then
-            echo "listo=si" >> "$GITHUB_OUTPUT"
-            echo "modo=authkey" >> "$GITHUB_OUTPUT"
-          elif [ -n "${TS_ID:-}" ]; then
-            echo "listo=si" >> "$GITHUB_OUTPUT"
-            echo "modo=oauth" >> "$GITHUB_OUTPUT"
-          else
-            echo "listo=no" >> "$GITHUB_OUTPUT"
-            # Era `::notice` (gris, enterrado) y el job igual salía VERDE: eso hizo
-            # creer dos veces que el deploy había ocurrido — la segunda, el
-            # 2026-08-23, con la versión vieja sirviéndose en producción mientras
-            # todos los jobs decían «success». Un job que reporta éxito sin hacer
-            # nada es peor que uno rojo. Ahora grita.
-            echo "::warning title=NO SE DESPLEGO A PRODUCCION::Falta la credencial del tailnet (basta TS_AUTHKEY, o el par TS_OAUTH_CLIENT_ID/TS_OAUTH_SECRET). Las imagenes se construyeron y subieron, pero el NUC sigue con la version anterior. Ver docs/MUDANZA-AL-NUC-LC.md"
-            {
-              echo "## ⚠️ NO SE DESPLEGÓ A PRODUCCIÓN"
-              echo ""
-              echo "Las imágenes se construyeron y subieron a GHCR, pero **el NUC sigue"
-              echo "corriendo la versión anterior**: faltan los secretos del tailnet"
-              echo "(\`TS_OAUTH_CLIENT_ID\`, \`TS_OAUTH_SECRET\`, \`NUC_HOST\`,"
-              echo "\`NUC_USER\`, \`NUC_SSH_KEY\`)."
-              echo ""
-              echo "Para desplegar a mano, desde el NUC:"
-              echo ""
-              echo '```'
-              echo "cd /mnt/el-despacho && git fetch origin main && git reset --hard origin/main"
-              echo "docker compose -f docker-compose.yml -f docker-compose.prod.yml \\"
-              echo "  -f docker-compose.site.yml -f docker-compose.nuc.yml pull"
-              echo "docker compose -f docker-compose.yml -f docker-compose.prod.yml \\"
-              echo "  -f docker-compose.site.yml -f docker-compose.nuc.yml up -d"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      # El nombre de este paso es el aviso: en la lista de pasos del job se lee
-      # «NO SE DESPLEGÓ» sin tener que abrir ningún log.
-      - name: ⚠️ NO SE DESPLEGÓ — faltan los secretos del tailnet
-        if: steps.creds.outputs.listo == 'no'
-        run: |
-          echo "El NUC sigue con la versión anterior. Las imágenes SÍ están en GHCR."
-          echo "Ver el resumen de la corrida para el comando de deploy manual."
-
-      - name: 🔌 Entrar al tailnet con la auth key (nodo efímero)
-        if: steps.creds.outputs.listo == 'si' && steps.creds.outputs.modo == 'authkey'
-        uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
-
-      - name: 🔌 Entrar al tailnet con el cliente OAuth (nodo efímero)
-        if: steps.creds.outputs.listo == 'si' && steps.creds.outputs.modo == 'oauth'
-        uses: tailscale/github-action@v3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-      - name: SSH al NUC y deploy
-        if: steps.creds.outputs.listo == 'si'
+      - name: SSH a La Sede y deploy al NUC por el tailnet
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          NUC_HOST: ${{ secrets.NUC_HOST }}
+          NUC_USER: ${{ secrets.NUC_USER }}
         with:
-          host: ${{ secrets.NUC_HOST }}
-          username: ${{ secrets.NUC_USER }}
-          key: ${{ secrets.NUC_SSH_KEY }}
-          command_timeout: 15m
+          host: ${{ secrets.SEDE_HOST }}
+          username: ${{ secrets.SEDE_USER }}
+          key: ${{ secrets.SEDE_SSH_KEY }}
+          command_timeout: 20m
+          envs: NUC_HOST,NUC_USER
           script: |
             set -uo pipefail
-            cd /mnt/el-despacho
-
-            echo "=== Capturando estado previo (rollback) ==="
-            cp docker-compose.prod.yml docker-compose.prod.yml.previo
-            COMMIT_PREVIO=$(git rev-parse HEAD)
-
-            echo "=== git fetch + reset main ==="
-            git fetch origin main
-            git reset --hard origin/main
-            COMMIT_NUEVO=$(git rev-parse HEAD)
-
-            # Evaluar COMPOSE_FILES DESPUÉS del git reset — el site.yml puede
-            # haber sido agregado/removido en el commit nuevo.
-            COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
-            if [ -f docker-compose.site.yml ]; then
-              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.site.yml"
-            fi
-            # El overlay del NUC saca a El Portero del stack (Caddy vive en la
-            # ventana) y publica los puertos 8200/8201 que la ventana consume por
-            # el tailnet. También sube el tuning de Postgres y Redis, que en el
-            # compose base está calibrado para el droplet de 1 GB.
-            if [ -f docker-compose.nuc.yml ]; then
-              COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.nuc.yml"
-            fi
-
-            echo "=== docker compose pull ==="
-            docker compose $COMPOSE_FILES pull
-
-            echo "=== docker compose up -d ==="
-            docker compose $COMPOSE_FILES up -d
-
-            # El Caddyfile YA NO se aplica aquí. Desde la mudanza del 2026-08-21,
-            # Caddy (El Portero) vive en la ventana y no en esta máquina; su
-            # despliegue —con la validación previa y el truco del inode del
-            # bind-mount de UN archivo— está en el job `ventana` de este mismo
-            # workflow. Ver docs/MUDANZA-AL-NUC-LC.md.
-
-            echo "=== Esperando 45s para healthchecks ==="
-            sleep 45
-
-            # Ventana amplia (~3 min). El motivo original era la PRIMERA emisión
-            # de certs de Let's Encrypt, que ya no ocurre aquí: los certificados se
-            # emiten en la ventana. Se conserva porque estas sondas atraviesan la
-            # cadena COMPLETA (ventana → tailnet → NUC) y las apps de Django tardan
-            # en arrancar tras migrate + collectstatic.
-            echo "=== Validando healthchecks (10 intentos espaciados 15s) ==="
-            DEPLOY_OK=1
-            for intento in $(seq 1 10); do
-              FALLOS=""
-              for host in gerencia.learningcenter.mx taller.learningcenter.mx recepcion.learningcenter.mx; do
-                CODE=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 8 \
-                    "https://${host}/ping" || echo "FAIL")
-                if [ "$CODE" != "200" ]; then
-                  FALLOS="${FALLOS} ${host}=${CODE}"
-                fi
-              done
-              if [ -z "$FALLOS" ]; then
-                echo "✅ Healthcheck OK en intento $intento"
-                DEPLOY_OK=0
-                break
-              fi
-              echo "⚠️  Intento $intento falló:$FALLOS"
-              if [ "$intento" -lt 10 ]; then sleep 15; fi
-            done
-
-            if [ "$DEPLOY_OK" -ne 0 ]; then
-              echo "❌ Healthchecks fallaron tras 3 intentos. Iniciando rollback."
-              echo "=== ps de los containers (estado pre-rollback) ==="
-              docker compose $COMPOSE_FILES ps
-              echo "=== logs de los containers Django (últimas 80 líneas, pre-rollback) ==="
-              for svc in la-gerencia el-taller la-recepcion portavoz-worker; do
-                echo "--- ${svc} ---"
-                docker compose $COMPOSE_FILES logs --tail 80 --no-color "$svc" 2>&1 || true
-              done
-              mv docker-compose.prod.yml.previo docker-compose.prod.yml
-              git reset --hard "$COMMIT_PREVIO"
-              docker compose $COMPOSE_FILES pull
-              docker compose $COMPOSE_FILES up -d
-              sleep 30
-              echo "=== Estado post-rollback ==="
-              docker compose $COMPOSE_FILES ps
-              docker compose $COMPOSE_FILES exec -T la-gerencia \
-                python manage.py notificar_deploy --estado rollback --commit "$COMMIT_NUEVO" \
-                --nota "Rollback automático tras fallo de healthcheck" \
-                2>/dev/null || true
-              exit 1
-            fi
-
-            rm -f docker-compose.prod.yml.previo
-
-            # Sincroniza el crontab de La Sede desde infra/cron/el-despacho.cron
-            # (idempotente, bloque gestionado). El repo ya está en el commit
-            # nuevo por el `git reset --hard` de arriba. Best-effort: un fallo
-            # de crontab no debe tumbar un deploy ya verde.
-            echo "=== Sincronizando crons (infra/cron/el-despacho.cron) ==="
-            bash infra/scripts/sync_crons.sh || echo "⚠️  sync de crons falló — revisar manualmente en La Sede"
-
-            echo "=== Estado final ==="
-            docker compose $COMPOSE_FILES ps
-            docker compose $COMPOSE_FILES exec -T la-gerencia \
-              python manage.py notificar_deploy --estado ok --commit "$COMMIT_NUEVO" \
-              2>/dev/null || true
-
-            # LC 2026-07: push global de Novedades ~1 min DESPUÉS de que la nueva
-            # versión ya está viva (idempotente por NovedadAnunciada — solo dispara
-            # si hay bloques de Novedades nuevos). Best-effort, no tumba el deploy.
-            echo "=== Novedades: aviso global al equipo (en ~60s) ==="
-            ( sleep 60 && docker compose $COMPOSE_FILES exec -T el-taller \
-                python manage.py anunciar_novedades >> /var/log/novedades.log 2>&1 ) || true
-
-            echo "✅ Deploy verde."
+            echo "=== La Sede → NUC ($NUC_HOST) por el tailnet ==="
+            # Se trae SÓLO el script de deploy, sin mover HEAD: el script captura
+            # el commit previo para poder hacer rollback, y si se actualizara el
+            # repo aquí ese "previo" sería el commit NUEVO y el rollback no
+            # revertiría nada. El `git reset` de verdad lo hace él.
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+                -o ConnectTimeout=15 -i ~/.ssh/sede-nuc-deploy \
+                "$NUC_USER@$NUC_HOST" "
+                  set -uo pipefail
+                  cd /mnt/el-despacho
+                  git fetch origin main
+                  git checkout origin/main -- infra/scripts/deploy_nuc.sh
+                  bash infra/scripts/deploy_nuc.sh
+                "
 
   ventana:
     name: 🪟 La Ventana (Caddyfile y TLS en La Sede)
