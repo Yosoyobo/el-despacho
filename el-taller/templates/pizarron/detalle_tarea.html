@@ -74,7 +74,12 @@
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/95 px-5 py-3 shadow-theme-sm backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
         <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">{{ action_bar_meta }}</div>
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{% url 'proyectos-detalle' proyecto.pk %}" class="btn-secundario">← Proyecto</a>
+            {% comment %}
+            A dónde regresa lo decide el recorrido, no la plantilla: si llegaste
+            desde Tareas dice «← Tareas» y te devuelve ahí con tus filtros; si
+            llegaste desde el proyecto, «← Proyecto». Lo arma `_navegacion_tarea`.
+            {% endcomment %}
+            <a href="{{ volver_url }}" class="btn-secundario">← {{ volver_label }}</a>
             {% if puede_editar %}
                 <a href="{% url 'pizarron-editar-tarea' tarea.pk %}" class="btn-secundario">Editar</a>
                 {% if tarea.estado != 'completada' %}

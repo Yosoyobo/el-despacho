@@ -13,7 +13,16 @@ POST exitoso → 204 + HX-Redirect a la lista.
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
             </button>
         </header>
-        <form hx-post="{% url 'mandado-destino' m.pk %}" hx-swap="none">
+        <form hx-post="{% url 'mandado-destino' m.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+            {% comment %}
+            El swap va al slot del modal (patrón Wave 5): en el camino feliz la
+            vista responde 204 + HX-Redirect y no hay nada que cambiar, pero si
+            falta qué guardar reinyecta este mismo modal con el error. Con
+            `hx-swap="none"` ese error no se veía y parecía que había guardado.
+            {% endcomment %}
+            {% if error %}
+            <p class="mb-3 rounded-lg border border-error-300 bg-error-50 px-3 py-2 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">{{ error }}</p>
+            {% endif %}
             {% csrf_token %}
             <div class="px-5 py-4">
                 <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Escribe o pega una dirección, elige un lugar conocido o pica el mapa. El runner más cercano se asignará por esta ubicación.</p>

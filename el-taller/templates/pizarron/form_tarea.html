@@ -14,6 +14,11 @@
 
 <form method="post" class="max-w-3xl">
     {% csrf_token %}
+    {% comment %}
+    De dónde venías, para que al guardar no se pierda el rastro y el detalle al
+    que caes sepa regresar a Tareas en vez de al proyecto.
+    {% endcomment %}
+    {% if volver %}<input type="hidden" name="volver" value="{{ volver }}">{% endif %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for f in form %}
