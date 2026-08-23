@@ -265,8 +265,39 @@ jobs:
             echo "listo=si" >> "$GITHUB_OUTPUT"
           else
             echo "listo=no" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Deploy al NUC omitido::Falta TS_OAUTH_CLIENT_ID. El deploy al NUC sigue siendo manual — ver docs/MUDANZA-AL-NUC-LC.md"
+            # Era `::notice` (gris, enterrado) y el job igual salía VERDE: eso hizo
+            # creer dos veces que el deploy había ocurrido — la segunda, el
+            # 2026-08-23, con la versión vieja sirviéndose en producción mientras
+            # todos los jobs decían «success». Un job que reporta éxito sin hacer
+            # nada es peor que uno rojo. Ahora grita.
+            echo "::warning title=NO SE DESPLEGO A PRODUCCION::Faltan los secretos del tailnet (TS_OAUTH_CLIENT_ID). Las imagenes se construyeron y subieron, pero el NUC sigue con la version anterior. Ver docs/MUDANZA-AL-NUC-LC.md"
+            {
+              echo "## ⚠️ NO SE DESPLEGÓ A PRODUCCIÓN"
+              echo ""
+              echo "Las imágenes se construyeron y subieron a GHCR, pero **el NUC sigue"
+              echo "corriendo la versión anterior**: faltan los secretos del tailnet"
+              echo "(\`TS_OAUTH_CLIENT_ID\`, \`TS_OAUTH_SECRET\`, \`NUC_HOST\`,"
+              echo "\`NUC_USER\`, \`NUC_SSH_KEY\`)."
+              echo ""
+              echo "Para desplegar a mano, desde el NUC:"
+              echo ""
+              echo '```'
+              echo "cd /mnt/el-despacho && git fetch origin main && git reset --hard origin/main"
+              echo "docker compose -f docker-compose.yml -f docker-compose.prod.yml \\"
+              echo "  -f docker-compose.site.yml -f docker-compose.nuc.yml pull"
+              echo "docker compose -f docker-compose.yml -f docker-compose.prod.yml \\"
+              echo "  -f docker-compose.site.yml -f docker-compose.nuc.yml up -d"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # El nombre de este paso es el aviso: en la lista de pasos del job se lee
+      # «NO SE DESPLEGÓ» sin tener que abrir ningún log.
+      - name: ⚠️ NO SE DESPLEGÓ — faltan los secretos del tailnet
+        if: steps.creds.outputs.listo == 'no'
+        run: |
+          echo "El NUC sigue con la versión anterior. Las imágenes SÍ están en GHCR."
+          echo "Ver el resumen de la corrida para el comando de deploy manual."
 
       - name: 🔌 Entrar al tailnet (nodo efímero; se va al terminar el job)
         if: steps.creds.outputs.listo == 'si'

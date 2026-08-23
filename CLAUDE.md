@@ -5697,8 +5697,8 @@ caduca cada 7 días y esto volvería a fallar. **HEIC** sigue sin decodificador
 no aparece en `/salud`: si algún día se quiere, es un módulo nuevo en
 `lib/salud.py`. Y el CI **todavía no despliega al NUC** (faltan los secretos de
 Tailscale, ver la entrada de la mudanza), así que el `pull && up -d` de esta
-entrega se hizo a mano. *(Ya no aplica: al 2026-08-23 los secretos existen y La
-Mudanza despliega sola en cada push verde a `main`.)*
+entrega se hizo a mano. *(Al 2026-08-23 sigue siendo a mano: La Mudanza sale verde
+pero con sus pasos en `skipped` mientras falten los secretos — ver la nota de la entrada de la mudanza.)*
 
 **Lo que salió al verificar el despliegue (mismo día, VERSION 2026.08.18).** Tres
 cosas que sólo se ven con el código corriendo:
@@ -6815,7 +6815,7 @@ de la llave del nodo** en la consola de Tailscale (expira el **2027-02-18** y es
 se cae el sitio; no hay CLI) · el **cable de red** (`eno1` sigue DOWN, trabaja por
 WiFi) y el **BIOS** para que encienda tras un corte.
 
-> **Al 2026-08-23 esto ya NO está pendiente**: los secretos del CI existen y el job **🚚 La Mudanza (deploy al NUC)** corre y pasa en cada push verde a `main` (verificado en la corrida del PR #66). O sea que **mergear a main despliega a producción solo**; el `pull && up -d` a mano ya no hace falta. Lo que SÍ sigue pendiente de OBO: apagar el vencimiento de la llave del nodo en Tailscale (expira el **2027-02-18** y ese día se cae el sitio), el cable de red (`eno1` sigue DOWN, trabaja por WiFi) y el BIOS para que encienda tras un corte.
+> **Al 2026-08-23 sigue pendiente, y OJO con cómo se ve:** el job **🚚 La Mudanza** sale **VERDE aunque no despliegue nada**. Sin los secretos, sus dos pasos reales (`Entrar al tailnet` y `SSH al NUC y deploy`) quedan en `skipped` y el job reporta `success` igual. El 2026-08-23 eso me hizo escribir aquí lo contrario —que el deploy ya era automático— y afirmarle a Oscar que su sprint estaba en producción cuando el NUC seguía sirviendo `2026.08.22`. **La conclusión del job no dice si desplegó: hay que mirar los PASOS** (`gh api .../jobs --jq '.jobs[]|.steps[]|"\(.name): \(.conclusion)"'`) **o la versión que sirve producción** (el footer de `/acerca/`, que es pública). Desde este arreglo el job grita: hay un paso llamado «⚠️ NO SE DESPLEGÓ» y un aviso en el resumen de la corrida con el comando manual.
 
 **Por qué NO se bumpeó `VERSION`:** el deploy automático al NUC está gateado por los
 secretos de Tailscale, así que un bump anunciaría (y pushearía a todo el equipo por
