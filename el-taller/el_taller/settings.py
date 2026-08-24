@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "apps.ayuda.apps.AyudaConfig",
     # Campañas de correo masivo: app raíz compartida; la UI/operación vive aquí.
     "campanas.apps.CampanasConfig",
+    "papeleo.apps.PapeleoConfig",
 ]
 
 MIDDLEWARE = [

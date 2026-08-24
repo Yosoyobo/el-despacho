@@ -42,6 +42,8 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("rfc_empresa", "Contaduría — RFC de la empresa", "RFC de Learning Center. Se usa en el export fiscal XML (Anexo 24). Ej. XAXX010101000."),
     ("n8n_api_key", "Automatizaciones (n8n) — llave de la API", "Se genera dentro de n8n, en Configuración → API. Sin ella El Chalán no puede ni ver qué automatizaciones hay: las capacidades desaparecen de su catálogo en vez de fallar cuando las use."),
     ("cfdi_ingesta_token", "CFDI por correo — token de entrada", "Contraseña con la que n8n empuja a El Despacho los CFDI que llegan al buzón de facturas. Invéntala larga y pégala igual en n8n. Sin ella la puerta no deja pasar a nadie: se cierra, no se abre."),
+    ("paperless_token", "Papeleo (Paperless) — llave de la API", "Se puede pegar a mano (Paperless → Mi perfil → token) o dejar que la pantalla de Gerencia → Papeleo la canjee por ti con tu usuario y contraseña. Sin ella no se puede buscar papeleo desde El Despacho: la búsqueda lo dice, en vez de fallar."),
+    ("papeleo_entrada_token", "Papeleo por correo — token de entrada", "Contraseña con la que n8n empuja a El Despacho el papeleo que llega al buzón (contratos, remisiones). Invéntala larga y pégala igual en n8n. Sin ella la puerta no deja pasar a nadie: se cierra, no se abre."),
     ("celador_token", "El Celador — token del monitor", "Token que manda el monitor del taller en la cabecera `x-celador` para leer el desglose de `/salud` (gasto de IA y uso). Lo entrega el taller. Sin token, `/salud` solo contesta la cara pública."),
     # Google Drive se configura con el asistente guiado en /ajustes/google-drive/
     # (OAuth sin clave). Sus slots — `google_drive_oauth_refresh_token` y

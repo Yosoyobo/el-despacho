@@ -31,5 +31,9 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         # porque un flujo prendido le manda correos a clientes — quien puede
         # tocar eso es quien ya puede tocar la configuración del despacho.
         "automatizacion": lambda u: permisos.puede(u, "ajustes", "acceder"),
+        # Papeleo: permiso propio y no el de Ajustes, porque leer contratos y
+        # comprobantes no es lo mismo que configurar el despacho — hay quien
+        # necesita lo uno sin lo otro, en los dos sentidos.
+        "papeleo": permisos.puede_ver_papeleo,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

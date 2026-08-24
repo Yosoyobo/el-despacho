@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "apps.estados_proyecto.apps.EstadosProyectoConfig",
     "apps.estados_tarea.apps.EstadosTareaConfig",
     "campanas.apps.CampanasConfig",
+    "papeleo.apps.PapeleoConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
     "apps.checador_admin.apps.CheckadorAdminConfig",

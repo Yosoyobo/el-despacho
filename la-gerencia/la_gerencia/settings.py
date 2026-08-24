@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     # Campañas: app raíz compartida. La UI vive en El Taller (operación);
     # aquí se instala solo para que La Gerencia corra su migración (Bug B §14).
     "campanas.apps.CampanasConfig",
+    "papeleo.apps.PapeleoConfig",
     # S-Checador E5: CRUD de horarios + bandeja de correcciones (admin).
     "apps.checador_admin.apps.CheckadorAdminConfig",
     # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:

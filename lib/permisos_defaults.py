@@ -67,6 +67,11 @@ TODO_RUNNER = ["recibir"]
 # vuelta. Se separan porque no es lo mismo consultar la ruta que rearmarla o
 # publicarla (y mandarle el correo a alguien).
 TODO_RUTAS = ["ver", "planear", "despachar"]
+# S-Papeleo-V1: el archivo de papeleo (Paperless). `ver` es buscar y abrir;
+# `ligar` es decir de quién es un documento; `subir` es meterlo al archivo.
+# Se separan porque leer un contrato y decidir a qué cliente pertenece no
+# son la misma responsabilidad.
+TODO_PAPELEO = ["ver", "ligar", "subir"]
 # S-LC-Feedback-V10 (decisión Oscar: "todo, TODO, debe tener permisos
 # granulares"): las áreas administrativas de La Gerencia dejan de gatearse por
 # rol literal y pasan a permisos delegables. super_admin sigue como failsafe
@@ -108,6 +113,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "checador": list(TODO_CHECADOR),
         "comunicacion": list(TODO_COMUNICACION),
         "rutas": list(TODO_RUTAS),
+        "papeleo": list(TODO_PAPELEO),
         # S-LC-Feedback-V5 c5: super_admin entra a La Gerencia por default.
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
@@ -217,6 +223,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     # rutas: super_admin las trae por default; el runner recibe `ver` desde el
     # rol "Runner" (opt-in, ver la migración de este sprint).
     "rutas": list(TODO_RUTAS),
+    # papeleo: super_admin lo trae; el resto se delega desde El Directorio.
+    "papeleo": list(TODO_PAPELEO),
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),

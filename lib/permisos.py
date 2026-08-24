@@ -330,6 +330,21 @@ def puede_despachar_rutas(user) -> bool:
     return puede(user, "rutas", "despachar")
 
 
+def puede_ver_papeleo(user) -> bool:
+    """Buscar en el archivo y abrir un documento."""
+    return puede(user, "papeleo", "ver")
+
+
+def puede_ligar_papeleo(user) -> bool:
+    """Decir de qué cliente, proyecto o proveedor es un documento."""
+    return puede(user, "papeleo", "ligar")
+
+
+def puede_subir_papeleo(user) -> bool:
+    """Mandar un archivo al archivo del papeleo."""
+    return puede(user, "papeleo", "subir")
+
+
 def usuarios_runner():
     """Usuarios activos elegibles como runner — permiso (runner, recibir).
 
