@@ -46,7 +46,7 @@
                         <button type="button" data-arr-asa title="Arrastra para ordenar" aria-label="Arrastra para ordenar"
                                 class="cursor-grab touch-none select-none px-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400">⠿</button>
                     </td>
-                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}{% if t.completada_en %}<span class="mt-0.5 block text-[11px] font-normal text-success-600 dark:text-success-400">✓ Completada {{ t.completada_en|date:"d M Y H:i" }} · tardó {{ t.duracion_completado }}</span>{% endif %}</td>
+                    <td class="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{{ t.titulo }}{% if t.completada_en and t.esta_terminada %}<span class="mt-0.5 block text-[11px] font-normal text-success-600 dark:text-success-400">✓ Completada {{ t.completada_en|date:"d M Y H:i" }} · tardó {{ t.duracion_completado }}</span>{% endif %}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ t.proyecto.codigo }} · {{ t.proyecto.nombre|truncatechars:30 }}</td>
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{% if t.asignada_a %}{{ t.asignada_a.get_short_name|default:t.asignada_a.email }}{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                     <td class="px-5 py-3">

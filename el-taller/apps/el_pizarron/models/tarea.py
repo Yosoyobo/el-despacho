@@ -134,6 +134,17 @@ class Tarea(models.Model):
         return dict(ESTADOS_TAREA).get(self.estado, self.estado)
 
     @property
+    def esta_terminada(self) -> bool:
+        """¿Su estado es terminal HOY? Derivado del catálogo, no del sello.
+
+        `completada_en` es un sello histórico que puede quedar puesto en una
+        tarea reabierta, y entonces el Kanban pintaba «✓ Completada» encima de
+        una tarjeta parada en la columna Pendiente.
+        """
+        from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+        return self.estado in slugs_terminales_tarea()
+
+    @property
     def duracion_completado(self) -> str:
         """Tiempo que tomó la tarea, de creación → completado (string humano).
         Vacío si aún no está completada. Pedido LC 2026-06-29 (orden y tiempos

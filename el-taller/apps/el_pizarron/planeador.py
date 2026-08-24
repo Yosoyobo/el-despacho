@@ -126,6 +126,13 @@ def _ParadaRuta():
     return ParadaRuta
 
 
+def asignar_runner(tarea, runner, *, actor=None, auto: bool = True):
+    """Escribe el runner que decidió el reparto. Envoltura perezosa de
+    `runners.asignar_runner` (importar arriba haría un ciclo)."""
+    from apps.el_pizarron.runners import asignar_runner as _asignar
+    return _asignar(tarea, runner, actor=actor, auto=auto)
+
+
 def _punto_de(mandado):
     """Destino del mandado (pin propio o la última visita al cliente)."""
     from apps.el_pizarron.runners import ubicacion_destino_de_tarea
@@ -149,15 +156,42 @@ def _etiqueta_de(mandado) -> str:
 
 
 def _candidato(mandado) -> dict:
-    """La parada como diccionario, en la forma que ya usa `ruta.py`."""
+    """La parada como diccionario, en la forma que ya usa `ruta.py`.
+
+    `runner` es el DUEÑO: quien fue puesto A MANO en la tarea. El reparto lo
+    respeta y no se lo quita (ver `planear_dia`).
+
+    Un runner que puso el propio reparto (`runner_auto=True`) NO cuenta como
+    dueño: si contara, «rehacer desde cero» nunca podría mover una parada de
+    persona, porque el primer reparto ya habría dejado su nombre escrito.
+    """
+    tarea = mandado.tarea
+    a_mano = bool(getattr(tarea, "runner_id", None)) and not getattr(tarea, "runner_auto", False)
     punto = _punto_de(mandado)
     return {
         "mandado": mandado,
+        "runner": tarea.runner if a_mano else None,
         "lat": punto[0] if punto else None,
         "lng": punto[1] if punto else None,
         "etiqueta": _etiqueta_de(mandado),
         "hora": getattr(mandado.tarea, "hora", None),
     }
+
+
+def sueltos_del_dia(fecha) -> dict:
+    """Los mandados del día que todavía no están en una ruta, separados por si se
+    sabe a dónde van.
+
+    Son dos problemas distintos y la pantalla los tiene que decir distinto: uno
+    se arregla apretando «Planear el día» y el otro poniéndole el destino. Antes
+    se mostraban juntos bajo «no se sabe a dónde van», así que un mandado con su
+    destino perfectamente puesto salía acusado de no tenerlo — el reporte de
+    Oscar del 2026-08-23.
+    """
+    con, sin = [], []
+    for mandado in candidatos_del_dia(fecha):
+        (con if _punto_de(mandado) else sin).append(mandado)
+    return {"con_destino": con, "sin_destino": sin}
 
 
 # ── Distancias ────────────────────────────────────────────────────────────────
@@ -322,10 +356,14 @@ def _origen_para(runner, modo: str, sede):
 def _repartir(candidatos, contextos):
     """Reparte las paradas entre los runners por inserción más barata.
 
-    `contextos` es `{runner_pk: {"runner", "origen", "cerrar", "paradas"}}`.
+    `contextos` es `{runner_pk: {"runner", "origen", "cerrar", "paradas", "acepta"}}`.
     Cada parada se le da al runner cuya ruta crece menos, con tope de carga para
     que no se le apile todo al que quedó más cerca. Las citas se reparten
     primero: son las que no admiten acomodo.
+
+    Sólo se le carga trabajo nuevo a los contextos con `acepta=True` (los runners
+    elegibles). Un contexto de dueño-no-elegible existe para conservar lo que ya
+    es suyo, no para recibir más.
     """
     if not contextos:
         return []
@@ -339,6 +377,8 @@ def _repartir(candidatos, contextos):
     for parada in pendientes:
         mejor, mejor_costo = None, None
         for ctx in contextos.values():
+            if not ctx.get("acepta", True):
+                continue
             if len(ctx["paradas"]) >= tope:
                 continue
             antes = largo_de(ctx["origen"], ctx["paradas"], cerrar=ctx["cerrar"])
@@ -365,24 +405,54 @@ def _repartir(candidatos, contextos):
 
 # ── Guardar el plan ───────────────────────────────────────────────────────────
 
+def tirar_borradores(fecha) -> int:
+    """Borra los borradores del día para poder rehacer el reparto desde cero.
+
+    SÓLO borradores: una ruta despachada ya está en manos de alguien —y le llegó
+    por correo—, así que borrarla sería quitarle el trabajo sin avisar. Las
+    paradas se van en cascada.
+
+    Existe porque `candidatos_del_dia` excluye a propósito lo que ya está
+    ruteado: sin esto, un reparto que salió mal no se podía rehacer más que
+    cancelando cada ruta a mano.
+    """
+    from apps.el_pizarron.models.ruta import Ruta
+    borradores = list(Ruta.objects.filter(fecha=fecha, estado="borrador"))
+    for ruta in borradores:
+        ruta.delete()
+    return len(borradores)
+
+
 def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
-                runners=None, actor=None) -> dict:
+                runners=None, actor=None, rehacer: bool = False) -> dict:
     """Arma (o rearma) las rutas del día y las guarda.
 
-    Devuelve `{rutas, sobrantes, sin_ubicar, sin_runner}`. No lanza: si algo
-    falla al ubicar una parada, ésa queda fuera y las demás se planean igual.
+    Devuelve `{rutas, sobrantes, sin_ubicar, sin_runner, sin_permiso}`. No lanza:
+    si algo falla al ubicar una parada, ésa queda fuera y las demás se planean
+    igual.
+
+    **Manda el runner que ya trae el mandado a mano** (decisión de Oscar,
+    2026-08-23): su parada va a SU ruta aunque no tenga el permiso de recibir
+    mandados, y el reparto no se la quita. Lo que se reparte entre los elegibles es sólo lo que
+    va sin dueño — y a eso sí se le ESCRIBE el runner en la tarea, para que la
+    lista de Mandados y el planeador no digan cosas distintas. Antes el planeador
+    ignoraba al dueño y armaba la ruta a nombre de otro sin tocar la tarea: dos
+    verdades sobre quién hace la entrega.
 
     Idempotente por diseño: los mandados que ya están en una ruta viva no se
     vuelven a repartir (`candidatos_del_dia` los excluye), así que replanear el
-    mismo día agrega lo nuevo en vez de duplicar lo que ya se despachó.
+    mismo día agrega lo nuevo en vez de duplicar lo que ya se despachó. Con
+    `rehacer=True` se tiran primero los borradores y el día se arma de cero.
     """
     from django.db import transaction
 
     from lib.permisos import usuarios_runner
 
+    if rehacer:
+        tirar_borradores(fecha)
+
     elegibles = list(runners) if runners else usuarios_runner()
-    if not elegibles:
-        return {"rutas": [], "sobrantes": [], "sin_ubicar": [], "sin_runner": True}
+    pks_elegibles = {u.pk for u in elegibles}
 
     candidatos = [_candidato(m) for m in candidatos_del_dia(fecha)]
     sin_ubicar = [c for c in candidatos if not _pt(c)]
@@ -390,20 +460,53 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
 
     cerrar = origen_modo == "sede_redonda"
     contextos = {}
-    for runner in elegibles:
-        origen, etiqueta = _origen_para(runner, origen_modo, sede)
-        contextos[runner.pk] = {
-            "runner": runner, "origen": origen, "etiqueta": etiqueta,
-            "cerrar": cerrar, "paradas": [],
-        }
 
-    sobrantes = _repartir(ubicables, contextos)
+    def _contexto(runner) -> dict:
+        ctx = contextos.get(runner.pk)
+        if ctx is None:
+            origen, etiqueta = _origen_para(runner, origen_modo, sede)
+            ctx = contextos[runner.pk] = {
+                "runner": runner, "origen": origen, "etiqueta": etiqueta,
+                # `acepta`: a quién se le puede CARGAR trabajo nuevo. Al dueño de
+                # un mandado se le respeta el suyo aunque no sea elegible, pero
+                # no se le encarga nada más.
+                "cerrar": cerrar, "paradas": [], "acepta": runner.pk in pks_elegibles,
+            }
+        return ctx
+
+    for runner in elegibles:
+        _contexto(runner)
+
+    libres, sin_permiso = [], []
+    for parada in ubicables:
+        dueno = parada.get("runner")
+        if dueno is None:
+            libres.append(parada)
+            continue
+        ctx = _contexto(dueno)
+        ctx["paradas"].append(parada)
+        if not ctx["acepta"] and dueno not in sin_permiso:
+            sin_permiso.append(dueno)
+
+    if not contextos:
+        # Nadie elegible y ningún mandado con dueño: no hay nada que planear.
+        return {"rutas": [], "sobrantes": [], "sin_ubicar": sin_ubicar,
+                "sin_runner": True, "sin_permiso": []}
+
+    sobrantes = _repartir(libres, contextos)
 
     rutas = []
     with transaction.atomic():
         for ctx in contextos.values():
             if not ctx["paradas"]:
                 continue
+            # Una sola verdad: lo que el reparto colocó queda escrito en la
+            # tarea, que es la fuente única del runner.
+            for parada in ctx["paradas"]:
+                if parada.get("runner") is None:
+                    asignar_runner(parada["mandado"].tarea, ctx["runner"],
+                                   actor=actor, auto=True)
+                    parada["runner"] = ctx["runner"]
             ruta = _ruta_viva(fecha, ctx["runner"], origen_modo, sede, actor)
             ruta.origen_lat = ctx["origen"][0] if ctx["origen"] else None
             ruta.origen_lng = ctx["origen"][1] if ctx["origen"] else None
@@ -416,10 +519,12 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
         "fecha": str(fecha), "rutas": len(rutas),
         "paradas": sum(r.total_paradas for r in rutas),
         "sin_ubicar": len(sin_ubicar), "sobrantes": len(sobrantes),
+        "sin_permiso": [u.pk for u in sin_permiso],
     })
     return {
         "rutas": rutas, "sobrantes": sobrantes,
         "sin_ubicar": sin_ubicar, "sin_runner": False,
+        "sin_permiso": sin_permiso,
     }
 
 

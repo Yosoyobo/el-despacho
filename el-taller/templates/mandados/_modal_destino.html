@@ -24,6 +24,8 @@ POST exitoso → 204 + HX-Redirect a la lista.
             <p class="mb-3 rounded-lg border border-error-300 bg-error-50 px-3 py-2 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">{{ error }}</p>
             {% endif %}
             {% csrf_token %}
+            {# A dónde regresar: se fija el destino desde la lista de Mandados y desde el planeador. #}
+            {% if volver %}<input type="hidden" name="volver" value="{{ volver }}">{% endif %}
             <div class="px-5 py-4">
                 <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Escribe o pega una dirección, elige un lugar conocido o pica el mapa. El runner más cercano se asignará por esta ubicación.</p>
 

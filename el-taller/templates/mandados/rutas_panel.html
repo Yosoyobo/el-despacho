@@ -66,6 +66,11 @@ tienen cita son fijas: el orden las respeta aunque cueste kilómetros.
             </select>
         </div>
         {% endif %}
+        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm has-[:checked]:border-warning-500 has-[:checked]:bg-warning-50 dark:border-gray-700 dark:has-[:checked]:bg-warning-500/15"
+               title="Tira los borradores del día y arma el reparto de cero. Las rutas ya despachadas no se tocan.">
+            <input type="checkbox" name="rehacer" value="1" class="h-4 w-4 rounded border-gray-300 text-brand-500">
+            Rehacer desde cero
+        </label>
         <button type="submit" class="btn-primario">Planear el día</button>
     </div>
     {% if not sedes %}
@@ -200,20 +205,50 @@ window.addEventListener('load', function () {
 {% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada planeado para este día" descripcion="Aprieta «Planear el día» y el reparto se arma con las entregas que tengan destino." icono="folder" %}
 {% endif %}
 
-{% if sueltos %}
-<section class="mt-6 rounded-xl border border-dashed border-warning-300 bg-warning-25 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
+{% comment %}
+Dos paneles y no uno, porque son dos problemas distintos: «todavía no lo has
+repartido» se arregla apretando el botón y «no se sabe a dónde va» se arregla
+poniéndole el destino. Juntos bajo el segundo texto, un mandado con su destino
+perfectamente puesto salía acusado de no tenerlo — lo que reportó Oscar.
+{% endcomment %}
+{% if por_repartir %}
+<section class="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
     <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        Sin repartir ({{ sueltos|length }})
+        Todavía sin repartir ({{ por_repartir|length }})
     </h2>
     <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-        Estas entregas del día no entraron a ninguna ruta. Casi siempre es porque no
-        se sabe a dónde van: ponle el destino en el mapa del mandado y vuelve a planear.
+        Ya saben a dónde van. Entran al reparto en cuanto aprietes «Planear el día».
     </p>
     <ul class="mt-3 space-y-1">
-        {% for m in sueltos %}
+        {% for m in por_repartir %}
+        <li class="flex items-center justify-between gap-2 text-sm">
+            <span class="truncate text-gray-700 dark:text-gray-300">
+                {{ m.tarea.titulo }}
+                {% if m.tarea.destino_etiqueta %}<span class="text-xs text-gray-400 dark:text-gray-500"> · {{ m.tarea.destino_etiqueta }}</span>{% endif %}
+                {% if m.tarea.runner %}<span class="text-xs text-brand-600 dark:text-brand-400"> · {{ m.tarea.runner.nombre_completo }}</span>{% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if sin_destino %}
+<section class="mt-6 rounded-xl border border-dashed border-warning-300 bg-warning-25 p-4 dark:border-warning-500/40 dark:bg-warning-500/10">
+    <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        Sin destino ({{ sin_destino|length }})
+    </h2>
+    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        Estas entregas no pueden entrar a una ruta porque no se sabe a dónde van.
+        Ponle el destino y vuelve a planear.
+    </p>
+    <ul class="mt-3 space-y-1">
+        {% for m in sin_destino %}
         <li class="flex items-center justify-between gap-2 text-sm">
             <span class="truncate text-gray-700 dark:text-gray-300">{{ m.tarea.titulo }}</span>
-            <a href="/mandados/" class="shrink-0 text-xs text-brand-600 underline dark:text-brand-400">fijar destino</a>
+            <button type="button" class="shrink-0 text-xs text-brand-600 underline dark:text-brand-400"
+                    hx-get="{% url 'mandado-destino' m.pk %}?volver={{ request.get_full_path|urlencode }}"
+                    hx-target="#modal-slot" hx-swap="innerHTML">fijar destino</button>
         </li>
         {% endfor %}
     </ul>

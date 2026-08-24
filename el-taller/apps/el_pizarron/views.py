@@ -983,7 +983,12 @@ def mandado_destino(request, pk):
     """Fija el destino (pin Leaflet). GET (HTMX) → modal con mapa; POST → guarda
     lat/lng/etiqueta en la Tarea subyacente."""
     from apps.el_pizarron import mandados as svc
+
+    from lib.navegacion import destino_de_regreso
     m = _mandado_visible_o_404(request, pk)
+    # Fijar el destino se pide desde la lista de Mandados Y desde el planeador:
+    # regresar siempre a la lista sacaba de la pantalla a quien venía del otro.
+    volver = destino_de_regreso(request, reverse("mandados-lista"))
 
     if request.method == "POST":
         # El pin es OPCIONAL: una dirección escrita ya sirve, y perder lo que la
@@ -1003,22 +1008,22 @@ def mandado_destino(request, pk):
             error = "Escribe una dirección o pica un punto en el mapa."
             if request.headers.get("HX-Request") == "true":
                 return render(request, "mandados/_modal_destino.html",
-                              {"m": m, "error": error})
+                              {"m": m, "error": error, "volver": volver})
             messages.error(request, error)
-            return redirect("mandados-lista")
+            return redirect(volver)
 
         svc.fijar_destino(m, lat=lat, lng=lng, etiqueta=etiqueta)
         _emitir_mandado("mandado.destino_fijado", request.user, m,
                         {"lat": lat, "lng": lng, "con_pin": lat is not None})
         if request.headers.get("HX-Request") == "true":
             from django.http import HttpResponse
-            return HttpResponse(status=204, headers={"HX-Redirect": reverse("mandados-lista")})
+            return HttpResponse(status=204, headers={"HX-Redirect": volver})
         messages.success(request, "Destino del mandado actualizado.")
-        return redirect("mandados-lista")
+        return redirect(volver)
 
     # Los POIs ya no se precargan: el geo-picker los trae en vivo desde
     # /geo/buscar conforme el usuario escribe (cuadro de resultados).
-    return render(request, "mandados/_modal_destino.html", {"m": m})
+    return render(request, "mandados/_modal_destino.html", {"m": m, "volver": volver})
 
 
 @login_required
@@ -1133,7 +1138,7 @@ def _rutas_del_dia(request, fecha):
 def rutas_panel(request):
     """El planeador: las rutas del día, el mapa y lo que quedó sin repartir."""
     from apps.el_pizarron.models.ruta import COLORES_RUTA_MAPA
-    from apps.el_pizarron.planeador import candidatos_del_dia, enlaces_de
+    from apps.el_pizarron.planeador import enlaces_de, sueltos_del_dia
 
     from lib.permisos import (
         puede_despachar_rutas,
@@ -1156,14 +1161,21 @@ def rutas_panel(request):
             "paradas": list(ruta.paradas.all()),
         })
 
-    # Lo que el reparto no alcanzó a colocar: sin destino conocido, o de más.
-    sueltos = candidatos_del_dia(fecha) if puede_planear_rutas(request.user) else []
+    # Lo que todavía no está en una ruta, separado por la razón REAL: uno se
+    # arregla apretando «Planear el día» y el otro poniéndole el destino. Antes
+    # iban juntos bajo «no se sabe a dónde van», así que un mandado con su
+    # destino puesto salía acusado de no tenerlo.
+    sueltos = (
+        sueltos_del_dia(fecha) if puede_planear_rutas(request.user)
+        else {"con_destino": [], "sin_destino": []}
+    )
 
     return render(request, "mandados/rutas_panel.html", {
         "titulo_pagina": "Planeador de rutas",
         "fecha": fecha,
         "tarjetas": tarjetas,
-        "sueltos": sueltos,
+        "por_repartir": sueltos["con_destino"],
+        "sin_destino": sueltos["sin_destino"],
         "sedes": _sedes_con_pin(),
         "puede_planear": puede_planear_rutas(request.user),
         "puede_despachar": puede_despachar_rutas(request.user),
@@ -1221,7 +1233,12 @@ def rutas_planear(request):
         sedes = _sedes_con_pin()
         sede = sedes[0] if sedes else None
 
-    res = planear_dia(fecha, origen_modo=modo, sede=sede, actor=request.user)
+    # «Rehacer» tira los BORRADORES del día y arma el reparto de cero. Sin esto,
+    # un reparto que salió mal no se podía corregir: `candidatos_del_dia` excluye
+    # a propósito lo que ya está ruteado, así que replanear sólo agregaba.
+    rehacer = request.POST.get("rehacer") == "1"
+    res = planear_dia(fecha, origen_modo=modo, sede=sede, actor=request.user,
+                      rehacer=rehacer)
 
     if res["sin_runner"]:
         messages.warning(
@@ -1247,6 +1264,16 @@ def rutas_planear(request):
                 request,
                 f"{len(res['sobrantes'])} entrega(s) no cupieron: todas las rutas "
                 "llegaron a su tope de paradas.",
+            )
+        if res.get("sin_permiso"):
+            # Se le respetó su mandado (manda quien ya lo trae), pero conviene
+            # saberlo: el reparto automático nunca le va a dar trabajo nuevo.
+            nombres = ", ".join(u.nombre_completo for u in res["sin_permiso"])
+            messages.warning(
+                request,
+                f"{nombres} trae mandados y armé su ruta, pero no tiene el permiso "
+                "de recibir mandados: el reparto automático no le puede asignar "
+                "nada nuevo. Dale el rol «Runner» en El Directorio.",
             )
     return redirect(f"{reverse('rutas-panel')}?fecha={fecha.isoformat()}")
 

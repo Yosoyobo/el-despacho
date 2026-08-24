@@ -12029,3 +12029,101 @@ esos forms no tiene por qué conocer esta historia.
 Un campo de formulario renderizado dos veces se guarda vacío, en silencio. Si un
 dato «no se guarda» y el backend ya está probado, **contar cuántas veces aparece
 su `name=` en el HTML servido** antes de mirar cualquier otra cosa.
+
+---
+
+# S-Rutas-Dueno — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.30)
+
+Oscar, con tres capturas: «las rutas y planeador todavía no quedan». Se
+diagnosticó **contra producción** antes de tocar código, y el hallazgo dio vuelta
+al reporte: **el planeador sí había corrido**.
+
+## Lo que decía cada pantalla, y por qué
+
+| | decía |
+|---|---|
+| La ruta guardada de hoy | de **Alex**, 2 paradas, 28.2 km saliendo de «la oficina» |
+| Los dos mandados de esas paradas | `Tarea.runner` = **Oscar** |
+| «Mi ruta de hoy» de Oscar | 2 paradas, 4.0 km — el cálculo al vuelo, porque no tenía ruta |
+
+Tres pantallas, tres respuestas. La causa: `planear_dia` armaba sus contextos
+**sólo** desde `usuarios_runner()` (Alex, Jorge, Larry — Oscar no tenía
+`(runner, recibir)`), **ignoraba** por completo el `Tarea.runner` ya asignado, y al
+terminar **no escribía** nada en la tarea. Oscar se había asignado los dos mandados
+a mano y el reparto se los dio a otro sin decírselo a nadie.
+
+Y la captura del panel tenía **otra** causa: `sueltos = candidatos_del_dia(fecha)`
+se pinta en cada GET, o sea **antes** de planear, bajo el texto «casi siempre es
+porque no se sabe a dónde van: ponle el destino». Los dos mandados **sí** tenían
+destino (Stampa `19.350313,-99.298189` y ninomeando `19.371382,-99.267477`), así
+que la pantalla acusaba de un problema inexistente y convivía con el «Nada planeado
+para este día» de arriba.
+
+## La decisión de Oscar (AskUserQuestion)
+
+Contestó **«A y C»** a «¿quién manda cuando el mandado ya trae runner?» y **«sí,
+agrégame»** al rol Runner. Se implementó como: **manda el dueño (A)**, y como todos
+los que traen mandados deberían ser elegibles (C), Oscar entra al permiso; si algún
+día alguien sin él trae un mandado, **se le respeta pero la pantalla lo avisa** en
+vez de quitárselo en silencio.
+
+## Lo entregado
+
+- **`planear_dia` respeta al dueño y escribe una sola verdad.** Los contextos se
+  siembran con los elegibles **y** con el dueño de cada mandado (aunque no sea
+  elegible), marcando `acepta` = a quién se le puede CARGAR trabajo nuevo. Lo que
+  el reparto coloca pasa por `asignar_runner(..., auto=True)`, así que `Mandados`,
+  el planeador y «Mi ruta» dicen lo mismo. `sin_runner` ya sólo es True cuando no
+  hay **nada** que planear (ni elegibles ni dueños); `sin_permiso` sale en el
+  resultado y la vista lo convierte en aviso.
+- **Dueño = asignado A MANO** (`runner_auto=False`). Fue el ajuste que faltaba: si
+  el runner escrito por el propio reparto contara como dueño, **«rehacer desde
+  cero» nunca podría mover una parada de persona** — el primer reparto habría
+  dejado su nombre pegado. `runner_auto` ya registraba justo esa distinción.
+- **Los dos avisos del panel, con su razón de verdad.** `sueltos_del_dia(fecha)`
+  parte los candidatos en `con_destino` (neutro: «Todavía sin repartir», dice a
+  quién están asignados) y `sin_destino` (naranja, con botón que abre el mapa ahí
+  mismo). El botón manda `?volver=` y `mandado_destino` lo respeta vía
+  `lib.navegacion.destino_de_regreso` — antes regresaba siempre a `/mandados/` y
+  sacaba del planeador a quien venía de ahí.
+- **Casilla «Rehacer desde cero»** + `tirar_borradores(fecha)`. Existe porque
+  `candidatos_del_dia` excluye a propósito lo ya ruteado: sin esto, un reparto
+  malo no se podía corregir más que cancelando ruta por ruta. **Sólo borradores**
+  — una despachada ya está en manos de alguien y le llegó por correo.
+- **«Mi ruta de hoy» ya es de hoy.** `ruta_de` no filtraba nada: traía todos los
+  mandados abiertos del runner de cualquier fecha y **aunque la tarea estuviera
+  archivada**. Verificado en prod: la vuelta de Alex arrancaba con dos entregas
+  archivadas del 29-jun y 1-jul, sin coordenadas. Ahora: no archivadas y con
+  compromiso `<= hoy` o sin fecha (lo de ayer que sigue abierto hay que hacerlo;
+  lo de la semana que entra, no).
+- **`Tarea.esta_terminada`** (derivado del catálogo) guarda el sello de
+  `completada_en` en el Kanban y en la lista: salía «✓ Completada · tardó…» sobre
+  tarjetas paradas en la columna Pendiente, porque el sello queda pegado al
+  reabrir.
+
+## Producción
+
+- Se le dio a Oscar `PermisoUsuario(runner, recibir)` — lo pidió explícitamente.
+  Reversible desde El Directorio. Elegibles ahora: Alex, Jorge, Larry, Oscar.
+- Los tres mandados del día tienen `runner_auto=false`: fueron asignados **a
+  mano**, así que el arreglo los respeta. Tras el deploy, «Rehacer desde cero»
+  rearma el día con las dos paradas en la ruta de Oscar.
+
+## Tests
+
+**20 nuevos** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
+el código sin arreglar: 16 de 19 fallan** (las 3 que pasan son red para el
+futuro). Regresión: los 30 de `test_planeador_rutas.py` + pizarrón + mandados +
+cercanía + plegado móvil + los candados de comentarios y de Novedades. Suite
+completa tras integrar `main`: **3226 pass**, 1 skip; los 3 únicos fallos son los conocidos de
+`test_aviso_deploy` (necesitan Redis, en CI pasan).
+
+## Deuda diseñada
+
+El reparto sigue sin considerar la carga real del vehículo ni el volumen. La
+distancia sigue siendo en línea recta (el orden sale bien; los km y las horas son
+estimados). Un dueño sin el permiso recibe su ruta pero el reparto automático
+nunca le encarga nada nuevo — es lo pedido, y la pantalla lo dice. «Rehacer desde
+cero» no toca las despachadas, así que un día con una ruta ya enviada sólo se
+puede rearmar parcialmente. Y el planeador no se invoca desde El Chalán (lee, no
+planea).
