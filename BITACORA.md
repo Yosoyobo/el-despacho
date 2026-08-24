@@ -11946,6 +11946,22 @@ en vez de quedar neutralizados — es el origen del folclore de «los 3 fallos l
 de Redis». En CI nunca muerde porque Redis es un servicio con healthcheck. Se deja
 fuera a propósito: cambia cómo corren ~3 000 tests y no pertenece a un sprint de CI.
 
+## El resultado, ya medido en producción
+
+Primer deploy con el DAG nuevo (corrida `32688076548`): **8 min 49 s de punta a
+punta**, contra los **27 min 44 s** de antes.
+
+| Job | Antes | Ahora |
+|---|---|---|
+| Tests (pytest) | 21 min 33 s | **3 min 14 s** |
+| Smoke Docker | 2 min 29 s | 1 min 55 s (y ahora prueba la imagen que viaja) |
+| Mudanza | 2 min 28 s | 2 min 31 s |
+| Build & push ×3 | 45 s | 51 s |
+| Ruff · digests · ventana | 36 s | 29 s |
+
+El job de tests pasó de 1293 s a 194 s: **6.7×**, en el runner de siempre, sin
+tocar un solo fierro.
+
 **No se bumpeó `VERSION`**: no cambia nada visible al usuario, así que no hay
 Novedades que escribir (mismo criterio que S-Vigia-NUC).
 

@@ -7258,6 +7258,11 @@ ventana 36 s. Aunque el NUC compilara en cero, el pipeline bajaría de 27:44 a 2
   llegó a 8 en las pruebas), para comprar ~45 s. Es una superficie mucho mayor que
   la llave acotada con `command=` del deploy, que es justo lo que Oscar pidió cuidar.
 
+**Resultado medido en producción** (primer deploy con el DAG nuevo, corrida
+`32688076548`): **8 min 49 s de punta a punta**, contra los 27 min 44 s de antes.
+Tests **194 s** (eran 1293 s, o sea **6.7×**), smoke 115 s —y ahora sí prueba la
+imagen que viaja—, build 51 s, mudanza 151 s, ventana 12 s, digests 8 s, ruff 9 s.
+
 **NO se bumpeó `VERSION`** (mismo criterio que S-Vigia-NUC): no cambia nada visible
 al usuario, así que no hay Novedades que escribir.
 
