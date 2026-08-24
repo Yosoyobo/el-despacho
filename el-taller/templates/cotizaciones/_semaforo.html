@@ -1,0 +1,37 @@
+{% comment %}Semáforo de estatus de UNA cotización (el pizza-tracker).
+
+Vive aquí y NO en el recuadro del proyecto porque lo usan las dos pantallas
+(LC 2026-08-23): el recuadro «Cotizaciones» del detalle del proyecto y la propia
+página de la cotización, donde antes sólo había una pastilla estática. Extraerlo
+es lo que garantiza que las dos se muevan juntas.
+
+Los pasos SIEMPRE salen del catálogo (Gerencia → Catálogos → Estados de
+cotización), nunca de literales: quien agregue un paso allá lo ve aquí.
+
+Espera:
+  cot          la cotización (para el pk y la etiqueta de la versión)
+  pasos        [{slug, label, color, fase}] — `fase` es done|current|future
+  editable     si se puede mover el estatus desde aquí
+  post_url     a dónde manda el clic
+  target       qué se reemplaza con la respuesta (selector CSS)
+  semaforo_id  opcional: el id del propio contenedor, cuando ES el target
+{% endcomment %}
+<div class="cot-tracker"{% if semaforo_id %} id="{{ semaforo_id }}"{% endif %}
+     {% if editable %}hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}>
+    {% for s in pasos %}
+    {% if editable %}
+    <button type="button"
+            hx-post="{{ post_url }}"
+            hx-vals='{"estado": "{{ s.slug }}", "cot_pk": "{{ cot.pk }}"}'
+            hx-target="{{ target }}" hx-swap="outerHTML"
+            class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
+            title="Marcar {{ cot.version_label }} como {{ s.label }}">
+        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
+    </button>
+    {% else %}
+    <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
+        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>

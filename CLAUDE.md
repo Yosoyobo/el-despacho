@@ -6025,6 +6025,121 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Tarjeta-Producto + S-Visual-Cotizacion-Kanban ✅ — El N+1 que hacía lenta la tarjeta, el semáforo compartido y el color en la columna (2026-08-23, VERSION 2026.08.28)
+
+Los dos handoffs de Oscar (`docs/SPRINT-Tarjeta-Producto.md` y
+`docs/SPRINT-Visual-Cotizacion-Kanban.md`) en un solo despliegue. **Tres de los
+cinco puntos del primero se resolvieron midiendo, no programando**, y el hallazgo
+central contradice la hipótesis del propio handoff.
+
+**Trabajado en `git worktree` propio** (`agent/tarjeta-visual` desde `origin/main`):
+el árbol principal tenía el sprint de CI en vuelo sin commitear — regla de Ago12-B.
+
+- **Nota 13, «la tarjeta nueva tarda en aparecer» — la causa NO era el peso del
+  HTML.** El handoff proponía adelgazar el rerender por OOB (opción b) o devolver
+  sólo la tarjeta nueva (opción a). Medido en La Sede sobre el proyecto más cargado
+  (LC-0009, 9 líneas, catálogo de 75 productos y 55 proveedores): el formset pesa
+  **298 KB** y tarda **1.5 s**, y de esos 1.5 s **casi todo son 516 consultas a la
+  base**. La opción (b) ahorra **30 ms (2 %)** — se descartó por inútil, y la (a)
+  arriesgaba el bug de duplicación por otros 250 ms. La causa real:
+  `label_from_instance` del `<select>` de Producto pide `s.proveedor_default` de
+  **cada opción**, y eso toca el FK `proveedor_principal`; el queryset de la clase
+  sí lo precargaba, pero el que se **rearma para una línea ya guardada** (para que
+  un producto archivado siga siendo opción válida) había perdido ese
+  `select_related`. **51 consultas por tarjeta × 9 = 461.** Una línea de fix:
+  `.select_related("categoria", "proveedor_principal")` en
+  [forms.py](el-taller/apps/los_proyectos/forms.py) →
+  **516 → 57 consultas, 1.5 s → 0.33 s, y el HTML byte por byte idéntico**
+  (verificado en producción antes de escribir el cambio). Alcanza también al
+  detalle del proyecto, que pinta el mismo formset.
+- **Nota 12, el bote de basura: NO estaba hecho.** El handoff lo daba por
+  entregado en `origin/main`; los cuatro botones del archivo seguían con la ✕. Se
+  cambió **sólo** el de `producto-eliminar`: los otros tres quitan un RENGLÓN
+  (proceso de venta, impresión, gasto) y conservan la ✕ a propósito — el icono es
+  lo que distingue «quitar un renglón» de «quitar el producto», y hay test que lo
+  fija en los dos sentidos.
+- **Nota 8, dos tarjetas del mismo color: diagnosticada, Caso A, sin cambio de
+  código.** El handoff pedía datos antes de tocar nada y nombraba el faltante. Se
+  corrió su consulta de diagnóstico contra La Sede (sólo lectura): los **cinco**
+  choques que existen son `[TEXTO]` — los dos productos MENCIONAN el mismo color.
+  El más elocuente: **LC-0049 «Gorras Cruz Azul» tiene sus SEIS líneas en azul**
+  porque el nombre del cliente lleva «Azul»; y en LC-0017 dos productos salen
+  negros porque su especificación dice «negro». Es la regla que se pidió
+  funcionando («si el nombre menciona un color, usa ése»), así que —siguiendo el
+  handoff— se reporta y se cierra. Queda un test que fija la precedencia
+  (alias → catálogo → descripción; dentro de un texto, el que se menciona primero)
+  para que el diagnóstico siga siendo válido. **Lo que sí conviene decidir con
+  Oscar** (es producto, no código): que el color NO se lea del nombre del CLIENTE
+  ni de una especificación de 200 caracteres, sólo del nombre del producto.
+- **Nota 5, la imagen que no se actualizaba: verificada en producción.** Era la
+  caída de Drive del 21 de agosto. Las **12** fotos propias de línea que existen
+  tienen su original en El Almacén y una URL `/medios/…` servible — 12 de 12, con
+  altas recientes (LC-0056/57/59). Cerrada con evidencia, sin cambio de código.
+- **Nota 6 (la `@` de tareas): fuera de scope** por decisión de Oscar en el
+  handoff — pendiente de diseño.
+
+**Semáforo de la cotización (nota 9).** El pizza-tracker existía sólo en el
+recuadro del proyecto; la PÁGINA de la cotización mostraba una pastilla estática.
+Se extrajo a **`cotizaciones/_semaforo.html`** y ahora lo usan las DOS pantallas —
+eso es lo que garantiza que no divergan, y hay test que falla si el panel vuelve a
+tener su propia copia. Endpoint nuevo `cotizaciones:semaforo` (POST, devuelve el
+semáforo repintado por `outerHTML`); los pasos siguen saliendo del catálogo de
+Gerencia. El partial recibe `post_url`/`target` por contexto, así que cada pantalla
+repinta lo que le toca (el recuadro completo allá, sólo el semáforo aquí).
+
+> **OJO — el handoff se equivocaba en un punto y se conservó el comportamiento
+> vigente.** Decía: «sólo la última versión cambia de estatus; al extraerlo se
+> conserva». Esa regla es de junio y la **reemplazó D3** (LC 2026-07): cada versión
+> tiene su propio tracker editable, con `test_cambiar_estado_de_una_version_pasada`
+> fijándolo. Conservar «lo existente» era, entonces, lo contrario de lo que pedía
+> la nota. Se dejó como está (una versión pasada SÍ se puede mover, en las dos
+> pantallas) y hay un test que lo documenta con el porqué. Si algún día se decide
+> volver a la regla vieja, hay que cambiarlo en las dos pantallas y tirar aquel
+> test — no en una sola.
+
+**Estilo del Kanban (nota 1).** El color se mudó de la ficha a la columna:
+contorno de 1px del color (se fue la franja de 4px), **pestaña del nombre
+rellena**, fondo de columna blanco y **ficha sin contorno** (la separa su sombra,
+que subió de `theme-xs` a `theme-sm` porque 0.05 de alpha es invisible sobre
+blanco). Tres detalles que no eran obvios:
+- **El relleno de la pestaña se oscurece al 68 % del color, y es medido**: con el
+  color puro, el blanco sobre el ámbar `#f79009` queda en **2.35:1** y no se lee
+  (el peor de los ocho estados). Al 68 % el peor caso sube a **4.76:1**, arriba
+  del 4.5 de WCAG AA. El test **calcula el contraste** leyendo el porcentaje del
+  CSS, así que si alguien lo sube «para que se vea más el color», falla y dice por
+  qué.
+- **Los colores de texto viven en el CSS**, no en clases de Tailwind en la
+  plantilla: así la columna inactiva («fuera del tablero») puede pintar su pestaña
+  tenue sin pelearse con un `text-white` más específico.
+- **El contorno va inline** (lección de Ago18-R2: si la hoja falta, la columna no
+  se rompe), y por eso el modo inactivo también se resuelve en la plantilla — un
+  `style` gana a cualquier clase, así que el CSS no podría suavizarlo.
+
+**Tests**: `test_tarjeta_producto_ago22.py` (7) + `test_visual_cotizacion_kanban.py`
+(13). Los dos del N+1 **verificados contra el código sin arreglar**: con el
+`select_related` de vuelta a lo anterior, pintar cuesta **54 → 108** consultas al
+crecer el catálogo (con el fix, 9 → 9). Se actualizó
+`test_ajustes_ago18_r2::test_el_kanban_pinta_el_color_en_el_contorno_de_la_pastilla`
+→ `..._en_la_columna_no_en_la_ficha`: fijaba el contrato que este sprint cambió a
+propósito, así que se movió al nuevo en lugar de borrarlo. Regresión de los dos
+handoffs verde (370 en el radio), ruff limpio.
+
+**Una trampa que costó una hora y vale para cualquier test de consultas:** medir
+con un `render` de calentamiento sobre el MISMO formset **esconde el N+1**. El
+QuerySet del campo se queda con su `_result_cache` y, con él, cada instancia ya
+trae el FK resuelto: la segunda pasada da cero consultas y el problema desaparece
+de la medición aunque siga en el código. Hay que armar el formset **dentro** de la
+medición y calentar con uno desechable.
+
+**Deuda diseñada**: la decisión de producto sobre de dónde se lee el color
+(cliente / especificación) queda para Oscar; el semáforo de la página de la
+cotización se ve también en una anulada, con todos los pasos en gris y
+clickeables (es exactamente lo que ya hacía el recuadro del proyecto — se
+conservó para no inventar divergencia); las opciones (a) y (b) del handoff para
+el rerender quedan medidas y descartadas, así que si algún día vuelve a sentirse
+lento el siguiente paso es la (a) con el management form sincronizado, sabiendo
+que hay que resolver el reordenamiento del formset.
+
 ### S-Movil-Mandados ✅ — El tablero de reparto usable en el celular + el Dashboard revertido (2026-08-23, VERSION 2026.08.27)
 
 Ronda de Oscar sobre lo deployado media hora antes (2026.08.26), con captura del

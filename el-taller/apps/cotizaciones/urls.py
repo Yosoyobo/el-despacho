@@ -19,6 +19,9 @@ urlpatterns = [
     path("<int:pk>/ver/", views.pdf_ver, name="ver"),
     path("<int:pk>/pdf/", views.generar_pdf, name="pdf"),
     path("<int:pk>/estado-inline/", views.estado_inline, name="estado-inline"),
+    # Semáforo de la PÁGINA de la cotización (LC 2026-08-23). Mismo partial que
+    # el recuadro del proyecto; sólo cambia a dónde postea y qué repinta.
+    path("<int:pk>/semaforo/", views.semaforo, name="semaforo"),
     # LC 2026-07: corregir el texto del documento (concepto/especificaciones)
     # desde la página de la cotización. `pk` es de la LÍNEA, no de la cotización.
     path("items/<int:pk>/celda/", views.item_celda, name="item-celda"),

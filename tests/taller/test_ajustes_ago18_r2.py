@@ -293,14 +293,30 @@ def _sin_comentarios(texto: str) -> str:
                   texto, flags=re.S)
 
 
-def test_el_kanban_pinta_el_color_en_el_contorno_de_la_pastilla():
+def test_el_kanban_pinta_el_color_en_la_columna_no_en_la_ficha():
+    """LC 2026-08-23 (Oscar) MUEVE esta regla: el distintivo de color pasó de la
+    ficha a la COLUMNA (contorno del color + pestaña rellena) y la ficha quedó
+    sin contorno. La prueba original de agosto exigía el contorno EN la ficha;
+    se actualiza al contrato nuevo en lugar de borrarla, porque lo que hay que
+    seguir garantizando es que el color del estado se pinte en UN solo lugar."""
     col = _sin_comentarios(
         (TALLER / "templates/proyectos/_kanban_columna.html").read_text())
+    cabecera = col[:col.index("kanban-dropzone")]
     tarjeta = col[col.index("data-arr-item"):col.index("kanban-card") + 300]
-    assert "border-color: {{ p.estado|color_estado }}" in tarjeta
+
+    # El color vive en la columna: la variable + el contorno + la pestaña.
+    assert "--ec: {{ col.slug|color_estado }}" in cabecera
+    assert "border-color: color-mix" in cabecera
+    assert "kanban-tab" in cabecera
+    # …y la franja gruesa de arriba ya no existe.
+    assert "border-t-4" not in cabecera
+
+    # La ficha ya no repite el color ni lleva contorno.
+    assert "color_estado" not in tarjeta
+    assert "border-2" not in tarjeta
     assert "border-left-color:" not in tarjeta
     assert "border-l-4" not in tarjeta
-    # El hover ya no puede pisar el color del estado.
+    # El hover sigue siendo sólo de sombra.
     assert "hover:border-brand-300" not in tarjeta
 
 
