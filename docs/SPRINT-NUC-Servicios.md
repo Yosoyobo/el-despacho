@@ -18,10 +18,11 @@ Reconocimiento del 2026-08-24, 08:40, contra `nuc-lc` por el tailnet:
 | Video por hardware | `/dev/dri/renderD128` presente → **Quick Sync sirve** |
 | Red | `eno1` **DOWN** — todo va por WiFi |
 
-**Lo que eso decide:** la RAM no es el límite (caben 6-8 servicios más).
-El disco y el cable sí lo son. **El cable de red deja de ser
-mantenimiento pendiente y pasa a ser requisito**: con la cámara de la
-Bambu, Plex y las consultas de ruteo, el WiFi es el cuello.
+**Lo que eso decide:** la RAM no es el límite (caben varios servicios
+más, ver §5). El disco y el cable sí lo son. **El cable de red sigue
+pendiente y ya estorba**: hoy el respaldo nocturno a HAL, las imágenes
+que entrega El Mostrador y todo el tráfico de los cinco usuarios pasan
+por WiFi. Con OSRM encima, es el primer lugar donde se va a notar.
 
 ---
 
@@ -59,13 +60,11 @@ Y en el código:
 | **No hay e.firma** a la mano | La descarga masiva del SAT queda fuera; los CFDIs entran por correo |
 | Rutas por **calles reales, todo México** | Entra OSRM con el mapa completo |
 | n8n **«A y B, más A. B con MUCHO GUARDRAIL MCP»** | Recetas listas + autoría del Chalán con preview y confirmación humana |
-| La Bambu es **personal**, modelo **X1** | Ligarla a proyectos es opcional. **Obico se descarta**: la X1 ya detecta spaghetti |
 | Inventario: **«A y C, más C»** | Etiquetas con QR primero; existencias propias después, si se piden |
 | Etiquetera **USB o red** | Habla TSPL/ZPL: camino directo por socket 9100 o CUPS |
-| Paraguas de sensores: **sólo lo de la Bambu** | Home Assistant entra **acotado**, sin sensores del taller |
 | Respaldo offsite: **no, con HAL basta** | Riesgo señalado y aceptado. Dos copias, ambas en el país |
 | **La Cobranza queda apagada por decisión** | Ningún sprint futuro la prende por su cuenta |
-| Media: **Plex** | Con la advertencia del Pass (§6) |
+| **Fuera: la Bambu y Plex** (2026-08-24) | El NUC se queda como servidor de trabajo. Ni impresión 3D ni media |
 
 ---
 
@@ -119,34 +118,27 @@ escanea o se reenvía por correo y queda buscable por texto para
 siempre. ~1 GB de RAM. Se lleva bien con la receta de n8n: el mismo
 buzón puede alimentar los dos.
 
-### 3.4 OSRM + geocodificador propio — las rutas de verdad
+### 3.4 OSRM — las rutas de verdad
 
-- **OSRM con `mexico-latest.osm.pbf`** (~1.3 GB). Distancias, tiempos y
-  orden de paradas por calles reales. El cambio está encapsulado en el
-  planeador (`ruta._distancia` / `largo_de`), así que es sustituir una
-  función, no rehacer el módulo.
-  - **Ojo con el preprocesado**: pide 6-8 G de RAM en el pico. Se corre
-    de madrugada, o se procesa en HAL y se copia el resultado. Servir
-    ya sólo cuesta ~2 GB.
-- **Photon** para direcciones, en vez de Nominatim completo: mismo
-  servicio, una fracción del peso (Nominatim con México pide su propio
-  Postgres de decenas de GB). Adiós al límite de una consulta por
-  segundo y al riesgo de que OSM nos bloquee.
+**OSRM con `mexico-latest.osm.pbf`** (~1.3 GB). Distancias, tiempos y
+orden de paradas por calles reales. El cambio está encapsulado en el
+planeador (`ruta._distancia` / `largo_de`): es sustituir una función,
+no rehacer el módulo.
 
-### 3.5 La Bambu X1 — acotado
+- **El argumento fuerte** es la matriz: para ordenar N paradas hay que
+  medir N×N trayectos. Contra un servicio público es imposible; contra
+  un OSRM local es instantáneo.
+- **Ojo con el preprocesado**: pide 6-8 G de RAM en el pico. Se corre de
+  madrugada con lo demás quieto, o se procesa en HAL y se copia el
+  resultado. Servir ya sólo cuesta ~2.2 G.
 
-Home Assistant **sólo con la integración de Bambu**: es el vehículo más
-corto para lo que se pidió, no el destino. Da estado, cola, avisos de
-fin y falla, y la cámara por RTSP en modo LAN. Los avisos salen por El
-Interfón como cualquier otra notificación. ~500 MB.
+**Photon (geocodificar direcciones) queda como opcional, fase 2.** Es el
+servicio más caro del plan —2 G— para lo que resuelve: capturar una
+dirección nueva de vez en cuando. Con cinco usuarios y el caché que ya
+existe, Nominatim público alcanza. Se retoma el día que el límite de una
+consulta por segundo estorbe de verdad.
 
-- **Requiere**: modo LAN activado en la impresora, con su código de
-  acceso y número de serie.
-- **Obico queda fuera**: la X1 ya detecta spaghetti de fábrica.
-- Ligar horas y filamento a un proyecto queda **opcional**, porque la
-  impresora es personal.
-
-### 3.6 Etiquetas — desarrollo chico, no instalación
+### 3.5 Etiquetas — desarrollo chico, no instalación
 
 La etiquetera genérica por USB o red habla TSPL o ZPL: se le manda la
 etiqueta por el puerto 9100 y sale. No hace falta alojar nada.
@@ -158,7 +150,7 @@ etiqueta por el puerto 9100 y sale. No hace falta alojar nada.
   cuenta de cuánto queda —todavía—, pero la puerta a un módulo propio
   de inventario queda abierta y **no** se parte el catálogo en dos.
 
-### 3.7 Las pantallas de pared
+### 3.6 Las pantallas de pared
 
 - **El Vigía ya está construido**: sólo hay que colgarlo. Falta resolver
   el aparato de la TV (Chrome en kiosco apuntando al NUC por la LAN).
@@ -166,20 +158,16 @@ etiqueta por el puerto 9100 y sale. No hace falta alojar nada.
   qué va atrasado. Sale de lo que El Despacho ya sabe — es una pantalla
   más, no un servicio nuevo.
 
-### 3.8 Plex — al final
-
-Con la advertencia: **la transcodificación por hardware requiere Plex
-Pass**. Sin él funciona en *direct play* y el video se traba cuando el
-aparato no aguanta el formato. Jellyfin da lo mismo gratis. Decisión de
-Oscar, tomada sabiéndolo.
-
 ---
 
 ## 4. Lo que se descarta, y por qué
 
 | Descartado | Razón |
 |---|---|
-| **Obico** | La X1 ya detecta spaghetti. Sería instalar algo pesado para duplicar |
+| **Todo lo de la Bambu** | Fuera por decisión de Oscar (2026-08-24). El NUC se queda como servidor de trabajo |
+| **Plex y cualquier media** | Fuera por la misma decisión. Además, su transcodificación por hardware pedía Plex Pass |
+| **Photon** | 2 G para geocodificar de vez en cuando. Baja a fase 2; Nominatim público alcanza |
+| **Obico** | La X1 ya detecta spaghetti, y de todos modos la impresora salió del plan |
 | **InvenTree** | Partiría el catálogo en dos: dos verdades sobre el mismo rollo de vinil, y El Chalán ciego a la mitad |
 | **Descarga masiva del SAT** | No hay e.firma a la mano. Se retoma el día que la haya |
 | **Home Assistant con sensores del taller** | Descartado por Oscar. *(La humedad sí arruina vinil y sublimación; queda anotado por si algún día duele)* |
@@ -191,44 +179,99 @@ Oscar, tomada sabiéndolo.
 
 ---
 
-## 5. Presupuesto de recursos
+## 5. Presupuesto de RAM — medido, no estimado
 
-| Servicio | RAM | Disco |
+Medido en el NUC el 2026-08-24 con `docker stats` y `pg_settings`.
+
+### 5.1 Lo que hay hoy
+
+| | Usa ahora | Techo comprometido |
 |---|---|---|
-| n8n | ~500 MB | poco |
-| Gotenberg | ~300 MB | poco |
-| Paperless-ngx | ~1 G | crece con el papeleo |
-| OSRM (México) | ~2 G | ~3 G |
-| Photon (México) | ~1-2 G | ~3-8 G |
-| Home Assistant | ~500 MB | poco |
-| Plex | ~500 MB | **se come todo lo que le den** |
-| **Suma** | **~6-7 G** | |
+| El Taller (**8 workers × 8 hilos**) | 543 MB | fijo |
+| La Gerencia (**4 × 8**) | 327 MB | fijo |
+| Postgres | 254 MB | **`shared_buffers` = 4 G** |
+| Redis | 15 MB | **`maxmemory` = 3 G** |
+| Portavoz + El Mostrador | 102 MB | fijo |
+| Sistema, Docker, Tailscale | ~1.05 G | — |
+| **Total** | **2.3 G de 14.8 G** | **~8.5 G si todo se llena** |
 
-Quedan 11 G libres y El Despacho va a crecer: **cabe, pero ajustado**.
-Si aprieta, OSRM es el que más pesa y se puede acotar a la zona
-metropolitana sin tocar nada más. El SSD de 1 TB resuelve el disco.
+### 5.2 Cinco usuarios simultáneos no mueven la RAM
 
----
+El Taller ya atiende **64 peticiones a la vez** y La Gerencia 32. Cada
+worker carga Django entero **al arrancar**, así que atender a cinco
+personas reutiliza exactamente los mismos workers que atender a una. Ya
+está medido: en la prueba de esfuerzo de agosto, de 10 a 200
+concurrentes la RAM se quedó clavada en 4.2 G y lo que subió fue el CPU.
+Cinco usuarios no rozan el techo de 275 peticiones por segundo.
+
+Lo que **sí** se mueve con cinco personas trabajando a la vez:
+
+| | |
+|---|---|
+| `work_mem` de Postgres | 32 MB **por ordenamiento**, no por usuario. Cinco reportes pesados ≈ **+500 MB** |
+| **Gotenberg** | abre un Chromium **por PDF**. Cinco cotizaciones a la vez ≈ **+1.5 G** |
+| **Paperless** | el OCR carga el documento. Dos en cola ≈ **+600 MB** |
+
+### 5.3 Los tres escenarios
+
+| Escenario | RAM | Libre |
+|---|---|---|
+| Hoy | 2.3 G | 12.5 G |
+| + los servicios nuevos, en reposo | 7.7 G | 7.1 G |
+| + cinco usuarios haciendo lo peor a la vez | **10.3 G** | **4.5 G** ⚠️ |
+
+Ese 4.5 G roza el colchón de 4 G que `lib/site/host.presion_memoria()`
+usa como línea de alarma. Cabe, pero sin margen para sorpresas.
+
+### 5.4 El conflicto de fondo, y cómo se resuelve
+
+**Postgres tiene 4 G de techo y Redis 3 G, para una base de 29 MB y una
+cola de 15 MB.** Ese dimensionamiento se hizo en agosto para «no volver
+en meses», y era correcto cuando el NUC sólo cargaba El Despacho. Ahora
+esos 7 G de techo compiten con los servicios nuevos: **7 + 6 + 1 es más
+de lo que hay.** Hoy no truena porque nadie toca esos techos, pero es
+una bomba con fecha desconocida.
+
+Dos ajustes lo resuelven sin perder nada real:
+
+1. **Bajar los techos a la realidad**: `shared_buffers` a **2 G** (sigue
+   siendo 70 veces la base actual) y Redis a **1 G** (65 veces la cola).
+   Libera **4 G** de compromiso. Al aplicarlo hay que **recrear el
+   contenedor y comprobar con `SHOW`** — editar el compose no basta.
+2. **Photon fuera** (§3.4): libera **2 G**.
+
+Con los dos, el peor escenario baja a **~8.3 G, con 6.5 G libres**.
+
+### 5.5 Regla para todo lo que se aloje de aquí en adelante
+
+**Todo servicio nuevo lleva `mem_limit` en el compose.** El NUC sostiene
+el negocio: ningún juguete puede tumbarlo compitiendo por memoria. Si
+Gotenberg se desboca con cinco PDFs, que muera Gotenberg — no El Taller.
+
+| Servicio | Reposo | `mem_limit` sugerido |
+|---|---|---|
+| n8n | ~400 MB | 1 G |
+| Gotenberg | ~150 MB | 2 G |
+| Paperless-ngx | ~700 MB | 2 G |
+| OSRM (México) | ~2.2 G | 3 G |
+| **Suma en reposo** | **~3.5 G** | |
 
 ## 6. Orden de ejecución
 
+0. **Bajar los techos de Postgres y Redis** (§5.4) — cinco minutos, y
+   sin eso lo demás se monta sobre una bomba
 1. **n8n + receta de CFDIs** — valor inmediato, y hace que el equipo lo compre
-2. **Gotenberg** — mata deuda vieja y un punto de falla
+2. **Gotenberg** — mata deuda vieja y un punto de falla, con `mem_limit`
 3. **Paperless-ngx** — el papeleo deja de perderse
-4. **OSRM + Photon** — las rutas dejan de mentir
-5. **La Bambu** — avisos y cámara
-6. **Etiquetas** — desarrollo chico dentro de El Despacho
-7. **Tablero en pared** — colgar El Vigía y armar la vista del día
-8. **Plex** — cuando todo lo demás esté en pie
+4. **OSRM** — las rutas dejan de mentir
+5. **Etiquetas** — desarrollo chico dentro de El Despacho
+6. **Tablero en pared** — colgar El Vigía y armar la vista del día
 
-**Antes del 4, 5 y 8: el cable de red.** Y el SSD antes del 3 y el 8.
-
----
+**Antes del 4: el cable de red.** El SSD antes del 3.
 
 ## 7. Lo que hace falta de tu lado
 
 - **El cable de red** conectado (`eno1` sigue caído) y el **SSD de 1 TB**.
+- **Visto bueno** a bajar los techos de Postgres y Redis (§5).
 - **A qué buzón llegan los CFDIs**, y con qué credenciales leerlo.
-- **Modo LAN de la X1**: código de acceso y número de serie.
 - **Marca y modelo de la etiquetera**, para confirmar si habla TSPL o ZPL.
-- **Decidir Plex Pass** o cambiar a Jellyfin.
