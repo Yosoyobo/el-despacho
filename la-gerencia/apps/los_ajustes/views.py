@@ -1188,6 +1188,8 @@ def documentos_panel(request):
 
         cfg.pie_texto = (request.POST.get("pie_texto") or "").strip()[:120]
         cfg.numerar_paginas = bool(request.POST.get("numerar_paginas"))
+        cfg.encabezado_texto = (request.POST.get("encabezado_texto") or "").strip()[:120]
+        cfg.marca_borrador = (request.POST.get("marca_borrador") or "").strip()[:30]
 
         try:
             inter = Decimal(str(request.POST.get("interlineado") or cfg.interlineado))

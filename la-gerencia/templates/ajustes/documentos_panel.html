@@ -137,6 +137,33 @@ frente a un cliente, se vuelve a Google con un clic.
         </label>
     </section>
 
+    {# ── Encabezado y marca de agua ───────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-theme-xl font-medium text-gray-800 dark:text-white/90">Encabezado y marca</h2>
+
+        <div class="space-y-5">
+            <div>
+                <label for="encabezado_texto">Encabezado (opcional)</label>
+                <input type="text" id="encabezado_texto" name="encabezado_texto" maxlength="120"
+                       value="{{ cfg.encabezado_texto }}" placeholder="Learning Center · 55 1234 5678">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Texto chico arriba de <em>cada</em> hoja, a la derecha. Vacío = sin encabezado.
+                </p>
+            </div>
+
+            <div>
+                <label for="marca_borrador">Marca en documentos sin enviar</label>
+                <input type="text" id="marca_borrador" name="marca_borrador" maxlength="30"
+                       value="{{ cfg.marca_borrador }}" placeholder="BORRADOR">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Se estampa cruzada y tenue en las cotizaciones que <strong>aún no se
+                    han enviado</strong>, para que no se confundan con las que ya salieron.
+                    Al enviarla, el documento sale limpio. Vacío = sin marca.
+                </p>
+            </div>
+        </div>
+    </section>
+
     <div class="flex items-center gap-3">
         <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
             Guardar

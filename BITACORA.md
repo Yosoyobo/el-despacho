@@ -12286,5 +12286,24 @@ reposo con todo prendido; la medición al cierre dio **42 % (6.3 G de 14.8)**. E
 preprocesado del mapa pidió más de los 7 G que se le prestaron y murió: **el
 `mem_limit` mató al preprocesado y no al negocio**, que es para lo que está.
 
+**Segunda tanda del mismo día (hasta 2026.08.41).** Gotenberg con marca de agua,
+encabezado, metadatos, unir PDFs y convertir Office; MCP para que El Chalán
+consulte y **proponga** operar las automatizaciones de n8n; y pantalla propia con
+renglón en el menú para cada pieza integrada — regla que Oscar dio dos veces en
+la sesión y que quedó en memoria.
+
+**Tres bugs más, con su causa.** OSRM tenía **4 G bloqueados** en memoria
+anónima, no caché: con `--mmap` bajó a 46 MiB y el sistema de 7.5 G a 3.4 G, con
+la ruta midiendo igual en 0.2 s. Paperless daba 500 porque mi `chown` de los
+permisos de n8n se llevó la carpeta de SU Redis —que escribe con el usuario
+999—, y Redis sin poder guardar bloquea todas las escrituras por diseño. Y
+recrear contenedores con `docker run` en vez de compose no registra el alias del
+SERVICIO, así que El Taller dejó de encontrar `osrm` y `n8n` unos minutos.
+
+**Lo que NO se expuso, a propósito**: crear un flujo de n8n desde cero. Pedirle a
+un modelo que invente el grafo de nodos produce flujos que se ven bien y no
+corren; crear se hace en n8n, donde se puede probar antes de prenderlo.
+
 **Pendiente.** Pantalla para resolver los CFDI pendientes, el flujo del lado de
-n8n (configuración, fuera del repo), y que los CFDI de proveedor generen egreso.
+n8n (configuración, fuera del repo), que los CFDI de proveedor generen egreso, y
+conectar «unir PDFs» y «convertir Office» a botones.

@@ -70,7 +70,16 @@ services:
     image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
     container_name: despacho-osrm
     restart: always
-    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "2000", "/data/mexico-latest.osrm"]
+    # `--mmap` es la diferencia entre 4 G BLOQUEADOS y 4 G que el kernel puede
+    # recuperar. Sin él, OSRM carga el mapa en memoria anónima —medido:
+    # RssAnon de 4.1 G— y esos gigas no se le pueden quitar aunque haga falta.
+    # Con él, el mapa se lee del disco a través del caché de páginas: ocupa lo
+    # mismo mientras sobre memoria, y se libera solo cuando aprieta.
+    #
+    # El precio es una primera consulta más lenta tras un rato sin usarse,
+    # mientras el kernel vuelve a leer del SSD. Para las rutas de un día de
+    # trabajo no se nota; la tranquilidad de no tener 4 G apartados, sí.
+    command: ["osrm-routed", "--algorithm", "mld", "--mmap", "--max-table-size", "2000", "/data/mexico-latest.osrm"]
     volumes:
       - ./data/osrm:/data:ro
     # 4 G y no 3: medido con el mapa de México servido, se quedaba en 2.999 de
@@ -105,6 +114,16 @@ services:
       # Sin esto n8n avisa en cada arranque que las credenciales quedan sin
       # cifrar en su base.
       N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY:?falta N8N_ENCRYPTION_KEY en el .env}"
+      # n8n exige cookie segura por default, y sólo la manda por HTTPS. Aquí se
+      # entra por http://100.121.244.5:5678, así que sin esto la pantalla se
+      # queda en «your n8n server is configured to use a secure cookie» y no
+      # deja pasar.
+      #
+      # Apagarlo es aceptable EN ESTE CASO y sólo en éste: el puerto está atado
+      # a la interfaz de Tailscale, y el tailnet ya cifra de punta a punta con
+      # WireGuard. La cookie viaja protegida por la red, no por TLS. El día que
+      # n8n se publique en un dominio con certificado, esto se quita.
+      N8N_SECURE_COOKIE: "false"
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
     # n8n corre como el usuario `node` (1000). Docker crea el volumen como root
@@ -128,6 +147,11 @@ services:
     image: redis:7-alpine
     container_name: despacho-paperless-redis
     restart: always
+    # Su carpeta la escribe el usuario `redis` (999), no el 1000. Si queda con
+    # otro dueño, Redis no puede guardar su archivo y —por diseño— BLOQUEA
+    # todas las escrituras: Paperless empieza a dar 500 sin decir por qué.
+    # Pasó el 2026-08-24 por un chown de más.
+    user: "999:999"
     command: ["redis-server", "--save", "60", "1", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction"]
     volumes:
       - ./data/paperless/redis:/data

@@ -5,6 +5,71 @@
 
 ---
 
+## Novedades — El Chalán ya puede operar las automatizaciones (24 de agosto de 2026)
+
+**Preguntarle en vez de entrar a n8n**
+
+Las tareas que corren solas viven en una herramienta aparte (n8n) que nadie del
+equipo tiene por qué aprender. Ahora se le puede preguntar al Chalán:
+
+- «¿Qué automatizaciones hay y cuáles están prendidas?»
+- «¿Corrió bien la de las facturas anoche?»
+- «Apaga la de los avisos de cobranza.»
+
+**Lo que puede y lo que no**
+
+**Consultar, todo.** Qué existe, qué está prendido, qué corrió y qué falló.
+
+**Cambiar, nada por su cuenta.** Prender, apagar o quitar una automatización te
+lo *propone*, te muestra qué va a hacer, y **no pasa nada hasta que confirmas** —
+igual que con todo lo demás que toca datos.
+
+Y hay una razón concreta: una automatización prendida **le manda correos a
+clientes**. Que se encienda sin que nadie la mire sería regalar la voz del
+despacho.
+
+**Crear una automatización desde cero sigue haciéndose en n8n**, a propósito: un
+flujo tiene una forma exacta y pedirle a un programa que la invente produce, casi
+siempre, algo que se ve bien y no funciona.
+
+**Falta un paso de configuración**: pegar la llave de n8n en *Gerencia → Los
+Ajustes*. Se genera dentro de n8n, en Configuración → API. Mientras no esté, el
+Chalán simplemente no ofrece estas opciones.
+
+---
+
+## Novedades — Los documentos ganan marca de agua, encabezado y más (24 de agosto de 2026)
+
+**Las cotizaciones sin enviar salen marcadas**
+
+Una cotización que todavía no se manda ahora sale con **BORRADOR** estampado en
+diagonal, tenue, en todas sus hojas. Al enviarla, el documento sale limpio.
+
+Antes una cotización sin enviar y una ya enviada se veían **idénticas**, y
+confundirlas frente a un cliente es de los errores que salen caros. El texto se
+puede cambiar —o quitar— en *Gerencia → Documentos*.
+
+**Encabezado en todas las hojas**
+
+Además del pie, ahora se puede poner un texto chico arriba de cada hoja: el
+nombre del despacho, un teléfono, lo que sirva. También se configura en esa
+misma pantalla.
+
+**Y el archivo ya dice de qué es**
+
+Las propiedades del PDF llevan el título del documento, el proyecto y el
+cliente. Antes decían «Untitled», que hace imposible encontrar un archivo dentro
+de una carpeta con cien.
+
+**Dos capacidades nuevas por dentro**
+
+El sistema ya puede **unir varios PDF en uno** (para mandar la cotización y sus
+anexos en un solo archivo) y **convertir Word y Excel a PDF** sin abrir Office.
+Todavía no están conectadas a ningún botón; quedan listas para el siguiente
+paso.
+
+---
+
 ## Novedades — Cada pieza nueva ya tiene su pantalla (24 de agosto de 2026)
 
 **Dos renglones nuevos en el menú de La Gerencia**

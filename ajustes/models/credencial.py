@@ -40,6 +40,7 @@ SLOTS_CREDENCIAL: list[tuple[str, str, str]] = [
     ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
     ("n8n_health_url", "n8n — Health URL (vía Tailscale)", "Ej. http://hal.tailedd04d.ts.net:5678/healthz. El Site lo pinguea."),
     ("rfc_empresa", "Contaduría — RFC de la empresa", "RFC de Learning Center. Se usa en el export fiscal XML (Anexo 24). Ej. XAXX010101000."),
+    ("n8n_api_key", "Automatizaciones (n8n) — llave de la API", "Se genera dentro de n8n, en Configuración → API. Sin ella El Chalán no puede ni ver qué automatizaciones hay: las capacidades desaparecen de su catálogo en vez de fallar cuando las use."),
     ("cfdi_ingesta_token", "CFDI por correo — token de entrada", "Contraseña con la que n8n empuja a El Despacho los CFDI que llegan al buzón de facturas. Invéntala larga y pégala igual en n8n. Sin ella la puerta no deja pasar a nadie: se cierra, no se abre."),
     ("celador_token", "El Celador — token del monitor", "Token que manda el monitor del taller en la cabecera `x-celador` para leer el desglose de `/salud` (gasto de IA y uso). Lo entrega el taller. Sin token, `/salud` solo contesta la cara pública."),
     # Google Drive se configura con el asistente guiado en /ajustes/google-drive/

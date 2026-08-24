@@ -305,6 +305,16 @@ def puede_ser_runner(user) -> bool:
     return puede(user, "runner", "recibir")
 
 
+def puede_acceder_ajustes(user) -> bool:
+    """Entrar a la configuración del despacho.
+
+    Es el permiso con el que se gatean también las automatizaciones (n8n): una
+    automatización prendida le manda correos a clientes, así que tocarlas es
+    tocar la configuración del despacho, no una operación del día a día.
+    """
+    return puede(user, "ajustes", "acceder")
+
+
 def puede_ver_rutas(user) -> bool:
     """Abrir el planeador y ver las rutas del día."""
     return puede(user, "rutas", "ver")

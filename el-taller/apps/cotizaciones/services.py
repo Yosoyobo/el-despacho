@@ -199,7 +199,7 @@ PAGINA_DOCUMENTO = {
 }
 
 
-def pagina_documento() -> dict:
+def pagina_documento(cot=None) -> dict:
     """Lo que se le pide al generador: lo del GUI, o esto de arriba.
 
     `PAGINA_DOCUMENTO` deja de ser la última palabra y pasa a ser el **valor
@@ -210,7 +210,31 @@ def pagina_documento() -> dict:
     """
     from lib.documentos import pagina_configurada
 
-    return pagina_configurada(default=PAGINA_DOCUMENTO)
+    pagina = pagina_configurada(default=PAGINA_DOCUMENTO)
+    if cot is None:
+        return pagina
+
+    # Una cotización que aún no se manda sale MARCADA, para que no se confunda
+    # con la que ya salió. Las dos se ven idénticas hoy, y confundirlas frente a
+    # un cliente es de los errores caros.
+    from lib.documentos import marca_borrador
+
+    if not getattr(cot, "enviada_en", None):
+        marca = marca_borrador()
+        if marca:
+            pagina = {**pagina, "marca_agua": marca}
+
+    # Y los metadatos, para que las propiedades del archivo digan de qué es. Un
+    # PDF sin título es imposible de encontrar en una carpeta con cien.
+    proyecto = getattr(cot, "proyecto", None)
+    cliente = getattr(cot, "cliente", None)
+    pagina = {**pagina, "metadatos": {
+        "Title": getattr(cot, "titulo_documento", "") or "Cotización",
+        "Author": "Learning Center",
+        "Subject": getattr(proyecto, "nombre", "") or getattr(cliente, "razon_social", "") or "",
+        "Keywords": getattr(cot, "codigo", "") or "",
+    }}
+    return pagina
 
 # Alto de la hoja carta (11" = 792pt) menos los márgenes de arriba y abajo.
 #
@@ -583,7 +607,7 @@ def generar_pdf(cot: Cotizacion, actor):
     # para acotarlas), así que aquí ya no se repite.
     html = construir_html_pdf(cot)
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
-               pagina=pagina_documento())
+               pagina=pagina_documento(cot))
     if not res.ok:
         return res
 

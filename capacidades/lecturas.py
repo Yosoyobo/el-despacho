@@ -1053,7 +1053,89 @@ def _h_listar_plantillas_correo(args: dict, usuario) -> dict:  # noqa: ARG001
     }
 
 
+# ── Automatizaciones (n8n) ─────────────────────────────────────────────────
+# Leer, todo. Escribir, nada por su cuenta: prender o apagar un flujo pasa por
+# preview y confirmación humana, porque un flujo activo le manda correos a
+# clientes (ver `ejecutores/automatizacion.py`).
+
+
+def _n8n_apagado() -> dict:
+    return {
+        "disponible": False,
+        "nota": (
+            "Las automatizaciones no están conectadas: falta pegar la llave de n8n "
+            "en Gerencia → Los Ajustes. Mientras tanto no se pueden ni consultar."
+        ),
+    }
+
+
+def _h_listar_flujos(usuario, **kw):
+    from lib import n8n
+
+    if not n8n.esta_configurado():
+        return _n8n_apagado()
+    flujos = n8n.listar_flujos()
+    if flujos is None:
+        return {"disponible": False, "nota": "n8n no contestó."}
+    return {
+        "disponible": True,
+        "total": len(flujos),
+        "flujos": flujos,
+        "nota": "Para prender o apagar alguno hay que proponerlo y que un humano confirme.",
+    }
+
+
+def _h_detalle_flujo(usuario, flujo_id: str = "", **kw):
+    from lib import n8n
+
+    if not n8n.esta_configurado():
+        return _n8n_apagado()
+    d = n8n.detalle_flujo(str(flujo_id).strip())
+    return d or {"error": f"No se encontró el flujo «{flujo_id}»."}
+
+
+def _h_ejecuciones_flujo(usuario, flujo_id: str = "", limite: int = 10, **kw):
+    from lib import n8n
+
+    if not n8n.esta_configurado():
+        return _n8n_apagado()
+    try:
+        limite = max(1, min(int(limite), n8n.TOPE))
+    except (TypeError, ValueError):
+        limite = 10
+    corridas = n8n.ejecuciones(str(flujo_id).strip() or None, limite)
+    if corridas is None:
+        return {"disponible": False, "nota": "n8n no contestó."}
+    return {"disponible": True, "corridas": corridas}
+
+
 _LECTURAS: dict[str, Capacidad] = {
+    "listar_automatizaciones": Capacidad(
+        nombre="listar_automatizaciones",
+        descripcion=(
+            "Las tareas que corren solas (flujos de n8n): cuáles hay, cuáles están "
+            "prendidas y qué las dispara. Úsala antes de proponer prender o apagar "
+            "alguna, para no inventar un identificador."
+        ),
+        args_schema={},
+        gating="automatizacion", fn=_h_listar_flujos,
+    ),
+    "detalle_automatizacion": Capacidad(
+        nombre="detalle_automatizacion",
+        descripcion="Qué hace una automatización paso por paso. Arg: flujo_id.",
+        args_schema={"flujo_id": {"tipo": "str", "requerido": True}},
+        gating="automatizacion", fn=_h_detalle_flujo,
+    ),
+    "corridas_automatizacion": Capacidad(
+        nombre="corridas_automatizacion",
+        descripcion=(
+            "Las últimas veces que corrió una automatización y si salió bien. Sin "
+            "flujo_id, las de todas. Args: flujo_id (opcional), limite (opcional)."
+        ),
+        args_schema={"flujo_id": {"tipo": "str", "requerido": False},
+                     "limite": {"tipo": "int", "requerido": False}},
+        gating="automatizacion", fn=_h_ejecuciones_flujo,
+    ),
     "listar_plantillas_correo": Capacidad(
         nombre="listar_plantillas_correo",
         descripcion=(
@@ -1413,3 +1495,4 @@ _LECTURAS: dict[str, Capacidad] = {
 # Registra todas las lecturas en el registro único `capacidades`.
 for _cap in _LECTURAS.values():
     registrar(_cap)
+

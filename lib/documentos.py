@@ -80,6 +80,12 @@ def pagina_configurada(default: dict | None = None) -> dict:
     return cfg.como_pagina()
 
 
+def marca_borrador() -> str:
+    """El texto que se estampa en los documentos sin enviar. Vacío = ninguno."""
+    cfg = _config()
+    return (getattr(cfg, "marca_borrador", "") or "").strip()
+
+
 def motor_preferido() -> str:
     """`auto`, `gotenberg` o `google`, según el GUI. `auto` si no hay ajuste."""
     cfg = _config()
