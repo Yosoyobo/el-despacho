@@ -12307,3 +12307,132 @@ corren; crear se hace en n8n, donde se puede probar antes de prenderlo.
 **Pendiente.** Pantalla para resolver los CFDI pendientes, el flujo del lado de
 n8n (configuración, fuera del repo), que los CFDI de proveedor generen egreso, y
 conectar «unir PDFs» y «convertir Office» a botones.
+
+
+---
+
+## S-Papeleo-V1 — 2026-08-24 (VERSION 2026.08.42)
+
+Oscar subió un documento de prueba a Paperless y preguntó **«¿y luego?»**. El
+reconocimiento contestó la pregunta antes de escribir una línea: Paperless
+llevaba un día de pie y era **el único de los cuatro servicios del NUC que seguía
+desconectado**. Gotenberg arma los PDF, OSRM mide las rutas, n8n se consulta
+desde El Chalán; de Paperless, El Despacho sólo sabía *si responde*.
+
+Se verificó en vivo antes de diseñar: la API contesta por el tailnet, su papeleo
+está detrás de credenciales (401 sin ellas), y **existen** la búsqueda
+full-text, la subida y `/api/token/` — este último es el que permitió que la
+pantalla canjee usuario y contraseña por el token en lugar de mandar a alguien a
+buscarlo a otra app.
+
+**Lo que Oscar decidió**: los tres bloques (buscador, ligado a entidades, buzón)
+y **todo configurable desde el GUI de Gerencia**. A media entrega pidió además
+que El Chalán pudiera **crear flujos de n8n** — «a ver qué puede hacer con los
+guardrails que pusimos».
+
+### La lección de Ago12-B, aplicada a tiempo
+
+Mientras exploraba, **otra sesión commiteó en el mismo árbol**: su `927e9fd`
+entró a los 26 segundos de mi último comando. Ese es exactamente el escenario que
+costó rehacer un sprint el 13 de agosto. Se creó un `git worktree` propio
+(`agent/paperless`) **desde el HEAD de esa rama y no desde `main`**, para
+construir encima de `lib/n8n.py` y del patrón de servicios que acababa de entrar
+— así el merge final no pelea por los mismos archivos.
+
+### Las decisiones que valen más que el código
+
+**La liga vive en nuestra base, no en las etiquetas de Paperless.** Para pintar
+la ficha de un cliente hay que saber qué papeleo tiene; del otro lado, cada ficha
+tendría que preguntarle a Paperless y se rompería cuando el archivo esté caído.
+Es el criterio de El Almacén. El título se copia, así que borrar el documento
+deja una fila legible en vez de un número huérfano.
+
+**El ligado automático es cobarde a propósito.** Sólo liga cuando no hay duda: si
+el texto menciona dos clientes, deja el documento sin dueño **y dice por qué**.
+Uno sin ligar se arregla en diez segundos; uno en la ficha del cliente equivocado
+no lo nota nadie hasta que es caro.
+
+**Los constraints son la garantía, no el código.** `CheckConstraint` de una sola
+entidad + **tres** `UniqueConstraint` parciales, uno por FK: uno solo con las
+tres columnas dejaría pasar duplicados, porque en Postgres NULL nunca es igual a
+NULL. Y un mismo documento SÍ puede ser del cliente **y** de su proyecto.
+
+**Permiso propio, no el de Ajustes.** Leer contratos no es configurar el
+despacho, y hay quien necesita lo uno sin lo otro en los dos sentidos. Sólo
+super_admin de arranque: quién lee el papeleo lo decide Oscar en El Directorio.
+
+**Dos direcciones que no son la misma.** El contenedor habla por la red de Docker
+y el navegador necesita la del tailnet. Confundirlas da el bug obvio —todo
+funciona del lado del servidor y el enlace no abre—, así que `url_web` devuelve
+**vacío** antes que un enlace que no sirve, y la pantalla lo dice.
+
+**Nada promete que el documento ya quedó archivado.** `subir()` devuelve el id de
+la TAREA: cuando la llamada regresa, el documento no existe todavía porque su OCR
+corre después. Decir «ya quedó» sería mentir por unos minutos.
+
+### El Chalán creando flujos: se revirtió una decisión de horas antes
+
+`927e9fd` había dejado crear fuera **a propósito**, y su objeción sigue siendo
+cierta: un modelo inventando un grafo de n8n produce, casi siempre, algo que se
+ve bien y no corre. No se abrió a pelo — se abrió con tres trancas:
+
+1. **Nace apagada, siempre**, con candado propio: si alguien agregara
+   `active: True` al cuerpo, el flujo empezaría a escribirle a clientes antes de
+   que nadie lo mire y **nada en la pantalla lo delataría**.
+2. **Se revisa y no se miente.** n8n **guarda sin chistar** un nodo cuyo tipo no
+   existe, así que «creada con éxito» no significa nada por sí solo. `revisar()`
+   avisa de tipos desconocidos, de un flujo que nada arranca, de pasos sin
+   conectar y de dos pasos con el mismo nombre (las conexiones son por nombre).
+3. **Recetas** con la forma de los nodos y la `typeVersion` verificadas contra el
+   n8n del NUC (**1.70.1**, consultado en vivo): una versión más alta que la
+   instalada deja el nodo roto, y ése es el error que nadie nota hasta que el
+   flujo no corre.
+
+Con eso, el peor caso de una invención es un borrador apagado y roto que alguien
+borra en dos clics, con un resumen que ya avisó qué revisar.
+
+`test_crear_flujos_no_esta_expuesto` se **reescribió**, no se borró: fijaba el
+contrato que este cambio invierte, y su reemplazo explica por qué cambió.
+
+### Lo que cazaron los candados del repo
+
+- **Bug C (§14)**: un `{# … #}` multilínea mío en la ficha del proveedor. Es el
+  que ha tumbado deploys antes.
+- **El candado de Novedades**: exigió su bloque al bumpear `VERSION_FECHA`.
+- **Un include en la variante equivocada**: la ficha del proveedor tiene DOS
+  (editable y solo lectura) y el recuadro cayó sólo en la de solo lectura — el
+  super_admin ve la otra. Lo cazó el test que pide la página, no el que lee la
+  plantilla.
+- **Formularios anidados**: el sidebar de la ficha del proyecto vive dentro del
+  formulario de autoguardado, y un `<form>` dentro de otro queda muerto **sin que
+  nada lo avise**. El botón de desligar pasó a HTMX y hay un test que lo exige.
+
+### Tests
+
+~104 nuevos (`tests/test_papeleo.py` 27, `tests/taller/test_papeleo_pantallas.py`
+26, `tests/gerencia/test_papeleo_ajustes.py` 10,
+`tests/taller/test_crear_automatizacion.py` 27, más los de regresión). Los dos
+del guardrail de n8n **verificados contra el código mutado**: sin la revisión de
+tipos, fallan. Ruff limpio.
+
+### Pasos manuales (Oscar)
+
+1. **Gerencia → Papeleo**: pegar la llave (o teclear usuario y contraseña de
+   Paperless y que la consiga) y la **dirección pública**
+   `http://100.121.244.5:8204` — sin ella los enlaces a un documento no abren.
+2. **Los Ajustes → «Papeleo por correo»**: el token de entrada, con el mismo
+   valor del lado de n8n, si se quiere el buzón.
+3. **La llave de n8n**, que sigue pendiente del sprint anterior: sin ella El
+   Chalán no puede ni ver ni crear automatizaciones.
+
+### Deuda diseñada
+
+`lib/nombres.py` duplica a propósito el criterio de comparación de nombres de
+`el_dictado/ejecutores/basicos.py` (ese módulo vive en una app que La Gerencia no
+instala); unificarlo es moverlo allá con la suite de los ejecutores como red, y
+no se hizo para no meterle riesgo en un sprint que ya toca cuatro frentes. El
+**buzón IMAP nativo** de Paperless (`mail_rules`) no se expone: duplicaría su UI
+de cuentas de correo. `avisar_al_entrar` se guarda pero todavía no manda el aviso
+(falta el hookpoint del Interfón). Y el **ligado automático no corre al entrar
+por el buzón**: cuando el documento llega su OCR no ha corrido y no hay texto que
+leer — hace falta un cron que lo repase después.

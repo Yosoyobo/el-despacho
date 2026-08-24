@@ -37,4 +37,5 @@ urlpatterns = [
     path("ayuda/", include("apps.ayuda.urls")),
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
+    path("", include("papeleo.urls")),
 ]

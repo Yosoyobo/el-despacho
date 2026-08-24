@@ -409,6 +409,8 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
         {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" with clase_extra="order-8 xl:order-none" %}{% endif %}
         {# ── Facturas ligadas (LC #9) — debajo de Cotizaciones ── #}
         {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" with clase_extra="order-10 xl:order-none" %}{% endif %}
+        {# ── Papeleo del proyecto (remisiones, contratos) ── #}
+        {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" with clase_extra="order-11 xl:order-none" %}{% endif %}
     </aside>
 </form>
 
@@ -450,6 +452,8 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
         {% if permisos_modulos.cotizaciones %}{% include "proyectos/_cotizaciones_panel.html" with clase_extra="order-8 xl:order-none" %}{% endif %}
         {# ── Facturas ligadas (LC #9) — debajo de Cotizaciones ── #}
         {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" with clase_extra="order-10 xl:order-none" %}{% endif %}
+        {# ── Papeleo del proyecto (remisiones, contratos) ── #}
+        {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" with clase_extra="order-11 xl:order-none" %}{% endif %}
     </aside>
 </div>
 {% endif %}

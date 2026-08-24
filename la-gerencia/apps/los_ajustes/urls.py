@@ -53,6 +53,7 @@ urlpatterns = [
     # El Análisis: umbrales del negocio + costo por hora de cada rol.
     path("analisis/", views.analisis_panel, name="ajustes-analisis"),
     path("rutas/", views.rutas_panel, name="ajustes-rutas"),
+    path("papeleo/", views.papeleo_panel, name="ajustes-papeleo"),
     path("documentos/", views.documentos_panel, name="ajustes-documentos"),
     path("servicios/", views.servicios_panel, name="ajustes-servicios"),
     path("cfdi/", views.cfdi_panel, name="ajustes-cfdi"),

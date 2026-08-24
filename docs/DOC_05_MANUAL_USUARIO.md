@@ -5,6 +5,69 @@
 
 ---
 
+## Novedades — El papeleo por fin se busca, y El Chalán arma automatizaciones (24 de agosto de 2026)
+
+**Papeleo: buscar por lo que dice adentro**
+
+Hay un renglón nuevo en el menú: **Papeleo**. Ahí viven los contratos, las
+remisiones firmadas y los comprobantes de proveedor que hasta ahora no tenían
+lugar en el sistema.
+
+Lo que lo hace distinto de una carpeta: **se busca por lo que el documento dice
+adentro**, no por cómo se llama el archivo. Escribe «Optimist» y aparece la
+remisión donde firmaron, aunque el archivo se llame `scan_0042.pdf`. Eso
+funciona porque un lector de texto pasa por cada documento cuando entra.
+
+Dos cosas que conviene saber:
+
+- **Un documento recién subido tarda unos minutos** en poder buscarse. El lector
+  corre después de que llega; hasta que termine, el documento existe pero su
+  texto todavía no.
+- **Los CFDI no van aquí.** Ésos siguen entrando por Facturación, que los liga a
+  su factura y les saca el UUID. Si mandas un XML al papeleo, te lo rechaza y te
+  dice a dónde va.
+
+**De quién es cada documento**
+
+A cada documento se le puede decir de quién es: de un cliente, de un proyecto o
+de un proveedor. Una vez dicho, aparece en la ficha de ese cliente (o proyecto,
+o proveedor) en un recuadro nuevo, sin tener que ir a buscarlo.
+
+También puede ligarse solo: si se enciende esa opción, al entrar un documento se
+busca en su texto a quién menciona. **Sólo lo liga cuando no hay duda** — si el
+documento menciona a dos clientes, lo deja sin dueño para que alguien decida.
+Adivinar sería peor: un contrato en la ficha del cliente equivocado no lo nota
+nadie hasta que es tarde.
+
+**Lo puedes preguntar al Chalán**
+
+«¿Dónde está el contrato de Optimist?» o «¿qué papeleo tiene el proyecto
+LC-0044?» funcionan en el chat, sin salir de El Despacho.
+
+**El Chalán ahora arma automatizaciones nuevas**
+
+Antes sólo podía prender, apagar y quitar las que ya existían. Ahora también
+puede **armar una nueva** — por ejemplo, la que revisa un buzón de correo y
+manda lo que llegue al papeleo.
+
+Dos cosas para que sea de fiar:
+
+- **Nace apagada, siempre.** Una automatización prendida le manda correos a
+  clientes, así que la nueva queda como borrador hasta que alguien la revise y
+  la prenda a mano.
+- **Te dice si algo no le cuadró.** Si armó un paso que no reconocemos, lo
+  advierte en lugar de decir «listo». Vale la pena leer ese aviso antes de
+  prenderla.
+
+**Antes de que sirva, un paso**
+
+El papeleo necesita que alguien pegue su llave una vez, en **Gerencia →
+Papeleo**. Ahí mismo se puede pegar el token o simplemente teclear el usuario y
+la contraseña de Paperless, y el sistema consigue el token solo. Mientras eso no
+pase, la pantalla lo dice en lugar de salir vacía.
+
+---
+
 ## Novedades — El Chalán ya puede operar las automatizaciones (24 de agosto de 2026)
 
 **Preguntarle en vez de entrar a n8n**
@@ -5442,6 +5505,66 @@ Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+
 ### Categorías
 
 Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
+
+---
+
+## Papeleo (el archivo)
+
+Los contratos, las remisiones firmadas y los comprobantes de proveedor sin CFDI.
+Lo que no tiene lugar en ningún otro módulo y antes se perdía en una carpeta o en
+un cajón.
+
+**Se busca por lo que dice adentro.** Un lector de texto pasa por cada documento
+al entrar, así que se encuentra por el nombre del cliente, un folio o cualquier
+palabra del contenido — no importa cómo se llame el archivo.
+
+### Cómo se busca
+
+Menú → **Papeleo** → escribe una palabra que esté DENTRO del documento. Sale la
+lista, con «Abrir →» para verlo completo.
+
+Si un documento acaba de entrar y no aparece, es normal: su lectura tarda unos
+minutos. Aparece primero y se vuelve buscable después.
+
+### Cómo entra un documento
+
+Tres caminos:
+
+- **A mano**, desde la misma pantalla de Papeleo (con permiso de subir).
+- **Por correo**, si se armó la automatización del buzón: lo que llegue ahí se
+  archiva solo. Pídesela a El Chalán: «arma la automatización del buzón de
+  contratos».
+- **Escaneado**, directamente en el archivo (Paperless).
+
+**Los CFDI no van aquí.** Ésos entran por Facturación, que los liga a su factura
+y les saca el UUID. Si un XML de CFDI llega al papeleo, se rechaza y se dice a
+dónde va.
+
+### De quién es cada documento
+
+A cada documento se le dice de quién es: cliente, proyecto o proveedor. Desde
+entonces aparece en la ficha de ese cliente (o proyecto, o proveedor), en el
+recuadro **Papeleo**.
+
+Si el ligado automático está encendido (Gerencia → Papeleo), al entrar un
+documento se busca en su texto a quién menciona. **Sólo liga cuando no hay
+duda**: si menciona a dos clientes, lo deja sin dueño para que una persona
+decida.
+
+Quitar la liga (la ✕) **no borra el documento** del archivo: sólo deja de
+aparecer en esa ficha.
+
+### Preguntárselo a El Chalán
+
+- «¿Dónde está el contrato de Optimist?»
+- «¿Qué papeleo tiene el proyecto LC-0044?»
+- «Muéstrame el documento 31»
+
+### Permisos
+
+Tres, que se dan por separado en El Directorio: **ver** (buscar y abrir),
+**ligar** (decir de quién es) y **subir** (mandar un archivo al archivo). De
+arranque sólo los tiene el super admin.
 
 ---
 

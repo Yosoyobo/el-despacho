@@ -139,6 +139,11 @@ EventoTipo = Literal[
     "site.integracion_fallo",
     # La Limpieza a mano desde El Vigía o El Site (LC 2026-08-23).
     "site.limpieza",
+    # El archivo de papeleo (Paperless), S-Papeleo-V1.
+    "papeleo.ligado",
+    "papeleo.desligado",
+    "papeleo.subido",
+    "ajuste.papeleo_configurado",
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",

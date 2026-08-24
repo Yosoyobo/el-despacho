@@ -1462,3 +1462,83 @@ def cobranza_panel(request):
         "correo_configurado": cartero.esta_configurado(),
         "canal_correo": cartero.proveedor_activo(),
     })
+
+
+# ── Papeleo — el archivo de contratos, remisiones y comprobantes ──────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def papeleo_panel(request):
+    """Todo lo que decide un humano sobre el archivo del papeleo.
+
+    La llave se puede pegar o **canjear**: se teclea el usuario y la contraseña
+    de Paperless una vez y se guarda sólo el token, para no mandar a nadie a
+    buscarlo a otra app. La contraseña no se almacena.
+    """
+    from ajustes.models import ConfiguracionPapeleo
+    from ajustes.models.credencial import Credencial
+    from lib import paperless
+    from papeleo import entrada as papeleo_entrada
+
+    cfg = ConfiguracionPapeleo.obtener()
+
+    if request.method == "POST":
+        # Enmascarada = no la tocaron, así que no se sobreescribe con viñetas.
+        crudo = (request.POST.get("token") or "").strip()
+        if crudo and "\u2022" not in crudo:
+            Credencial.guardar(paperless.SLOT_LLAVE, crudo)
+
+        usuario = (request.POST.get("usuario") or "").strip()
+        contrasena = request.POST.get("contrasena") or ""
+        if usuario and contrasena:
+            canjeado = paperless.canjear_token(usuario, contrasena)
+            if canjeado:
+                Credencial.guardar(paperless.SLOT_LLAVE, canjeado)
+                messages.success(request, "Llave conseguida y guardada.")
+            else:
+                messages.error(request, "El archivo no aceptó ese usuario y "
+                                        "contraseña. La llave se queda como estaba.")
+
+        cfg.url_publica = (request.POST.get("url_publica") or "").strip()
+        cfg.ligar_automatico = bool(request.POST.get("ligar_automatico"))
+        cfg.etiqueta_entrada = (request.POST.get("etiqueta_entrada") or "").strip()[:64]
+        cfg.avisar_al_entrar = bool(request.POST.get("avisar_al_entrar"))
+        try:
+            minimo = int(request.POST.get("minimo_caracteres_nombre")
+                         or cfg.minimo_caracteres_nombre)
+        except (TypeError, ValueError):
+            minimo = cfg.minimo_caracteres_nombre
+        # Acotado como el modelo: con menos de tres letras cualquier nombre
+        # aparece por casualidad y ligaría documentos que no son.
+        cfg.minimo_caracteres_nombre = max(3, min(minimo, 40))
+        cfg.save()
+
+        emitir(EventoPortavoz(
+            tipo="ajuste.papeleo_configurado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"liga_solo": cfg.ligar_automatico,
+                     "tiene_direccion": bool(cfg.url_publica),
+                     "etiqueta": cfg.etiqueta_entrada},
+        ))
+
+        if request.POST.get("probar"):
+            if paperless.disponible():
+                messages.success(request, "El archivo contestó: la llave sirve.")
+            else:
+                messages.error(request, "El archivo no contestó, o la llave no "
+                                        "sirve. Revisa el token.")
+        else:
+            messages.success(request, "Ajustes del papeleo guardados.")
+        return redirect("ajustes-papeleo")
+
+    llave = paperless.llave()
+    return render(request, "ajustes/papeleo_panel.html", {
+        "cfg": cfg,
+        "hay_llave": bool(llave),
+        # Nunca se devuelve la llave entera a la pantalla: se muestra que hay
+        # una, no cuál es.
+        "token_enmascarado": (f"{llave[:4]}{chr(8226) * 12}{llave[-4:]}"
+                              if len(llave) > 12 else (chr(8226) * 12 if llave else "")),
+        "conectado": bool(llave) and paperless.disponible(),
+        "hay_token_entrada": bool(papeleo_entrada._tokens()),
+    })

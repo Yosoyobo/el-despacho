@@ -176,4 +176,23 @@ def papeleo_de(entidad, limite: int = 25) -> list:
     return list(PapeleoLigado.objects.filter(**{campo: entidad})[:limite])
 
 
-__all__ = ["MAX_CANDIDATOS", "candidatos", "ligar", "ligar_automatico", "papeleo_de"]
+def contexto_ficha(usuario, entidad) -> dict:
+    """El contexto que necesita el recuadro de papeleo de una ficha.
+
+    Uno solo para las tres fichas (cliente, proyecto, proveedor) y no tres
+    líneas repetidas: si cada vista lo armara a mano, tarde o temprano una
+    quedaría sin la comprobación del permiso y mostraría el recuadro a quien no
+    debe verlo. Ese es el modo de falla que esto evita.
+    """
+    from lib.permisos import puede_ligar_papeleo, puede_ver_papeleo
+
+    ve = puede_ver_papeleo(usuario)
+    return {
+        "puede_ver_papeleo": ve,
+        "papeleo": papeleo_de(entidad) if ve else [],
+        "puede_ligar_papeleo": puede_ligar_papeleo(usuario),
+    }
+
+
+__all__ = ["MAX_CANDIDATOS", "candidatos", "contexto_ficha", "ligar",
+           "ligar_automatico", "papeleo_de"]

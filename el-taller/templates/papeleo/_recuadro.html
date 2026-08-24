@@ -1,0 +1,58 @@
+{% comment %}
+El papeleo de un cliente, proyecto o proveedor — el MISMO recuadro para las tres
+fichas, para que no divergan.
+
+Lo que lista sale de NUESTRA base (`papeleo.ligado.papeleo_de`), no de Paperless:
+así la ficha se pinta igual de rápido y se sigue pintando si el archivo está
+caído. Sólo el enlace «Abrir» va al archivo, y si falta la dirección pública se
+dice en lugar de dejar un enlace que no abre.
+
+Espera en el contexto: `papeleo` (lista de PapeleoLigado) y
+`puede_ligar_papeleo`. Acepta `clase_extra` para el reorden en móvil.
+{% endcomment %}
+<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 {{ clase_extra }}">
+    <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-white">Papeleo</h2>
+        <a href="/papeleo/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Buscar en el archivo →</a>
+    </div>
+
+    {% if papeleo %}
+    <ul class="divide-y divide-gray-200 text-sm dark:divide-gray-800">
+        {% for f in papeleo %}
+        <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate text-gray-900 dark:text-gray-100">{{ f.titulo|default:"(sin título)" }}</span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                    {{ f.ligado_en|date:"d M Y" }}
+                    {% if f.automatico %}· lo ligó el sistema{% elif f.ligado_por %}· {{ f.ligado_por.get_short_name }}{% endif %}
+                </span>
+            </span>
+            <span class="flex items-center gap-3">
+                {% if f.url_web %}
+                <a href="{{ f.url_web }}" target="_blank" rel="noopener"
+                   class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
+                {% else %}
+                <span class="text-xs text-gray-400 dark:text-gray-500" title="Falta la dirección del archivo en Gerencia → Papeleo">sin enlace</span>
+                {% endif %}
+                {% if puede_ligar_papeleo %}
+                {% comment %}Va por HTMX y no en un <form> a propósito: este
+                recuadro se incluye en fichas cuyo sidebar YA vive dentro del
+                formulario de autoguardado, y los formularios no se anidan — ahí
+                el botón quedaría muerto sin que nada lo avise.{% endcomment %}
+                <button type="button" class="text-xs text-gray-400 hover:text-error-600 dark:hover:text-error-400"
+                        title="Quitar la liga (no borra el documento del archivo)"
+                        hx-post="{% url 'papeleo-desligar' f.pk %}"
+                        hx-confirm="¿Quitar la liga con {{ f.a_quien }}? El documento se queda en el archivo."
+                        hx-params="none">✕</button>
+                {% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+        Sin papeleo ligado. Búscalo en el archivo y dile de quién es — o deja que
+        se ligue solo, si eso está encendido en Gerencia → Papeleo.
+    </p>
+    {% endif %}
+</section>
