@@ -1,3 +1,9 @@
+from .cfdi_entrante import (
+    ESTADO_IGNORADO,
+    ESTADO_LIGADO,
+    ESTADO_PENDIENTE,
+    CfdiEntrante,
+)
 from .cobranza import RecordatorioCobranza
 from .factura import (
     ESTADOS_FACTURA,
@@ -10,6 +16,10 @@ from .factura import (
 
 __all__ = [
     "ESTADOS_FACTURA",
+    "CfdiEntrante",
+    "ESTADO_PENDIENTE",
+    "ESTADO_LIGADO",
+    "ESTADO_IGNORADO",
     "Factura",
     "FacturaItem",
     "FacturaImpuesto",

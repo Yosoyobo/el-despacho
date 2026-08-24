@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_ingesta
 
 app_name = "facturacion"
 
@@ -23,4 +23,6 @@ urlpatterns = [
     path("api/cliente/<int:pk>/proyectos/", views.api_cliente_proyectos, name="api-cliente-proyectos"),
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
     path("api/cotizacion/<int:pk>/datos/", views.api_cotizacion_datos, name="api-cotizacion-datos"),
+    # La puerta por la que n8n empuja los CFDI que llegan por correo.
+    path("api/cfdi-entrante/", views_ingesta.cfdi_entrante, name="cfdi-entrante"),
 ]

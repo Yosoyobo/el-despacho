@@ -7444,9 +7444,62 @@ que sostiene el negocio. Plan completo en `docs/SPRINT-NUC-Servicios.md`.
   (798 MB sumados contra 254 reales en Postgres). **El número honesto es el de
   cgroups**, y es la razón más común por la que se sobredimensiona un servidor.
 
-**Pendiente del sprint**: Gotenberg integrado de punta a punta (prioridad de
-Oscar: A → C → B, o sea PDFs → rutas → CFDIs), levantar los servicios, cocinar
-el mapa de México y la receta de n8n contra `facturas@learningcenter.mx`.
+**Entregado el mismo día (VERSION 2026.08.33 → .37), en el orden que pidió
+Oscar (A → C → B):**
+
+- **A · Gotenberg** (`lib/gotenberg.py`): los PDF se arman con Chromium en el
+  NUC. **No rompe §8** —es un servicio aparte por HTTP, como Google, sin OAuth
+  que caduque—. Cierra tres deudas escritas: el «1/1» que no avanzaba (la API
+  de Documentos no tiene petición para un número que avance), el margen
+  superior que Google ignoraba, y los bloques que se partían pese al CSS.
+  Probado: **6 hojas numeradas de verdad en 0.6 s**. Lo que se guarda no
+  cambió (sigue en Drive) — sólo quién convierte.
+- **`ConfiguracionDocumento` + GUI** en Gerencia → Documentos, con renglón en
+  el menú (Oscar: «debemos poder editar todo lo posible de los PDFs en el
+  GUI»). Márgenes, hoja, pie, numeración, interlineado. **Y selector de
+  motor**: si un formato se rompe frente a un cliente, se vuelve a Google con
+  un clic. Forzado a Chromium, un fallo NO cae a Google en silencio.
+- **C · OSRM con el mapa de México** (`lib/ruteo.py`): el planeador deja el
+  haversine. Medido Zócalo→Satélite: **14.0 km en recta contra 20.4 por calle,
+  46 % que se le escondía al runner en sus horas**. `distancia_total_m` pide la
+  MATRIZ de una vez (N consultas contra una). Sin OSRM cae al haversine: los 35
+  tests del planeador pasan sin tocarlos, que es la prueba del fallback.
+  **Cuidado con el orden de las coordenadas** — el repo habla (lat,lng) y OSRM
+  pide (lng,lat); invertirlas no da error, da una ruta a otro país.
+- **B · CFDI que entran solos** (`lib/cfdi.py` + `ingesta_cfdi.py` + endpoint):
+  ataca el «1 de 36 con comprobante archivado». **Se liga sólo cuando es
+  inequívoco**; con dudas queda pendiente con el motivo en español, porque
+  adivinar dejaría la contabilidad apoyada en una suposición. **El XML viene de
+  fuera**: se rechaza todo `<!DOCTYPE`/`<!ENTITY` porque el parser de Python
+  expande entidades (comprobado) y un kilobyte se infla a gigabytes. Guía en
+  `docs/RECETA-CFDI-POR-CORREO.md`.
+- **Panel de procesos** en las dos pantallas + los **4 relojes al pie del
+  Dashboard**. Dos trampas de `/proc` fijadas con una línea real del NUC: el
+  nombre puede llevar espacios y paréntesis (partir por espacios da memoria de
+  otro campo), y **los PID se reciclan** (comparar sin verificar el arranque da
+  porcentajes disparatados).
+
+**Tres bugs propios del día, los tres con candado:**
+
+1. **El Dashboard perdió su `@login_required`** al insertar un helper justo
+   encima de `def home`. Respondió 200 sin sesión ~40 min. **Sin fuga**
+   (verificado: cero datos en el HTML servido; sin sesión las consultas fallan
+   y devuelven listas vacías). **Segunda vez que pasa en el repo** — de ahí las
+   pruebas que miran el comportamiento, no el decorador.
+2. **El rojo del banner no se encendía**: miraba una lista de sondas vacía
+   mientras El Vigía ya contaba «9/11 · 2 abajo». Ahora usa esa señal.
+3. **Falso positivo del rojo**: un contenedor `exited (0)` —que terminó su
+   trabajo— contaba como caído. Una alarma que se prende sin razón enseña a
+   ignorar el tablero.
+
+**Números medidos, no proyectados**: reposo con TODO prendido **6.3 G de 14.8
+(42 %)**, contra el 44 % proyectado en la mañana. El preprocesado del mapa
+pidió más de 7 G y murió; **el `mem_limit` mató al preprocesado y no al
+negocio**, que es exactamente su propósito.
+
+**Pendiente**: pantalla para resolver los CFDI que quedan pendientes, el
+flujo de n8n del lado de n8n (configuración, fuera del repo), y que los CFDI
+de proveedor generen su egreso.
 
 ### S5 — La Recepción
 
