@@ -40,7 +40,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_safe
 
 from lib.permisos import puede, tiene_rol
-from lib.site import actividad, contenedores, internos, limpieza, pulso
+from lib.site import actividad, contenedores, internos, limpieza, procesos, pulso
 from lib.site.gauges import snapshot_gauges_minimo
 
 # Hosts desde los que se puede pedir El Vigía. `VIGIA_HOSTS` permite sumar otra
@@ -250,6 +250,32 @@ def vivo_peticiones(request):
     return render(request, "site/vivo/_peticiones.html", {
         "filas": filas,
         "resumen": res,
+        "error": error,
+    })
+
+
+
+@require_safe
+def vivo_procesos(request):
+    """Qué procesos se están comiendo el CPU y la memoria.
+
+    Los relojes dicen cuánto; esto dice quién. Refresca despacio a propósito:
+    el porcentaje de CPU se calcula contra la lectura anterior, así que dos
+    refrescos muy pegados dan ventanas de medio segundo, donde cualquier pico
+    momentáneo se ve como si fuera constante.
+    """
+    if (r := _puerta(request)) is not None:
+        return r
+    datos = {"disponible": False, "procesos": [], "primera_lectura": False}
+    error = ""
+    try:
+        datos = procesos.top()
+    except Exception as exc:  # noqa: BLE001 — un panel no tumba la pared
+        error = str(exc)[:200]
+    return render(request, "site/vivo/_procesos.html", {
+        "disponible": datos["disponible"],
+        "procesos": datos["procesos"],
+        "primera_lectura": datos["primera_lectura"],
         "error": error,
     })
 

@@ -273,3 +273,32 @@ def test_se_cuenta_lo_que_no_esta_corriendo(monkeypatch):
     from lib import aviso_deploy as ad
 
     assert ad._piezas_caidas() == 2
+
+
+def test_un_contenedor_que_termino_bien_no_es_una_falla(monkeypatch):
+    """Cazado con El Vigía en pantalla: el contenedor que bajó el mapa salió
+    con código 0 —hizo su trabajo— y habría encendido el rojo. Una alarma que
+    se prende sin razón enseña a ignorar el tablero."""
+    from lib.site import contenedores
+
+    monkeypatch.setattr(contenedores, "disponible", lambda: True)
+    monkeypatch.setattr(contenedores, "listar", lambda: [
+        {"State": "running", "Status": "Up 2 hours"},
+        {"State": "exited", "Status": "Exited (0) 5 minutes ago"},
+    ])
+    from lib import aviso_deploy as ad
+
+    assert ad._piezas_caidas() == 0
+
+
+def test_un_contenedor_que_se_murio_si_es_una_falla(monkeypatch):
+    from lib.site import contenedores
+
+    monkeypatch.setattr(contenedores, "disponible", lambda: True)
+    monkeypatch.setattr(contenedores, "listar", lambda: [
+        {"State": "exited", "Status": "Exited (137) 1 minute ago"},
+        {"State": "restarting", "Status": "Restarting (1) 3 seconds ago"},
+    ])
+    from lib import aviso_deploy as ad
+
+    assert ad._piezas_caidas() == 2

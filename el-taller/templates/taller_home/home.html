@@ -323,4 +323,11 @@
 </section>
 {% comment %}El orden de las tarjetas lo mueve El Arrastre (static/js/arrastrar.js)
 por los `data-arr-*` de la rejilla; el POST de `slugs` lo hace él solo.{% endcomment %}
+
+{% comment %}Los cuatro relojes del NUC, hasta abajo (Oscar, 2026-08-24): cómo va
+la máquina de un vistazo, sin salir a La Gerencia. Sólo aparecen para quien puede
+ver El Site, y no se pintan si no hay de dónde medir.{% endcomment %}
+{% if infra_gauges %}
+    {% include "taller_home/_gauges_droplet.html" %}
+{% endif %}
 {% endblock %}

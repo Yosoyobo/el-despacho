@@ -14,6 +14,7 @@ urlpatterns = [
     path("vivo/", views_vivo.vivo, name="site-vivo"),
     path("vivo/fierro", views_vivo.vivo_fierro, name="site-vivo-fierro"),
     path("vivo/peticiones", views_vivo.vivo_peticiones, name="site-vivo-peticiones"),
+    path("vivo/procesos", views_vivo.vivo_procesos, name="site-vivo-procesos"),
     path("vivo/contenedores", views_vivo.vivo_contenedores, name="site-vivo-contenedores"),
     path("vivo/negocio", views_vivo.vivo_negocio, name="site-vivo-negocio"),
     path("vivo/chalanes", views_vivo.vivo_chalanes, name="site-vivo-chalanes"),

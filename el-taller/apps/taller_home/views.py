@@ -383,6 +383,32 @@ def buscar_proyectos(request):
 
 
 @login_required
+
+def _infra_gauges(user):
+    """Los cuatro relojes del NUC para el pie del Dashboard.
+
+    Oscar los pidió ahí (2026-08-24) para ver de un vistazo cómo va la máquina
+    sin salir a La Gerencia. El partial ya existía desde S-Demo-Pre-Showcase
+    pero había quedado huérfano: nadie lo incluía.
+
+    Se gatea con `site.ver` —el mismo permiso que abre El Site— y no por rol
+    literal (§4 #20). Devuelve None si no hay permiso o si no se puede medir,
+    y entonces la sección no se pinta.
+    """
+    from lib.permisos import puede
+
+    if not puede(user, "site", "ver"):
+        return None
+    from lib.site.gauges import snapshot_gauges_minimo
+
+    datos = snapshot_gauges_minimo()
+    # Sin /proc montado no hay nada que enseñar; mejor no pintar la sección que
+    # pintar cuatro relojes en «n/d».
+    if not datos or not datos.get("host", {}).get("disponible", True):
+        return None
+    return datos
+
+
 def home(request):
     user = request.user
     rol = getattr(user, "rol", None)
@@ -407,8 +433,11 @@ def home(request):
     # LC 2026-07-28 (Oscar): el mini Chalán del Dashboard acepta foto adjunta,
     # pero sólo si el Chalán configurado para el chat tiene visión.
     chat_vision_ok = _safe("chat_vision_ok", lambda: _chat_acepta_imagenes(user), False)
+    # Los cuatro relojes del NUC, al pie del tablero.
+    infra_gauges = _safe("infra_gauges", lambda: _infra_gauges(user), None)
 
     return render(request, "taller_home/home.html", {
+        "infra_gauges": infra_gauges,
         "chat_vision_ok": chat_vision_ok,
         "titulo": "LEARNING CENTER",
         "hoy": date.today(),

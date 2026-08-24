@@ -1,7 +1,8 @@
 {% comment %}
 S-Demo-Pre-Showcase. 4 gauges del droplet (CPU, Memoria, Disco,
 Containers) condensados para el Dashboard del Taller. Sólo se renderea
-si el view inyectó `infra_gauges` (gate por rol super_admin/dueno).
+si el view inyectó `infra_gauges`, que se gatea con el permiso `site.ver`
+(§4 #20: nada por rol literal).
 
 Lógica de datos: lib/site/gauges.snapshot_gauges_minimo().
 Requiere /proc, docker.sock montados via docker-compose.site.yml.
@@ -12,7 +13,6 @@ Requiere /proc, docker.sock montados via docker-compose.site.yml.
     <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
       <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400">🏗️</span>
       Infraestructura del NUC
-      <span class="text-xs font-normal text-gray-400 dark:text-gray-500">(super_admin)</span>
     </h2>
     <a href="https://gerencia.learningcenter.mx/site/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ir al Site →</a>
   </header>

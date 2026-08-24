@@ -1,0 +1,62 @@
+{% comment %}
+Quién se está comiendo la máquina, proceso por proceso.
+
+Los relojes de arriba dicen CUÁNTO se está usando; esto dice QUIÉN. Cuando el
+CPU sube o la memoria se estrecha, la pregunta útil no es el porcentaje sino
+qué proceso lo está pidiendo: un reporte pesado, un Chromium armando un PDF, el
+preprocesado de un mapa, o algo que se desbocó.
+
+`table-fixed` con anchos explícitos, por la misma razón que en el panel de
+peticiones: con layout automático las columnas de números reclaman su ancho
+intrínseco y la del nombre se queda con las migajas.
+{% endcomment %}
+<div class="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b vg-borde px-4 py-2.5 sm:px-5">
+  <h2 class="flex items-baseline gap-2.5">
+    <span class="text-sm font-semibold uppercase tracking-wider vg-2">Quién usa la máquina</span>
+    {% if procesos %}
+      <span class="badge badge-sm border-0 bg-brand-500/15 font-mono text-brand-300">
+        {{ procesos|length }} procesos
+      </span>
+    {% endif %}
+  </h2>
+  {% if primera_lectura %}
+    <span class="text-xs vg-3">midiendo el consumo…</span>
+  {% endif %}
+</div>
+
+<div class="min-h-0 flex-1 overflow-y-auto">
+  {% if not disponible %}
+    <p class="px-4 py-6 text-center text-sm vg-3 sm:px-5">
+      No se puede medir desde aquí: falta el acceso de sólo lectura a <code>/proc</code>.
+    </p>
+  {% elif not procesos %}
+    <p class="px-4 py-6 text-center text-sm vg-3 sm:px-5">Sin datos todavía.</p>
+  {% else %}
+    <table class="w-full table-fixed text-sm">
+      <tbody>
+        {% for p in procesos %}
+        <tr class="border-b vg-borde-suave last:border-0">
+          {# El nombre es la única columna sin ancho fijo: se queda con lo que sobre. #}
+          <td class="truncate px-4 py-1.5 sm:px-5">
+            <span class="vg-1">{{ p.nombre }}</span>
+            <span class="ml-1.5 font-mono text-[11px] vg-3">#{{ p.pid }}</span>
+          </td>
+          <td class="w-20 whitespace-nowrap px-2 py-1.5 text-right font-mono">
+            {% if p.cpu is None %}
+              <span class="vg-3">—</span>
+            {% else %}
+              <span class="{% if p.cpu >= 50 %}text-warning-400{% else %}vg-2{% endif %}">{{ p.cpu }}%</span>
+            {% endif %}
+          </td>
+          <td class="w-24 whitespace-nowrap px-2 py-1.5 pr-4 text-right font-mono vg-2 sm:pr-5">
+            {{ p.memoria_mb }} MB
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% if error %}
+    <p class="px-4 py-2 text-xs text-error-400 sm:px-5">{{ error }}</p>
+  {% endif %}
+</div>
