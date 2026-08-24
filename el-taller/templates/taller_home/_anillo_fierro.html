@@ -24,8 +24,8 @@ Params: titulo · pct (0..100) · color (success|warning|error) · grande ·
       {# El riel: el círculo completo, tenue. #}
       <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
               stroke-width="9" class="text-gray-200 dark:text-gray-700"/>
-      {# Y el relleno. 2·π·42 = 264. `widthratio` da pct/100 × 264, que es la
-         única aritmética que Django permite en plantilla. #}
+      {% comment %}Y el relleno. 2·π·42 = 264. `widthratio` da pct/100 × 264,
+      que es la única aritmética que Django permite en plantilla.{% endcomment %}
       <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
               stroke-width="9" stroke-linecap="round"
               stroke-dasharray="{% widthratio pct|default:0 100 264 %} 264"
@@ -61,17 +61,18 @@ Params: titulo · pct (0..100) · color (success|warning|error) · grande ·
                     stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
         </g>
         {% if trazo_b %}
-          {# La segunda línea (la escritura del disco) va sin relleno y en otro
-             color: dos áreas apiladas se taparían y no se sabría cuál es cuál. #}
+          {% comment %}La segunda línea (la escritura del disco) va sin relleno y
+          en otro color: dos áreas apiladas se taparían y no se sabría cuál es
+          cuál.{% endcomment %}
           <polyline points="{{ trazo_b }}" fill="none" stroke="currentColor" stroke-width="1.4"
                     stroke-dasharray="3 2" stroke-linejoin="round"
                     class="text-blue-light-500" vector-effect="non-scaling-stroke"/>
         {% endif %}
       </svg>
     {% else %}
-      {# Con menos de dos puntos no hay tendencia que dibujar. Se reserva el
-         hueco para que los cuatro relojes midan igual desde el primer pintado
-         y la fila no brinque cuando aparezcan las líneas. #}
+      {% comment %}Con menos de dos puntos no hay tendencia que dibujar. Se
+      reserva el hueco para que los cuatro relojes midan igual desde el primer
+      pintado y la fila no brinque cuando aparezcan las líneas.{% endcomment %}
       <div class="mt-2 flex h-6 items-end">
         <div class="h-px w-full bg-gray-200 dark:bg-gray-700"></div>
       </div>

@@ -5,6 +5,31 @@
 
 ---
 
+## Novedades — Cada pieza nueva ya tiene su pantalla (24 de agosto de 2026)
+
+**Dos renglones nuevos en el menú de La Gerencia**
+
+- **Servicios** — qué hay corriendo en el servidor, para qué sirve cada cosa en
+  una frase, y **si responde en este momento**. No se da por bueno porque esté
+  configurado: se le pregunta al abrir la pantalla.
+- **CFDI recibidos** — los comprobantes que llegan por correo y no se pudieron
+  ligar solos, cada uno con el motivo escrito.
+
+**Rutas ahora dice la verdad**
+
+La pantalla de *Ajustes → Rutas* afirmaba que las distancias se miden en línea
+recta. Desde hoy eso ya no es cierto, así que ahora muestra arriba —antes de los
+ajustes, porque de eso depende si los números de abajo dan horas reales— si está
+midiendo **por calles** o a vuelo de pájaro.
+
+**Y los relojes del servidor se ven igual en todos lados**
+
+Los cuatro medidores del Inicio de El Taller estaban con un diseño viejo, en
+inglés y con la memoria en megas, mientras los de La Gerencia ya eran otros. Son
+el mismo dato: ahora se ven igual y salen del mismo lugar.
+
+---
+
 ## Novedades — Preparado: que los CFDI se archiven solos (24 de agosto de 2026)
 
 **El problema, con números**
