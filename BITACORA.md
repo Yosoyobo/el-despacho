@@ -11629,6 +11629,184 @@ alcanzable fue el error de fondo.
 **18 tests** en `test_plegado_movil.py` (rehechos), 68 verdes en el radio de
 impacto. Ruff limpio.
 
+---
+
+# S-Tarjeta-Producto + S-Visual-Cotizacion-Kanban — El N+1 escondido, el semáforo compartido y el color en la columna (2026-08-23, VERSION 2026.08.29)
+
+Los dos handoffs de Oscar en un despliegue: `docs/SPRINT-Tarjeta-Producto.md`
+(notas 12, 13, 8 y verificar la 5) y `docs/SPRINT-Visual-Cotizacion-Kanban.md`
+(notas 9 y 1). Trabajado en **`git worktree` propio** — el árbol principal tenía
+el sprint de CI en vuelo sin commitear (regla de Ago12-B).
+
+## Lo que cambió el sprint: tres de los cinco puntos se cerraron MIDIENDO
+
+El primer handoff pedía explícitamente diagnóstico antes de código en dos de sus
+notas, y nombraba el dato que faltaba. Se consiguió (consultas de sólo lectura
+contra La Sede por el tailnet) y el resultado movió el sprint entero.
+
+### Nota 13 — «la tarjeta nueva tarda en aparecer»: la hipótesis era falsa
+
+El handoff proponía adelgazar el rerender del formset (opción b) o devolver sólo
+la tarjeta nueva (opción a), y recomendaba empezar por la (b). Medido sobre el
+proyecto más cargado que existe (LC-0009, 9 líneas; catálogo real de 75 productos
+y 55 proveedores):
+
+| | bytes | tiempo | consultas |
+|---|---|---|---|
+| formset completo (lo de hoy) | 297,941 | **1,559 ms** | **516** |
+| sin `proveedores_activos` ni `categorias_disponibles` (opción b) | 247,760 | 1,529 ms | 542 |
+| una sola tarjeta (opción a) | 35,143 | 247 ms | 88 |
+
+**La opción (b) ahorra 30 ms — un 2 %.** El peso del HTML no era el problema: de
+los 1.5 s, **461 de las 516 consultas** eran `SELECT … FROM catalogo_proveedor`,
+una por opción del `<select>` de Producto por tarjeta.
+
+La causa exacta: `label_from_instance` pide `s.proveedor_default` de **cada
+opción**, y eso toca el FK `proveedor_principal`. El queryset declarado en la
+clase sí lo precargaba; el que se **rearma en `__init__` para una línea ya
+guardada** —para que un producto archivado siga siendo opción válida— había
+perdido ese `select_related`. 51 de los 75 productos del catálogo tienen
+proveedor principal: **51 × 9 tarjetas = 459 ≈ las 461 observadas.**
+
+Fix de una línea, verificado en producción ANTES de escribirlo:
+
+| | consultas | tiempo | HTML |
+|---|---|---|---|
+| hoy | 516 | 705 ms (1,632 en frío) | — |
+| con `select_related("proveedor_principal")` | **57** | **327 ms** | **byte por byte idéntico** |
+
+Se descartó la opción (a) por la razón que el propio handoff da: el formset se
+re-ordena al recargar (`Meta.ordering` pone las incluidas primero), así que un
+swap parcial desalinearía los índices y el siguiente autoguardado escribiría en
+la fila equivocada. No se reintroduce el bug de duplicación por 250 ms.
+
+**Alcance extra, gratis:** el detalle del proyecto pinta el mismo formset, así
+que abrir cualquier proyecto también se volvió 5× más rápido.
+
+### Nota 12 — el bote de basura NO estaba hecho
+
+El handoff decía «ya está en `origin/main`». No estaba: los cuatro botones del
+archivo seguían con la ✕. Se cambió **sólo** `producto-eliminar`. Los otros tres
+(proceso de venta, impresión, gasto de producción) la conservan a propósito —
+quitan un RENGLÓN, no el producto, y el icono es justo lo que los distingue. Hay
+test en los dos sentidos, para que nadie los homologue «por consistencia».
+
+### Nota 8 — dos tarjetas del mismo color: Caso A, y sin código
+
+El handoff decía qué faltaba para ejecutar («los nombres de los dos productos, o
+el código del proyecto») y qué hacer con cada resultado. Se corrió su consulta de
+diagnóstico contra La Sede. **Los cinco choques que existen son `[TEXTO]`**: en
+todos, los dos productos MENCIONAN el mismo color.
+
+| proyecto | color | por qué |
+|---|---|---|
+| LC-0049 «Gorras Cruz Azul» | azul, **las 6 líneas** | el nombre del CLIENTE lleva «Azul» |
+| LC-0044 | rojo ×2, azul ×2 | «Números Azules» + una nota que dice «color azul» |
+| LC-0042 | gris ×2 | los dos productos son «- blanco» |
+| LC-0017 | negro ×2 | la especificación de los dos dice «negro» |
+
+Es la regla que se pidió, funcionando («si el nombre menciona un color, usa ése»),
+así que —siguiendo el handoff— **se reporta y se cierra sin tocar código**. Queda
+un test que fija la precedencia (alias → catálogo → descripción; dentro de un
+texto, el primero mencionado) para que el diagnóstico siga siendo válido.
+
+**Lo que sí vale decidir con Oscar, y es producto, no código:** que el color se
+lea sólo del NOMBRE del producto, no del nombre del cliente ni de una
+especificación de 200 caracteres. Eso arreglaría LC-0049 de raíz (seis azules →
+seis colores distintos) sin cambiar la regla que él pidió.
+
+### Nota 5 — la imagen que no se actualizaba: verificada
+
+Era la caída de Drive del 21 de agosto. Las **12** fotos propias de línea que
+existen tienen su original en El Almacén y una URL `/medios/…` servible — 12 de
+12, con altas recientes (LC-0056/57/59). Cerrada con evidencia.
+
+### Nota 6 — fuera de scope
+
+Decisión de Oscar en el propio handoff: pendiente de diseño.
+
+## Semáforo de la cotización (nota 9)
+
+El pizza-tracker existía sólo en el recuadro del proyecto; la página de la
+cotización tenía una pastilla estática. Se extrajo a
+**`cotizaciones/_semaforo.html`** y ahora lo usan las DOS pantallas. Lo que hace
+que no puedan divergir: **es el mismo archivo**, y hay un test que falla si el
+panel vuelve a tener su propio `cot-step`. El partial recibe `post_url`/`target`
+por contexto, así que cada pantalla repinta lo que le toca (el recuadro completo
+en el proyecto, sólo el semáforo en la cotización). Endpoint nuevo
+`cotizaciones:semaforo`, gateado con el MISMO permiso que el panel para que el
+comportamiento sea idéntico en las dos.
+
+**El handoff se equivocaba en un punto y se conservó lo vigente.** Decía «sólo la
+última versión cambia de estatus; al extraerlo se conserva». Esa regla es de junio
+y la reemplazó **D3** (LC 2026-07): cada versión tiene su tracker editable, con
+`test_cambiar_estado_de_una_version_pasada` fijándolo y el endpoint aceptando
+`cot_pk`. O sea que «conservar lo existente» era lo contrario de lo que la nota
+describía. Se dejó como está y hay un test que lo documenta con el porqué; si
+algún día se decide volver a la regla vieja, hay que cambiarlo en las dos
+pantallas y tirar aquel test.
+
+## Estilo del Kanban (nota 1)
+
+El color se mudó de la ficha a la columna: contorno de 1px del color (se fue la
+franja de 4px de arriba), **pestaña del nombre rellena**, fondo blanco y **ficha
+sin contorno** — la separa su sombra, que subió de `theme-xs` a `theme-sm` porque
+0.05 de alpha es invisible sobre blanco.
+
+Tres cosas que no eran obvias:
+
+1. **El relleno de la pestaña se oscurece al 68 %, y es medido.** Con el color
+   PURO, el blanco sobre el ámbar `#f79009` queda en **2.35:1** — el peor de los
+   ocho estados de la casa, ilegible. Al 68 % el peor caso sube a **4.76:1**,
+   arriba del 4.5 que pide WCAG AA. El test **calcula el contraste** leyendo el
+   porcentaje del CSS: si alguien lo sube «para que se vea más el color», falla y
+   dice el número.
+2. **Los colores de texto viven en el CSS**, no en clases de Tailwind en la
+   plantilla. Así la columna inactiva («fuera del tablero») puede pintar su
+   pestaña tenue sin pelearse con un `text-white` más específico.
+3. **El contorno va inline** (lección de Ago18-R2: si la hoja falta, la columna no
+   se rompe), y por eso el modo inactivo también se resuelve en la plantilla — un
+   `style` gana a cualquier clase, así que el CSS no podría suavizarlo.
+
+## La trampa que costó una hora, y vale para cualquier test de consultas
+
+Medir con un `render` de calentamiento sobre el MISMO formset **esconde el N+1**:
+el QuerySet del campo se queda con su `_result_cache` y, con él, cada instancia ya
+trae el FK resuelto. La segunda pasada da cero consultas y el problema desaparece
+de la medición aunque siga en el código — pasó al escribir esta prueba, que daba
+verde con el fix Y sin él. Hay que armar el formset **dentro** de la medición y
+calentar con uno desechable. Con eso, la mutación se caza: **54 → 108** consultas
+al crecer el catálogo sin el fix, **9 → 9** con él.
+
+Y un tropiezo propio: `git checkout <archivo>` para deshacer una mutación se llevó
+TODO el trabajo sin commitear de ese archivo. Para revertir una mutación, restaurar
+la cadena exacta.
+
+## Tests
+
+`test_tarjeta_producto_ago22.py` (7) + `test_visual_cotizacion_kanban.py` (13).
+Los dos del N+1 verificados contra el código sin arreglar. Se **actualizó**
+`test_ajustes_ago18_r2::test_el_kanban_pinta_el_color_en_el_contorno_de_la_pastilla`
+→ `..._en_la_columna_no_en_la_ficha`: fijaba el contrato que este sprint cambió a
+propósito, así que se movió al nuevo (sigue garantizando que el color se pinte en
+UN solo lugar) en lugar de borrarlo. Regresión de los dos handoffs: **370 verdes**.
+Ruff limpio, candados de comentarios y de Novedades verdes.
+
+## Deuda diseñada
+
+- La decisión de producto sobre **de dónde se lee el color** (cliente /
+  especificación) queda para Oscar.
+- El semáforo de la página se ve también en una cotización **anulada**, con todos
+  los pasos en gris y clickeables. Es exactamente lo que ya hacía el recuadro del
+  proyecto: se conservó para no inventar divergencia entre las dos pantallas.
+- Las opciones (a) y (b) del handoff quedan **medidas y descartadas**. Si algún
+  día vuelve a sentirse lento, el siguiente paso es la (a) con el management form
+  sincronizado, sabiendo que hay que resolver el reordenamiento del formset.
+- El semáforo se pinta en la página incluso para quien no puede editar (sin
+  controles), que es lo correcto; pero la pastilla de estado del encabezado y el
+  action bar no se repintan al mover el estatus por HTMX — se ponen al día en la
+  siguiente carga. Mover el estatus no cambia líneas ni totales, así que no
+  estorba.
 
 # S-CI-Rapido — El cuello del deploy no era el fierro: era el hasheo de contraseñas (2026-08-23, sin bump de VERSION)
 

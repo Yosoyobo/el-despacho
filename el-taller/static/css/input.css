@@ -342,6 +342,50 @@
   .texto-color { color: color-mix(in srgb, var(--ec, #465fff) 82%, #000000); }
   .dark .texto-color { color: color-mix(in srgb, var(--ec, #465fff) 55%, #ffffff); }
   .escala-tinte { accent-color: var(--ec, #465fff); }
+
+  /* ── Kanban: el distintivo de color se muda de la FICHA a la COLUMNA
+     (LC 2026-08-23, Oscar). El contorno de la columna es del color del estado y
+     más delgado (1px uniforme, sin la franja de 4px de arriba), la pestaña del
+     nombre va rellena con texto blanco, el fondo de la columna es blanco y la
+     ficha se queda SIN contorno — se separa por su sombra.
+
+     El relleno de la pestaña se OSCURECE un punto sobre el color del estado, y
+     no es capricho, es medido: con el color PURO el blanco encima del ámbar
+     (#f79009) queda en 2.35:1 y no se lee — el peor de los ocho estados de la
+     casa. Al 68% el peor caso sube a 4.76:1, arriba del 4.5 que pide WCAG AA
+     para texto normal. Sigue leyéndose como «el color del estado», porque es el
+     mismo tono. Si alguien sube ese 68%, el test lo caza.
+
+     Los colores de texto viven AQUÍ, no en clases de Tailwind en la plantilla:
+     así la columna inactiva (los resultados «fuera del tablero») puede pintar
+     su pestaña tenue sin pelearse con un `text-white` más específico. */
+  .kanban-tab {
+    background-color: color-mix(in srgb, var(--ec, #667085) 68%, #000000);
+    color: #ffffff;
+  }
+  .kanban-tab .kanban-contador {
+    background-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+  }
+  .kanban-tab .kanban-colapsar { color: rgba(255, 255, 255, 0.72); }
+  .kanban-tab .kanban-colapsar:hover { color: #ffffff; }
+
+  /* Columna inactiva: son resultados de búsqueda, no el tablero real, así que
+     su pestaña NO se rellena (misma fórmula tenue de `.badge-hex`). El contorno
+     se suaviza en la plantilla, porque va inline y un `style` gana a cualquier
+     clase. Sin esto competirían visualmente con el tablero real. */
+  .kanban-columna-fuera .kanban-tab {
+    background-color: color-mix(in srgb, var(--ec, #667085) 14%, #ffffff);
+    color: color-mix(in srgb, var(--ec, #667085) 78%, #000000);
+  }
+  .dark .kanban-columna-fuera .kanban-tab {
+    background-color: color-mix(in srgb, var(--ec, #667085) 26%, transparent);
+    color: color-mix(in srgb, var(--ec, #667085) 48%, #ffffff);
+  }
+  .kanban-columna-fuera .kanban-tab .kanban-contador {
+    background-color: color-mix(in srgb, var(--ec, #667085) 20%, transparent);
+    color: inherit;
+  }
 }
 
 /* ── LC 2026-08-23 (Oscar): en el celular y en la PWA, las tarjetas nacen

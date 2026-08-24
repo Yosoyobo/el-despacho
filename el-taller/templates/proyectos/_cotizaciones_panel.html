@@ -40,26 +40,12 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
                     <svg class="h-3.5 w-3.5 text-gray-400 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
             </summary>
-            {# Tracker de ESTA versión (indicador unificado). Clic = cambia su estatus. #}
+            {% comment %}Tracker de ESTA versión. El semáforo vive en un partial de
+            Cotizaciones porque la PÁGINA de la cotización usa el mismo (LC 2026-08-23):
+            así las dos pantallas no pueden divergir. Aquí el clic repinta el recuadro
+            completo, que es lo que cambia (badge + línea de estatus + anticipo).{% endcomment %}
             <div class="mt-3">
-                <div class="cot-tracker">
-                    {% for s in cot.tracker_steps %}
-                    {% if puede_estado %}
-                    <button type="button"
-                            hx-post="{% url 'proyectos-cotizacion-estado' proyecto.pk %}"
-                            hx-vals='{"estado": "{{ s.slug }}", "cot_pk": "{{ cot.pk }}"}'
-                            hx-target="#cotizaciones-panel-{{ proyecto.pk }}" hx-swap="outerHTML"
-                            class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}"
-                            title="Marcar {{ cot.version_label }} como {{ s.label }}">
-                        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
-                    </button>
-                    {% else %}
-                    <div class="cot-step" data-fase="{{ s.fase }}" style="--ec: {{ s.color }}">
-                        <span class="cot-step-seg"></span><span class="cot-step-label">{{ s.label }}</span>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
+                {% include "cotizaciones/_semaforo.html" with cot=cot pasos=cot.tracker_steps editable=puede_estado post_url=url_estado_cot target=target_panel_cot %}
             </div>
         </details>
         {% endfor %}
