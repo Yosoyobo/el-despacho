@@ -122,9 +122,46 @@ def _servicio_responde(url: str) -> bool:
         return False
 
 
+def _piezas_caidas() -> int:
+    """Cuántos contenedores declarados NO están corriendo.
+
+    Es la señal buena y ya existía: es la misma que El Vigía pinta como «9/11
+    · 2 abajo». La primera versión de esto sólo miraba la base y una lista de
+    sondas que quedó vacía, así que el banner se quedó ámbar mientras dos
+    piezas se reiniciaban en bucle — el hueco que Oscar cazó el 2026-08-24.
+
+    Devuelve 0 si no se puede saber (sin socket de Docker montado, por
+    ejemplo). No poder contar no es lo mismo que que todo esté bien, pero
+    tampoco basta para gritar: quien no tiene el socket es porque no le toca
+    vigilar.
+    """
+    try:
+        from lib.site import contenedores
+
+        if not contenedores.disponible():
+            return 0
+        lista = contenedores.listar()
+    except Exception as exc:  # noqa: BLE001 — no poder contar no enciende alarmas
+        logger.debug("aviso_deploy: no se pudo contar contenedores: %s", exc)
+        return 0
+
+    caidos = 0
+    for c in lista:
+        estado = (c.get("State") or c.get("state") or "").lower()
+        if estado and estado != "running":
+            caidos += 1
+    return caidos
+
+
 def _calcular_nivel() -> str:
-    """Ámbar por defecto; rojo si algo no contesta."""
+    """Ámbar por defecto; rojo si algo no contesta.
+
+    Tres señales, de la más barata a la más cara: la base, los contenedores y
+    las sondas HTTP que se declaren en `AVISO_SONDAS`.
+    """
     if not _base_responde():
+        return NIVEL_ROJO
+    if _piezas_caidas() > 0:
         return NIVEL_ROJO
     for url in _sondas_configuradas():
         if not _servicio_responde(url):

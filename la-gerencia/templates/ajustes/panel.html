@@ -23,6 +23,7 @@
         <a href="{% url 'ajustes-fiscal' %}" class="btn-secundario">Fiscal (régimen/ISR/IVA) →</a>
         <a href="{% url 'ajustes-analisis' %}" class="btn-secundario">El Análisis (márgenes, silencio, tarifas) →</a>
         <a href="{% url 'ajustes-rutas' %}" class="btn-secundario">Rutas (velocidad, tiempo por parada) →</a>
+        <a href="{% url 'ajustes-documentos' %}" class="btn-secundario">Documentos (márgenes, pie, motor del PDF) →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
             <button type="submit" class="btn-secundario">Probar Chalanes</button>
         </form>

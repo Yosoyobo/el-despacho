@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load forms_helpers l10n %}
+{% block title %}Documentos — Ajustes{% endblock %}
+
+{% comment %}
+Cómo se arman los PDF que ve el cliente: márgenes, pie, hoja y quién los arma.
+
+Estaban como constantes en el código y sólo se movían con un despliegue. El
+selector de motor es además la salida de emergencia: si un formato se rompe
+frente a un cliente, se vuelve a Google con un clic.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Documentos" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Documentos" subtitulo="Cómo se arman las cotizaciones y facturas en PDF" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<form method="post" class="campo-form max-w-3xl space-y-6">
+    {% csrf_token %}
+
+    {# ── Quién arma el documento ──────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">Quién arma el PDF</h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            Déjalo en automático salvo que estés diagnosticando algo.
+        </p>
+
+        <div class="mb-4 flex items-center gap-2 text-sm">
+            {% if gotenberg_vivo %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-success-50 px-3 py-1 text-xs font-medium text-success-700 dark:bg-success-500/10 dark:text-success-400">
+                ● El motor propio está en pie
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-warning-50 px-3 py-1 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+                ● El motor propio no responde — los documentos saldrán por Google
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="space-y-2">
+            {% for clave, etiqueta in motores %}
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/10 {% if cfg.motor == clave %}border-brand-500{% else %}border-gray-200 dark:border-gray-700{% endif %}">
+                <input type="radio" name="motor" value="{{ clave }}" class="mt-0.5"
+                       {% if cfg.motor == clave %}checked{% endif %}>
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ etiqueta }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# ── La hoja ──────────────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-theme-xl font-medium text-gray-800 dark:text-white/90">La hoja</h2>
+
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label for="tamano_papel">Tamaño</label>
+                <select id="tamano_papel" name="tamano_papel">
+                    {% for clave, etiqueta in tamanos %}
+                    <option value="{{ clave }}" {% if cfg.tamano_papel == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    En México casi todo va en carta.
+                </p>
+            </div>
+
+            <div>
+                <label for="interlineado">Interlineado</label>
+                <input type="text" inputmode="decimal" id="interlineado" name="interlineado"
+                       value="{{ cfg.interlineado|unlocalize }}">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    1.02 es lo más apretado sin que los acentos se encimen. 1.5 es holgado.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {# ── Márgenes ─────────────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">Márgenes</h2>
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            En puntos: <strong>72 son una pulgada</strong> (2.54 cm) y 36 son media.
+            Con los actuales caben <strong>{{ alto_util_pt }} puntos</strong> de contenido por hoja.
+        </p>
+
+        <div class="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            <div>
+                <label for="margen_superior_pt">Arriba</label>
+                <input type="text" inputmode="numeric" id="margen_superior_pt"
+                       name="margen_superior_pt" value="{{ cfg.margen_superior_pt }}">
+            </div>
+            <div>
+                <label for="margen_inferior_pt">Abajo</label>
+                <input type="text" inputmode="numeric" id="margen_inferior_pt"
+                       name="margen_inferior_pt" value="{{ cfg.margen_inferior_pt }}">
+            </div>
+            <div>
+                <label for="margen_izquierdo_pt">Izquierda</label>
+                <input type="text" inputmode="numeric" id="margen_izquierdo_pt"
+                       name="margen_izquierdo_pt" value="{{ cfg.margen_izquierdo_pt }}">
+            </div>
+            <div>
+                <label for="margen_derecho_pt">Derecha</label>
+                <input type="text" inputmode="numeric" id="margen_derecho_pt"
+                       name="margen_derecho_pt" value="{{ cfg.margen_derecho_pt }}">
+            </div>
+        </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            El pie de página vive <em>dentro</em> del margen de abajo, así que no le
+            quita espacio al contenido.
+        </p>
+    </section>
+
+    {# ── Pie de página ────────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-4 text-theme-xl font-medium text-gray-800 dark:text-white/90">Pie de página</h2>
+
+        <div>
+            <label for="pie_texto">Texto (opcional)</label>
+            <input type="text" id="pie_texto" name="pie_texto" maxlength="120"
+                   value="{{ cfg.pie_texto }}" placeholder="Learning Center · learningcenter.mx">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Aparece chico, abajo a la izquierda de cada hoja. Déjalo vacío si no quieres ninguno.
+            </p>
+        </div>
+
+        <label class="mt-4 flex cursor-pointer items-start gap-3">
+            <input type="checkbox" name="numerar_paginas" class="mt-0.5"
+                   {% if cfg.numerar_paginas %}checked{% endif %}>
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+                <strong>Numerar las páginas</strong> («1/3» abajo a la derecha)
+                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                    Con el motor propio el número avanza de verdad. Con Google todas las
+                    hojas dirían «1/1» — que es la razón por la que este ajuste existe.
+                </span>
+            </span>
+        </label>
+    </section>
+
+    <div class="flex items-center gap-3">
+        <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
+            Guardar
+        </button>
+        {% if cfg.actualizado_por %}
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+            Última edición: {{ cfg.actualizado_por.nombre|default:cfg.actualizado_por.email }} · {{ cfg.actualizado_en|date:"d/m/Y H:i" }}
+        </span>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}

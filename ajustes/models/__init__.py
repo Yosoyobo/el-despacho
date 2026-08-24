@@ -4,6 +4,7 @@ from .analistas_log import AnalistaLog
 from .cartero import ConfiguracionCorreo
 from .cobranza import ConfiguracionCobranza
 from .credencial import SLOTS_CREDENCIAL, Credencial
+from .documento import ConfiguracionDocumento
 from .fiscal import ConfiguracionFiscal
 from .plantilla_correo import PlantillaCorreo
 from .regla_correo import CorreoEnviadoRegla, ReglaCorreo
@@ -15,5 +16,6 @@ __all__ = [
     "ConfiguracionCorreo", "ConfiguracionCobranza", "ConfiguracionFiscal",
     "PlantillaCorreo", "ConfiguracionAnalisis", "TarifaRol",
     "ReglaCorreo", "CorreoEnviadoRegla", "AliasRemitente",
+    "ConfiguracionDocumento",
     "ConfiguracionRutas",
 ]

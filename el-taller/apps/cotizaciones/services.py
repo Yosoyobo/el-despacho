@@ -198,6 +198,20 @@ PAGINA_DOCUMENTO = {
     "pie_texto": PIE_DOCUMENTO,
 }
 
+
+def pagina_documento() -> dict:
+    """Lo que se le pide al generador: lo del GUI, o esto de arriba.
+
+    `PAGINA_DOCUMENTO` deja de ser la última palabra y pasa a ser el **valor
+    por defecto**: desde 2026-08-24 los márgenes y el pie se editan en
+    Gerencia → Ajustes → Documentos (Oscar: «debemos poder editar todo lo
+    posible de los PDFs en el GUI»). Si nadie ha tocado nada, o si la tabla
+    todavía no existe, sale exactamente lo de siempre.
+    """
+    from lib.documentos import pagina_configurada
+
+    return pagina_configurada(default=PAGINA_DOCUMENTO)
+
 # Alto de la hoja carta (11" = 792pt) menos los márgenes de arriba y abajo.
 #
 # LC 2026-08-18 R2 (Oscar: «lo del margen superior del PDF no funcionó,
@@ -569,7 +583,7 @@ def generar_pdf(cot: Cotizacion, actor):
     # para acotarlas), así que aquí ya no se repite.
     html = construir_html_pdf(cot)
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
-               pagina=PAGINA_DOCUMENTO)
+               pagina=pagina_documento())
     if not res.ok:
         return res
 

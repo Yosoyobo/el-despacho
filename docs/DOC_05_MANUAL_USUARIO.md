@@ -5,6 +5,43 @@
 
 ---
 
+## Novedades — Los PDF se arman aquí, y su formato ya se puede editar (24 de agosto de 2026)
+
+**Las cotizaciones y facturas ya no dependen de Google para armarse**
+
+Hasta hoy, cada vez que generabas un PDF el sistema se lo pedía a Google: le
+mandaba el documento, esperaba a que lo convirtiera y lo traía de vuelta. Eso
+tardaba segundos y traía tres problemas viejos que por fin quedan resueltos:
+
+| Antes | Ahora |
+|---|---|
+| El pie decía **«1/1»** aunque el documento tuviera tres hojas | Dice **«1/3», «2/3», «3/3»** de verdad |
+| El margen de arriba **se ignoraba** por más que lo pidiéramos | Se respeta el que tú pongas |
+| Un bloque de producto **se partía** entre dos hojas | Se respeta y pasa entero a la siguiente |
+
+Y es mucho más rápido: un documento de seis hojas ahora tarda **seis décimas de
+segundo**.
+
+**Y el formato ya lo ajustas tú, sin pedirle nada a nadie**
+
+En **Gerencia → Documentos** (nuevo renglón en el menú) puedes cambiar:
+
+- **Márgenes** de los cuatro lados, con la cuenta hecha de cuánto contenido cabe.
+- **Tamaño de hoja**: carta, oficio o A4.
+- **Texto del pie** de página, y si quieres que numere las hojas o no.
+- **Interlineado**, para apretar o soltar los renglones.
+
+Antes cualquiera de estos cambios necesitaba que alguien tocara el código y
+esperar a una actualización. Ahora los cambias y el siguiente PDF ya sale así.
+
+**Un botón de emergencia**
+
+En esa misma pantalla hay un selector de **quién arma el PDF**. Si algún día un
+documento sale mal, puedes volver al método anterior con un clic —sin esperar a
+nadie— y la pantalla te dice si el motor nuevo está funcionando en ese momento.
+
+---
+
 ## Novedades — Aviso de mantenimiento que se ve y se entiende (24 de agosto de 2026)
 
 **Cuando estemos trabajando en el sistema, ahora lo vas a saber**

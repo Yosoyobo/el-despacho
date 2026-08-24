@@ -54,6 +54,21 @@ fi
 if [ -f docker-compose.servicios.yml ]; then
   if grep -q "^N8N_ENCRYPTION_KEY=" .env && grep -q "^PAPERLESS_ADMIN_PASSWORD=" .env; then
     COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.servicios.yml"
+    # n8n corre como el usuario 1000 y Docker crea los volúmenes como root: sin
+    # esto se queda en «EACCES» reiniciando en bucle.
+    mkdir -p data/n8n data/paperless/redis data/osrm
+    # El chown va DESDE UN CONTENEDOR: el usuario del NUC no tiene sudo sin
+    # contraseña, pero el demonio de Docker sí corre como root. Es el camino
+    # que funciona en cualquier máquina, con sudo o sin él.
+    docker run --rm -v "$(pwd)/data/n8n:/d" alpine:3 chown -R 1000:1000 /d >/dev/null 2>&1 || true
+    # OSRM sólo se levanta cuando su mapa está cocido; si no, no puede arrancar.
+    if [ -f data/osrm/mexico-latest.osrm.properties ]; then
+      COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}osrm"
+      export COMPOSE_PROFILES
+      echo "OSRM: mapa presente, se levanta."
+    else
+      echo "OSRM: sin mapa cocido en data/osrm; queda apagado (las rutas siguen en línea recta)."
+    fi
   else
     echo "AVISO: faltan N8N_ENCRYPTION_KEY o PAPERLESS_ADMIN_PASSWORD en .env;"
     echo "       los servicios auxiliares NO se despliegan (El Despacho sí)."
