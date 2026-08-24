@@ -40,10 +40,25 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # `-n auto` = un worker por núcleo del runner. Cada uno levanta su propia
+      # base SQLite `:memory:`, así que las bases no se pisan, y la suite no tiene
+      # tests con `transaction=True` que obliguen a serializar.
+      #
+      # `--dist loadfile` reparte por ARCHIVO, no por test, y eso NO es un detalle:
+      # los tests marcados `redis` sí comparten estado real —los 4 de
+      # `test_portavoz_worker.py` borran las mismas claves `COLA`/`DLQ` de la db 15,
+      # y otro tanto hacen `test_ratelimit.py` y `test_aviso_deploy.py`—. Repartidos
+      # por test podrían correr a la vez en workers distintos y pisarse; repartidos
+      # por archivo es imposible por construcción. Cada archivo usa claves distintas
+      # entre sí, así que agruparlos basta.
+      #
+      # El aislamiento del CACHÉ entre tests lo garantiza el fixture
+      # `_cache_aislada` de conftest: sin él, repartir los tests distinto destapa
+      # dependencias de orden que en serie quedan escondidas.
       - name: pytest
         env:
           REDIS_URL: redis://localhost:6379/0
-        run: pytest -q tests/
+        run: pytest -q tests/ -n auto --dist loadfile
 
   lint:
     name: Ruff
@@ -56,90 +71,14 @@ jobs:
       - run: pip install ruff==0.8.4
       - run: ruff check .
 
-  smoke_docker:
-    name: 🧪 Smoke test del stack en Docker
-    needs: [pruebas, lint]
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-      - name: Preparar .env mínimo
-        run: |
-          cat > .env <<EOF
-          BOVEDA_MASTER_KEY=$(openssl rand -hex 32)
-          DJANGO_SECRET_KEY=$(openssl rand -hex 32)
-          POSTGRES_DB=el_despacho
-          POSTGRES_USER=despacho
-          POSTGRES_PASSWORD=$(openssl rand -hex 20)
-          POSTGRES_HOST=postgres
-          POSTGRES_PORT=5432
-          REDIS_URL=redis://redis:6379/0
-          GERENCIA_ALLOWED_HOSTS=localhost,127.0.0.1
-          TALLER_ALLOWED_HOSTS=localhost,127.0.0.1
-          RECEPCION_ALLOWED_HOSTS=localhost,127.0.0.1
-          DESPACHO_SUPERADMIN_EMAIL=ci@example.com
-          DESPACHO_SUPERADMIN_PASSWORD=$(openssl rand -hex 16)
-          CADDY_HTTP_PORT=8080
-          CADDY_HTTPS_PORT=8443
-          DESPACHO_ENV=development
-          EOF
-          # `data/media` es El Almacén: el compose lo monta en las apps y su `pub/`
-          # en El Portero, así que el smoke test ejerce la misma forma que producción.
-          mkdir -p data/postgres data/redis data/caddy/data data/caddy/config data/credenciales \
-                   data/media/orig data/media/pub
-      - name: Build local (sin push)
-        run: docker compose -f docker-compose.yml build la-gerencia el-taller la-recepcion
-      - name: Levantar stack
-        run: |
-          docker compose -f docker-compose.yml up -d postgres redis
-          for i in $(seq 1 30); do
-            if docker compose -f docker-compose.yml ps postgres | grep -q "healthy"; then break; fi
-            sleep 2
-          done
-          if ! docker compose -f docker-compose.yml up -d la-gerencia el-taller la-recepcion portavoz-worker; then
-            echo "❌ compose up -d falló — volcando logs de los containers que arrancaron"
-            docker compose -f docker-compose.yml ps -a
-            for c in despacho-gerencia despacho-el-taller despacho-la-recepcion despacho-portavoz-worker; do
-              echo "===== $c ====="
-              docker logs "$c" --tail 200 2>&1 || echo "(no logs)"
-            done
-            exit 1
-          fi
-      - name: Esperar healthchecks (max 120s)
-        run: |
-          for i in $(seq 1 24); do
-            sleep 5
-            sg=$(docker inspect --format='{{.State.Health.Status}}' despacho-gerencia 2>/dev/null || echo "starting")
-            st=$(docker inspect --format='{{.State.Health.Status}}' despacho-el-taller 2>/dev/null || echo "starting")
-            sr=$(docker inspect --format='{{.State.Health.Status}}' despacho-la-recepcion 2>/dev/null || echo "starting")
-            echo "[$i] gerencia=$sg taller=$st recepcion=$sr"
-            if [ "$sg" = "healthy" ] && [ "$st" = "healthy" ] && [ "$sr" = "healthy" ]; then
-              echo "✅ Las 3 apps healthy"
-              exit 0
-            fi
-            if [ "$sg" = "unhealthy" ] || [ "$st" = "unhealthy" ] || [ "$sr" = "unhealthy" ]; then
-              echo "❌ Algún container unhealthy" && break
-            fi
-          done
-          echo "❌ Timeout esperando healthchecks"
-          docker compose -f docker-compose.yml logs --tail 80 la-gerencia el-taller la-recepcion
-          exit 1
-      - name: Probar /ping en cada app
-        run: |
-          for entry in "despacho-gerencia:8001" "despacho-el-taller:8000" "despacho-la-recepcion:8002"; do
-            name="${entry%:*}"; port="${entry##*:}"
-            code=$(docker exec "$name" python -c "import urllib.request,sys;print(urllib.request.urlopen('http://localhost:'+'${port}'+'/ping',timeout=5).status)" 2>/dev/null || echo FAIL)
-            echo "$name → $code"
-            [ "$code" = "200" ] || { docker logs "$name" --tail 80; exit 1; }
-          done
-      - name: Apagar
-        if: always()
-        run: docker compose -f docker-compose.yml down -v || true
-
   build:
     name: Build & push
-    needs: [smoke_docker]
+    # Va ANTES del smoke test (antes iba después). El orden importa: así se
+    # construye UNA vez y el smoke test prueba justo esa imagen, en lugar de
+    # construir una copia aparte y dar verde sobre un artefacto que no viaja.
+    # Nada llega al NUC sin pasar por el smoke: el deploy lo gatea
+    # `actualizar_digests`, que ahora cuelga del smoke test.
+    needs: [pruebas, lint]
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:
@@ -171,15 +110,132 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
+          # `:latest` es informativo — NADIE lo consume (verificado): el deploy va
+          # anclado por digest desde `docker-compose.prod.yml`, que escribe
+          # `actualizar_digests` DESPUÉS del smoke test. O sea que una imagen que
+          # no pase el smoke puede quedar como `:latest` en GHCR, pero no se
+          # despliega. Si algún día algo llega a depender de `:latest`, hay que
+          # mover ese tag a `actualizar_digests`.
           tags: |
             ${{ env.REGISTRY }}/${{ steps.lc.outputs.owner }}/el-despacho-${{ matrix.app }}:latest
             ${{ env.REGISTRY }}/${{ steps.lc.outputs.owner }}/el-despacho-${{ matrix.app }}:${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,scope=${{ matrix.app }},mode=max
 
+  smoke_docker:
+    name: 🧪 Smoke test del stack en Docker
+    needs: [build]
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar .env mínimo
+        run: |
+          cat > .env <<EOF
+          BOVEDA_MASTER_KEY=$(openssl rand -hex 32)
+          DJANGO_SECRET_KEY=$(openssl rand -hex 32)
+          POSTGRES_DB=el_despacho
+          POSTGRES_USER=despacho
+          POSTGRES_PASSWORD=$(openssl rand -hex 20)
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          REDIS_URL=redis://redis:6379/0
+          GERENCIA_ALLOWED_HOSTS=localhost,127.0.0.1
+          TALLER_ALLOWED_HOSTS=localhost,127.0.0.1
+          RECEPCION_ALLOWED_HOSTS=localhost,127.0.0.1
+          DESPACHO_SUPERADMIN_EMAIL=ci@example.com
+          DESPACHO_SUPERADMIN_PASSWORD=$(openssl rand -hex 16)
+          CADDY_HTTP_PORT=8080
+          CADDY_HTTPS_PORT=8443
+          DESPACHO_ENV=development
+          EOF
+          # `data/media` es El Almacén: el compose lo monta en las apps y su `pub/`
+          # en El Portero, así que el smoke test ejerce la misma forma que producción.
+          mkdir -p data/postgres data/redis data/caddy/data data/caddy/config data/credenciales \
+                   data/media/orig data/media/pub
+      # ANTES esto construía las imágenes AQUÍ, otra vez y sin caché. O sea que
+      # el smoke test daba verde sobre unas imágenes y a producción viajaban
+      # OTRAS —las del job `build`—; nunca se probaba el artefacto que ship*ea*.
+      # Ahora se bajan las recién publicadas y se prueba exactamente eso.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apuntar el compose a las imágenes recién publicadas
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')
+          sha='${{ github.sha }}'
+          # Mismo patrón que docker-compose.prod.yml: fijar `image` y anular
+          # `build` para que compose no intente reconstruir nada.
+          cat > docker-compose.ci.yml <<EOF
+          services:
+            la-gerencia:
+              image: ghcr.io/${owner}/el-despacho-gerencia:${sha}
+              build: null
+            el-taller:
+              image: ghcr.io/${owner}/el-despacho-taller:${sha}
+              build: null
+            la-recepcion:
+              image: ghcr.io/${owner}/el-despacho-recepcion:${sha}
+              build: null
+            portavoz-worker:
+              image: ghcr.io/${owner}/el-despacho-gerencia:${sha}
+              build: null
+          EOF
+      - name: Bajar las imágenes que se van a desplegar
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml pull la-gerencia el-taller la-recepcion
+      - name: Levantar stack
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres redis
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.yml -f docker-compose.ci.yml ps postgres | grep -q "healthy"; then break; fi
+            sleep 2
+          done
+          if ! docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d la-gerencia el-taller la-recepcion portavoz-worker; then
+            echo "❌ compose up -d falló — volcando logs de los containers que arrancaron"
+            docker compose -f docker-compose.yml -f docker-compose.ci.yml ps -a
+            for c in despacho-gerencia despacho-el-taller despacho-la-recepcion despacho-portavoz-worker; do
+              echo "===== $c ====="
+              docker logs "$c" --tail 200 2>&1 || echo "(no logs)"
+            done
+            exit 1
+          fi
+      - name: Esperar healthchecks (max 120s)
+        run: |
+          for i in $(seq 1 24); do
+            sleep 5
+            sg=$(docker inspect --format='{{.State.Health.Status}}' despacho-gerencia 2>/dev/null || echo "starting")
+            st=$(docker inspect --format='{{.State.Health.Status}}' despacho-el-taller 2>/dev/null || echo "starting")
+            sr=$(docker inspect --format='{{.State.Health.Status}}' despacho-la-recepcion 2>/dev/null || echo "starting")
+            echo "[$i] gerencia=$sg taller=$st recepcion=$sr"
+            if [ "$sg" = "healthy" ] && [ "$st" = "healthy" ] && [ "$sr" = "healthy" ]; then
+              echo "✅ Las 3 apps healthy"
+              exit 0
+            fi
+            if [ "$sg" = "unhealthy" ] || [ "$st" = "unhealthy" ] || [ "$sr" = "unhealthy" ]; then
+              echo "❌ Algún container unhealthy" && break
+            fi
+          done
+          echo "❌ Timeout esperando healthchecks"
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --tail 80 la-gerencia el-taller la-recepcion
+          exit 1
+      - name: Probar /ping en cada app
+        run: |
+          for entry in "despacho-gerencia:8001" "despacho-el-taller:8000" "despacho-la-recepcion:8002"; do
+            name="${entry%:*}"; port="${entry##*:}"
+            code=$(docker exec "$name" python -c "import urllib.request,sys;print(urllib.request.urlopen('http://localhost:'+'${port}'+'/ping',timeout=5).status)" 2>/dev/null || echo FAIL)
+            echo "$name → $code"
+            [ "$code" = "200" ] || { docker logs "$name" --tail 80; exit 1; }
+          done
+      - name: Apagar
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v || true
+
   actualizar_digests:
     name: Pin digests en docker-compose.prod.yml
-    needs: [build]
+    needs: [smoke_docker]
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:

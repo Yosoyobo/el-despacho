@@ -7039,6 +7039,88 @@ disco se suma con `pvmove` en caliente). El motivo de cancelación no se pide cu
 la cotización se aprueba desde El Chalán. La homepage se actualiza con un `rsync`
 manual (`ops/ventana/publicar-homepage.sh`), no con el deploy.
 
+### S-CI-Rapido ✅ — El cuello del deploy no era el fierro: era el hasheo de contraseñas (2026-08-23, sin bump de VERSION)
+
+Oscar: «refactorización de despliegue en git y productivo. ¿Qué puede cargar el NUC
+para compilar y desplegar más rápido? Ya no estamos limitados por hardware».
+**La respuesta, medida, fue: nada.** Compilar nunca fue el problema.
+
+**Dónde se iba el tiempo** (último deploy verde real, 27 min 44 s): tests
+**21 min 33 s (78 %)** · smoke 2:29 · mudanza 2:28 · **build 45 s** · ruff+digests+
+ventana 36 s. Aunque el NUC compilara en cero, el pipeline bajaría de 27:44 a 27:00.
+
+- **La causa raíz — `PASSWORD_HASHERS` no estaba declarado** en
+  [tests/django_settings.py](tests/django_settings.py), así que Django caía a
+  PBKDF2 con **600 000 iteraciones**. La suite crea usuarios sin parar y el hasheo
+  se llevaba el **~93 % del tiempo real de ejecución** (un archivo de 26 tests: 15 s
+  → 1 s; `test_ajustes_ago12b.py` completo: **61.31 s → 32.78 s**). Un solo renglón
+  (MD5, **sólo** en el settings de PRUEBAS) deja la suite en **5 min 14 s en UN
+  núcleo** y **2 min 55 s en paralelo**, ambos medidos en el NUC contra los
+  **21 min 33 s** que tarda hoy en GitHub. Y el NUC es el fierro LENTO de los dos,
+  así que en el runner de GitHub el número será mejor, no peor. Verificado que ningún test mira el hash: `authenticate`,
+  `check_password` y `set_password` se comportan idéntico, así que los ~197
+  archivos que ejercen login prueban exactamente lo mismo. Producción nunca lee ese
+  archivo.
+- **Por qué el NUC no aportaba, y la corrección al «ya no estamos limitados por
+  hardware»:** es un **i5-10210U — 4 núcleos FÍSICOS** (8 hilos) a 1.6 GHz, un chip
+  de laptop. Medido: **8 workers suyos apenas superan 1.9× a UN worker de GitHub**,
+  o sea que **por núcleo es más lento que el runner que reemplazaría**. RAM (14 G) y
+  disco (93 G libres) le sobran; CPU no. Y las capas que viajan a GHCR en cada
+  deploy pesan **~9 MB** (el GB del `pip install` está cacheado y no se
+  re-transfiere), así que tampoco había transferencia que ahorrar. La frase que
+  resume el sprint: **un solo núcleo con el hasher arreglado le gana a ocho sin
+  arreglarlo** (305 s contra 676 s, ambos medidos en el NUC).
+- **`--nomigrations` queda DESCARTADO** — es el atajo obvio para los ~26 s que
+  cuesta construir la base con **985 migraciones**, pero **383 llevan `RunPython`**
+  sembrando permisos, cuentas contables, estados y chalanes. Saltarlas rompe
+  cientos de tests. No reintentarlo.
+- **El reparto va por ARCHIVO (`--dist loadfile`), no por test, y no es un detalle:**
+  los tests marcados `redis` sí comparten estado real — los 4 de
+  `test_portavoz_worker.py` borran las mismas claves `COLA`/`DLQ` de la db 15, y
+  otro tanto hacen `test_ratelimit.py` (5) y `test_aviso_deploy.py` (9). Repartidos
+  por test podrían correr a la vez en workers distintos y pisarse; por archivo es
+  imposible por construcción, y como cada archivo usa claves distintas entre sí,
+  agruparlos basta. Es una intermitencia que se habría INTRODUCIDO al paralelizar.
+- **xdist (`-n auto`) destapó una dependencia de orden REAL, no un defecto suyo.**
+  El caché de Django vive en el PROCESO y el rollback de cada test no lo toca: un
+  test heredaba alias cacheados de otro (`mapa_alias` del catálogo,
+  [widgets.py](el-taller/apps/el_catalogo/widgets.py)). En serie el orden lo
+  escondía. Arreglado con el fixture autouse **`_cache_aislada`** en
+  [conftest.py](tests/conftest.py) —mismo patrón que `_almacen_aislado`— más
+  `CACHES` declarado **explícito** como LocMemCache, para que las pruebas no puedan
+  vaciar un Redis real ni por equivocación (ahí vive `portavoz:cola`).
+- **Estabilidad, medida y no supuesta:** **9 corridas limpias** de la suite completa
+  en el NUC — 1 en serie (3192 passed, 5:14) y 8 en paralelo (3192 passed, ~2:55).
+  La única con fallos (2) ocurrió mientras El Taller de producción rearrancaba en
+  esos mismos 4 núcleos; en las 8 restantes no se repitió. El runner de GitHub es
+  un entorno mucho menos hostil (nada más corriendo, menos workers).
+- **El smoke test probaba una imagen que NO era la que se desplegaba.** Construía
+  las 3 imágenes por su cuenta (66 s, sin caché) y el job `build` las volvía a
+  construir para GHCR: daba verde sobre un artefacto y a producción viajaba otro.
+  Ahora **`build` va ANTES**, el smoke **baja esas mismas imágenes** con un
+  `docker-compose.ci.yml` efímero (`image:` fijo + `build: null`, el patrón de
+  `docker-compose.prod.yml`) y `actualizar_digests` cuelga del smoke, así que nada
+  llega al NUC sin pasar por él. Es una corrección de **corrección**, no de
+  velocidad: el ahorro son ~20-30 s. Verificado que `la-recepcion` se alcanza pese
+  a su `profiles: ["s5"]` al nombrarla explícita.
+- **Se descartó a propósito el runner self-hosted en el NUC:** ejecutaría código del
+  repo como usuario del grupo `docker` —root efectivo— **en la máquina que corre el
+  negocio**, peleándole los 4 núcleos a la app en vivo durante cada deploy (la carga
+  llegó a 8 en las pruebas), para comprar ~45 s. Es una superficie mucho mayor que
+  la llave acotada con `command=` del deploy, que es justo lo que Oscar pidió cuidar.
+
+**NO se bumpeó `VERSION`** (mismo criterio que S-Vigia-NUC): no cambia nada visible
+al usuario, así que no hay Novedades que escribir.
+
+**Deuda / hallazgo lateral sin arreglar:** `_emitir_noop` en
+[conftest.py](tests/conftest.py) tiene una lista **hardcodeada y ya obsoleta** de
+módulos donde parchea `emitir`; con Redis abajo, los tests que lo llaman desde
+módulos fuera de la lista (p. ej. `apps.cotizaciones.services`) dan *error* confuso
+en vez de quedar neutralizados. En CI nunca muerde (Redis es un servicio con
+healthcheck), pero es el origen del folclore de «los 3 fallos locales de Redis».
+Se deja fuera a propósito: cambia cómo corren ~3 000 tests y no pertenece a un
+sprint de CI.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

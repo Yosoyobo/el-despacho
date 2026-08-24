@@ -123,8 +123,33 @@ DATABASES = {
     }
 }
 
+# Explícito a propósito. Sin declararlo, Django cae a LocMemCache —que es lo que
+# queremos— pero por accidente: si algún día alguien apunta el caché a Redis, el
+# fixture `_cache_aislada` de conftest empezaría a vaciar una base REAL entre
+# test y test (la misma en la que vive `portavoz:cola`). Declarado, las pruebas
+# no pueden tocar Redis ni por equivocación.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "pruebas",
+    }
+}
+
 AUTH_USER_MODEL = "cuentas.Usuario"
 AUTH_PASSWORD_VALIDATORS = []  # tests rápidos
+
+# Sin esto Django usa PBKDF2 con 600 000 iteraciones, que es lo correcto en
+# producción y una catástrofe en pruebas: la suite crea usuarios sin parar y el
+# hasheo se llevaba el ~93 % del tiempo REAL de ejecución (medido: un archivo de
+# 26 tests pasó de 15 s a 1 s). La suite completa cayó de 21 min a 5 min en UN
+# solo núcleo con este único renglón.
+#
+# MD5 aquí no debilita nada: es el archivo de settings de PRUEBAS y ningún test
+# mira el hash en sí (verificado) — `authenticate`, `check_password` y
+# `set_password` se comportan idéntico, así que los ~197 archivos que ejercen
+# login siguen probando exactamente lo mismo. La producción NUNCA lee este
+# archivo; sus settings viven en `{el-taller,la-gerencia}/*/settings.py`.
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 LOGIN_URL = "/sign-in"
 
 SESSION_COOKIE_NAME = "taller_session"
