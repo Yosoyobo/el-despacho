@@ -1,14 +1,25 @@
 {% load proyectos_extras forms_helpers %}
 {# Columna del Kanban — usada por las dos filas (C3 S-LC-Feedback-V6). #}
-<div class="kanban-columna {% if solo_lectura %}kanban-columna-fuera {% endif %}flex min-w-0 flex-col rounded-2xl border border-t-4 border-gray-200 bg-gray-50 p-2.5 dark:border-gray-800 dark:bg-white/[0.02]"
-     style="border-top-color: {{ col.slug|color_estado }}"
+{% comment %}LC 2026-08-23 (Oscar): el distintivo de color sube de la ficha a la
+COLUMNA — contorno del color y más delgado (1px uniforme; antes era gris con una
+franja de 4px arriba), pestaña del nombre RELLENA con texto blanco, fondo de la
+columna blanco, y la ficha ya sin contorno. El HEX es el mismo de siempre: lo
+que cambia es dónde se pinta. Los tonos y el texto viven en `.kanban-tab` de
+`input.css` (ahí está explicado por qué el relleno se oscurece un punto).
+
+**Para revertirlo**: devolver `border-t-4 border-gray-200 bg-gray-50
+dark:border-gray-800` con `style="border-top-color: …"`, quitar `kanban-tab` del
+`<header>` y volver el `<h2>` a `text-gray-700 dark:text-gray-200`, el contador a
+`bg-white ring-1 ring-gray-200 …` y la flecha a `text-gray-400`.{% endcomment %}
+<div class="kanban-columna {% if solo_lectura %}kanban-columna-fuera {% endif %}flex min-w-0 flex-col rounded-2xl border bg-white p-2.5 dark:bg-white/[0.02]"
+     style="--ec: {{ col.slug|color_estado }}; border-color: color-mix(in srgb, var(--ec) {% if solo_lectura %}32{% else %}70{% endif %}%, transparent)"
      data-estado="{{ col.slug }}">
-    <header class="mb-3 flex items-center justify-between gap-2 px-1">
-        <h2 class="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200">
-            {% if colapsable %}<button type="button" class="kanban-colapsar shrink-0 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-200" aria-label="Colapsar/expandir columna" title="Colapsar/expandir">▾</button>{% endif %}
+    <header class="kanban-tab mb-3 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5">
+        <h2 class="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+            {% if colapsable %}<button type="button" class="kanban-colapsar shrink-0 transition" aria-label="Colapsar/expandir columna" title="Colapsar/expandir">▾</button>{% endif %}
             <span class="truncate">{{ col.label }}</span>
         </h2>
-        <span class="kanban-contador inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-white px-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700" data-total="{{ col.total }}">{{ col.total }}</span>
+        <span class="kanban-contador inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-2 text-xs font-semibold" data-total="{{ col.total }}">{{ col.total }}</span>
     </header>
     {% comment %}`solo_lectura`: la columna se ve igual pero no es zona de
     arrastre. Lo usa el «tablero inactivo» de resultados del Dashboard, donde
@@ -22,21 +33,21 @@
          data-arr-mover-extra="hx_kanban=1"
          {% endif %}>
         {% for p in col.proyectos %}
-        {% comment %}LC 2026-08-18 R2 (Oscar): «usemos como distintivo de color un
-        STROKE de cada pastilla, en vez del side color handle que usamos hoy; sin
-        cambiar nada de colores». El HEX del estado es el mismo — lo que cambia es
-        dónde se pinta: antes una barra gruesa a la izquierda (`border-l-4` con el
-        color y el resto de la caja gris), ahora el contorno completo de la tarjeta.
-        **Para revertirlo** basta volver a `border border-l-4 border-gray-200 …
-        dark:border-gray-800` con `style="border-left-color: …"` y devolver el
-        `hover:border-brand-300 dark:hover:border-brand-500` que se retiró: con el
-        contorno de color, un hover que lo pisara borraría el distintivo, así que el
-        hover se quedó sólo en la sombra.{% endcomment %}
+        {% comment %}LC 2026-08-23 (Oscar): la ficha va SIN contorno — el color del
+        estado ahora vive en la columna (contorno + pestaña), y repetirlo en cada
+        ficha lo volvía ruido. Lo que la separa del fondo blanco de la columna es su
+        sombra, que subió de `theme-xs` (0.05 de alpha, casi invisible sobre blanco)
+        a `theme-sm`. El hover sigue siendo sólo de sombra.
+
+        **Para revertirlo** al contorno completo del 18 de agosto: `border-2` con
+        `style="border-color: …|color_estado"`; al de la barra izquierda de antes:
+        `border border-l-4 border-gray-200 dark:border-gray-800` con
+        `style="border-left-color: …"` y el `hover:border-brand-300
+        dark:hover:border-brand-500` que en su momento se retiró.{% endcomment %}
         <a href="{% url 'proyectos-detalle' p.pk %}"
            data-arr-item="{{ p.pk }}"
            data-buscar="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }} {% for pp in p.productos.all %}{{ pp.etiqueta|lower }} {{ pp.nombre_catalogo|lower }} {% if pp.proveedor %}{{ pp.proveedor.razon_social|lower }} {% endif %}{% endfor %}{% for a in p.asignaciones.all %}{{ a.usuario.nombre_completo|default:a.usuario.email|lower }} {% endfor %}{{ p.cliente.nombre_contacto|lower }} {% for c in p.cliente.contactos.all %}{{ c.nombre|lower }} {% endfor %}"
-           style="border-color: {{ p.estado|color_estado }}"
-           class="kanban-card block min-w-0 rounded-xl border-2 bg-white p-2.5 shadow-theme-xs transition hover:shadow-theme-md dark:bg-gray-900">
+           class="kanban-card block min-w-0 rounded-xl bg-white p-2.5 shadow-theme-sm transition hover:shadow-theme-md dark:bg-gray-900">
             {% comment %}V6 Bloque 3: nombre prominente, CLIENTE en la posición del código (el código sigue visible en lista/detalle).{% endcomment %}
             <div class="flex items-start justify-between gap-1.5">
                 <div class="min-w-0 flex-1">

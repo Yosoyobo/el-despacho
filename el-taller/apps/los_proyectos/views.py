@@ -1912,6 +1912,12 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
         "proyecto": proyecto,
         "cotizaciones_proyecto": cots,
         "cot_latest_pk": latest.pk if latest else None,
+        # El semáforo es un partial compartido con la PÁGINA de la cotización
+        # (LC 2026-08-23), así que recibe por contexto a dónde postear y qué
+        # repintar: aquí el recuadro completo, allá sólo el semáforo. Un
+        # `{% url %}` no cabe dentro de un `{% include with %}`.
+        "url_estado_cot": reverse("proyectos-cotizacion-estado", args=[proyecto.pk]),
+        "target_panel_cot": f"#cotizaciones-panel-{proyecto.pk}",
         "sugerir_esperando": sugerir_esperando,
         "estado_tras_cotizar": _ESTADO_TRAS_COTIZAR,
         "estado_tras_cotizar_label": (

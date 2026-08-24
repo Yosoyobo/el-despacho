@@ -370,6 +370,20 @@ def test_fijar_destino_regresa_a_donde_lo_llamaron(
     assert m.tarea.destino_etiqueta == "Stampa"
 
 
+def test_el_modal_de_destino_arrastra_el_volver_al_formulario(
+        client, proyecto_factory, usuario_factory):
+    """El botón del planeador manda `?volver=` en el GET; el modal lo tiene que
+    llevar al POST o el regreso se pierde entre los dos pasos."""
+    p = proyecto_factory(estado="en_proceso_diseno")
+    jefe = usuario_factory(rol="super_admin", email="dest3@lc.mx")
+    m = _mandado(p, None, titulo="Sin destino")
+
+    client.force_login(jefe)
+    r = client.get(f"/mandados/{m.pk}/destino?volver=/rutas/", HTTP_HX_REQUEST="true")
+    assert r.status_code == 200
+    assert 'name="volver" value="/rutas/"' in r.content.decode()
+
+
 def test_fijar_destino_no_acepta_un_volver_de_otro_dominio(
         client, proyecto_factory, usuario_factory):
     p = proyecto_factory(estado="en_proceso_diseno")

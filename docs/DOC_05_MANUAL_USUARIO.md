@@ -56,6 +56,68 @@ quedaba pegado al reabrirla.
 
 ---
 
+## Novedades — El estatus de la cotización en su propia página, y el tablero más limpio (23 de agosto de 2026)
+
+**El semáforo de estatus ya está en la página de la cotización**
+
+Hasta hoy, para mover el estatus de una cotización (Generada · Enviada ·
+Anticipo · Aprobada · Pagada…) tenías que entrar al proyecto y buscar el
+recuadro **Cotizaciones**. En su propia página sólo había una pastilla que decía
+el estado, sin poder tocarla.
+
+Ahora el **semáforo va arriba del título** de la cotización: se ve de un golpe en
+qué paso va y se mueve picando el paso, igual que en el proyecto. Es el mismo
+semáforo de las dos pantallas —los pasos siguen saliendo de **Gerencia →
+Catálogos → Estados de cotización**—, así que las dos siempre dicen lo mismo.
+
+**El tablero se ve más limpio**
+
+El color del estado se mudó **de la tarjeta a la columna**: la columna lleva un
+contorno delgado de su color y su **nombre va relleno con ese color**, y las
+tarjetas quedaron **sin contorno** (se separan por su sombra, sobre un fondo
+blanco). Antes cada tarjeta repetía el color y el tablero se leía cargado. Los
+colores son exactamente los que configuraste en Estados de proyecto.
+
+Los resultados **«fuera del tablero»** del buscador de Inicio se distinguen a
+propósito: su nombre va en color tenue, para que el tablero de verdad siga siendo
+el protagonista.
+
+**La tarjeta de producto**
+
+- **El botón de quitar un producto ahora es un bote de basura.** La ✕ se queda en
+  lo que quita un RENGLÓN (un proceso de venta, la impresión, un gasto): así se
+  distingue a simple vista quitar un renglón de quitar el producto entero.
+- **Los productos del proyecto cargan mucho más rápido.** Al dar de alta un
+  producto la tarjeta nueva tardaba en aparecer; era la página pidiéndole a la
+  base de datos **más de 500 cosas** cuando le bastaban 57. En el proyecto más
+  cargado del despacho pasó de un segundo y medio a un tercio de segundo, y la
+  página del proyecto abre igual de rápido. No cambia nada de lo que ves.
+
+**Sobre los colores repetidos de las tarjetas** (dos naranjas juntos): se
+revisaron los proyectos reales y en todos los casos los dos productos **mencionan
+el mismo color en su nombre o en su descripción** — es la regla funcionando («si
+el nombre dice un color, usa ese»). Un caso claro: un cliente que se llama «Cruz
+Azul» pinta de azul sus seis productos. No es una falla del reparto de colores; si
+molesta, es una decisión de cómo quieres que se lea y la platicamos.
+
+---
+
+## Novedades — La ubicación de una tarea ya se guarda (23 de agosto de 2026)
+
+Al poner el **Lugar** de una entrega o recolección, el buscador encontraba la
+dirección y el mapa ponía el pin — pero al guardar la tarea quedaba «Sin ubicación
+fijada todavía». Ya quedó.
+
+La causa: en el formulario de tarea del proyecto, los dos campos del punto en el
+mapa se estaban dibujando **dos veces** (por eso se veían esas etiquetas raras,
+«Destino lat» y «Destino lng», con un hueco vacío al lado). Al guardar, el sistema
+se quedaba con la copia vacía y tiraba las coordenadas.
+
+Ahora el pin llega completo, así que el planeador de rutas puede ordenar la vuelta
+y el botón de «cómo llegar» aparece.
+
+---
+
 ## Novedades — Los mandados, usables desde el celular (23 de agosto de 2026)
 
 **El tablero de reparto ya sirve en el teléfono**
@@ -4523,6 +4585,8 @@ Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clic
 
 **"Proyectos" siempre abre el Kanban.** El menú, las migas de pan y el botón de "volver" de un proyecto te dejan en el **Tablero**; para la tabla usa el botón **"Lista"** del encabezado.
 
+**Cómo se lee el color en el tablero.** Cada columna lleva un contorno delgado de su color y su **nombre relleno con ese color** — son los colores que configuraste en Gerencia → Catálogos → Estados de proyecto. Las tarjetas van sin contorno: se separan por su sombra sobre el fondo blanco de la columna. Así el color dice «en qué fase estoy» una sola vez, en la columna, en lugar de repetirse en cada tarjeta.
+
 ### Cancelar un proyecto y por qué
 
 Cuando pasas un proyecto a **Cancelado** —desde el desplegable del detalle, la
@@ -5267,6 +5331,19 @@ Abre en **tabla** (el botón «▦ Tarjetas» cambia a la vista de tarjetas):
   **✓** y una **✕**. El ✓ le cambia el estado ahí mismo (se ve al instante en la
   barra de arriba); la ✕ lo deja para después y no vuelve a preguntar por esa
   versión —si generas una nueva, te lo vuelve a ofrecer.
+
+### El semáforo de estatus
+
+Arriba del título de la cotización está el **semáforo**: los pasos configurados
+en Gerencia → Catálogos → Estados de cotización, con el actual resaltado, los
+anteriores marcados y los siguientes en gris. Pica un paso para mover el estatus
+ahí mismo.
+
+Es **el mismo semáforo** que ves en el recuadro **Cotizaciones** del proyecto —
+literalmente la misma pieza—, así que las dos pantallas nunca se contradicen.
+Cada versión (v1, v2…) tiene su propio estatus y se puede mover desde cualquiera
+de las dos. Si no tienes permiso para editar cotizaciones, el semáforo se ve pero
+no se toca.
 
 ### Concepto y especificaciones de cada producto
 

@@ -527,6 +527,8 @@ def detalle(request, pk):
         "puede_rechazar": puede_rechazar,
         "puede_anular": puede_anular,
         "puede_duplicar": puede_duplicar,
+        # Semáforo de estatus arriba del título (LC 2026-08-23).
+        "semaforo": _ctx_semaforo(cot, request.user),
     })
 
 
@@ -816,6 +818,71 @@ def factura_anticipo(request, pk):
         f"Revisa los datos y emítela cuando estés listo.",
     )
     return redirect("facturacion:editar", pk=factura.pk)
+
+
+# ── Semáforo de estatus (LC 2026-08-23) ────────────────────────────────────
+# El pizza-tracker existía sólo en el recuadro del proyecto; la PÁGINA de la
+# cotización mostraba una pastilla estática. Ahora las dos usan el MISMO partial
+# (`cotizaciones/_semaforo.html`), así que no pueden divergir. Los pasos salen
+# del catálogo de Gerencia; aquí sólo se les calcula la fase.
+ID_SEMAFORO = "cot-semaforo"
+
+
+def _pasos_semaforo(estado: str) -> list[dict]:
+    """Los pasos configurados, con `fase` done|current|future según `estado`."""
+    from .models import estados_cot_activos
+    activos = estados_cot_activos()
+    idx = next((i for i, e in enumerate(activos) if e["slug"] == estado), None)
+    salida = []
+    for i, e in enumerate(activos):
+        if idx is None:
+            fase = "future"
+        else:
+            fase = "done" if i < idx else ("current" if i == idx else "future")
+        salida.append({**e, "fase": fase})
+    return salida
+
+
+def _ctx_semaforo(cot, usuario) -> dict:
+    """Contexto del semáforo en la página de la cotización.
+
+    Se gatea con el MISMO permiso que el recuadro del proyecto
+    (`cotizaciones.editar`), para que el semáforo se comporte igual en las dos
+    pantallas: si lo puedes mover en una, lo puedes mover en la otra.
+    """
+    return {
+        "cot": cot,
+        "pasos": _pasos_semaforo(cot.estado),
+        "editable": puede_editar_cotizaciones(usuario),
+        "post_url": reverse("cotizaciones:semaforo", args=[cot.pk]),
+        "target": f"#{ID_SEMAFORO}",
+        "semaforo_id": ID_SEMAFORO,
+    }
+
+
+@login_required
+def semaforo(request, pk):
+    """Mueve el estatus desde el semáforo de la página de la cotización.
+
+    Devuelve el semáforo repintado (swap `outerHTML` sobre sí mismo). El resto
+    de la página —pastilla de estado, action bar— se pone al día en la siguiente
+    carga: mover el estatus no cambia ni las líneas ni los totales.
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para cambiar el estado.")
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    try:
+        services.marcar_estado_proyecto(cot, (request.POST.get("estado") or "").strip(),
+                                        request.user)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    if _es_htmx(request):
+        return render(request, "cotizaciones/_semaforo.html", _ctx_semaforo(cot, request.user))
+    return redirect("cotizaciones:detalle", pk=cot.pk)
 
 
 @login_required

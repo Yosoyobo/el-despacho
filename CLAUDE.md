@@ -6025,6 +6025,155 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Tarjeta-Producto + S-Visual-Cotizacion-Kanban ✅ — El N+1 que hacía lenta la tarjeta, el semáforo compartido y el color en la columna (2026-08-23, VERSION 2026.08.29)
+
+Los dos handoffs de Oscar (`docs/SPRINT-Tarjeta-Producto.md` y
+`docs/SPRINT-Visual-Cotizacion-Kanban.md`) en un solo despliegue. **Tres de los
+cinco puntos del primero se resolvieron midiendo, no programando**, y el hallazgo
+central contradice la hipótesis del propio handoff.
+
+**Trabajado en `git worktree` propio** (`agent/tarjeta-visual` desde `origin/main`):
+el árbol principal tenía el sprint de CI en vuelo sin commitear — regla de Ago12-B.
+
+- **Nota 13, «la tarjeta nueva tarda en aparecer» — la causa NO era el peso del
+  HTML.** El handoff proponía adelgazar el rerender por OOB (opción b) o devolver
+  sólo la tarjeta nueva (opción a). Medido en La Sede sobre el proyecto más cargado
+  (LC-0009, 9 líneas, catálogo de 75 productos y 55 proveedores): el formset pesa
+  **298 KB** y tarda **1.5 s**, y de esos 1.5 s **casi todo son 516 consultas a la
+  base**. La opción (b) ahorra **30 ms (2 %)** — se descartó por inútil, y la (a)
+  arriesgaba el bug de duplicación por otros 250 ms. La causa real:
+  `label_from_instance` del `<select>` de Producto pide `s.proveedor_default` de
+  **cada opción**, y eso toca el FK `proveedor_principal`; el queryset de la clase
+  sí lo precargaba, pero el que se **rearma para una línea ya guardada** (para que
+  un producto archivado siga siendo opción válida) había perdido ese
+  `select_related`. **51 consultas por tarjeta × 9 = 461.** Una línea de fix:
+  `.select_related("categoria", "proveedor_principal")` en
+  [forms.py](el-taller/apps/los_proyectos/forms.py) →
+  **516 → 57 consultas, 1.5 s → 0.33 s, y el HTML byte por byte idéntico**
+  (verificado en producción antes de escribir el cambio). Alcanza también al
+  detalle del proyecto, que pinta el mismo formset.
+- **Nota 12, el bote de basura: NO estaba hecho.** El handoff lo daba por
+  entregado en `origin/main`; los cuatro botones del archivo seguían con la ✕. Se
+  cambió **sólo** el de `producto-eliminar`: los otros tres quitan un RENGLÓN
+  (proceso de venta, impresión, gasto) y conservan la ✕ a propósito — el icono es
+  lo que distingue «quitar un renglón» de «quitar el producto», y hay test que lo
+  fija en los dos sentidos.
+- **Nota 8, dos tarjetas del mismo color: diagnosticada, Caso A, sin cambio de
+  código.** El handoff pedía datos antes de tocar nada y nombraba el faltante. Se
+  corrió su consulta de diagnóstico contra La Sede (sólo lectura): los **cinco**
+  choques que existen son `[TEXTO]` — los dos productos MENCIONAN el mismo color.
+  El más elocuente: **LC-0049 «Gorras Cruz Azul» tiene sus SEIS líneas en azul**
+  porque el nombre del cliente lleva «Azul»; y en LC-0017 dos productos salen
+  negros porque su especificación dice «negro». Es la regla que se pidió
+  funcionando («si el nombre menciona un color, usa ése»), así que —siguiendo el
+  handoff— se reporta y se cierra. Queda un test que fija la precedencia
+  (alias → catálogo → descripción; dentro de un texto, el que se menciona primero)
+  para que el diagnóstico siga siendo válido. **Lo que sí conviene decidir con
+  Oscar** (es producto, no código): que el color NO se lea del nombre del CLIENTE
+  ni de una especificación de 200 caracteres, sólo del nombre del producto.
+- **Nota 5, la imagen que no se actualizaba: verificada en producción.** Era la
+  caída de Drive del 21 de agosto. Las **12** fotos propias de línea que existen
+  tienen su original en El Almacén y una URL `/medios/…` servible — 12 de 12, con
+  altas recientes (LC-0056/57/59). Cerrada con evidencia, sin cambio de código.
+- **Nota 6 (la `@` de tareas): fuera de scope** por decisión de Oscar en el
+  handoff — pendiente de diseño.
+
+**Semáforo de la cotización (nota 9).** El pizza-tracker existía sólo en el
+recuadro del proyecto; la PÁGINA de la cotización mostraba una pastilla estática.
+Se extrajo a **`cotizaciones/_semaforo.html`** y ahora lo usan las DOS pantallas —
+eso es lo que garantiza que no divergan, y hay test que falla si el panel vuelve a
+tener su propia copia. Endpoint nuevo `cotizaciones:semaforo` (POST, devuelve el
+semáforo repintado por `outerHTML`); los pasos siguen saliendo del catálogo de
+Gerencia. El partial recibe `post_url`/`target` por contexto, así que cada pantalla
+repinta lo que le toca (el recuadro completo allá, sólo el semáforo aquí).
+
+> **OJO — el handoff se equivocaba en un punto y se conservó el comportamiento
+> vigente.** Decía: «sólo la última versión cambia de estatus; al extraerlo se
+> conserva». Esa regla es de junio y la **reemplazó D3** (LC 2026-07): cada versión
+> tiene su propio tracker editable, con `test_cambiar_estado_de_una_version_pasada`
+> fijándolo. Conservar «lo existente» era, entonces, lo contrario de lo que pedía
+> la nota. Se dejó como está (una versión pasada SÍ se puede mover, en las dos
+> pantallas) y hay un test que lo documenta con el porqué. Si algún día se decide
+> volver a la regla vieja, hay que cambiarlo en las dos pantallas y tirar aquel
+> test — no en una sola.
+
+**Estilo del Kanban (nota 1).** El color se mudó de la ficha a la columna:
+contorno de 1px del color (se fue la franja de 4px), **pestaña del nombre
+rellena**, fondo de columna blanco y **ficha sin contorno** (la separa su sombra,
+que subió de `theme-xs` a `theme-sm` porque 0.05 de alpha es invisible sobre
+blanco). Tres detalles que no eran obvios:
+- **El relleno de la pestaña se oscurece al 68 % del color, y es medido**: con el
+  color puro, el blanco sobre el ámbar `#f79009` queda en **2.35:1** y no se lee
+  (el peor de los ocho estados). Al 68 % el peor caso sube a **4.76:1**, arriba
+  del 4.5 de WCAG AA. El test **calcula el contraste** leyendo el porcentaje del
+  CSS, así que si alguien lo sube «para que se vea más el color», falla y dice por
+  qué.
+- **Los colores de texto viven en el CSS**, no en clases de Tailwind en la
+  plantilla: así la columna inactiva («fuera del tablero») puede pintar su pestaña
+  tenue sin pelearse con un `text-white` más específico.
+- **El contorno va inline** (lección de Ago18-R2: si la hoja falta, la columna no
+  se rompe), y por eso el modo inactivo también se resuelve en la plantilla — un
+  `style` gana a cualquier clase, así que el CSS no podría suavizarlo.
+
+**Tests**: `test_tarjeta_producto_ago22.py` (7) + `test_visual_cotizacion_kanban.py`
+(13). Los dos del N+1 **verificados contra el código sin arreglar**: con el
+`select_related` de vuelta a lo anterior, pintar cuesta **54 → 108** consultas al
+crecer el catálogo (con el fix, 9 → 9). Se actualizó
+`test_ajustes_ago18_r2::test_el_kanban_pinta_el_color_en_el_contorno_de_la_pastilla`
+→ `..._en_la_columna_no_en_la_ficha`: fijaba el contrato que este sprint cambió a
+propósito, así que se movió al nuevo en lugar de borrarlo. Regresión de los dos
+handoffs verde (370 en el radio), ruff limpio.
+
+**Una trampa que costó una hora y vale para cualquier test de consultas:** medir
+con un `render` de calentamiento sobre el MISMO formset **esconde el N+1**. El
+QuerySet del campo se queda con su `_result_cache` y, con él, cada instancia ya
+trae el FK resuelto: la segunda pasada da cero consultas y el problema desaparece
+de la medición aunque siga en el código. Hay que armar el formset **dentro** de la
+medición y calentar con uno desechable.
+
+**Deuda diseñada**: la decisión de producto sobre de dónde se lee el color
+(cliente / especificación) queda para Oscar; el semáforo de la página de la
+cotización se ve también en una anulada, con todos los pasos en gris y
+clickeables (es exactamente lo que ya hacía el recuadro del proyecto — se
+conservó para no inventar divergencia); las opciones (a) y (b) del handoff para
+el rerender quedan medidas y descartadas, así que si algún día vuelve a sentirse
+lento el siguiente paso es la (a) con el management form sincronizado, sabiendo
+que hay que resolver el reordenamiento del formset.
+### S-Destino-Duplicado ✅ — La raíz de «la ubicación no se guarda»: el campo iba DOS veces (2026-08-23, VERSION 2026.08.28)
+
+Tercer reporte del mismo síntoma de Oscar, y esta vez con **dos capturas que
+dieron el diagnóstico**: el formulario mostraba «Destino lat» y «Destino lng» como
+campos con etiqueta —siendo `HiddenInput`—, el geo-picker sí había resuelto el
+punto (`19.350339, -99.297987`, con el pin en el mapa)… y el detalle de la tarea
+decía «Sin ubicación fijada todavía».
+
+- **La causa**: el loop `{% for f in form %}` de
+  `pizarron/form_tarea.html` sólo saltaba `destino_etiqueta`, así que
+  `destino_lat`/`destino_lng` se renderizaban **ahí Y otra vez** junto al
+  geo-picker. Con dos inputs del mismo `name`:
+  `getElementById` devuelve el PRIMERO (el picker le escribe a ese) · el POST
+  manda los dos valores · **y Django se queda con el ÚLTIMO**, que iba vacío. El
+  `clean()` lo remataba poniendo ambos en `None`. **Nada falla y nada avisa: el
+  dato simplemente no llega.**
+- **El arreglo son 20 caracteres** en la condición del loop. Lo caro fue
+  encontrarlo: los dos sprints anteriores arreglaron el backend (que ya guardaba
+  bien — probado con POST a los dos caminos) y la alcanzabilidad del botón en
+  móvil (que también era un bug real, VERSION 2026.08.27). Este era un tercero,
+  distinto, en la misma frase de Oscar.
+- **El candado mira el HTML RENDERIZADO y cuenta** (`tests/taller/test_destino_no_duplicado.py`,
+  7 casos): revisar la plantilla a ojo es justo lo que falló tres veces. Con el
+  código de `main` reporta `{'destino_lat': 2, 'destino_lng': 2}`. Incluye un test
+  que fija el mecanismo (`QueryDict` con el campo repetido devuelve el último) y
+  extiende el candado a los otros dos formularios con mapa —**cliente y
+  proveedor, que sí los excluían bien**— porque el modo de falla es silencioso y
+  el siguiente que agregue un campo oculto no tiene por qué conocer esta
+  historia.
+
+**La regla que queda**: un campo de formulario renderizado dos veces se guarda
+vacío, en silencio. Si un dato «no se guarda» y el backend está probado, **contar
+cuántas veces aparece su `name=` en el HTML servido** antes de mirar cualquier
+otra cosa.
+
 ### S-Movil-Mandados ✅ — El tablero de reparto usable en el celular + el Dashboard revertido (2026-08-23, VERSION 2026.08.27)
 
 Ronda de Oscar sobre lo deployado media hora antes (2026.08.26), con captura del
@@ -6082,7 +6231,7 @@ medición no vale: `.hidden` ni existe).
 porque el backend guarde. Se abre en un teléfono y **se mide si el botón se puede
 picar** — con el CSS compilado, no con el del repo.
 
-### S-Rutas-Dueno ✅ — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.28)
+### S-Rutas-Dueno ✅ — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.30)
 
 Oscar con tres capturas: «las rutas y planeador todavía no quedan». Se diagnosticó
 **contra producción antes de tocar código** y el hallazgo dio vuelta al reporte:
@@ -6125,9 +6274,9 @@ pantallas, tres respuestas.
 - **`Tarea.esta_terminada`** guarda el sello de `completada_en`: el Kanban pintaba
   «✓ Completada · tardó…» sobre tarjetas paradas en la columna Pendiente, porque el
   sello queda pegado al reabrir.
-- **19 tests** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
-  el código sin arreglar: 16 de 19 fallan**. Suite completa **3199 pass** + los 3
-  conocidos de Redis.
+- **20 tests** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
+  el código sin arreglar: 16 de 19 fallan**. Suite completa tras integrar `main`:
+  **3226 pass** + los 3 conocidos de Redis.
 
 **Deuda diseñada**: el reparto no considera capacidad del vehículo ni volumen; la
 distancia sigue en línea recta (el orden sale bien, los km y horas son estimados);
@@ -7162,6 +7311,11 @@ ventana 36 s. Aunque el NUC compilara en cero, el pipeline bajaría de 27:44 a 2
   negocio**, peleándole los 4 núcleos a la app en vivo durante cada deploy (la carga
   llegó a 8 en las pruebas), para comprar ~45 s. Es una superficie mucho mayor que
   la llave acotada con `command=` del deploy, que es justo lo que Oscar pidió cuidar.
+
+**Resultado medido en producción** (primer deploy con el DAG nuevo, corrida
+`32688076548`): **8 min 49 s de punta a punta**, contra los 27 min 44 s de antes.
+Tests **194 s** (eran 1293 s, o sea **6.7×**), smoke 115 s —y ahora sí prueba la
+imagen que viaja—, build 51 s, mudanza 151 s, ventana 12 s, digests 8 s, ruff 9 s.
 
 **NO se bumpeó `VERSION`** (mismo criterio que S-Vigia-NUC): no cambia nada visible
 al usuario, así que no hay Novedades que escribir.
