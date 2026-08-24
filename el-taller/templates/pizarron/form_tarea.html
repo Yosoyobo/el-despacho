@@ -23,8 +23,17 @@
     {% if volver %}<input type="hidden" name="volver" value="{{ volver }}">{% endif %}
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {% comment %}
+            Los tres campos del destino se pintan ABAJO, junto al geo-picker, así
+            que aquí se saltan. Dejar pasar `destino_lat`/`destino_lng` los
+            renderizaba DOS VECES —una aquí con su etiqueta a la vista, siendo
+            campos ocultos, y otra abajo— y con dos inputs del mismo `name`
+            **Django se queda con el último**, que iba vacío: el picker ponía el
+            pin, el mapa lo mostraba, y la tarea se guardaba «sin ubicación»
+            (Oscar, 2026-08-23, tercer reporte del mismo síntoma).
+            {% endcomment %}
             {% for f in form %}
-                {% if f.name == 'destino_etiqueta' %}
+                {% if f.name == 'destino_etiqueta' or f.name == 'destino_lat' or f.name == 'destino_lng' %}
                 {% elif f.name == 'titulo' or f.name == 'descripcion' %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
                 {% else %}

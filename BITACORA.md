@@ -11631,7 +11631,7 @@ impacto. Ruff limpio.
 
 ---
 
-# S-Tarjeta-Producto + S-Visual-Cotizacion-Kanban — El N+1 escondido, el semáforo compartido y el color en la columna (2026-08-23, VERSION 2026.08.28)
+# S-Tarjeta-Producto + S-Visual-Cotizacion-Kanban — El N+1 escondido, el semáforo compartido y el color en la columna (2026-08-23, VERSION 2026.08.29)
 
 Los dos handoffs de Oscar en un despliegue: `docs/SPRINT-Tarjeta-Producto.md`
 (notas 12, 13, 8 y verificar la 5) y `docs/SPRINT-Visual-Cotizacion-Kanban.md`
@@ -11807,3 +11807,209 @@ Ruff limpio, candados de comentarios y de Novedades verdes.
   action bar no se repintan al mover el estatus por HTMX — se ponen al día en la
   siguiente carga. Mover el estatus no cambia líneas ni totales, así que no
   estorba.
+
+# S-CI-Rapido — El cuello del deploy no era el fierro: era el hasheo de contraseñas (2026-08-23, sin bump de VERSION)
+
+Oscar abrió con «refactorización de despliegue en git y productivo. ¿Qué puede
+cargar el NUC para compilar y desplegar más rápido? Ya no estamos limitados por
+hardware». La respuesta, medida antes de proponer nada, fue **nada** — y por eso
+este sprint terminó siendo otra cosa de la que parecía.
+
+## Dónde se iba el tiempo
+
+Último deploy verde real, 27 min 44 s:
+
+| Job | Duración | |
+|---|---|---|
+| **Tests (pytest)** | **21 min 33 s** | **78 % del total** |
+| Smoke Docker | 2 min 29 s | de los cuales 66 s son build duplicado |
+| Mudanza (deploy al NUC) | 2 min 28 s | |
+| Build & push ×3 | 45 s | |
+| Ruff · digests · ventana | 36 s | |
+
+Compilar ya tardaba **45 segundos**. Aunque el NUC lo hiciera en cero, el pipeline
+bajaría de 27:44 a 27:00. La premisa del pedido apuntaba al lugar equivocado.
+
+## La causa raíz: 600 000 iteraciones por usuario de prueba
+
+`PASSWORD_HASHERS` no estaba declarado en `tests/django_settings.py`, así que Django
+caía a su default de producción: PBKDF2 con **600 000 iteraciones**. La suite crea
+usuarios sin parar, y ese hasheo se estaba llevando el **~93 % del tiempo real de
+ejecución**. Un archivo de 26 tests pasaba 15 s hasheando y 1 s probando.
+
+Un renglón —MD5, **sólo** en el settings de PRUEBAS— deja la suite en **5 min 14 s
+en UN solo núcleo** y **2 min 55 s en paralelo**, ambos medidos en el NUC contra los
+**21 min 33 s** que tarda hoy en GitHub. Y conviene subrayar de qué lado está cada
+número: el NUC es el fierro **lento** de los dos, así que en el runner de GitHub
+saldrá mejor, no peor. Antes de tocarlo verifiqué que ningún test mira el hash
+en sí: `authenticate`, `check_password` y `set_password` se comportan idéntico, así
+que los ~197 archivos que ejercen login prueban exactamente lo mismo. Producción
+nunca lee ese archivo.
+
+## Por qué el NUC no tenía nada que aportar
+
+Es un **i5-10210U: 4 núcleos FÍSICOS** (8 hilos) a 1.6 GHz — un chip de laptop.
+Medido: **ocho workers suyos apenas superan 1.9× a UN worker de GitHub**, o sea que
+**por núcleo es más lento que el runner que reemplazaría**. RAM (14 G) y disco
+(93 G libres) le sobran; CPU no.
+
+Y las capas que viajan a GHCR en cada deploy pesan **~9 MB** — el GB del
+`pip install` está cacheado y no se re-transfiere—, así que tampoco había
+transferencia que ahorrar moviendo el build.
+
+La frase que resume el sprint, con los dos números medidos en la misma máquina:
+**un solo núcleo con el hasher arreglado (305 s) le gana a ocho sin arreglarlo
+(676 s)**.
+
+## Lo que se descartó, y por qué
+
+**`--nomigrations`** era el atajo obvio para los ~26 s que cuesta construir la base
+con **985 migraciones**. Está descartado: **383 llevan `RunPython`** sembrando
+permisos, cuentas contables, estados y chalanes. Saltarlas rompe cientos de tests.
+Queda anotado para que nadie lo reintente.
+
+**Un runner self-hosted en el NUC** ejecutaría código del repo como usuario del
+grupo `docker` —root efectivo— **en la máquina que corre el negocio**, peleándole
+los 4 núcleos a la app en vivo durante cada deploy (la carga llegó a 8 en las
+pruebas), para comprar ~45 s. Es una superficie mucho mayor que la llave acotada
+con `command=` del deploy, que es justo lo que Oscar pidió cuidar.
+
+## Lo que se paraleliza, y lo que NO
+
+El reparto va por **archivo** (`--dist loadfile`), no por test. No es un detalle de
+afinación: los tests marcados `redis` sí comparten estado real — los 4 de
+`test_portavoz_worker.py` borran las mismas claves `COLA`/`DLQ` de la db 15, y otro
+tanto hacen `test_ratelimit.py` y `test_aviso_deploy.py`. Repartidos por test
+podrían correr a la vez en workers distintos y pisarse. Por archivo es imposible
+por construcción, y como cada archivo usa claves distintas entre sí, agruparlos
+basta. Era una intermitencia que se habría **introducido** al paralelizar.
+
+## xdist destapó un bug real, no uno suyo
+
+Al repartir la suite en workers, un test empezó a fallar de forma intermitente. La
+causa no era xdist: **el caché de Django vive en el PROCESO y el rollback de cada
+test no lo toca**, así que un test heredaba alias cacheados de otro (`mapa_alias`
+del catálogo). En serie el orden lo escondía; repartir los tests distinto lo sacó a
+la luz.
+
+Se arregló donde correspondía: fixture autouse `_cache_aislada` en `conftest.py`
+—mismo patrón que el `_almacen_aislado` que ya existía para el mismo tipo de
+problema— más `CACHES` declarado **explícito** como LocMemCache. Eso último no es
+adorno: sin declararlo, si algún día alguien apunta el caché a Redis, el fixture
+empezaría a vaciar una base REAL entre test y test, la misma donde vive
+`portavoz:cola`.
+
+**Estabilidad medida, no supuesta:** 9 corridas limpias de la suite completa en el
+NUC — 1 en serie (3192 passed, 5:14) y 8 en paralelo (3192 passed, ~2:55). La única
+con fallos (2) cayó mientras El Taller de producción rearrancaba en esos mismos 4
+núcleos, y no se repitió en las 8 restantes. Más los candados del repo
+(`test_ayuda_novedades`, `test_no_renderiza_comentarios` en ambas apps) y `ruff`.
+
+## El smoke test probaba una imagen que no era la que se desplegaba
+
+Hallazgo lateral al leer el pipeline: `smoke_docker` construía las 3 imágenes por su
+cuenta (66 s, sin caché) y el job `build` las volvía a construir para GHCR. O sea
+que el smoke daba verde sobre un artefacto y a producción viajaba **otro**. Nunca se
+probaba lo que ship*ea*.
+
+Ahora `build` va **antes**, el smoke **baja esas mismas imágenes** con un
+`docker-compose.ci.yml` efímero (`image:` fijo + `build: null`, el patrón de
+`docker-compose.prod.yml`) y `actualizar_digests` cuelga del smoke, así que nada
+llega al NUC sin pasar por él. El ahorro de tiempo es menor (~20-30 s): esto se hizo
+por **corrección**, no por velocidad. Verificado que `la-recepcion` se alcanza pese
+a su `profiles: ["s5"]` cuando se la nombra explícita.
+
+## Un incidente propio durante la verificación
+
+Limpiando mis contenedores de prueba en el NUC usé
+`docker ps --filter ancestor=<imagen> | xargs docker kill` y **tumbé El Taller de
+producción** — corre esa misma imagen. Estuvo abajo ~40 s hasta que lo levanté y
+confirmé `/ping` 200 en Taller y Gerencia. La lección es del fierro, no del comando:
+**en el NUC producción y las pruebas comparten imagen, así que filtrar por imagen
+nunca distingue una de otra**; hay que ir por nombre explícito.
+
+Del mismo tipo: dos arneses de medición corriendo a la vez con el mismo nombre de
+contenedor (`redis-ci`) se borran Redis entre sí. La limpieza de uno mató el del
+otro a media suite y produjo corridas con 122 y 436 fallos que **parecían
+inestabilidad de xdist y no lo eran**. Un trabajo a la vez y nombres únicos; y
+cuando un número no es creíble, se persigue hasta la causa antes de reportarlo.
+
+También quedó confirmado que el Redis de producción **no publica puerto al host**
+(sólo lo expone en la red de Docker), así que ninguna de estas pruebas lo tocó.
+
+## Deuda que se deja a la vista, sin tocar
+
+`_emitir_noop` en `conftest.py` tiene una lista **hardcodeada y ya obsoleta** de
+módulos donde parchea `emitir`. Con Redis abajo, los tests que lo llaman desde
+módulos fuera de la lista (p. ej. `apps.cotizaciones.services`) dan *error* confuso
+en vez de quedar neutralizados — es el origen del folclore de «los 3 fallos locales
+de Redis». En CI nunca muerde porque Redis es un servicio con healthcheck. Se deja
+fuera a propósito: cambia cómo corren ~3 000 tests y no pertenece a un sprint de CI.
+
+**No se bumpeó `VERSION`**: no cambia nada visible al usuario, así que no hay
+Novedades que escribir (mismo criterio que S-Vigia-NUC).
+
+---
+
+# S-Destino-Duplicado — El campo iba dos veces (2026-08-23, VERSION 2026.08.28)
+
+Tercer reporte de Oscar del mismo síntoma: «las tareas y mandados siguen sin
+actualizar la ubicación». Sus dos capturas dieron el diagnóstico completo.
+
+## Lo que mostraban las capturas
+
+1. El formulario de tarea con **«Destino lat» y «Destino lng» como campos con
+   etiqueta y un hueco vacío al lado** — siendo `HiddenInput`, o sea que algo los
+   estaba pintando por el camino genérico.
+2. El geo-picker **sí** había resuelto el punto: `19.350339, -99.297987`, con el
+   pin puesto en el mapa.
+3. Y el detalle de la tarea guardada: **«Sin ubicación fijada todavía.»**
+
+## La causa
+
+El loop `{% for f in form %}` de `pizarron/form_tarea.html` saltaba
+`destino_etiqueta` y **nada más**, así que `destino_lat`/`destino_lng` se
+renderizaban ahí Y otra vez abajo, junto al picker. Dos inputs con el mismo
+`name` y el mismo `id`:
+
+- `getElementById('id_destino_lat')` devuelve el **primero** → el picker le
+  escribe a ése (de ahí que el mapa mostrara las coordenadas);
+- el POST manda `destino_lat=19.350339&destino_lat=`;
+- **Django se queda con el último** → cadena vacía → `None`;
+- y el `clean()` lo remata poniendo las dos en `None`.
+
+Nada falla, nada avisa. El dato simplemente no llega.
+
+## Por qué costó tres sprints
+
+Los tres reportes de Oscar decían la misma frase y eran **tres bugs distintos**:
+
+| | Qué era | Cuándo |
+|---|---|---|
+| 1 | `fijar_destino` exigía coordenadas y perdía la dirección escrita | Ago23 (2026.08.25) |
+| 2 | En el celular no se alcanzaba el botón (x=682 en 390px) | Ago23 (2026.08.27) |
+| 3 | **El campo se renderizaba dos veces** | este (2026.08.28) |
+
+Los dos primeros eran reales y están arreglados. El tercero es el que hacía que
+el síntoma siguiera intacto en el escritorio de Oscar.
+
+## El candado
+
+`tests/taller/test_destino_no_duplicado.py` (7 casos) **mira el HTML renderizado
+y cuenta** cuántas veces aparece cada `name=`. Revisar la plantilla a ojo es
+exactamente lo que falló tres veces. Con el código de `main` el test reporta
+`{'destino_lat': 2, 'destino_lng': 2}`.
+
+Incluye además un test que fija el **mecanismo** (`QueryDict` con el campo
+repetido devuelve el último valor) y extiende el candado a los otros dos
+formularios con mapa — cliente y proveedor, que sí los excluían bien — porque el
+modo de falla es silencioso y el siguiente que agregue un campo oculto a uno de
+esos forms no tiene por qué conocer esta historia.
+
+110 verdes en el radio de impacto. Ruff limpio.
+
+## La regla que queda
+
+Un campo de formulario renderizado dos veces se guarda vacío, en silencio. Si un
+dato «no se guarda» y el backend ya está probado, **contar cuántas veces aparece
+su `name=` en el HTML servido** antes de mirar cualquier otra cosa.

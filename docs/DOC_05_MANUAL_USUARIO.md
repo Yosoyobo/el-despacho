@@ -51,6 +51,22 @@ molesta, es una decisión de cómo quieres que se lea y la platicamos.
 
 ---
 
+## Novedades — La ubicación de una tarea ya se guarda (23 de agosto de 2026)
+
+Al poner el **Lugar** de una entrega o recolección, el buscador encontraba la
+dirección y el mapa ponía el pin — pero al guardar la tarea quedaba «Sin ubicación
+fijada todavía». Ya quedó.
+
+La causa: en el formulario de tarea del proyecto, los dos campos del punto en el
+mapa se estaban dibujando **dos veces** (por eso se veían esas etiquetas raras,
+«Destino lat» y «Destino lng», con un hueco vacío al lado). Al guardar, el sistema
+se quedaba con la copia vacía y tiraba las coordenadas.
+
+Ahora el pin llega completo, así que el planeador de rutas puede ordenar la vuelta
+y el botón de «cómo llegar» aparece.
+
+---
+
 ## Novedades — Los mandados, usables desde el celular (23 de agosto de 2026)
 
 **El tablero de reparto ya sirve en el teléfono**

@@ -1,5 +1,8 @@
 .env
 .env.local
+# Lo genera el smoke test de El Mensajero en el runner para apuntar el compose
+# a las imágenes recién publicadas. Es efímero: nunca se commitea.
+docker-compose.ci.yml
 *.pyc
 __pycache__/
 *.egg-info/

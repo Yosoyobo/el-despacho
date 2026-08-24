@@ -30,3 +30,7 @@ google-auth==2.36.0
 pytest==8.3.4
 pytest-django==4.9.0
 pytest-cov==6.0.0
+# Reparte la suite entre procesos. Cada worker levanta su propia base SQLite
+# `:memory:`, así que no se pisan; la suite no tiene tests con
+# `transaction=True` que obliguen a serializar.
+pytest-xdist==3.6.1

@@ -76,6 +76,22 @@ def _almacen_aislado():
     almacen.olvidar_meta()
 
 
+@pytest.fixture(autouse=True)
+def _cache_aislada():
+    """El caché de Django vive en el PROCESO y el rollback de cada test no lo
+    toca: un test que cachea algo derivado de filas que luego desaparecen se lo
+    hereda al siguiente. Serial el orden lo escondía; con xdist los tests se
+    reparten distinto y salía a la luz (`mapa_alias` del catálogo fue el caso).
+
+    Aislarlo aquí hace la suite determinista sin importar el orden ni cuántos
+    workers corran. Es barato: LocMemCache, declarado en `django_settings`."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def usuario_factory(db):
     """Crea Usuarios de prueba con rol arbitrario."""
