@@ -6231,7 +6231,7 @@ medición no vale: `.hidden` ni existe).
 porque el backend guarde. Se abre en un teléfono y **se mide si el botón se puede
 picar** — con el CSS compilado, no con el del repo.
 
-### S-Rutas-Dueno ✅ — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.30)
+### S-Rutas-Dueno ✅ — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.31)
 
 Oscar con tres capturas: «las rutas y planeador todavía no quedan». Se diagnosticó
 **contra producción antes de tocar código** y el hallazgo dio vuelta al reporte:
@@ -6274,7 +6274,12 @@ pantallas, tres respuestas.
 - **`Tarea.esta_terminada`** guarda el sello de `completada_en`: el Kanban pintaba
   «✓ Completada · tardó…» sobre tarjetas paradas en la columna Pendiente, porque el
   sello queda pegado al reabrir.
-- **20 tests** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
+- **El aviso de los sobrantes ya no afirma la causa.** Decía «no cupieron: todas
+  las rutas llegaron a su tope»; con el reparto nuevo hay otro camino a
+  `sobrantes` (una entrega sin dueño cuando ningún contexto acepta) y ahí esa
+  causa es falsa — el mismo defecto que el panel. Ahora describe el hecho y deja
+  la causa al aviso que la conoce.
+- **21 tests** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
   el código sin arreglar: 16 de 19 fallan**. Suite completa tras integrar `main`:
   **3226 pass** + los 3 conocidos de Redis.
 

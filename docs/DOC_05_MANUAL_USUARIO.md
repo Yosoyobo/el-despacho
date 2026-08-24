@@ -50,6 +50,10 @@ archivadas: una vuelta arrancaba con dos entregas archivadas de junio. Ahora
 muestra lo de hoy y lo atrasado que sigue pendiente — lo de la semana que entra,
 no.
 
+Y en la misma línea: el aviso de las entregas que no entraron a ninguna ruta ya
+**describe el hecho** en vez de afirmar una causa que puede no ser la real (el tope
+de paradas es la razón habitual, pero no la única).
+
 **Detalle:** en el tablero de Tareas ya no sale «✓ Completada» sobre una tarjeta
 parada en la columna Pendiente. Era el sello de cuando estuvo terminada, que se
 quedaba pegado al reabrirla.

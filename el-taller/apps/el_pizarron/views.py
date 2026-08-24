@@ -1260,10 +1260,14 @@ def rutas_planear(request):
                 "sabe a dónde van: fíjale el destino en el mapa del mandado.",
             )
         if res["sobrantes"]:
+            # Se describe el HECHO, no la causa. El tope de paradas es la razón
+            # habitual, pero no la única (si nadie es elegible, tampoco entran) y
+            # afirmar una causa equivocada es el bug que este sprint vino a
+            # arreglar. El aviso de `sin_permiso` explica el otro caso.
             messages.warning(
                 request,
-                f"{len(res['sobrantes'])} entrega(s) no cupieron: todas las rutas "
-                "llegaron a su tope de paradas.",
+                f"{len(res['sobrantes'])} entrega(s) no entraron a ninguna ruta. "
+                "Lo más común es que las rutas llegaran a su tope de paradas.",
             )
         if res.get("sin_permiso"):
             # Se le respetó su mandado (manda quien ya lo trae), pero conviene

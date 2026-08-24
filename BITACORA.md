@@ -12032,7 +12032,7 @@ su `name=` en el HTML servido** antes de mirar cualquier otra cosa.
 
 ---
 
-# S-Rutas-Dueno — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.30)
+# S-Rutas-Dueno — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.31)
 
 Oscar, con tres capturas: «las rutas y planeador todavía no quedan». Se
 diagnosticó **contra producción** antes de tocar código, y el hallazgo dio vuelta
@@ -12101,6 +12101,15 @@ vez de quitárselo en silencio.
   tarjetas paradas en la columna Pendiente, porque el sello queda pegado al
   reabrir.
 
+## Un aviso del mismo tipo, cazado al revisar el propio diff
+
+El mensaje de las entregas sobrantes **afirmaba** «no cupieron: todas las rutas
+llegaron a su tope de paradas». Con el reparto nuevo hay otro camino a `sobrantes`
+—una entrega sin dueño cuando ningún contexto acepta trabajo— y ahí esa causa es
+falsa. Es el mismo defecto que este sprint vino a arreglar en el panel, así que el
+aviso pasó a **describir el hecho** («no entraron a ninguna ruta») y dejar la causa
+al aviso que sí la conoce. Test verificado contra el código sin arreglar.
+
 ## Producción
 
 - Se le dio a Oscar `PermisoUsuario(runner, recibir)` — lo pidió explícitamente.
@@ -12111,7 +12120,7 @@ vez de quitárselo en silencio.
 
 ## Tests
 
-**20 nuevos** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
+**21 nuevos** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
 el código sin arreglar: 16 de 19 fallan** (las 3 que pasan son red para el
 futuro). Regresión: los 30 de `test_planeador_rutas.py` + pizarrón + mandados +
 cercanía + plegado móvil + los candados de comentarios y de Novedades. Suite
