@@ -104,6 +104,22 @@ class ConfiguracionDocumento(models.Model):
         ),
     )
 
+    # ── Encabezado y marca de agua ──────────────────────────────────────────
+    encabezado_texto = models.CharField(
+        max_length=120, blank=True, default="",
+        help_text=(
+            "Texto chico arriba de cada hoja, alineado a la derecha. Útil para el "
+            "nombre del despacho o un teléfono. Vacío = sin encabezado."
+        ),
+    )
+    marca_borrador = models.CharField(
+        max_length=30, blank=True, default="BORRADOR",
+        help_text=(
+            "Se estampa cruzada en las cotizaciones que aún no se han enviado, para "
+            "que no se confundan con las que ya salieron. Vacío = sin marca."
+        ),
+    )
+
     # ── Tipografía del cuerpo ───────────────────────────────────────────────
     interlineado = models.DecimalField(
         max_digits=3, decimal_places=2, default=1.02,
@@ -170,6 +186,7 @@ class ConfiguracionDocumento(models.Model):
             "margen_pie_pt": 20,
             "margen_encabezado_pt": 12,
             "pie_texto": self.pie_texto,
+            "encabezado_texto": self.encabezado_texto,
             "numerar_paginas": self.numerar_paginas,
             "ancho_in": ancho_in,
             "alto_in": alto_in,

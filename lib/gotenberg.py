@@ -112,6 +112,60 @@ def _pie_html(texto: str) -> str:
     )
 
 
+def _marca_agua_css(texto: str) -> str:
+    """CSS que estampa una marca en TODAS las hojas.
+
+    Se hace con CSS y no con un módulo del servicio porque `position: fixed`
+    en modo impresión Chromium lo repite en cada página — que es justo lo que
+    se quiere— y no depende de que Gotenberg traiga la capacidad.
+
+    Va detrás del contenido (`z-index: -1`) y sin capturar el ratón: una marca
+    que tapa lo que hay debajo estorba en vez de avisar.
+    """
+    if not texto:
+        return ""
+    seguro = (texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    return (
+        "<style>"
+        "  .lc-marca-agua{"
+        "    position: fixed; top: 45%; left: 0; right: 0;"
+        "    text-align: center; z-index: -1; pointer-events: none;"
+        "    font-family: Arial, Helvetica, sans-serif; font-weight: bold;"
+        "    font-size: 90pt; color: #d92d20; opacity: .10;"
+        "    transform: rotate(-30deg); letter-spacing: .1em;"
+        "  }"
+        "</style>"
+        f'<div class="lc-marca-agua">{seguro}</div>'
+    )
+
+
+def _inyectar(html: str, extra: str) -> str:
+    """Mete `extra` justo después de <body>, o al principio si no hay body."""
+    if not extra:
+        return html
+    bajo = html.lower()
+    i = bajo.find("<body")
+    if i == -1:
+        return extra + html
+    cierre = html.find(">", i)
+    if cierre == -1:
+        return extra + html
+    return html[:cierre + 1] + extra + html[cierre + 1:]
+
+
+def _encabezado_html(texto: str) -> str:
+    """Encabezado repetido en cada hoja. Chromium no hereda los estilos del
+    documento aquí, así que lleva los suyos."""
+    return (
+        "<html><head><style>"
+        "body{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:8pt;color:#666}"
+        ".fila{width:100%;padding:0 .55in;text-align:right}"
+        "</style></head><body>"
+        f'<div class="fila">{texto}</div>'
+        "</body></html>"
+    )
+
+
 def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
     """Convierte `html` y devuelve los bytes del PDF. **Lanza** si falla.
 
@@ -123,13 +177,21 @@ def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
     (`PAGINA_DOCUMENTO`): márgenes en puntos y un texto de pie.
     """
     pagina = pagina or {}
+
+    # La marca de agua se inyecta en el propio HTML: así se repite en todas las
+    # hojas y no depende de que el servicio traiga la capacidad.
+    marca = (pagina.get("marca_agua") or "").strip()
+    if marca:
+        html = _inyectar(html, _marca_agua_css(marca))
+
     partes: list[tuple[str, str, bytes, str]] = [
         ("files", "index.html", html.encode("utf-8"), "text/html"),
     ]
 
     campos = {
-        "paperWidth": str(ANCHO_CARTA_IN),
-        "paperHeight": str(ALTO_CARTA_IN),
+        # El tamaño sale del ajuste de La Gerencia; carta si nadie lo cambió.
+        "paperWidth": str(pagina.get("ancho_in") or ANCHO_CARTA_IN),
+        "paperHeight": str(pagina.get("alto_in") or ALTO_CARTA_IN),
         "marginTop": str(_pt_a_pulgadas(pagina.get("margen_superior_pt"), 1.0)),
         "marginBottom": str(_pt_a_pulgadas(pagina.get("margen_inferior_pt"), 1.0)),
         "marginLeft": str(_pt_a_pulgadas(pagina.get("margen_izquierdo_pt"), 1.0)),
@@ -145,19 +207,82 @@ def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
     if pie or pagina.get("numerar_paginas", True):
         partes.append(("files", "footer.html", _pie_html(pie).encode("utf-8"), "text/html"))
 
-    cuerpo, content_type = _multipart(campos, partes)
+    encabezado = (pagina.get("encabezado_texto") or "").strip()
+    if encabezado:
+        partes.append(("files", "header.html",
+                       _encabezado_html(encabezado).encode("utf-8"), "text/html"))
 
+    # Metadatos: sin esto las propiedades del archivo dicen «Untitled», y un PDF
+    # sin título es imposible de encontrar dentro de una carpeta con cien.
+    meta = pagina.get("metadatos") or {}
+    if meta:
+        import json as _json
+
+        # `ensure_ascii=False` a propósito: con el default, «Cotización» viaja
+        # como «Cotizaci\u00f3n». El receptor lo desescapa bien, pero deja los
+        # metadatos ilegibles para cualquiera que mire el cuerpo de la petición
+        # — y el acento no tiene por qué perderse en el camino.
+        campos["metadata"] = _json.dumps(
+            {k: v for k, v in meta.items() if v}, ensure_ascii=False)
+
+    return _postear("/forms/chromium/convert/html", campos, partes)
+
+
+def unir(pdfs: list[bytes]) -> bytes:
+    """Junta varios PDF en uno solo, en el orden en que llegan. **Lanza** si falla.
+
+    Sirve para mandarle al cliente un archivo en vez de tres adjuntos: la
+    cotización, la ficha técnica y la garantía. Quien recibe tres adjuntos abre
+    el primero que ve.
+    """
+    utiles = [p for p in pdfs if p]
+    if len(utiles) < 2:
+        raise ValueError("hacen falta al menos dos PDF para unir")
+
+    partes = [("files", f"{i:03d}.pdf", contenido, "application/pdf")
+              for i, contenido in enumerate(utiles)]
+    return _postear("/forms/pdfengines/merge", {}, partes)
+
+
+#: Lo que LibreOffice sabe convertir y de verdad llega por correo aquí.
+EXTENSIONES_OFFICE = (
+    ".doc", ".docx", ".odt", ".rtf",
+    ".xls", ".xlsx", ".ods", ".csv",
+    ".ppt", ".pptx", ".odp",
+)
+
+
+def es_office(nombre: str) -> bool:
+    return (nombre or "").lower().endswith(EXTENSIONES_OFFICE)
+
+
+def office_a_pdf(contenido: bytes, nombre: str) -> bytes:
+    """Convierte un Word, Excel o PowerPoint a PDF. **Lanza** si falla.
+
+    Lo hace LibreOffice, que viene en la misma imagen. Sirve para lo que llega
+    por correo de proveedores y clientes: se archiva como PDF en vez de quedar
+    como un archivo que sólo abre quien tenga Office.
+    """
+    if not contenido:
+        raise ValueError("el archivo llegó vacío")
+    if not es_office(nombre):
+        raise ValueError(f"«{nombre}» no es un documento de Office")
+    return _postear("/forms/libreoffice/convert", {},
+                    [("files", nombre, contenido, "application/octet-stream")])
+
+
+def _postear(ruta: str, campos: dict, partes: list) -> bytes:
+    """Manda un multipart y devuelve los bytes de la respuesta."""
     import urllib.request
 
+    cuerpo, content_type = _multipart(campos, partes)
     req = urllib.request.Request(
-        f"{BASE_URL}/forms/chromium/convert/html",
-        data=cuerpo,
-        headers={"Content-Type": content_type},
-        method="POST",
+        f"{BASE_URL}{ruta}", data=cuerpo,
+        headers={"Content-Type": content_type}, method="POST",
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT_CONVERSION) as r:
         if r.status != 200:
-            raise RuntimeError(f"gotenberg respondió {r.status}")
+            raise RuntimeError(f"gotenberg respondió {r.status} en {ruta}")
         return r.read()
 
 
@@ -200,7 +325,11 @@ def olvidar_salud() -> None:
 
 __all__ = [
     "BASE_URL",
+    "EXTENSIONES_OFFICE",
     "disponible",
+    "es_office",
     "html_a_pdf",
+    "office_a_pdf",
     "olvidar_salud",
+    "unir",
 ]

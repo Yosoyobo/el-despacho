@@ -63,6 +63,10 @@ PIEZAS: tuple[dict[str, Any], ...] = (
         "sonda": lambda: _http("http://n8n:5678/healthz"),
         "entrada": "http://100.121.244.5:5678",
         "ajustes": None,
+        "acceso": (
+            "La primera vez pide crear una cuenta de dueño: el correo y la "
+            "contraseña los eliges tú y quedan guardados dentro de n8n."
+        ),
     },
     {
         "clave": "paperless",
@@ -75,6 +79,10 @@ PIEZAS: tuple[dict[str, Any], ...] = (
         "sonda": lambda: _http("http://paperless:8000/api/", ok_hasta=500),
         "entrada": "http://100.121.244.5:8204",
         "ajustes": None,
+        "acceso": (
+            "Usuario «admin». La contraseña se generó al instalarlo y vive en el "
+            "archivo .env del servidor, en PAPERLESS_ADMIN_PASSWORD."
+        ),
     },
 )
 
@@ -111,6 +119,7 @@ def estado() -> list[dict[str, Any]]:
             "detalle": p["detalle"],
             "entrada": p["entrada"],
             "ajustes": p["ajustes"],
+            "acceso": p.get("acceso", ""),
             "vivo": vivo,
         })
     return salida

@@ -61,6 +61,11 @@ if [ -f docker-compose.servicios.yml ]; then
     # contraseña, pero el demonio de Docker sí corre como root. Es el camino
     # que funciona en cualquier máquina, con sudo o sin él.
     docker run --rm -v "$(pwd)/data/n8n:/d" alpine:3 chown -R 1000:1000 /d >/dev/null 2>&1 || true
+    # El Redis de Paperless escribe con SU usuario (999). Con otro dueño no
+    # puede guardar y bloquea todas las escrituras: Paperless da 500 sin decir
+    # por qué. No meter esta carpeta en el chown de arriba.
+    mkdir -p data/paperless/redis
+    docker run --rm -v "$(pwd)/data/paperless/redis:/d" alpine:3 chown -R 999:999 /d >/dev/null 2>&1 || true
     # OSRM sólo se levanta cuando su mapa está cocido; si no, no puede arrancar.
     if [ -f data/osrm/mexico-latest.osrm.properties ]; then
       COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}osrm"

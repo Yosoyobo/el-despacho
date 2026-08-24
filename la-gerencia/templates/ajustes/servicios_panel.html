@@ -44,6 +44,12 @@ archivo de configuración lo declare.
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ s.oficio }}</p>
         <p class="mt-1.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ s.detalle }}</p>
 
+        {% if s.acceso %}
+        <p class="mt-3 rounded-lg bg-gray-50 p-2.5 text-[11px] leading-relaxed text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+            <strong>Cómo entrar:</strong> {{ s.acceso }}
+        </p>
+        {% endif %}
+
         <div class="mt-4 flex flex-wrap items-center gap-3 text-xs">
             {% if s.ajustes %}
             <a href="{% url s.ajustes %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Ajustes →</a>

@@ -5,6 +5,38 @@
 
 ---
 
+## Novedades — Los documentos ganan marca de agua, encabezado y más (24 de agosto de 2026)
+
+**Las cotizaciones sin enviar salen marcadas**
+
+Una cotización que todavía no se manda ahora sale con **BORRADOR** estampado en
+diagonal, tenue, en todas sus hojas. Al enviarla, el documento sale limpio.
+
+Antes una cotización sin enviar y una ya enviada se veían **idénticas**, y
+confundirlas frente a un cliente es de los errores que salen caros. El texto se
+puede cambiar —o quitar— en *Gerencia → Documentos*.
+
+**Encabezado en todas las hojas**
+
+Además del pie, ahora se puede poner un texto chico arriba de cada hoja: el
+nombre del despacho, un teléfono, lo que sirva. También se configura en esa
+misma pantalla.
+
+**Y el archivo ya dice de qué es**
+
+Las propiedades del PDF llevan el título del documento, el proyecto y el
+cliente. Antes decían «Untitled», que hace imposible encontrar un archivo dentro
+de una carpeta con cien.
+
+**Dos capacidades nuevas por dentro**
+
+El sistema ya puede **unir varios PDF en uno** (para mandar la cotización y sus
+anexos en un solo archivo) y **convertir Word y Excel a PDF** sin abrir Office.
+Todavía no están conectadas a ningún botón; quedan listas para el siguiente
+paso.
+
+---
+
 ## Novedades — Cada pieza nueva ya tiene su pantalla (24 de agosto de 2026)
 
 **Dos renglones nuevos en el menú de La Gerencia**
