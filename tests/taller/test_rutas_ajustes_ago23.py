@@ -287,6 +287,32 @@ def test_rehacer_desde_la_pantalla(client, proyecto_factory, usuario_factory):
     assert Ruta.objects.get(fecha=HOY).pk != vieja
 
 
+def test_el_aviso_de_lo_que_no_entro_no_afirma_una_causa_equivocada(
+        client, proyecto_factory, usuario_factory):
+    """Sin nadie elegible, una entrega sin dueño no entra — y NO es por el tope.
+
+    Afirmar la causa equivocada en un aviso es exactamente el bug de este
+    sprint, así que el mensaje describe el hecho y deja la causa al aviso que
+    sí la conoce (`sin_permiso`).
+    """
+    p = proyecto_factory(estado="en_proceso_diseno")
+    jefe = usuario_factory(rol="super_admin", email="aviso@lc.mx")
+    dueno = usuario_factory(rol="super_admin", email="aviso-d@lc.mx")
+    _mandado(p, STAMPA, titulo="Suyo", runner=dueno)   # crea el contexto del dueño
+    _mandado(p, NINOMEANDO, titulo="Libre")            # nadie elegible la puede tomar
+
+    client.force_login(jefe)
+    r = client.post("/rutas/planear", {
+        "fecha": HOY.isoformat(), "origen_modo": "runner_abierta",
+    }, follow=True)
+    textos = [str(m) for m in r.context["messages"]]
+
+    assert any("no entraron a ninguna ruta" in t for t in textos), textos
+    assert not any("no cupieron" in t for t in textos), textos
+    # Y el aviso que SÍ sabe la causa está ahí para explicarla.
+    assert any("no tiene el permiso de recibir mandados" in t for t in textos), textos
+
+
 # ── 4. «Mi ruta de hoy» es de hoy ─────────────────────────────────────────────
 
 def test_mi_ruta_no_trae_mandados_archivados(proyecto_factory, usuario_factory):
