@@ -29,7 +29,7 @@ def banner_deploy(request):
         {
             "hay_deploy_en_curso": bool(sha),
             "deploy_commit_sha": sha,
-            "nivel_aviso": nivel_aviso(),
+            "nivel_aviso": nivel_aviso(sha),
         },
     )
 
@@ -46,6 +46,6 @@ def semaforo_deploy(request):
         {
             "hay_deploy_en_curso": bool(sha),
             "deploy_commit_sha": sha,
-            "nivel_aviso": nivel_aviso(),
+            "nivel_aviso": nivel_aviso(sha),
         },
     )

@@ -215,3 +215,19 @@ class _RedisFalso:
         """La fixture autouse limpia la clave en el teardown; sin esto, el
         test pasa y el teardown truena."""
         self.datos.pop(k, None)
+
+
+def test_el_context_processor_no_relee_la_bandera(monkeypatch):
+    """Corre en CADA petición de las tres apps: releer la bandera aquí
+    duplicaría el viaje a Redis del camino caliente sin ganar nada."""
+    from lib import aviso_deploy as ad
+
+    lecturas = {"n": 0}
+
+    def _contar():
+        lecturas["n"] += 1
+        return None
+
+    monkeypatch.setattr(ad, "obtener_deploy_en_curso", _contar)
+    ad.contexto_aviso_deploy(request=None)
+    assert lecturas["n"] == 1, "se leyó la bandera más de una vez por petición"

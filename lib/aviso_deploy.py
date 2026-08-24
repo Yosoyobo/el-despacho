@@ -44,6 +44,9 @@ TTL_NIVEL = 20  # segundos que dura el veredicto de las sondas
 NIVEL_AMBAR = "ambar"
 NIVEL_ROJO = "rojo"
 
+#: Centinela para distinguir «no me pasaron la bandera» de «no hay bandera».
+_SIN_LEER = object()
+
 #: Servicios que se sondean para decidir el rojo. Se leen de `AVISO_SONDAS`
 #: (URLs separadas por coma) para poder sumar los servicios nuevos del NUC
 #: sin tocar este archivo.
@@ -129,13 +132,19 @@ def _calcular_nivel() -> str:
     return NIVEL_AMBAR
 
 
-def nivel_aviso() -> str | None:
+def nivel_aviso(sha: str | None = _SIN_LEER) -> str | None:
     """Nivel del banner: `ambar`, `rojo`, o None si no hay ventana abierta.
 
     El veredicto se guarda en Redis unos segundos (`TTL_NIVEL`) para que el
     polling de todas las pestañas comparta el mismo trabajo.
+
+    `sha` permite pasar la bandera ya leída. Esto corre en el context
+    processor, o sea en CADA petición de las tres apps: releerla aquí
+    duplicaría el viaje a Redis del camino caliente sin ganar nada.
     """
-    if not obtener_deploy_en_curso():
+    if sha is _SIN_LEER:
+        sha = obtener_deploy_en_curso()
+    if not sha:
         return None
     try:
         cli = _client()
@@ -160,7 +169,7 @@ def contexto_aviso_deploy(request) -> dict:
     return {
         "hay_deploy_en_curso": bool(sha),
         "deploy_commit_sha": sha,
-        "nivel_aviso": nivel_aviso(),
+        "nivel_aviso": nivel_aviso(sha),
     }
 
 
