@@ -5,6 +5,64 @@
 
 ---
 
+## Novedades — Cada pieza nueva ya tiene su pantalla (24 de agosto de 2026)
+
+**Dos renglones nuevos en el menú de La Gerencia**
+
+- **Servicios** — qué hay corriendo en el servidor, para qué sirve cada cosa en
+  una frase, y **si responde en este momento**. No se da por bueno porque esté
+  configurado: se le pregunta al abrir la pantalla.
+- **CFDI recibidos** — los comprobantes que llegan por correo y no se pudieron
+  ligar solos, cada uno con el motivo escrito.
+
+**Rutas ahora dice la verdad**
+
+La pantalla de *Ajustes → Rutas* afirmaba que las distancias se miden en línea
+recta. Desde hoy eso ya no es cierto, así que ahora muestra arriba —antes de los
+ajustes, porque de eso depende si los números de abajo dan horas reales— si está
+midiendo **por calles** o a vuelo de pájaro.
+
+**Y los relojes del servidor se ven igual en todos lados**
+
+Los cuatro medidores del Inicio de El Taller estaban con un diseño viejo, en
+inglés y con la memoria en megas, mientras los de La Gerencia ya eran otros. Son
+el mismo dato: ahora se ven igual y salen del mismo lugar.
+
+---
+
+## Novedades — Preparado: que los CFDI se archiven solos (24 de agosto de 2026)
+
+**El problema, con números**
+
+De **36 facturas emitidas, sólo 1 tiene su comprobante fiscal guardado** en el
+sistema. No porque falte dónde: el lugar existe desde julio. Es que bajarlo del
+PAC y subirlo uno por uno nadie lo hace, y se entiende.
+
+**Lo que queda listo**
+
+El sistema ya sabe leer un CFDI que llega por correo y **ligarlo solo a su
+factura**. La regla es prudente a propósito:
+
+- Si hay **una sola** factura de ese cliente por ese monto sin comprobante, se
+  liga sola y ya.
+- Si hay **dos o ninguna**, queda pendiente **con el motivo escrito**, para que
+  una persona decida.
+
+Adivinar sería peor que no hacer nada: dejaría la contabilidad apoyada en una
+suposición que nadie revisó.
+
+También distingue la factura que **nos manda un proveedor** (un gasto) de la que
+**nosotros emitimos** (un ingreso), que es un error caro de cometer. Y reenviar
+el mismo correo diez veces no archiva diez copias.
+
+**Falta un paso, y es de configuración**
+
+Para que empiece a funcionar hay que conectar el buzón de facturas al sistema.
+Son unos minutos y está explicado paso a paso en la guía técnica; mientras
+tanto, todo sigue funcionando como hasta hoy.
+
+---
+
 ## Novedades — Las rutas ya miden por calles, no en línea recta (24 de agosto de 2026)
 
 **El planeador dejó de medir a vuelo de pájaro**

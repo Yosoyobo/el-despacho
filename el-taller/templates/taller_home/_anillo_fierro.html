@@ -1,0 +1,87 @@
+{% comment %}
+Un reloj del NUC: el anillo dice cómo está AHORA, la línea dice HACIA DÓNDE VA.
+Los dos juntos, porque «memoria 46 %» y «memoria 46 %, subiendo desde 30 % hace
+diez minutos» son dos noticias distintas y sólo la segunda deja adelantarse.
+
+Es el mismo diseño que El Vigía y El Site (Oscar, 2026-08-24: «no son los
+mismos relojes»). El SVG es idéntico; lo único que cambia son los colores del
+chrome, porque **aquí el tema lo elige el usuario** —claro u oscuro— mientras
+que la pared es oscura fija. Copiar las clases `vg-*` habría roto el modo claro.
+
+El anillo es SVG propio y NO el `radial-progress` de DaisyUI: ese se dibuja con
+`conic-gradient` y máscaras en pseudo-elementos, y en la pantalla real salía con
+el arco desplazado. Un `<circle>` con `stroke-dasharray` no depende de nada.
+
+Params: titulo · pct (0..100) · color (success|warning|error) · grande ·
+        unidad · trazo · trazo_b · a · b
+{% endcomment %}
+{% with c=color|default:"success" %}
+<div class="flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+
+  {# ── El anillo ──────────────────────────────────────────────────────────── #}
+  <div class="relative shrink-0" style="width:96px; height:96px;">
+    <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90" aria-hidden="true">
+      {# El riel: el círculo completo, tenue. #}
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+              stroke-width="9" class="text-gray-200 dark:text-gray-700"/>
+      {% comment %}Y el relleno. 2·π·42 = 264. `widthratio` da pct/100 × 264,
+      que es la única aritmética que Django permite en plantilla.{% endcomment %}
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+              stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="{% widthratio pct|default:0 100 264 %} 264"
+              class="{% if c == 'error' %}text-error-500{% elif c == 'warning' %}text-warning-500{% else %}text-success-500{% endif %}"
+              style="transition: stroke-dasharray .6s ease"/>
+    </svg>
+    {# El número, centrado de verdad: posicionado SOBRE el SVG, no dentro. #}
+    <div class="absolute inset-0 flex flex-col items-center justify-center">
+      <span class="font-mono text-lg font-semibold leading-none tabular-nums text-gray-800 dark:text-white/90">{{ pct|default:"—" }}</span>
+      <span class="mt-0.5 text-[10px] leading-none text-gray-400 dark:text-gray-500">%</span>
+    </div>
+  </div>
+
+  {# ── Y los números ──────────────────────────────────────────────────────── #}
+  <div class="min-w-0 flex-1">
+    <p class="truncate text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ titulo }}</p>
+    <p class="mt-1 flex items-baseline gap-1.5">
+      <span class="font-mono text-title-sm font-semibold leading-none tabular-nums text-gray-800 dark:text-white/90">{{ grande|default:"—" }}</span>
+      <span class="text-xs text-gray-400 dark:text-gray-500">{{ unidad }}</span>
+    </p>
+
+    {% if trazo %}
+      <svg viewBox="0 0 100 24" preserveAspectRatio="none" class="mt-2 h-6 w-full" aria-hidden="true">
+        <defs>
+          <linearGradient id="gt-{{ titulo|slugify }}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="currentColor" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g class="{% if c == 'error' %}text-error-500{% elif c == 'warning' %}text-warning-500{% else %}text-success-500{% endif %}">
+          <polygon points="{{ trazo }}" fill="url(#gt-{{ titulo|slugify }})"/>
+          <polyline points="{{ trazo }}" fill="none" stroke="currentColor" stroke-width="1.6"
+                    stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        </g>
+        {% if trazo_b %}
+          {% comment %}La segunda línea (la escritura del disco) va sin relleno y
+          en otro color: dos áreas apiladas se taparían y no se sabría cuál es
+          cuál.{% endcomment %}
+          <polyline points="{{ trazo_b }}" fill="none" stroke="currentColor" stroke-width="1.4"
+                    stroke-dasharray="3 2" stroke-linejoin="round"
+                    class="text-blue-light-500" vector-effect="non-scaling-stroke"/>
+        {% endif %}
+      </svg>
+    {% else %}
+      {% comment %}Con menos de dos puntos no hay tendencia que dibujar. Se
+      reserva el hueco para que los cuatro relojes midan igual desde el primer
+      pintado y la fila no brinque cuando aparezcan las líneas.{% endcomment %}
+      <div class="mt-2 flex h-6 items-end">
+        <div class="h-px w-full bg-gray-200 dark:bg-gray-700"></div>
+      </div>
+    {% endif %}
+
+    <p class="mt-1.5 flex items-baseline justify-between gap-2 text-[11px] text-gray-400 dark:text-gray-500">
+      <span class="truncate">{{ a }}</span>
+      {% if b %}<span class="shrink-0 truncate">{{ b }}</span>{% endif %}
+    </p>
+  </div>
+</div>
+{% endwith %}

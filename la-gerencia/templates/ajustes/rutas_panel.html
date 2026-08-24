@@ -14,6 +14,39 @@ deja de creerle. Ajustarlos es de quien conoce la ciudad y el trabajo.
 {% breadcrumb_items "Ajustes" "/ajustes/" "Rutas" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Rutas" subtitulo="Con qué supuestos el planeador estima la vuelta del día" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
 
+{% comment %}
+El estado del mapa va ARRIBA de los ajustes, no al pie: de él depende si los
+números de abajo producen horas reales o estimaciones, y eso hay que saberlo
+antes de tocarlos.
+{% endcomment %}
+<div class="mb-5 max-w-2xl rounded-2xl border p-4 {% if mapa_vivo %}border-success-200 bg-success-50 dark:border-success-500/30 dark:bg-success-500/10{% else %}border-warning-200 bg-warning-50 dark:border-warning-500/30 dark:bg-warning-500/10{% endif %}">
+    {% if mapa_vivo %}
+    <p class="flex items-start gap-2 text-sm text-success-700 dark:text-success-400">
+        <span aria-hidden="true">●</span>
+        <span>
+            <strong>Midiendo por calles reales.</strong>
+            El servidor tiene cargado el mapa de México, así que las distancias y
+            los tiempos siguen calles de verdad — con sus vueltas, sus sentidos y
+            sus ejes sin retorno.
+            <span class="mt-1 block text-xs opacity-80">
+                Entre el Zócalo y Ciudad Satélite hay 14 km en línea recta y 20.4
+                de recorrido: un 46 % que antes se le escondía al runner.
+            </span>
+        </span>
+    </p>
+    {% else %}
+    <p class="flex items-start gap-2 text-sm text-warning-700 dark:text-warning-400">
+        <span aria-hidden="true">●</span>
+        <span>
+            <strong>Midiendo en línea recta.</strong>
+            El mapa no está disponible ahora mismo, así que las distancias se
+            calculan a vuelo de pájaro. El orden de las paradas sigue saliendo
+            bien; los kilómetros y las horas quedan cortos.
+        </span>
+    </p>
+    {% endif %}
+</div>
+
 <form method="post" class="campo-form max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     {% csrf_token %}
 
@@ -60,10 +93,17 @@ deja de creerle. Ajustarlos es de quien conoce la ciudad y el trabajo.
     </div>
 
     <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50/60 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
+        {% if mapa_vivo %}
+        Las distancias son de calle, pero las horas siguen siendo <strong>estimadas</strong>:
+        el mapa no sabe del tráfico de hoy ni de que el portón tardó en abrir. Sirven
+        para decidir en qué orden salir, no para prometerle un minuto exacto a un
+        cliente. Las paradas con cita son fijas y el orden las respeta.
+        {% else %}
         Las horas que calcula el planeador son <strong>estimadas</strong>: la distancia
         se mide en línea recta, sin tráfico ni sentidos de calle. Sirven para decidir
         en qué orden salir, no para prometerle un minuto exacto a un cliente. Las
         paradas con cita son fijas y el orden las respeta.
+        {% endif %}
     </div>
 
     <div class="mt-6 flex items-center gap-3">

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Servicios — Ajustes{% endblock %}
+
+{% comment %}
+Las piezas que corren en el servidor junto a El Despacho.
+
+Existe para que no haya nada invisible: un servicio que funciona pero no se ve
+desde la interfaz es peor que uno que no está — nadie sabe si responde, nadie
+puede ajustarlo, y el día que falle nadie sabe por dónde empezar.
+
+Cada uno se sondea de verdad al abrir esta pantalla; no se da por vivo porque el
+archivo de configuración lo declare.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Servicios" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Servicios" subtitulo="Las piezas que corren en el servidor y para qué sirven" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<div class="mb-5 max-w-3xl rounded-2xl border p-4 {% if resumen.todos %}border-success-200 bg-success-50 dark:border-success-500/30 dark:bg-success-500/10{% else %}border-warning-200 bg-warning-50 dark:border-warning-500/30 dark:bg-warning-500/10{% endif %}">
+    <p class="text-sm {% if resumen.todos %}text-success-700 dark:text-success-400{% else %}text-warning-700 dark:text-warning-400{% endif %}">
+        {% if resumen.todos %}
+        <strong>Las {{ resumen.total }} piezas responden.</strong>
+        {% else %}
+        <strong>{{ resumen.vivos }} de {{ resumen.total }} responden.</strong>
+        Lo que no responde se marca abajo — si es el mapa o Gotenberg, el sistema
+        sigue funcionando con el método anterior, sólo que peor.
+        {% endif %}
+    </p>
+</div>
+
+<div class="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
+    {% for s in servicios %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <header class="mb-2 flex items-start justify-between gap-3">
+            <h2 class="text-theme-xl font-medium text-gray-800 dark:text-white/90">{{ s.nombre }}</h2>
+            {% if s.vivo %}
+            <span class="shrink-0 rounded-full bg-success-50 px-2.5 py-1 text-xs font-medium text-success-700 dark:bg-success-500/10 dark:text-success-400">● Responde</span>
+            {% else %}
+            <span class="shrink-0 rounded-full bg-error-50 px-2.5 py-1 text-xs font-medium text-error-700 dark:bg-error-500/10 dark:text-error-400">● No responde</span>
+            {% endif %}
+        </header>
+
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ s.oficio }}</p>
+        <p class="mt-1.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ s.detalle }}</p>
+
+        <div class="mt-4 flex flex-wrap items-center gap-3 text-xs">
+            {% if s.ajustes %}
+            <a href="{% url s.ajustes %}" class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Ajustes →</a>
+            {% endif %}
+            {% if s.entrada %}
+            <a href="{{ s.entrada }}" target="_blank" rel="noopener"
+               class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
+            <span class="text-gray-400 dark:text-gray-500">sólo desde la red privada</span>
+            {% endif %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+
+<p class="mt-6 max-w-3xl text-xs text-gray-500 dark:text-gray-400">
+    Estas piezas viven en el mismo servidor que El Despacho, con un tope de memoria
+    cada una: si alguna se desboca, se detiene ella y no el sistema.
+</p>
+{% endblock %}

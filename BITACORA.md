@@ -12262,6 +12262,29 @@ apagada por decisión, no por olvido** · orden de integración A → C → B.
 - El compose de servicios pide variables del `.env`: sin ellas, `up -d` aborta
   el stack **completo**. Por eso la guarda en los dos scripts de despliegue.
 
-**Pendiente.** Gotenberg integrado de punta a punta, levantar los servicios,
-cocinar el mapa de México y la receta de n8n. Plan completo en
-`docs/SPRINT-NUC-Servicios.md`.
+**Entregado el mismo día**, en el orden A → C → B que pidió Oscar:
+
+- **Gotenberg** armando los PDF (6 hojas numeradas en 0.6 s) + `ConfiguracionDocumento`
+  con GUI en Gerencia, incluido el **selector de motor** como salida de emergencia.
+- **OSRM con México**: el planeador mide por calles. Zócalo→Satélite, 14.0 km en
+  recta contra **20.4 por calle**.
+- **CFDI que entran solos** por correo: parser, ingesta con ligado sólo-si-inequívoco,
+  y endpoint con credencial. Guía en `docs/RECETA-CFDI-POR-CORREO.md`.
+- **Panel de procesos** en las dos pantallas y los **4 relojes** al pie del Dashboard.
+
+**Tres bugs propios, los tres con candado.** El más serio: al insertar un helper
+justo encima de `def home`, el `@login_required` quedó aplicado al helper y **el
+Dashboard respondió 200 sin sesión unos cuarenta minutos**. Sin fuga —verificado
+en producción: cero datos en el HTML— pero es la SEGUNDA vez que este error
+aparece en el repo, así que las pruebas nuevas miran el comportamiento y no cómo
+esté escrito el decorador. Los otros dos fueron del banner rojo: no se encendía
+(miraba una lista de sondas vacía, mientras El Vigía ya contaba «2 abajo») y
+luego se encendía de más (un contenedor que terminó bien contaba como caído).
+
+**Lo medido contra lo proyectado**: en la mañana se calculó 44 % de memoria en
+reposo con todo prendido; la medición al cierre dio **42 % (6.3 G de 14.8)**. El
+preprocesado del mapa pidió más de los 7 G que se le prestaron y murió: **el
+`mem_limit` mató al preprocesado y no al negocio**, que es para lo que está.
+
+**Pendiente.** Pantalla para resolver los CFDI pendientes, el flujo del lado de
+n8n (configuración, fuera del repo), y que los CFDI de proveedor generen egreso.

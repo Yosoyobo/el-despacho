@@ -1125,7 +1125,20 @@ def rutas_panel(request):
         messages.success(request, "Supuestos del planeador de rutas actualizados.")
         return redirect("ajustes-rutas")
 
-    return render(request, "ajustes/rutas_panel.html", {"cfg": cfg})
+    # Si el mapa está en pie, las distancias son de calle y no estimaciones a
+    # vuelo de pájaro. La pantalla tiene que decir cuál de las dos cosas está
+    # pasando: hasta 2026-08-24 afirmaba «se mide en línea recta» y desde que
+    # entró OSRM eso dejó de ser cierto.
+    try:
+        from lib import ruteo
+        mapa_vivo = ruteo.disponible(forzar=True)
+    except Exception:  # noqa: BLE001 — no poder preguntar no rompe la pantalla
+        mapa_vivo = False
+
+    return render(request, "ajustes/rutas_panel.html", {
+        "cfg": cfg,
+        "mapa_vivo": mapa_vivo,
+    })
 
 
 # ── Documentos — cómo se arman los PDF que ve el cliente ─────────────────
@@ -1221,6 +1234,98 @@ def documentos_panel(request):
         "tamanos": TAMANOS_CHOICES,
         "gotenberg_vivo": gotenberg_vivo,
         "alto_util_pt": cfg.alto_util_pt,
+    })
+
+
+
+# ── Servicios del NUC — las piezas que corren junto a El Despacho ────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET"])
+def servicios_panel(request):
+    """Qué hay corriendo en el servidor, para qué sirve y si responde AHORA.
+
+    Existe para que no haya piezas invisibles (Oscar, 2026-08-24: «todo lo que
+    estamos integrando debe tener su GUI y sus ajustes en el sidebar»). Un
+    servicio que corre pero no se ve es peor que uno que no está: nadie sabe si
+    funciona ni por dónde empezar el día que falle.
+
+    Cada uno se sondea de verdad; no se da por vivo porque el compose lo
+    declare.
+    """
+    from lib.site import servicios
+
+    lista = servicios.estado()
+    return render(request, "ajustes/servicios_panel.html", {
+        "servicios": lista,
+        "resumen": servicios.resumen(lista),
+    })
+
+
+# ── CFDI que llegaron por correo y esperan dueño ─────────────────────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def cfdi_panel(request):
+    """Los comprobantes que entraron y no se pudieron ligar solos.
+
+    El ligado automático es deliberadamente prudente: sólo cuando hay UNA
+    factura que coincide. Cuando hay dos o ninguna, el comprobante llega aquí
+    con el motivo escrito, porque adivinar dejaría la contabilidad apoyada en
+    una suposición que nadie revisó.
+    """
+    from apps.facturacion.models import (
+        ESTADO_IGNORADO,
+        ESTADO_LIGADO,
+        ESTADO_PENDIENTE,
+        CfdiEntrante,
+    )
+    from django.utils import timezone
+
+    if request.method == "POST":
+        pk = request.POST.get("pk")
+        accion = (request.POST.get("accion") or "").strip()
+        obj = CfdiEntrante.objects.filter(pk=pk).first()
+        if obj is None:
+            messages.error(request, "Ese comprobante ya no está.")
+            return redirect("ajustes-cfdi")
+
+        if accion == "ignorar":
+            obj.estado = ESTADO_IGNORADO
+            obj.resuelto_en = timezone.now()
+            obj.resuelto_por = request.user
+            obj.save(update_fields=["estado", "resuelto_en", "resuelto_por"])
+            messages.success(request, "Comprobante marcado como ignorado.")
+        elif accion == "ligar":
+            from apps.facturacion.models import Factura
+
+            fac = Factura.objects.filter(pk=request.POST.get("factura")).first()
+            if fac is None:
+                messages.error(request, "No se encontró esa factura.")
+                return redirect("ajustes-cfdi")
+            obj.factura = fac
+            obj.estado = ESTADO_LIGADO
+            obj.resuelto_en = timezone.now()
+            obj.resuelto_por = request.user
+            obj.save()
+            # El folio fiscal se copia a la factura por el camino de siempre.
+            try:
+                fac.cfdi_uuid = obj.uuid
+                fac.save(update_fields=["cfdi_uuid"])
+            except Exception:  # noqa: BLE001 — el registro ya quedó ligado
+                pass
+            messages.success(request, f"Comprobante ligado a {fac.codigo}.")
+        return redirect("ajustes-cfdi")
+
+    filtro = (request.GET.get("estado") or ESTADO_PENDIENTE).strip()
+    qs = CfdiEntrante.objects.select_related("factura")
+    if filtro != "todos":
+        qs = qs.filter(estado=filtro)
+
+    return render(request, "ajustes/cfdi_panel.html", {
+        "cfdis": list(qs[:200]),
+        "filtro": filtro,
+        "pendientes": CfdiEntrante.objects.filter(estado=ESTADO_PENDIENTE).count(),
     })
 
 
