@@ -6025,6 +6025,41 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Destino-Duplicado ✅ — La raíz de «la ubicación no se guarda»: el campo iba DOS veces (2026-08-23, VERSION 2026.08.28)
+
+Tercer reporte del mismo síntoma de Oscar, y esta vez con **dos capturas que
+dieron el diagnóstico**: el formulario mostraba «Destino lat» y «Destino lng» como
+campos con etiqueta —siendo `HiddenInput`—, el geo-picker sí había resuelto el
+punto (`19.350339, -99.297987`, con el pin en el mapa)… y el detalle de la tarea
+decía «Sin ubicación fijada todavía».
+
+- **La causa**: el loop `{% for f in form %}` de
+  `pizarron/form_tarea.html` sólo saltaba `destino_etiqueta`, así que
+  `destino_lat`/`destino_lng` se renderizaban **ahí Y otra vez** junto al
+  geo-picker. Con dos inputs del mismo `name`:
+  `getElementById` devuelve el PRIMERO (el picker le escribe a ese) · el POST
+  manda los dos valores · **y Django se queda con el ÚLTIMO**, que iba vacío. El
+  `clean()` lo remataba poniendo ambos en `None`. **Nada falla y nada avisa: el
+  dato simplemente no llega.**
+- **El arreglo son 20 caracteres** en la condición del loop. Lo caro fue
+  encontrarlo: los dos sprints anteriores arreglaron el backend (que ya guardaba
+  bien — probado con POST a los dos caminos) y la alcanzabilidad del botón en
+  móvil (que también era un bug real, VERSION 2026.08.27). Este era un tercero,
+  distinto, en la misma frase de Oscar.
+- **El candado mira el HTML RENDERIZADO y cuenta** (`tests/taller/test_destino_no_duplicado.py`,
+  7 casos): revisar la plantilla a ojo es justo lo que falló tres veces. Con el
+  código de `main` reporta `{'destino_lat': 2, 'destino_lng': 2}`. Incluye un test
+  que fija el mecanismo (`QueryDict` con el campo repetido devuelve el último) y
+  extiende el candado a los otros dos formularios con mapa —**cliente y
+  proveedor, que sí los excluían bien**— porque el modo de falla es silencioso y
+  el siguiente que agregue un campo oculto no tiene por qué conocer esta
+  historia.
+
+**La regla que queda**: un campo de formulario renderizado dos veces se guarda
+vacío, en silencio. Si un dato «no se guarda» y el backend está probado, **contar
+cuántas veces aparece su `name=` en el HTML servido** antes de mirar cualquier
+otra cosa.
+
 ### S-Movil-Mandados ✅ — El tablero de reparto usable en el celular + el Dashboard revertido (2026-08-23, VERSION 2026.08.27)
 
 Ronda de Oscar sobre lo deployado media hora antes (2026.08.26), con captura del
