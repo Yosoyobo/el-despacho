@@ -12220,3 +12220,48 @@ es sólo de El Taller), así que ni el orden ni la visibilidad de estos renglone
 configuran desde una pantalla. Y quedan con artículo los nombres que **no** pidió
 Oscar: «El Directorio», «El Site», «El Interfón», «Los Ajustes» — si algún día se
 quiere el menú parejo, es el mismo cambio de etiqueta, pero es decisión suya.
+
+---
+
+## S-NUC-Servicios — 2026-08-24 (VERSION 2026.08.33, en curso)
+
+**Qué se pidió.** Cuatro rondas de preguntas para decidir qué más puede alojar
+el NUC ahora que sostiene el negocio, y después «arranca con todo… ponle el
+anuncio de mantenimiento hasta que terminemos».
+
+**Lo que el reconocimiento cambió del plan.** Tres de los dolores que Oscar
+nombró (rutas, PDFs, CFDIs) ya existían en El Despacho: no faltaban, dependían
+de alguien de afuera. Y dos números de la base tumbaron una suposición: **32 de
+36 facturas siguen en borrador** y **1 de 36 tiene su CFDI archivado**, con La
+Cobranza apagada y **cero recordatorios enviados en toda su historia**. Eso no
+lo arregla un servicio nuevo — se le dijo.
+
+**Entregado en este deploy.**
+
+- Banner que respira, ámbar/rojo, con el rojo **automático** por sondas
+  cacheadas en Redis. Regla §4 #23: es el estándar de todo despliegue.
+- Pantalla de mantenimiento con **roadmap y barra de avance**.
+- Techos de Postgres y Redis a la realidad (4 G → 2 G, 3 G → 1 G): liberan 4 G.
+- `docker-compose.servicios.yml` con los cuatro servicios, con `mem_limit` y
+  acceso acotado al tailnet, más la guarda que evita que una variable faltante
+  tumbe el stack entero.
+- 3,268 tests verdes, ruff limpio.
+
+**Decisiones de Oscar en la sesión.** PDFs fuera de Google · rutas por calles
+reales de todo México · n8n «A y B, más A, B con MUCHO GUARDRAIL MCP» · sin
+e.firma, los CFDIs entran por correo a `facturas@` · fuera la Bambu y Plex ·
+inventario «A y C, más C» · respaldo offsite descartado · **La Cobranza queda
+apagada por decisión, no por olvido** · orden de integración A → C → B.
+
+**Trampas que quedaron documentadas.**
+
+- El TTL del aviso son 10 minutos: para una jornada hay que pasarlo explícito o
+  se apaga a media faena.
+- `ps` cuenta la memoria compartida una vez por proceso — 798 MB sumados contra
+  254 reales. El número honesto es el de cgroups.
+- El compose de servicios pide variables del `.env`: sin ellas, `up -d` aborta
+  el stack **completo**. Por eso la guarda en los dos scripts de despliegue.
+
+**Pendiente.** Gotenberg integrado de punta a punta, levantar los servicios,
+cocinar el mapa de México y la receta de n8n. Plan completo en
+`docs/SPRINT-NUC-Servicios.md`.

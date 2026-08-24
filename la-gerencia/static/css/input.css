@@ -295,3 +295,18 @@
 @supports (max-height: 100dvh) {
   .modal-alto { max-height: 92dvh; }
 }
+
+/* LC 2026-08-24 (Oscar, ventana de mantenimiento): el banner «tiene que
+   respirar». Latido lento de opacidad —2.2s, ida y vuelta— para que se note
+   sin robar la atención de quien está trabajando. Se anima la opacidad y no
+   el color porque la opacidad la resuelve el compositor: no obliga al
+   navegador a repintar la franja sesenta veces por segundo.
+   Quien pidió menos movimiento en su sistema operativo ve la franja fija. */
+@keyframes respirar {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.respira { animation: respirar 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .respira { animation: none; }
+}

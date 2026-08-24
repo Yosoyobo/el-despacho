@@ -5,6 +5,36 @@
 
 ---
 
+## Novedades — Aviso de mantenimiento que se ve y se entiende (24 de agosto de 2026)
+
+**Cuando estemos trabajando en el sistema, ahora lo vas a saber**
+
+Hasta hoy, cuando actualizábamos la plataforma aparecía una franja amarilla fija
+que era fácil pasar por alto. Desde esta versión el aviso **late despacio** para
+que se note sin estorbar, y cambia de color según lo que esté pasando:
+
+| Lo que ves | Qué significa | Qué puedes hacer |
+|---|---|---|
+| Franja **ámbar** que late | Estamos trabajando en la plataforma hoy | Seguir usándola normal. Si algo parpadea, es por esto |
+| Franja **roja** que late | Algo **no está respondiendo** en este momento | Esperar unos segundos. No guardes cambios mientras esté roja |
+| Sin franja | Todo normal | Nada |
+
+El rojo **se enciende solo**: nadie tiene que acordarse de avisar. El sistema
+revisa cada pocos segundos si sus piezas contestan, y si alguna no lo hace, lo
+dice. Si eres de quienes prefieren menos movimiento en pantalla, tu computadora
+o tu teléfono ya lo saben y la franja se te queda quieta.
+
+**Y si el sistema no abre, la pantalla de espera ahora explica**
+
+Cuando toca reiniciar algo, durante esos minutos no se puede entrar. Antes esa
+pantalla sólo decía «volvemos en unos minutos». Ahora te dice **qué estamos
+haciendo, para qué sirve cada cosa y cuánto llevamos**, con una barra de avance.
+
+Esa lista aparece sólo mientras dure la actualización; cuando terminemos,
+desaparece.
+
+---
+
 ## Novedades — Cuatro configuraciones salen al menú de La Gerencia (24 de agosto de 2026)
 
 **Cartero, KPIs, Rutas y Cobranza ya tienen su renglón**

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from django.shortcuts import render
 
-from lib.aviso_deploy import obtener_deploy_en_curso
+from lib.aviso_deploy import nivel_aviso, obtener_deploy_en_curso
 
 
 def banner_deploy(request):
@@ -26,7 +26,11 @@ def banner_deploy(request):
     return render(
         request,
         "_componentes_tailadmin/_banner_deploy.html",
-        {"hay_deploy_en_curso": bool(sha), "deploy_commit_sha": sha},
+        {
+            "hay_deploy_en_curso": bool(sha),
+            "deploy_commit_sha": sha,
+            "nivel_aviso": nivel_aviso(sha),
+        },
     )
 
 
@@ -39,5 +43,9 @@ def semaforo_deploy(request):
     return render(
         request,
         "_componentes_tailadmin/_semaforo_deploy.html",
-        {"hay_deploy_en_curso": bool(sha), "deploy_commit_sha": sha},
+        {
+            "hay_deploy_en_curso": bool(sha),
+            "deploy_commit_sha": sha,
+            "nivel_aviso": nivel_aviso(sha),
+        },
     )
