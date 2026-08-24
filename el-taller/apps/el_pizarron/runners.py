@@ -269,11 +269,16 @@ def asignar_runner_auto(tarea, *, actor=None):
     return runner
 
 
-def asignar_runner(tarea, runner, *, actor=None):
-    """Asigna un runner explícito (manual). Marca `runner_auto=False`."""
+def asignar_runner(tarea, runner, *, actor=None, auto: bool = False):
+    """Asigna un runner explícito. Marca `runner_auto=False` (manual).
+
+    `auto=True` la usa el planeador para lo que él repartió: es el sistema quien
+    eligió, así que queda marcado como automático y una edición posterior a mano
+    lo puede pisar sin que el reparto vuelva a cambiarlo.
+    """
     from django.utils import timezone
     tarea.runner = runner
-    tarea.runner_auto = False
+    tarea.runner_auto = auto
     tarea.requiere_runner = True
     tarea.runner_asignado_en = timezone.now()
     tarea.save(update_fields=["runner", "runner_auto", "requiere_runner", "runner_asignado_en"])

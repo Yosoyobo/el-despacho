@@ -133,14 +133,31 @@ def url_apple(paradas: list[dict], origen: tuple | None = None) -> str:
 # ── La ruta de hoy de una persona ────────────────────────────────────────
 
 def ruta_de(usuario) -> dict:
-    """Los mandados abiertos del runner, ya ordenados, con sus enlaces."""
+    """Los mandados de HOY del runner, ya ordenados, con sus enlaces.
+
+    «De hoy» significa: abiertos, no archivados, y con compromiso para hoy o
+    antes — lo de ayer que sigue pendiente hay que hacerlo, lo de la semana que
+    entra no. Sin esa acotación la pantalla traía todos los mandados abiertos del
+    runner de cualquier fecha y aunque su tarea estuviera archivada: la vuelta de
+    Alex arrancaba con dos entregas archivadas del 29 de junio.
+    """
     from apps.el_pizarron.mandados import mandados_visibles
     from apps.el_pizarron.runners import ubicacion_actual_de
+    from django.db.models import Q
+    from django.utils import timezone
 
     try:
+        hoy = timezone.localdate()
         abiertos = [
             m for m in mandados_visibles(usuario).exclude(
                 estado__in=("entregado", "cancelado"),
+            ).filter(
+                tarea__archivada=False,
+            ).filter(
+                # Sin fecha = trabajo que espera turno: se muestra, porque si no
+                # no aparecería en ninguna vuelta.
+                Q(tarea__fecha_compromiso__lte=hoy)
+                | Q(tarea__fecha_compromiso__isnull=True),
             ).select_related("tarea", "tarea__proyecto", "tarea__proyecto__cliente")
             if m.runner_id == usuario.pk
         ]

@@ -5,6 +5,57 @@
 
 ---
 
+## Novedades — El planeador ya respeta a quien trae el mandado (23 de agosto de 2026)
+
+**Si un mandado ya tiene runner, la ruta se arma a SU nombre**
+
+Este era el problema de fondo: el planeador repartía las entregas entre quien
+tuviera el permiso de recibir mandados e **ignoraba a quien ya las traía**. En el
+reparto de hoy, dos mandados que estaban a nombre de Oscar terminaron en la ruta
+de Alex, y la lista de Mandados seguía diciendo Oscar. Tres pantallas y tres
+respuestas distintas sobre quién hace la entrega.
+
+Ahora **manda quien lo tiene asignado a mano**: su parada va a su propia ruta,
+aunque no tenga el permiso de recibir mandados. Lo que el planeador reparte —lo
+que va sin dueño— **queda escrito en la tarea**, así que la lista de Mandados, el
+planeador y «Mi ruta de hoy» dicen lo mismo.
+
+Si alguien trae mandados y **no** tiene el permiso, se le arma su ruta igual pero
+la pantalla lo avisa: el reparto automático no le va a poder encargar nada nuevo
+hasta que se le dé el rol «Runner» en El Directorio.
+
+**«Sin repartir» ya no acusa a quien sí tiene su destino**
+
+El recuadro naranja listaba **todo** lo del día diciendo «casi siempre es porque
+no se sabe a dónde van», incluso cuando el destino estaba perfectamente puesto.
+Ahora son dos avisos y cada uno dice su verdad:
+
+- **Todavía sin repartir** — ya saben a dónde van; entran en cuanto aprietes
+  «Planear el día».
+- **Sin destino** — ésos sí les falta el lugar, con un botón para ponérselo ahí
+  mismo (y al guardarlo te deja en el planeador, no te saca a la lista).
+
+**Botón «Rehacer desde cero»**
+
+Si el reparto salió mal, antes había que cancelar cada ruta a mano: volver a
+planear sólo agregaba lo nuevo. Ahora, junto a «Planear el día», la casilla
+**Rehacer desde cero** tira los borradores del día y arma el reparto otra vez.
+Las rutas **ya despachadas no se tocan** — ésas ya están en manos de alguien y le
+llegaron por correo.
+
+**«Mi ruta de hoy» ya es de hoy**
+
+Traía todos los mandados abiertos de cualquier fecha, incluso de tareas
+archivadas: una vuelta arrancaba con dos entregas archivadas de junio. Ahora
+muestra lo de hoy y lo atrasado que sigue pendiente — lo de la semana que entra,
+no.
+
+**Detalle:** en el tablero de Tareas ya no sale «✓ Completada» sobre una tarjeta
+parada en la columna Pendiente. Era el sello de cuando estuvo terminada, que se
+quedaba pegado al reabrirla.
+
+---
+
 ## Novedades — Los mandados, usables desde el celular (23 de agosto de 2026)
 
 **El tablero de reparto ya sirve en el teléfono**
@@ -4740,10 +4791,25 @@ y las pone en orden.
 1. Entra a **Mandados → 🗺️ Planear rutas** y elige el día.
 2. Escoge de dónde salen: **de la sede y regresan a ella**, o **de donde esté cada
    repartidor** (usa la última ubicación que registró al checar).
-3. Aprieta **«Planear el día»**. El sistema reparte las entregas entre los
-   repartidores disponibles y le arma a cada uno su vuelta.
+3. Aprieta **«Planear el día»**. Las entregas que ya tienen repartidor van a
+   **su** vuelta; las que van sin dueño se reparten entre los disponibles.
 4. Revisa y reacomoda arrastrando. Cuando esté, aprieta **«Despachar»** en cada
    tarjeta: la ruta se publica y le llega por correo a esa persona.
+
+**Manda quien ya trae el mandado**
+
+Si una entrega la asignaste a mano a alguien, el planeador **no se la quita**: le
+arma su ruta con ella, aunque esa persona no tenga el permiso de recibir mandados
+(en ese caso lo avisa, porque el reparto automático tampoco le va a poder encargar
+nada nuevo). Lo que el planeador sí decide —las entregas sin dueño— **queda
+escrito en la tarea**, así que Mandados, el planeador y «Mi ruta de hoy» siempre
+dicen lo mismo.
+
+**Rehacer el reparto**
+
+Si salió mal, marca la casilla **«Rehacer desde cero»** junto al botón y vuelve a
+planear: se tiran los borradores del día y se arma otra vez. Las rutas **ya
+despachadas no se tocan** — ésas ya están en manos de alguien.
 
 **Las citas manda**
 
@@ -4772,15 +4838,24 @@ cuentas.
 
 **Lo que no entró**
 
-Si una entrega no cupo en ninguna ruta, aparece abajo en **«Sin repartir»**. Casi
-siempre es porque no se sabe a dónde va: ponle el destino en el mapa del mandado
-y vuelve a planear. Una entrega que ya está en una ruta no se vuelve a repartir,
-así que puedes planear otra vez sin miedo a duplicar nada.
+Abajo del planeador hay dos avisos, y cada uno se arregla distinto:
+
+- **Todavía sin repartir** — ya saben a dónde van; entran en cuanto aprietes
+  «Planear el día». Dice también a quién están asignadas, si ya tienen alguien.
+- **Sin destino** — a ésas les falta el lugar y por eso no pueden entrar a una
+  ruta. Cada una trae un botón **«fijar destino»** que abre el mapa ahí mismo; al
+  guardarlo te deja en el planeador.
+
+Una entrega que ya está en una ruta no se vuelve a repartir, así que puedes
+planear otra vez sin miedo a duplicar nada (y si quieres rearmar el día, usa
+«Rehacer desde cero»).
 
 **Mi ruta de hoy**
 
 El repartidor entra a **Mandados → 🧭 Mi ruta de hoy**. Si le planearon la vuelta,
-ve **ésa**, con sus citas. Si no, ve sus entregas abiertas ordenadas por cercanía.
+ve **ésa**, con sus citas. Si no, ve sus entregas ordenadas por cercanía: las de
+hoy y lo atrasado que sigue pendiente. Lo de la semana que entra y lo archivado no
+aparecen ahí.
 
 **Quién puede qué**
 

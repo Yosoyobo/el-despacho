@@ -6082,6 +6082,60 @@ medición no vale: `.hidden` ni existe).
 porque el backend guarde. Se abre en un teléfono y **se mide si el botón se puede
 picar** — con el CSS compilado, no con el del repo.
 
+### S-Rutas-Dueno ✅ — El planeador respeta a quien trae el mandado (2026-08-23, VERSION 2026.08.28)
+
+Oscar con tres capturas: «las rutas y planeador todavía no quedan». Se diagnosticó
+**contra producción antes de tocar código** y el hallazgo dio vuelta al reporte:
+**el planeador sí había corrido** — la ruta del día existía, a nombre de **Alex**,
+y sus dos paradas eran mandados cuyo `Tarea.runner` decía **Oscar**; su «Mi ruta de
+hoy» mostraba el cálculo al vuelo (4.0 km) contra los 28.2 km de la guardada. Tres
+pantallas, tres respuestas.
+
+- **La causa**: `planear_dia` armaba sus contextos **sólo** desde
+  `usuarios_runner()`, **ignoraba** el `Tarea.runner` ya asignado y al terminar **no
+  escribía** nada en la tarea. Oscar (sin `(runner, recibir)`) se había asignado los
+  dos mandados a mano y el reparto se los dio a otro **en silencio**.
+- **Decisión de Oscar** (AskUserQuestion): «A y C» + «sí, agrégame» ⇒ **manda el
+  dueño**, y como todos los que traen mandados deben ser elegibles, entra al
+  permiso; a un dueño sin permiso **se le respeta pero la pantalla lo avisa** en vez
+  de quitárselo. Se le creó `PermisoUsuario(runner, recibir)` en prod (reversible
+  desde El Directorio).
+- **Dueño = asignado A MANO** (`runner_auto=False`) — el ajuste que faltaba: si el
+  runner que escribe el propio reparto contara como dueño, **«rehacer desde cero»
+  nunca podría mover una parada de persona**. `runner_auto` ya registraba justo esa
+  distinción. Los contextos llevan `acepta` (a quién se le puede CARGAR trabajo
+  nuevo): el dueño no elegible conserva lo suyo y no recibe más. `sin_runner` ya
+  sólo es True cuando no hay **nada** que planear; `sin_permiso` viaja al aviso.
+- **Los dos avisos del panel, cada uno con su razón.** El naranja se pintaba en cada
+  GET —o sea **antes** de planear— diciendo «casi siempre es porque no se sabe a
+  dónde van», y los dos mandados **sí** tenían destino (Stampa, ninomeando, con
+  coordenadas): la pantalla acusaba de un problema inexistente y convivía con el
+  «Nada planeado» de arriba. Ahora `sueltos_del_dia` parte en `con_destino` (neutro,
+  dice a quién están asignados) y `sin_destino` (naranja, con botón que abre el mapa
+  ahí mismo y respeta `?volver=` vía `lib.navegacion.destino_de_regreso` — antes
+  `mandado_destino` regresaba siempre a `/mandados/`).
+- **Casilla «Rehacer desde cero»** + `tirar_borradores(fecha)`: `candidatos_del_dia`
+  excluye a propósito lo ya ruteado, así que un reparto malo sólo se podía corregir
+  cancelando ruta por ruta. **Sólo borradores** — una despachada ya está en manos de
+  alguien y le llegó por correo.
+- **«Mi ruta de hoy» ya es de hoy**: `ruta_de` no filtraba nada y traía los mandados
+  abiertos de cualquier fecha **aunque la tarea estuviera archivada** (medido en
+  prod: la vuelta de Alex arrancaba con dos entregas archivadas de junio y julio,
+  sin coordenadas). Ahora no archivadas y con compromiso `<= hoy` o sin fecha.
+- **`Tarea.esta_terminada`** guarda el sello de `completada_en`: el Kanban pintaba
+  «✓ Completada · tardó…» sobre tarjetas paradas en la columna Pendiente, porque el
+  sello queda pegado al reabrir.
+- **19 tests** en `tests/taller/test_rutas_ajustes_ago23.py`, **verificados contra
+  el código sin arreglar: 16 de 19 fallan**. Suite completa **3199 pass** + los 3
+  conocidos de Redis.
+
+**Deuda diseñada**: el reparto no considera capacidad del vehículo ni volumen; la
+distancia sigue en línea recta (el orden sale bien, los km y horas son estimados);
+un dueño sin permiso recibe su ruta pero el reparto automático nunca le encarga
+nada nuevo (es lo pedido y la pantalla lo dice); «Rehacer desde cero» no toca las
+despachadas, así que un día con una ruta ya enviada sólo se rearma parcialmente; y
+el planeador no se invoca desde El Chalán (lee, no planea).
+
 ### S-Movil-Plegado ✅ — En el celular las tarjetas nacen plegadas + el correo del Chalán sale de chalan@ (2026-08-23, VERSION 2026.08.26)
 
 Dos pedidos de Oscar en la misma sesión. El segundo llegó a media entrega: «El
