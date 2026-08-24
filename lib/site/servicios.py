@@ -24,6 +24,24 @@ TIMEOUT = 2.0
 #: Cada pieza: cómo se llama para quien mira, qué hace, cómo se comprueba y por
 #: dónde se entra. La URL de entrada es None cuando no tiene pantalla propia:
 #: sólo le habla El Despacho.
+def _estado_llave_n8n() -> str:
+    """Si El Chalán puede o no operar las automatizaciones.
+
+    Es lo primero que uno quiere saber al abrir esta pantalla después de
+    conectar n8n, y no se puede deducir de que el servicio responda: una cosa
+    es que n8n esté en pie y otra que le hayamos dado la llave.
+    """
+    try:
+        from lib import n8n
+
+        if not n8n.esta_configurado():
+            return ("El Chalán todavía no puede operarlas: falta pegar la llave de la "
+                    "API en Los Ajustes. Se genera dentro de n8n, en Configuración → API.")
+        return "El Chalán puede consultarlas, y proponer prenderlas o apagarlas."
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 PIEZAS: tuple[dict[str, Any], ...] = (
     {
         "clave": "gotenberg",
@@ -67,6 +85,7 @@ PIEZAS: tuple[dict[str, Any], ...] = (
             "La primera vez pide crear una cuenta de dueño: el correo y la "
             "contraseña los eliges tú y quedan guardados dentro de n8n."
         ),
+        "extra": _estado_llave_n8n,
     },
     {
         "clave": "paperless",
@@ -104,6 +123,7 @@ def _http(url: str, *, ok_hasta: int = 500) -> bool:
         return False
 
 
+
 def estado() -> list[dict[str, Any]]:
     """Cada pieza con su veredicto. Nunca lanza."""
     salida = []
@@ -120,6 +140,7 @@ def estado() -> list[dict[str, Any]]:
             "entrada": p["entrada"],
             "ajustes": p["ajustes"],
             "acceso": p.get("acceso", ""),
+            "extra": (p["extra"]() if callable(p.get("extra")) else p.get("extra", "")),
             "vivo": vivo,
         })
     return salida

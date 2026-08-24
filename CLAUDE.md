@@ -7497,9 +7497,43 @@ Oscar (A → C → B):**
 pidió más de 7 G y murió; **el `mem_limit` mató al preprocesado y no al
 negocio**, que es exactamente su propósito.
 
-**Pendiente**: pantalla para resolver los CFDI que quedan pendientes, el
-flujo de n8n del lado de n8n (configuración, fuera del repo), y que los CFDI
-de proveedor generen su egreso.
+**Segunda tanda del mismo día (2026.08.38 → .41):**
+
+- **Gotenberg «supercharge»** (los cuatro que eligió Oscar): **marca de agua**
+  —una cotización sin enviar sale estampada; hoy una sin enviar y una enviada se
+  ven idénticas—, **encabezado** por hoja, **metadatos** (`ensure_ascii=False` a
+  propósito: el default de `json.dumps` manda «Cotizaci\u00f3n»), **unir PDFs** y
+  **convertir Word/Excel** con LibreOffice. Las rutas se verificaron contra el
+  servicio real antes de escribir nada. Y el tamaño de hoja por fin sale del
+  ajuste: estaba fijo en carta.
+- **MCP de automatizaciones**: El Chalán consulta n8n (`listar_automatizaciones`,
+  `detalle_automatizacion`, `corridas_automatizacion`) y **propone**
+  prender/apagar/quitar — nunca aplica solo (§20). Gating `automatizacion` =
+  permiso de Ajustes, porque **un flujo prendido le escribe a clientes**.
+  **Crear un flujo NO se expone a propósito**: pedirle a un modelo que invente
+  el grafo de nodos produce flujos que se ven bien y no corren; `n8n.crear()`
+  queda en el cliente para cuando haya plantillas de las que partir.
+- **GUI para cada pieza** (regla de Oscar, ahora en memoria): pantallas de
+  **Servicios** y **CFDI recibidos** con su renglón en el menú, y la de Rutas
+  corregida — afirmaba «se mide en línea recta» después de que dejó de ser
+  cierto. Los **relojes del Dashboard** ahora salen del mismo origen que El
+  Vigía (`lib/site/fierro.py`).
+
+**Bugs del día, todos con candado o con el porqué escrito:**
+
+4. **OSRM tenía 4 G bloqueados** (`RssAnon`), no caché. Con `--mmap` bajó a
+   **46 MiB** y el sistema de 7.5 G a 3.4 G. La ruta mide igual, en 0.2 s.
+5. **Paperless daba 500**: mi `chown` de los permisos de n8n se llevó también la
+   carpeta de SU Redis, que escribe con el usuario 999. Redis sin poder guardar
+   **bloquea todas las escrituras por diseño**.
+6. **Alias de red perdidos**: recrear contenedores con `docker run` en vez de
+   compose no registra el alias del SERVICIO, sólo el del contenedor. El Taller
+   dejó de encontrar `osrm` y `n8n` unos minutos.
+
+**Pendiente**: pantalla para resolver los CFDI pendientes, el flujo del lado de
+n8n (configuración, fuera del repo, guía en `docs/RECETA-CFDI-POR-CORREO.md`),
+que los CFDI de proveedor generen egreso, y conectar «unir PDFs» y «convertir
+Office» a botones — las capacidades ya están, les falta dónde picarlas.
 
 ### S5 — La Recepción
 

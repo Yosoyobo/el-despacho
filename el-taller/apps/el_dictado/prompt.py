@@ -71,6 +71,10 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
+- activar_automatizacion, desactivar_automatizacion, borrar_automatizacion
+  (las tareas que corren solas, en n8n. Consulta `listar_automatizaciones`
+  ANTES de proponer cualquiera de estas: no inventes identificadores ni
+  nombres. Crear un flujo desde cero NO se puede desde aquí)
 - emitir_factura, cobrar_factura
 - enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
 - capturar_traspaso, capturar_ajuste
@@ -166,6 +170,10 @@ PAYLOADS:
   (el MONTO de un ingreso/egreso NO se puede editar: su asiento contable ya está
   registrado. Si el importe está mal, propón anular_ingreso/anular_egreso y
   volver a capturarlo con registrar_ingreso/registrar_egreso)
+- activar_automatizacion / desactivar_automatizacion / borrar_automatizacion: {flujo_id}
+  (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
+  Prender una automatización hace que le escriba a clientes por su cuenta, así que
+  dilo claro en tu propuesta. Borrar es permanente; apagar no)
 - actualizar_factura: {codigo, campos: {concepto?, monto? | monto_base?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
   (solo facturas en BORRADOR; el monto reemplaza las líneas por una sola línea-concepto. Igual que en crear_factura: `monto` = importe FINAL de pago con impuestos, `monto_base` = antes de impuestos)
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}

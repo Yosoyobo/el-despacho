@@ -387,9 +387,28 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo (cotización aprobada con anticipo configurado)",
         "gating": "facturacion_crear",
     },
+    {
+        "tipo": "activar_automatizacion",
+        "titulo": "Prender una automatización",
+        "ejemplo": "Prende la automatización de las facturas por correo.",
+        "payload": "flujo_id (o nombre)",
+        "gating": "automatizacion",
+    },
+    {
+        "tipo": "desactivar_automatizacion",
+        "titulo": "Apagar una automatización",
+        "ejemplo": "Apaga el aviso automático de cobranza.",
+        "payload": "flujo_id (o nombre)",
+        "gating": "automatizacion",
+    },
+    {
+        "tipo": "borrar_automatizacion",
+        "titulo": "Quitar una automatización",
+        "ejemplo": "Quita la automatización de prueba.",
+        "payload": "flujo_id (o nombre)",
+        "gating": "automatizacion",
+    },
 ]
-
-
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
     from lib import permisos
@@ -416,6 +435,9 @@ def _gating_checks():
         "comunicacion": permisos.puede_enviar_correo,
         # S-Chalan-Equipo-UX: acciones del Checador (jornada/tiempo/visitas).
         "checador": permisos.puede_checar,
+        # Prender o apagar una automatización es tocar la voz del
+        # despacho: un flujo activo le escribe a clientes.
+        "automatizacion": permisos.puede_acceder_ajustes,
     }
 
 

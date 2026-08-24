@@ -38,6 +38,7 @@ def _gate(usuario, helper: str, accion_humana: str) -> None:
 
 
 from . import (  # noqa: F401, E402 — registra ejecutores al importar
+    automatizacion,
     avanzados,
     basicos,
     catalogo,

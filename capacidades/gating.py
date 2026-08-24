@@ -27,5 +27,9 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         # Quien puede escribirle a un cliente puede ver con qué moldes cuenta.
         "comunicacion": permisos.puede_enviar_correo,
         "rutas": permisos.puede_ver_rutas,
+        # Automatizaciones: va con el permiso de Ajustes y no con uno propio,
+        # porque un flujo prendido le manda correos a clientes — quien puede
+        # tocar eso es quien ya puede tocar la configuración del despacho.
+        "automatizacion": lambda u: permisos.puede(u, "ajustes", "acceder"),
     }.get(gating)
     return bool(fn(usuario)) if fn else False
