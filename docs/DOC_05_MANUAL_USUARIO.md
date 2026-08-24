@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Las rutas ya miden por calles, no en línea recta (24 de agosto de 2026)
+
+**El planeador dejó de medir a vuelo de pájaro**
+
+Hasta hoy, cuando el sistema calculaba la vuelta del día medía **en línea
+recta** entre una parada y la siguiente. El orden de las paradas salía bien casi
+siempre, pero los kilómetros y las horas eran una aproximación optimista: no
+sabía de ejes sin retorno, de ríos ni de barrancas.
+
+Ahora el servidor tiene el mapa de México completo y calcula por calles de
+verdad. La diferencia no es menor:
+
+| Del Zócalo a Ciudad Satélite | |
+|---|---|
+| Como lo medía antes | 14.0 km |
+| **Como se recorre en realidad** | **20.4 km — 46 % más**, 24 minutos |
+
+Eso quiere decir que las horas que ve el runner en su ruta ahora **se parecen a
+las que va a tardar**. Antes le prometían de menos, y quien recibe una promesa
+que no se cumple deja de creerle a la herramienta.
+
+**Si el mapa no está disponible, nada se detiene**: el sistema vuelve a la
+medida anterior y sigue planeando igual. Sólo pierde precisión.
+
+---
+
 ## Novedades — Ver quién usa la máquina, y los relojes en el Inicio (24 de agosto de 2026)
 
 **Una tarjeta nueva: quién se está comiendo el servidor**

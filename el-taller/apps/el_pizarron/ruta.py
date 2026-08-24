@@ -32,9 +32,16 @@ MAX_PARADAS = 9
 
 
 def _distancia(a, b) -> float | None:
-    from apps.checador.models.sede import distancia_m
+    """Metros entre dos puntos.
 
-    return distancia_m(a[0], a[1], b[0], b[1])
+    Desde 2026-08-24 pregunta por CALLES si OSRM está en pie, y cae al
+    haversine de El Checador si no. Medido entre el Zócalo y Ciudad Satélite:
+    14.0 km en recta contra 20.4 por calle — un 46 % que antes se le escondía
+    al runner en sus horas estimadas.
+    """
+    from lib import ruteo
+
+    return ruteo.distancia(a, b)
 
 
 def ordenar_por_cercania(paradas: list[dict], origen: tuple | None = None) -> list[dict]:
@@ -77,13 +84,38 @@ def ordenar_por_cercania(paradas: list[dict], origen: tuple | None = None) -> li
 
 
 def distancia_total_m(paradas: list[dict], origen: tuple | None = None) -> int | None:
-    """Cuánto se recorre siguiendo ese orden, en línea recta."""
+    """Cuánto se recorre siguiendo ese orden.
+
+    Por calles cuando OSRM está en pie; en línea recta si no. Se pide la
+    MATRIZ de una sola vez en lugar de un tramo a la vez: son N consultas
+    contra una, y con una ruta de diez paradas la diferencia se nota.
+    """
     puntos = [(p["lat"], p["lng"]) for p in paradas
               if p.get("lat") is not None and p.get("lng") is not None]
     if origen:
         puntos.insert(0, origen)
     if len(puntos) < 2:
         return None
+
+    from lib import ruteo
+
+    m = ruteo.matriz(puntos)
+    if m:
+        dist = m["distancias"]
+        total = 0.0
+        for i in range(len(puntos) - 1):
+            try:
+                tramo = dist[i][i + 1]
+            except (IndexError, TypeError):
+                tramo = None
+            # OSRM devuelve null cuando no encuentra camino entre dos puntos
+            # (una isla, una coordenada en medio del mar). Ese tramo se mide en
+            # recta en lugar de darlo por cero, que sería mentir a la baja.
+            if tramo is None:
+                tramo = _distancia(puntos[i], puntos[i + 1]) or 0.0
+            total += tramo
+        return int(total)
+
     total = 0.0
     for a, b in zip(puntos, puntos[1:], strict=False):
         d = _distancia(a, b)
