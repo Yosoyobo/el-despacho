@@ -6025,6 +6025,63 @@ datos, o el literal tiene que llevar un carácter fuera de `[A-Za-z0-9]`. Queda 
 más con el patrón, de riesgo mucho menor por ser de cuatro caracteres:
 `tests/test_rearquitectura.py:266`.
 
+### S-Movil-Mandados ✅ — El tablero de reparto usable en el celular + el Dashboard revertido (2026-08-23, VERSION 2026.08.27)
+
+Ronda de Oscar sobre lo deployado media hora antes (2026.08.26), con captura del
+Dashboard: «La volviste a cagar… quitaste los mandados por completo de móvil.
+¿Dónde crees que van a armar su ruta, en la computadora?» · «te dije bien clarito,
+minimiza la sección de tareas cerradas, te valió cacahuate y minimizaste todas» ·
+«las direcciones en los mandados SIGUEN sin guardarse. Basta de ser tan simplista,
+ya te he dicho que las cosas son MÓDULOS: si arreglas una cosa se replica EN TODAS
+PARTES DONDE SE USE».
+
+Los tres tenían razón. Los tres se verificaron **midiendo en un navegador de
+verdad** (Playwright + Chrome, iPhone de 390px, con el CSS de Tailwind **compilado
+como en el build** — el `tailwind.css` del repo está stale y sin compilar la
+medición no vale: `.hidden` ni existe).
+
+- **El Dashboard se REVIRTIÓ por completo** (`git checkout` del commit anterior).
+  Plegado quedaba en ocho renglones de títulos vacíos por los que había que picar
+  uno por uno — la captura de Oscar lo muestra. Es la pantalla que se abre para
+  ver de un golpe cómo va el día; esconder su contenido la anula. **Candado nuevo**
+  `test_el_DASHBOARD_no_se_pliega` para que nadie lo reintente «por consistencia».
+- **En Tareas se pliega SÓLO la sección «Cerradas»**, completa y de una vez. Las
+  columnas activas, los filtros y el tablero de reparto se ven enteros: las
+  activas son la razón de entrar, y los filtros son las pastillas con las que un
+  runner ve lo suyo.
+- **Los mandados NUNCA se pliegan** — el teléfono ES el lugar de trabajo del
+  runner. Ni el tablero dentro de Tareas ni el widget «Mis mandados» del
+  Dashboard.
+- **La raíz de «las direcciones no se guardan»**: el backend guardaba bien desde
+  Ago23 (probado con POST a los dos caminos). Lo que fallaba era **llegar al
+  botón**. Medido en 390px con el CSS compilado: en la tabla de siete columnas
+  («min-w-[820px]» dentro de un `overflow-x-auto`) **«En camino» y «Entregado»
+  caían en x=682 — fuera de la pantalla —** y «Fijar lugar» al filo. Un runner en
+  la calle no podía ni fijar el lugar ni marcar la entrega. Arreglar el backend
+  sin comprobar que el botón fuera alcanzable fue el error de fondo, y es
+  exactamente lo que Oscar señala.
+- **El arreglo es de MÓDULO, no de pantalla**: las acciones salieron a
+  `mandados/_acciones.html` (una sola vez) y `_tablero.html` las pinta en **tabla
+  para escritorio** (`hidden md:block`) y en **tarjetas para el celular**
+  (`md:hidden`) — tipo, título, proyecto, runner, compromiso, **lugar** y los
+  cuatro botones al alcance del pulgar. Como el partial lo comparten `/mandados/`
+  y Tareas, queda arreglado en los dos. Un test exige que los formularios NO
+  estén duplicados en el tablero (si lo estuvieran, alguien arreglaría uno y el
+  otro seguiría mandando lo viejo).
+  Verificado después: botones en x=29/128/206, todos dentro, el modal abre y la
+  dirección queda en la base.
+- **Medido y reportado, sin tocar**: el mismo patrón vive en **8 plantillas**,
+  incluido el partial canónico `_tabla_datos.html` (`min-w-[640px]`, o sea 250px
+  fuera en un iPhone). En las listas de consulta el scroll horizontal incomoda
+  pero no bloquea —se lee y se pica la fila—; en una pantalla de ACCIÓN como los
+  mandados sí bloquea. Queda para que Oscar decida si se barre.
+- **18 tests** en `test_plegado_movil.py` (rehechos con la regla nueva) + 68 verdes
+  en el radio de impacto.
+
+**La lección, y va a memoria**: una pantalla de móvil no se declara arreglada
+porque el backend guarde. Se abre en un teléfono y **se mide si el botón se puede
+picar** — con el CSS compilado, no con el del repo.
+
 ### S-Movil-Plegado ✅ — En el celular las tarjetas nacen plegadas + el correo del Chalán sale de chalan@ (2026-08-23, VERSION 2026.08.26)
 
 Dos pedidos de Oscar en la misma sesión. El segundo llegó a media entrega: «El

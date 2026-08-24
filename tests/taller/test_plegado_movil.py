@@ -170,75 +170,141 @@ def _analizar(html: str) -> _Anidamiento:
     return p
 
 
-@pytest.mark.django_db
-def test_el_dashboard_pliega_sus_tarjetas(client, usuario_factory):
-    admin = usuario_factory(rol="super_admin")
-    client.force_login(admin)
-    html = client.get("/").content.decode()
-
-    analisis = _analizar(html)
-    assert not analisis.mal, f"cuerpos que no son hijos directos: {analisis.mal}"
-    # Las pesadas: si alguna se cae de la lista, vuelve el scroll que Oscar reportó.
-    for seccion in ("acciones", "indicadores", "proyectos", "calendario", "tu-tablero"):
-        assert f'data-movil-plegable="{seccion}"' in html, f"falta plegar «{seccion}»"
 
 
 @pytest.mark.django_db
-def test_los_avisos_del_dashboard_nacen_abiertos(client, usuario_factory):
-    """«Mis mandados» y las sugerencias sólo aparecen cuando hay algo que
-    atender: plegarlos sería esconder el aviso."""
-    from ajustes.models import PlantillaCorreo  # noqa: F401  (asegura apps cargadas)
+def test_en_tareas_solo_se_pliegan_las_CERRADAS(client, usuario_factory):
+    """Oscar, 2026-08-23: «te dije bien clarito, minimiza la sección de tareas
+    cerradas… minimizaste todas».
+
+    Las columnas activas son la razón de entrar a Tareas: plegarlas deja la
+    pantalla en una lista de títulos. Lo terminado es lo que ocupa lugar sin que
+    nadie lo consulte.
+    """
+    from apps.el_pizarron.models.estado_tarea import EstadoTarea
 
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
-    html = client.get("/").content.decode()
-
-    # Sólo se comprueba lo que esté presente: las dos secciones son condicionales.
-    for seccion in ("sugerencias", "mis-mandados"):
-        marca = f'data-movil-plegable="{seccion}"'
-        if marca in html:
-            assert seccion in _analizar(html).abiertos, (
-                f"«{seccion}» es un aviso: tiene que nacer abierto"
-            )
-
-
-@pytest.mark.django_db
-def test_tareas_pliega_filtros_columnas_y_reparto(client, usuario_factory):
-    admin = usuario_factory(rol="super_admin")
-    client.force_login(admin)
+    # Hace falta un estado terminal para que la sección «Cerradas» exista.
+    EstadoTarea.objects.update_or_create(
+        slug="completada",
+        defaults={"label": "Completada", "terminal": True, "activo": True, "orden": 90},
+    )
     html = client.get("/tareas/").content.decode()
 
     analisis = _analizar(html)
     assert not analisis.mal, f"cuerpos que no son hijos directos: {analisis.mal}"
-    assert 'data-movil-plegable="filtros"' in html
-    assert 'data-movil-plegable="col-' in html, "las columnas del tablero no se plegan"
+    assert 'data-movil-plegable="cerradas"' in html, "la sección Cerradas debe plegarse"
+    assert 'data-movil-plegable="col-' not in html, "las columnas ACTIVAS no se plegan"
+    assert 'data-movil-plegable="filtros"' not in html, (
+        "los filtros tampoco: son las pastillas que el runner usa para ver lo suyo"
+    )
 
 
 @pytest.mark.django_db
-def test_el_tablero_de_reparto_se_pliega_dentro_de_tareas(client, usuario_factory):
+def test_los_mandados_NUNCA_se_pliegan_en_el_celular(client, usuario_factory):
+    """Oscar, 2026-08-23: «quitaste los mandados por completo de móvil. ¿Dónde
+    crees que van a armar su ruta, en la computadora?»
+
+    El teléfono ES el lugar de trabajo del runner: el tablero de reparto y el
+    widget de «Mis mandados» tienen que estar a la vista, no detrás de un toque.
+    """
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
-    html = client.get("/tareas/?cat=mandados").content.decode()
-    assert 'data-movil-plegable="tablero-reparto"' in html
+
+    en_tareas = client.get("/tareas/?cat=mandados").content.decode()
+    assert 'data-movil-plegable="tablero-reparto"' not in en_tareas
+    # Y sus acciones se ven sin desplegar nada.
+    assert "Planear rutas" in en_tareas or "Mi ruta de hoy" in en_tareas
+
+    propia = client.get("/mandados/").content.decode()
+    assert "data-movil-plegable" not in propia, (
+        "en su propia pantalla no se pliega nada: ahí entraste justo a verlo"
+    )
+
+    dashboard = client.get("/").content.decode()
+    assert 'data-movil-plegable="mis-mandados"' not in dashboard
 
 
 @pytest.mark.django_db
-def test_su_propia_pantalla_de_mandados_NO_se_pliega(client, usuario_factory):
-    """A `/mandados/` se entra a ver los mandados. Plegarlos ahí dejaría la
-    página vacía: el pliegue es para las secciones secundarias."""
-    admin = usuario_factory(rol="super_admin")
-    client.force_login(admin)
-    html = client.get("/mandados/").content.decode()
-    assert 'data-movil-plegable="tablero-reparto"' not in html
-
-
-@pytest.mark.django_db
-def test_las_asas_nuevas_no_se_ven_en_escritorio(client, usuario_factory):
+def test_las_asas_no_se_ven_en_escritorio(client, usuario_factory):
     """Cada encabezado que existe SÓLO para plegar va con `md:hidden`; si se
     colara sin él, en escritorio saldría un título duplicado."""
     admin = usuario_factory(rol="super_admin")
     client.force_login(admin)
-    html = client.get("/").content.decode()
+    html = client.get("/tareas/").content.decode()
 
     for m in re.finditer(r"<header[^>]*data-movil-asa[^>]*>", html):
         assert "md:hidden" in m.group(0), f"asa visible en escritorio: {m.group(0)[:120]}"
+
+
+@pytest.mark.django_db
+def test_el_DASHBOARD_no_se_pliega(client, usuario_factory):
+    """Oscar, 2026-08-23, viendo la captura: «revierte el dashboard, eso no fue
+    lo que yo pedí».
+
+    Plegado, el Dashboard queda en una lista de títulos vacíos: ocho renglones
+    que no dicen nada y por los que hay que picar uno por uno. Es la pantalla que
+    se abre para VER de un golpe cómo va el día — esconder su contenido la anula.
+    Este candado existe para que nadie lo vuelva a intentar «por consistencia».
+    """
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    html = client.get("/").content.decode()
+    assert "data-movil-plegable" not in html, (
+        "el Dashboard se muestra completo, en el celular también"
+    )
+
+
+# ── El bug de fondo: en el celular no se podía llegar a los botones ──────────
+
+@pytest.mark.django_db
+def test_el_tablero_de_reparto_trae_tarjetas_para_el_celular(client, usuario_factory):
+    """Oscar, 2026-08-23: «las direcciones en los mandados siguen sin guardarse».
+
+    No se guardaban porque **no se podía llegar al botón que las guarda**. Medido
+    en un iPhone de 390px con el CSS compilado: en la tabla de siete columnas
+    «En camino» y «Entregado» caían en x=682 — fuera de la pantalla — y «Fijar
+    lugar» al filo. El backend guardaba bien desde el 23 de agosto; lo que
+    faltaba era alcanzar el formulario.
+
+    El arreglo es de MÓDULO: las acciones viven una sola vez
+    (`mandados/_acciones.html`) y el tablero las pinta en tabla para escritorio y
+    en tarjetas para el celular — así queda arreglado en las dos pantallas que
+    lo usan, su propia página y Tareas.
+    """
+    import datetime as dt
+
+    from apps.el_pizarron.models import Tarea
+    from apps.la_cartera.models import Cliente
+    from apps.los_proyectos.models import Proyecto
+
+    admin = usuario_factory(rol="super_admin")
+    client.force_login(admin)
+    cli = Cliente.objects.create(razon_social="ACME")
+    pro = Proyecto.objects.create(nombre="P", cliente=cli, creado_por=admin)
+    Tarea.objects.create(proyecto=pro, titulo="Entrega X", tipo="entrega",
+                         creado_por=admin, fecha_compromiso=dt.date.today())
+
+    html = client.get("/mandados/").content.decode()
+    # La tabla sólo para escritorio…
+    assert "hidden overflow-x-auto" in html and "md:block" in html
+    # …y las tarjetas sólo para el celular.
+    assert "space-y-3 md:hidden" in html, "faltan las tarjetas del celular"
+    # Las acciones, en las dos presentaciones (el partial se incluye dos veces).
+    assert html.count("mandado-avanzar") >= 6 or html.count("Entregado") >= 2
+
+
+def test_las_acciones_del_mandado_viven_en_UN_solo_lugar():
+    """Si los formularios se duplicaran en la plantilla, uno se quedaría atrás:
+    alguien arregla la tabla y las tarjetas siguen mandando lo viejo (o al revés).
+    """
+    tablero = (RAIZ / "el-taller" / "templates" / "mandados" / "_tablero.html").read_text()
+    acciones = (RAIZ / "el-taller" / "templates" / "mandados" / "_acciones.html").read_text()
+    assert "mandado-avanzar" in acciones
+    assert "mandado-avanzar" not in tablero, (
+        "el tablero no debe traer los formularios: los incluye de _acciones.html"
+    )
+    assert tablero.count('include "mandados/_acciones.html"') == 2, (
+        "las dos presentaciones (tabla y tarjetas) incluyen el MISMO partial"
+    )

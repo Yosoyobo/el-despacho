@@ -11558,3 +11558,73 @@ El PR #78 (deploy automático al NUC + pin del lugar + botones de ruta) se merge
 al abrir esta sesión: llevaba el CI verde y es el que hace que el deploy llegue
 solo. El trabajo de hoy salió a rama propia desde `main` ya actualizado, no
 encima de ese PR.
+
+---
+
+# S-Movil-Mandados — El tablero de reparto usable en el celular; el Dashboard revertido (2026-08-23, VERSION 2026.08.27)
+
+Ronda de Oscar media hora después del deploy anterior, con captura. Tres reclamos,
+los tres ciertos.
+
+## 1. El Dashboard, revertido
+
+Plegado quedaba en ocho renglones de títulos vacíos. Es la pantalla que se abre
+para ver de un golpe cómo va el día: esconder su contenido la anula. Se revirtió
+con `git checkout` del commit anterior — cero rastro — y quedó un candado
+(`test_el_DASHBOARD_no_se_pliega`) para que nadie lo reintente «por consistencia».
+
+## 2. En Tareas, sólo «Cerradas»
+
+Era lo que se había pedido. Se plegó todo: filtros, columnas activas y tablero de
+reparto. Ahora se pliega **la sección Cerradas completa** y nada más. Las columnas
+activas son la razón de entrar a Tareas; los filtros son las pastillas con las que
+un runner ve lo suyo.
+
+## 3. Las direcciones: el backend estaba bien, el botón no se alcanzaba
+
+Éste es el que importa. **El backend guardaba correctamente** desde Ago23 —
+probado con POST a los dos caminos (modal de Nueva tarea y `fijar_destino`), los
+dos devolvieron el dato en la base.
+
+Lo que fallaba era **llegar al formulario**. Medido con Playwright + Chrome en un
+iPhone de 390px, y con el `tailwind.css` **compilado como en el build** (detalle
+que casi arruinó el diagnóstico: el CSS del repo está stale y ahí `.hidden` ni
+existe, así que la primera medición mentía):
+
+| | x del botón | ¿dentro de la pantalla? |
+|---|---|---|
+| «En camino» (tabla, main) | 682 | **no** |
+| «Entregado» (tabla, main) | 682 | **no** |
+| «Fijar lugar» (tabla, main) | al filo | apenas |
+| los tres (con tarjetas) | 29 / 128 / 206 | **sí** |
+
+La tabla de siete columnas mide `min-w-[820px]` dentro de un `overflow-x-auto`:
+para tocar «Entregado» hay que descubrir que la tabla scrollea a lo ancho y
+arrastrarla con el dedo. Un runner en la calle no podía ni fijar el lugar ni
+marcar la entrega.
+
+**El arreglo es de módulo, que es lo que Oscar exigía.** Las acciones salieron a
+`mandados/_acciones.html` — una sola vez — y `_tablero.html` las pinta en dos
+presentaciones: tabla para escritorio (`hidden md:block`) y tarjetas para el
+celular (`md:hidden`), con tipo, título, proyecto, runner, compromiso, lugar y los
+cuatro botones al alcance del pulgar. El partial lo comparten `/mandados/` y
+Tareas, así que queda arreglado en los dos sitios de una vez. Un test exige que
+los formularios NO estén duplicados en el tablero: duplicados, alguien arregla uno
+y el otro sigue mandando lo viejo.
+
+## Lo mismo, medido en el resto del sistema
+
+El patrón vive en **8 plantillas**, incluido el partial canónico `_tabla_datos.html`
+(`min-w-[640px]` → 250px fuera de un iPhone). En una lista de consulta el scroll
+horizontal incomoda pero no bloquea: se lee y se pica la fila para entrar. En una
+pantalla de acción sí bloquea. Queda medido y sin tocar, para que Oscar decida.
+
+## La lección
+
+Una pantalla de móvil no se declara arreglada porque el backend guarde. Se abre en
+un teléfono y **se mide si el botón se puede picar** — con el CSS compilado, no con
+el del repo. Arreglar `fijar_destino` en Ago23 y no comprobar que el botón fuera
+alcanzable fue el error de fondo.
+
+**18 tests** en `test_plegado_movil.py` (rehechos), 68 verdes en el radio de
+impacto. Ruff limpio.
