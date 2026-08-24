@@ -73,7 +73,11 @@ services:
     command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "2000", "/data/mexico-latest.osrm"]
     volumes:
       - ./data/osrm:/data:ro
-    mem_limit: 3g
+    # 4 G y no 3: medido con el mapa de México servido, se quedaba en 2.999 de
+    # 3 G, o sea pegado al techo. Buena parte de eso es el mapa mapeado en
+    # memoria —que el kernel puede soltar bajo presión— pero rozar el límite
+    # significa que un pico lo mata. Con 8.6 G libres, el aire no cuesta nada.
+    mem_limit: 4g
 
   # ── n8n ─────────────────────────────────────────────────────────────────────
   # Automatiza. El Portavoz lleva desde mayo encolando eventos hacia un n8n que
