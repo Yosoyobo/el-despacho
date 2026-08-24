@@ -21,7 +21,7 @@ Reconocimiento del 2026-08-24, 08:40, contra `nuc-lc` por el tailnet:
 **Lo que eso decide:** la RAM no es el límite (caben varios servicios
 más, ver §5). El disco y el cable sí lo son. **El cable de red sigue
 pendiente y ya estorba**: hoy el respaldo nocturno a HAL, las imágenes
-que entrega El Mostrador y todo el tráfico de los cinco usuarios pasan
+que entrega El Mostrador y todo el tráfico de los diez usuarios pasan
 por WiFi. Con OSRM encima, es el primer lugar donde se va a notar.
 
 ---
@@ -134,7 +134,7 @@ no rehacer el módulo.
 
 **Photon (geocodificar direcciones) queda como opcional, fase 2.** Es el
 servicio más caro del plan —2 G— para lo que resuelve: capturar una
-dirección nueva de vez en cuando. Con cinco usuarios y el caché que ya
+dirección nueva de vez en cuando. Con diez usuarios y el caché que ya
 existe, Nominatim público alcanza. Se retoma el día que el límite de una
 consulta por segundo estorbe de verdad.
 
@@ -195,33 +195,68 @@ Medido en el NUC el 2026-08-24 con `docker stats` y `pg_settings`.
 | Sistema, Docker, Tailscale | ~1.05 G | — |
 | **Total** | **2.3 G de 14.8 G** | **~8.5 G si todo se llena** |
 
-### 5.2 Cinco usuarios simultáneos no mueven la RAM
+### 5.2 Los usuarios simultáneos casi no mueven la RAM
 
-El Taller ya atiende **64 peticiones a la vez** y La Gerencia 32. Cada
-worker carga Django entero **al arrancar**, así que atender a cinco
-personas reutiliza exactamente los mismos workers que atender a una. Ya
-está medido: en la prueba de esfuerzo de agosto, de 10 a 200
-concurrentes la RAM se quedó clavada en 4.2 G y lo que subió fue el CPU.
-Cinco usuarios no rozan el techo de 275 peticiones por segundo.
+El Taller ya atiende **64 peticiones a la vez** (8 workers × 8 hilos) y
+La Gerencia 32. Cada worker carga Django entero **al arrancar**, así que
+atender a diez personas reutiliza exactamente los mismos workers que
+atender a una. Ya está medido: en la prueba de esfuerzo de agosto, de 10
+a 200 concurrentes la RAM se quedó clavada en 4.2 G y lo que subió fue
+el CPU. Diez usuarios no rozan el techo de 275 peticiones por segundo.
 
-Lo que **sí** se mueve con cinco personas trabajando a la vez:
+**Cuidado al medir esto con `ps`**: la suma de RSS de los 27 backends de
+Postgres da 798 MB, pero el contenedor entero usa 254 MB. `ps` cuenta la
+memoria compartida una vez por proceso. Con gunicorn pasa igual: 721 MB
+sumados contra 543 reales. **El número honesto es el de cgroups**
+(`docker stats`), no la suma de RSS. Es la razón más común por la que se
+sobredimensiona un servidor.
 
-| | |
-|---|---|
-| `work_mem` de Postgres | 32 MB **por ordenamiento**, no por usuario. Cinco reportes pesados ≈ **+500 MB** |
-| **Gotenberg** | abre un Chromium **por PDF**. Cinco cotizaciones a la vez ≈ **+1.5 G** |
-| **Paperless** | el OCR carga el documento. Dos en cola ≈ **+600 MB** |
+Lo que **sí** crece cuando hay diez personas trabajando a la vez:
 
-### 5.3 Los tres escenarios
+| | Con 5 | Con 10 |
+|---|---|---|
+| Conexiones a Postgres (~2-3 MB privados c/u) | +60 MB | **+100 MB** |
+| `work_mem`: 32 MB **por ordenamiento**, no por usuario | +500 MB | **+1 G** |
+| **Gotenberg**: un Chromium **por PDF** (~300 MB) | +1.5 G | **+3 G, acotado a 2 G** |
+| **Paperless**: el OCR carga el documento | +600 MB | **+900 MB, acotado a 2 G** |
+
+### 5.3 Los escenarios, con diez usuarios
 
 | Escenario | RAM | Libre |
 |---|---|---|
-| Hoy | 2.3 G | 12.5 G |
-| + los servicios nuevos, en reposo | 7.7 G | 7.1 G |
-| + cinco usuarios haciendo lo peor a la vez | **10.3 G** | **4.5 G** ⚠️ |
+| Hoy, sólo El Despacho | 2.3 G | 12.5 G |
+| + los servicios nuevos, en reposo | 5.75 G | 9.0 G |
+| + **10 usuarios haciendo lo peor a la vez** | **~10 G** | **~4.8 G** |
 
-Ese 4.5 G roza el colchón de 4 G que `lib/site/host.presion_memoria()`
-usa como línea de alarma. Cabe, pero sin margen para sorpresas.
+Cabe, y queda por encima del colchón de 4 G que
+`lib/site/host.presion_memoria()` usa como línea de alarma — **pero sólo
+con los dos ajustes de §5.4 aplicados**. Sin ellos, los techos de
+Postgres y Redis se comen ese margen.
+
+**Techo absoluto** (si los cuatro `mem_limit` se tocaran a la vez):
+8 G de servicios nuevos + 4 G de El Despacho + 1 G de sistema = **13 G
+de 14.8**. Eso queda por debajo del colchón, pero es un escenario que no
+ocurre: los límites son cinturones individuales, no reservas, y que los
+cuatro se activen en el mismo segundo es tan probable como que los
+cuatro pasajeros de un coche choquen por separado.
+
+### 5.3.1 Gotenberg pide una segunda tranca
+
+Es el único servicio cuyo consumo escala **con la gente**, no con los
+datos: un Chromium por PDF. Con diez personas exportando a la vez son
+3 G de golpe.
+
+- El `mem_limit` de 2 G es el respaldo duro, pero llegar ahí significa
+  que Gotenberg muere a media conversión.
+- Mejor **acotar cuántas conversiones corren a la vez** (cuatro basta):
+  las demás se encolan. El pico se aplana a ~1.2 G y el problema deja de
+  ser de memoria para volverse de espera — que es como debe ser.
+
+**Y hay un efecto en sentido contrario que juega a favor**: hoy cada PDF
+ocupa un hilo de gunicorn **varios segundos** esperando a que Google
+convierta el documento. Con Gotenberg eso baja a milisegundos. Con diez
+usuarios, instalarlo **sube** la capacidad efectiva de El Taller en vez
+de bajarla.
 
 ### 5.4 El conflicto de fondo, y cómo se resuelve
 
