@@ -382,8 +382,6 @@ def buscar_proyectos(request):
     return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
 
 
-@login_required
-
 def _infra_gauges(user):
     """Los cuatro relojes del NUC para el pie del Dashboard.
 
@@ -409,6 +407,7 @@ def _infra_gauges(user):
     return datos
 
 
+@login_required
 def home(request):
     user = request.user
     rol = getattr(user, "rol", None)
