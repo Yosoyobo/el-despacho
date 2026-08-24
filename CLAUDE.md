@@ -179,6 +179,28 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
     trae botón «Actualizar»). `tests/site/test_vigia.py::TestElVigiaYElSiteVanALaPar`
     lo exige en cada build.
 
+23. **Todo despliegue avisa: ventana de mantenimiento + roadmap — REGLA
+    CANÓNICA (decisión Oscar, 2026-08-24).** Además de la notificación de
+    Novedades (§10 item 6), **cada despliegue abre y cierra una ventana de
+    mantenimiento visible**. Tres piezas, ninguna opcional:
+    - **El banner respira.** Ámbar (`.respira` de `input.css`, dual-copy)
+      mientras la ventana esté abierta: el sistema funciona, sólo avisa que
+      se está trabajando. **Rojo automático** cuando algo deja de
+      responder — lo enciende `lib.aviso_deploy.nivel_aviso()` con sondas
+      cacheadas en Redis, **nadie tiene que acordarse de marcarlo**.
+    - **La ventana se abre con TTL de la jornada.** `TTL_DEFAULT` son 10
+      minutos, pensados para un deploy de tres: para trabajos largos hay
+      que pasar `ttl_segundos` o el aviso se apaga solo a media faena.
+    - **La pantalla de mantenimiento explica.** El snippet `(lc_failover)`
+      del `Caddyfile` no dice sólo «volvemos pronto»: lleva **qué se está
+      haciendo, para qué sirve y qué falta**, con barra de avance. Se
+      actualiza en cada corte y **se retira al cerrar la ventana** — un
+      roadmap que sobrevive al trabajo terminado miente.
+
+    Cerrar la ventana es `limpiar_deploy_en_curso()` **y** devolver la
+    pantalla a su versión corta. Un banner ámbar olvidado entrena al equipo
+    a ignorarlo, que es exactamente lo que esta regla evita.
+
 ---
 
 ## 5. Estructura de directorios (canónica S1a)

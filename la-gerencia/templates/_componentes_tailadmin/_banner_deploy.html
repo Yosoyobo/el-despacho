@@ -1,23 +1,42 @@
 {% comment %}
-Banner "deploy en curso". Self-replacing vía HTMX cada 10s.
-Cuando no hay deploy, el div queda vacío pero sigue polleando — así detecta
-el siguiente deploy sin necesidad de recargar la página. Decisión actualizada
-en S-LC-Feedback-V2: antes devolvía 204 y dejaba de polleear.
+Banner de la ventana de mantenimiento. Self-replacing vía HTMX cada 10s.
+Cuando no hay ventana abierta el div queda vacío pero sigue polleando, así
+detecta la siguiente sin recargar la página.
+
+Dos niveles (S-NUC-Servicios): ámbar = hay trabajo en curso hoy, el sistema
+funciona normal. Rojo = además algo NO está respondiendo ahora mismo; se
+enciende solo desde `lib.aviso_deploy.nivel_aviso()`.
+
+La clase `respira` está en input.css (dual-copy §18): late despacio para que
+se note sin distraer. Respeta `prefers-reduced-motion`.
 {% endcomment %}
 <div id="banner-deploy"
      hx-get="/sistema/aviso-deploy/"
      hx-trigger="every 10s"
      hx-swap="outerHTML">
     {% if hay_deploy_en_curso %}
-    <div role="status" aria-live="polite"
-         class="border-b border-warning-300 bg-warning-50 px-4 py-2.5 text-sm text-warning-700 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+    {% if nivel_aviso == "rojo" %}
+    <div role="status" aria-live="assertive"
+         class="respira border-b border-error-300 bg-error-50 px-4 py-2.5 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-300">
         <div class="mx-auto flex max-w-7xl items-center gap-3">
-            <span class="text-base" aria-hidden="true">🚧</span>
+            <span class="text-base" aria-hidden="true">🔴</span>
             <span class="flex-1">
-                <strong class="font-semibold">Actualización en curso</strong> — la página puede recargar en los próximos segundos.
-                <span class="opacity-80">Tus cambios sin guardar pueden perderse.</span>
+                <strong class="font-semibold">Servicio interrumpido</strong> — estamos reiniciando algo en este momento.
+                <span class="opacity-80">Espera unos segundos y vuelve a intentar; no guardes cambios ahorita.</span>
             </span>
         </div>
     </div>
+    {% else %}
+    <div role="status" aria-live="polite"
+         class="respira border-b border-warning-300 bg-warning-50 px-4 py-2.5 text-sm text-warning-700 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+        <div class="mx-auto flex max-w-7xl items-center gap-3">
+            <span class="text-base" aria-hidden="true">🚧</span>
+            <span class="flex-1">
+                <strong class="font-semibold">Mantenimiento en curso</strong> — hoy estamos trabajando en la plataforma.
+                <span class="opacity-80">Puedes seguir usándola; si algo parpadea, es por esto.</span>
+            </span>
+        </div>
+    </div>
+    {% endif %}
     {% endif %}
 </div>
