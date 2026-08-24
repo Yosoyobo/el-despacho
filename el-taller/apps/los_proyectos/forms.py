@@ -375,9 +375,19 @@ class ProyectoProductoForm(forms.ModelForm):
         inst = getattr(self, "instance", None)
         if inst is not None and inst.pk:
             if inst.servicio_id:
+                # OJO — `proveedor_principal` va en el select_related a la
+                # fuerza. `label_from_instance` (arriba) pide
+                # `s.proveedor_default` de CADA opción, y eso toca ese FK: sin
+                # precargarlo son 51 consultas por tarjeta (una por producto del
+                # catálogo que tenga proveedor principal), o 461 en un proyecto
+                # de 9 líneas. Medido en La Sede el 2026-08-23: el formset del
+                # detalle pasaba de 516 consultas y 1.5 s a 57 y 0.33 s, con el
+                # HTML byte por byte idéntico. Era la causa del «la tarjeta nueva
+                # tarda en aparecer» (nota 13) — no el peso del HTML.
                 self.fields["servicio"].queryset = (
                     Servicio.objects.filter(Q(activo=True) | Q(pk=inst.servicio_id))
-                    .select_related("categoria").prefetch_related("proveedores")
+                    .select_related("categoria", "proveedor_principal")
+                    .prefetch_related("proveedores")
                 )
             if inst.variacion_id:
                 self.fields["variacion"].queryset = (

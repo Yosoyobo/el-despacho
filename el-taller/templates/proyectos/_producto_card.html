@@ -368,7 +368,10 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
                     class="producto-eliminar inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-200 bg-white text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10"
                     title="Quitar producto" aria-label="Quitar producto"
                     {% if f.instance.pk %}data-delete-checkbox="{{ f.DELETE.id_for_label }}"{% endif %}>
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+                {% comment %}LC 2026-08-23 (Oscar, nota 12): bote de basura en lugar de la ✕.
+                Quitar el PRODUCTO no es lo mismo que quitar un renglón de proceso o de
+                venta —ésos siguen con su ✕—, así que el icono los distingue.{% endcomment %}
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             </button>
         </div>
         {% comment %}(f) Tras el costo unitario, la utilidad POR PIEZA en verde. En
