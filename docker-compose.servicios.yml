@@ -1,0 +1,152 @@
+# Servicios auxiliares del NUC — S-NUC-Servicios (2026-08-24)
+#
+# Se apila DESPUÉS del overlay del NUC. Nada de esto es El Despacho: son
+# herramientas que le quitan trabajo o le quitan dependencias de afuera.
+#
+#   Gotenberg  — arma los PDF. Saca las cotizaciones y facturas de Google Docs.
+#   OSRM       — mide rutas por calles reales. Saca al planeador del haversine.
+#   n8n        — automatiza (la primera receta: los CFDIs que llegan por correo).
+#   Paperless  — archivo con OCR y buscador de todo el papeleo.
+#
+# ── Dos reglas de esta pila, ninguna opcional ───────────────────────────────
+#
+# 1. TODO lleva `mem_limit`. El NUC sostiene el negocio: si un servicio de
+#    estos se desboca, tiene que morir ÉL y no El Taller. Los límites son
+#    cinturones individuales, no reservas — que se toquen todos a la vez no
+#    ocurre, igual que no chocan los cuatro pasajeros de un coche por separado.
+#
+# 2. Lo que guarda credenciales NO se publica más allá del tailnet. n8n y
+#    Paperless escuchan en la IP de Tailscale, no en 0.0.0.0: así no quedan
+#    tampoco en el WiFi de la oficina. Gotenberg y OSRM no publican NADA — sólo
+#    los llama El Despacho por la red interna de Docker. No declaran `networks`
+#    a propósito: el compose base no define ninguna, así que Compose los pone en
+#    la red por defecto del proyecto — la misma donde vive El Taller, que es
+#    justo lo que hace que pueda llamarlos por su nombre.
+#
+#    El `host_ip` del bind es la del NUC en el tailnet. Si algún día cambia,
+#    estos puertos dejan de responder: es preferible a que se abran de más.
+
+services:
+
+  # ── Gotenberg ───────────────────────────────────────────────────────────────
+  # Convierte HTML a PDF con Chromium. Reemplaza el camino que pasaba por Google
+  # Docs, con sus siete caprichos documentados (el «1/1» que no avanza, el margen
+  # superior que ignora, las tablas que se parten). Aquí el HTML se pagina con
+  # CSS de verdad.
+  #
+  # Es el ÚNICO servicio cuyo consumo escala con la GENTE y no con los datos:
+  # abre un Chromium por documento. Por eso lleva dos trancas: el tope de
+  # conversiones simultáneas (que encola y aplana el pico) y el mem_limit (que
+  # es el respaldo duro). Llegar al segundo significa morir a media conversión,
+  # así que el primero es el que debe actuar.
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: despacho-gotenberg
+    restart: always
+    command:
+      - "gotenberg"
+      - "--chromium-max-queue-size=40"
+      - "--chromium-start-timeout=30s"
+      - "--api-timeout=60s"
+    mem_limit: 2g
+
+  # ── OSRM ────────────────────────────────────────────────────────────────────
+  # Ruteo sobre el mapa de México. Lo que lo justifica no es una consulta suelta
+  # sino la MATRIZ: ordenar N paradas pide medir N×N trayectos, y eso contra un
+  # servicio público es imposible.
+  #
+  # El mapa hay que cocinarlo ANTES de levantar esto: el preprocesado pide 6-8 G
+  # de pico y por eso NO va en un entrypoint — se corre a mano, de madrugada o en
+  # otra máquina, y aquí sólo se sirve el resultado.
+  #
+  # Sin el archivo cocido en ./data/osrm el contenedor no arranca; el planeador
+  # cae a línea recta como hasta hoy, así que no rompe nada mientras tanto.
+  osrm:
+    image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
+    container_name: despacho-osrm
+    restart: always
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "2000", "/data/mexico-latest.osrm"]
+    volumes:
+      - ./data/osrm:/data:ro
+    mem_limit: 3g
+
+  # ── n8n ─────────────────────────────────────────────────────────────────────
+  # Automatiza. El Portavoz lleva desde mayo encolando eventos hacia un n8n que
+  # no existía: el cableado (eventos tipados, cola en Redis, firma HMAC, worker)
+  # ya estaba, sólo faltaba el destino.
+  #
+  # Guarda credenciales del negocio, así que NO sale del tailnet. Y usa su propia
+  # base SQLite: meterlo en la Postgres del negocio mezclaría sus tablas con las
+  # de la operación sin ganar nada.
+  n8n:
+    image: n8nio/n8n:1.70.1
+    container_name: despacho-n8n
+    restart: always
+    ports:
+      - target: 5678
+        published: 5678
+        host_ip: "100.121.244.5"
+        protocol: tcp
+    environment:
+      GENERIC_TIMEZONE: "America/Mexico_City"
+      TZ: "America/Mexico_City"
+      N8N_HOST: "100.121.244.5"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "http"
+      # Sin esto n8n avisa en cada arranque que las credenciales quedan sin
+      # cifrar en su base.
+      N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY:?falta N8N_ENCRYPTION_KEY en el .env}"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+    volumes:
+      - ./data/n8n:/home/node/.n8n
+    mem_limit: 1g
+
+  # ── Paperless-ngx ───────────────────────────────────────────────────────────
+  # Archivo con OCR: contratos, remisiones, comprobantes. Se escanea o se
+  # reenvía por correo una vez y se encuentra por su texto para siempre.
+  #
+  # Lleva Redis PROPIO a propósito. El Redis del negocio corre con
+  # `volatile-lru`: las colas de Celery no caducan y podrían ser desalojadas
+  # bajo presión, o sea perder trabajos en silencio. Aislarlo cuesta 256 MB y
+  # quita esa clase entera de problema.
+  paperless-redis:
+    image: redis:7-alpine
+    container_name: despacho-paperless-redis
+    restart: always
+    command: ["redis-server", "--save", "60", "1", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - ./data/paperless/redis:/data
+    mem_limit: 256m
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.13
+    container_name: despacho-paperless
+    restart: always
+    depends_on:
+      - paperless-redis
+    ports:
+      - target: 8000
+        published: 8204
+        host_ip: "100.121.244.5"
+        protocol: tcp
+    environment:
+      PAPERLESS_REDIS: "redis://paperless-redis:6379"
+      PAPERLESS_TIME_ZONE: "America/Mexico_City"
+      # El papeleo es en español; sin esto el OCR lee «Factura» como «FaCtUra»
+      # y el buscador deja de encontrarla.
+      PAPERLESS_OCR_LANGUAGE: "spa"
+      PAPERLESS_OCR_LANGUAGES: "spa eng"
+      PAPERLESS_ADMIN_USER: "${PAPERLESS_ADMIN_USER:-admin}"
+      PAPERLESS_ADMIN_PASSWORD: "${PAPERLESS_ADMIN_PASSWORD:?falta PAPERLESS_ADMIN_PASSWORD en el .env}"
+      PAPERLESS_URL: "http://100.121.244.5:8204"
+      # Un solo trabajador: el OCR carga el documento entero en memoria y aquí
+      # el CPU es de cuatro núcleos que ya sostienen el negocio.
+      PAPERLESS_TASK_WORKERS: "1"
+      PAPERLESS_THREADS_PER_WORKER: "2"
+    volumes:
+      - ./data/paperless/datos:/usr/src/paperless/data
+      - ./data/paperless/medios:/usr/src/paperless/media
+      - ./data/paperless/entrada:/usr/src/paperless/consume
+      - ./data/paperless/exportado:/usr/src/paperless/export
+    mem_limit: 2g

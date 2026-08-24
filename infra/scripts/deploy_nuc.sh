@@ -47,6 +47,18 @@ fi
 if [ -f docker-compose.nuc.yml ]; then
   COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.nuc.yml"
 fi
+# Los servicios auxiliares (Gotenberg, OSRM, n8n, Paperless). Van al final para
+# que sus mem_limit no puedan ser pisados por un overlay anterior. Piden dos
+# variables en el .env; si faltan, `up -d` aborta el stack COMPLETO —incluido El
+# Despacho— así que se comprueba antes y, si no están, se despliega sin ellos.
+if [ -f docker-compose.servicios.yml ]; then
+  if grep -q "^N8N_ENCRYPTION_KEY=" .env && grep -q "^PAPERLESS_ADMIN_PASSWORD=" .env; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.servicios.yml"
+  else
+    echo "AVISO: faltan N8N_ENCRYPTION_KEY o PAPERLESS_ADMIN_PASSWORD en .env;"
+    echo "       los servicios auxiliares NO se despliegan (El Despacho sí)."
+  fi
+fi
 
 echo "=== docker compose pull ==="
 docker compose $COMPOSE_FILES pull

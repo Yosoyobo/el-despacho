@@ -18,6 +18,13 @@ RAIZ=${RAIZ:-/mnt/el-despacho}
 # que los gauges de El Site y del Dashboard midan ESTA máquina. Sin apilarlo, el
 # panel sale en «n/d» — fue el descuido del primer deploy al NUC (2026-08-21).
 CF="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.nuc.yml -f docker-compose.site.yml"
+# Servicios auxiliares (S-NUC-Servicios): sólo si su .env está completo — sin las
+# dos variables, `up -d` aborta el stack entero, El Despacho incluido.
+if [ -f docker-compose.servicios.yml ] \
+   && grep -q "^N8N_ENCRYPTION_KEY=" .env 2>/dev/null \
+   && grep -q "^PAPERLESS_ADMIN_PASSWORD=" .env 2>/dev/null; then
+  CF="$CF -f docker-compose.servicios.yml"
+fi
 
 ssh "$NUC" "set -euo pipefail
 cd $RAIZ

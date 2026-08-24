@@ -125,8 +125,15 @@ services:
   postgres:
     command:
       - "postgres"
+      # 2026-08-24: baja de 4 G a 2 G. El supuesto cambió — cuando se puso 4 G,
+      # el NUC sólo cargaba El Despacho y la única regla era «que no haya que
+      # volver en meses». Ahora entran Gotenberg, n8n, Paperless y OSRM: entre
+      # los techos de aquí y de Redis había 7 G COMPROMETIDOS para una base de
+      # 29 MB y una cola de 15 MB, y sumados a lo nuevo no cabían en 14.8 G.
+      # 2 G siguen siendo setenta veces la base actual, así que no se pierde
+      # nada real y se liberan 2 G de compromiso.
       - "-c"
-      - "shared_buffers=4GB"
+      - "shared_buffers=2GB"
       # 32 MB por operación de orden o agrupado. El peor caso teórico con 200
       # conexiones asusta (6 G) pero no es el caso real: hay que tener 200
       # consultas ORDENANDO a la vez, y aquí el pico observado bajo esfuerzo fue
@@ -137,7 +144,11 @@ services:
       - "-c"
       - "work_mem=32MB"
       - "-c"
-      - "effective_cache_size=10GB"
+      # Baja de 10 G a 7 G por lo mismo: no reserva nada, pero es lo que el
+      # planeador SUPONE que el sistema tiene en caché. Con cuatro servicios
+      # más ocupando memoria, decirle 10 G sería mentirle y lo llevaría a
+      # elegir planes que no se sostienen.
+      - "effective_cache_size=7GB"
       # Para VACUUM y CREATE INDEX. Sube a 1 G porque es lo que decide cuánto
       # tarda el mantenimiento cuando las tablas crecen, y corre de uno en uno.
       - "-c"
@@ -192,12 +203,12 @@ services:
       - "--appendonly"
       - "yes"
       - "--maxmemory"
-      # 3 G de TECHO, no de reserva: hoy Redis usa 4.5 MB. El techo importa por lo
-      # que escala con el catálogo —los derivados de imagen, las sesiones, el
-      # rate-limiter, la cola del Portavoz— y está puesto para que crezca cien
-      # veces sin que nadie tenga que volver a entrar aquí. Con `volatile-lru`
-      # sólo desaloja lo que tiene caducidad, así que la cola nunca se pierde.
-      - "3gb"
+      # TECHO, no reserva: hoy Redis usa 15 MB. 2026-08-24 baja de 3 G a 1 G por
+      # la misma razón que shared_buffers — sesenta veces lo que usa hoy sigue
+      # siendo holgado, y los 2 G que libera hacen falta para los servicios
+      # nuevos. Con `volatile-lru` sólo desaloja lo que tiene caducidad, así que
+      # la cola del Portavoz nunca se pierde.
+      - "1gb"
       - "--maxmemory-policy"
       - "volatile-lru"
     restart: always
