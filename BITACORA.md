@@ -11770,3 +11770,68 @@ fuera a propósito: cambia cómo corren ~3 000 tests y no pertenece a un sprint 
 
 **No se bumpeó `VERSION`**: no cambia nada visible al usuario, así que no hay
 Novedades que escribir (mismo criterio que S-Vigia-NUC).
+
+---
+
+# S-Destino-Duplicado — El campo iba dos veces (2026-08-23, VERSION 2026.08.28)
+
+Tercer reporte de Oscar del mismo síntoma: «las tareas y mandados siguen sin
+actualizar la ubicación». Sus dos capturas dieron el diagnóstico completo.
+
+## Lo que mostraban las capturas
+
+1. El formulario de tarea con **«Destino lat» y «Destino lng» como campos con
+   etiqueta y un hueco vacío al lado** — siendo `HiddenInput`, o sea que algo los
+   estaba pintando por el camino genérico.
+2. El geo-picker **sí** había resuelto el punto: `19.350339, -99.297987`, con el
+   pin puesto en el mapa.
+3. Y el detalle de la tarea guardada: **«Sin ubicación fijada todavía.»**
+
+## La causa
+
+El loop `{% for f in form %}` de `pizarron/form_tarea.html` saltaba
+`destino_etiqueta` y **nada más**, así que `destino_lat`/`destino_lng` se
+renderizaban ahí Y otra vez abajo, junto al picker. Dos inputs con el mismo
+`name` y el mismo `id`:
+
+- `getElementById('id_destino_lat')` devuelve el **primero** → el picker le
+  escribe a ése (de ahí que el mapa mostrara las coordenadas);
+- el POST manda `destino_lat=19.350339&destino_lat=`;
+- **Django se queda con el último** → cadena vacía → `None`;
+- y el `clean()` lo remata poniendo las dos en `None`.
+
+Nada falla, nada avisa. El dato simplemente no llega.
+
+## Por qué costó tres sprints
+
+Los tres reportes de Oscar decían la misma frase y eran **tres bugs distintos**:
+
+| | Qué era | Cuándo |
+|---|---|---|
+| 1 | `fijar_destino` exigía coordenadas y perdía la dirección escrita | Ago23 (2026.08.25) |
+| 2 | En el celular no se alcanzaba el botón (x=682 en 390px) | Ago23 (2026.08.27) |
+| 3 | **El campo se renderizaba dos veces** | este (2026.08.28) |
+
+Los dos primeros eran reales y están arreglados. El tercero es el que hacía que
+el síntoma siguiera intacto en el escritorio de Oscar.
+
+## El candado
+
+`tests/taller/test_destino_no_duplicado.py` (7 casos) **mira el HTML renderizado
+y cuenta** cuántas veces aparece cada `name=`. Revisar la plantilla a ojo es
+exactamente lo que falló tres veces. Con el código de `main` el test reporta
+`{'destino_lat': 2, 'destino_lng': 2}`.
+
+Incluye además un test que fija el **mecanismo** (`QueryDict` con el campo
+repetido devuelve el último valor) y extiende el candado a los otros dos
+formularios con mapa — cliente y proveedor, que sí los excluían bien — porque el
+modo de falla es silencioso y el siguiente que agregue un campo oculto a uno de
+esos forms no tiene por qué conocer esta historia.
+
+110 verdes en el radio de impacto. Ruff limpio.
+
+## La regla que queda
+
+Un campo de formulario renderizado dos veces se guarda vacío, en silencio. Si un
+dato «no se guarda» y el backend ya está probado, **contar cuántas veces aparece
+su `name=` en el HTML servido** antes de mirar cualquier otra cosa.
