@@ -1315,7 +1315,7 @@ def rutas_despachar(request, pk):
             request,
             f"Ruta despachada. Se le mandó a {ruta.runner.nombre_completo} "
             "por correo." if ruta.correo_enviado_en else
-            "Ruta despachada. El correo no salió — revisa El Cartero.",
+            "Ruta despachada. El correo no salió — revisa Ajustes → Cartero.",
         )
     return redirect(f"{reverse('rutas-panel')}?fecha={ruta.fecha.isoformat()}")
 

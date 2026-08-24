@@ -184,7 +184,7 @@ def cartero_guardar(request):
         actor_id=request.user.pk, actor_email=request.user.email,
         payload={"proveedor": cfg.proveedor},
     ))
-    messages.success(request, f"El Cartero quedó configurado (canal: {cfg.get_proveedor_display()}).")
+    messages.success(request, f"El correo quedó configurado (canal: {cfg.get_proveedor_display()}).")
     return redirect("ajustes-cartero")
 
 
@@ -1002,7 +1002,7 @@ def metas_kpi_guardar(request):
         actor_id=request.user.pk, actor_email=request.user.email,
         payload={"metas_actualizadas": cambios},
     ))
-    messages.success(request, f"Metas KPI guardadas ({cambios}).")
+    messages.success(request, f"Metas de KPI guardadas ({cambios}).")
     return redirect("ajustes-metas-kpi")
 
 
@@ -1247,7 +1247,8 @@ def cobranza_panel(request):
         ))
         messages.success(
             request,
-            "La Cobranza quedó " + ("ACTIVADA." if cfg.activa else "desactivada."),
+            "La cobranza automática quedó "
+            + ("ACTIVADA." if cfg.activa else "desactivada."),
         )
         return redirect("ajustes-cobranza")
 

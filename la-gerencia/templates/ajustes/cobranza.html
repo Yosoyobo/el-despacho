@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}La Cobranza — Ajustes{% endblock %}
+{% block title %}Cobranza — Ajustes{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% breadcrumb_items "Ajustes" "/ajustes/" "Cobranza" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="La Cobranza" subtitulo="Recordatorios de pago automáticos a los clientes con facturas vencidas." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Cobranza" subtitulo="Recordatorios de pago automáticos a los clientes con facturas vencidas." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
 
 {% if not correo_configurado %}
 <div class="mb-4 rounded-xl border border-warning-300 bg-warning-50 p-3 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
-    El Cartero no está configurado todavía. La Cobranza usa El Cartero para enviar los correos — configúralo en <a href="{% url 'ajustes-cartero' %}" class="underline font-medium">Ajustes → El Cartero</a> antes de activar.
+    El correo no está configurado todavía. Cobranza lo necesita para mandar los recordatorios — configúralo en <a href="{% url 'ajustes-cartero' %}" class="underline font-medium">Ajustes → Cartero</a> antes de activar.
 </div>
 {% endif %}
 
@@ -17,7 +17,7 @@
 
         <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
             <span>
-                <span class="block font-medium text-gray-900 dark:text-gray-100">Activar La Cobranza</span>
+                <span class="block font-medium text-gray-900 dark:text-gray-100">Activar Cobranza</span>
                 <span class="block text-xs text-gray-500 dark:text-gray-400">El cron diario manda recordatorios a los clientes. Apagada por defecto.</span>
             </span>
             <input type="checkbox" name="activa" value="1" {% if cfg.activa %}checked{% endif %} class="h-5 w-5 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
@@ -47,7 +47,7 @@
         </label>
 
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-800 dark:bg-white/[0.02] dark:text-gray-400">
-            El texto del correo se edita en <a href="{% url 'ajustes-cartero-plantillas' %}" class="underline">Ajustes → El Cartero → Plantillas</a> (plantilla «Recordatorio de cobranza»). El envío real lo corre el cron diario; revisa la guía de operación.
+            El texto del correo se edita en <a href="{% url 'ajustes-cartero-plantillas' %}" class="underline">Ajustes → Cartero → Plantillas</a> (plantilla «Recordatorio de cobranza»). El envío real lo corre el cron diario; revisa la guía de operación.
         </div>
 
         <div class="flex justify-end">

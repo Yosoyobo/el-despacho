@@ -1,4 +1,4 @@
-"""UI de La Cobranza en La Gerencia (/ajustes/cobranza/). Solo super_admin."""
+"""UI de Cobranza en La Gerencia (/ajustes/cobranza/). Solo super_admin."""
 
 from __future__ import annotations
 
@@ -12,7 +12,10 @@ def test_panel_super_admin(client, usuario_factory):
     client.force_login(u)
     resp = client.get("/ajustes/cobranza/")
     assert resp.status_code == 200
-    assert "La Cobranza" in resp.content.decode()
+    cuerpo = resp.content.decode()
+    assert "Cobranza" in cuerpo
+    # LC 2026-08-24: el nombre visible se esterilizó (se le fue el artículo).
+    assert "La Cobranza" not in cuerpo
 
 
 def test_panel_disenador_sin_acceso(client, usuario_factory):

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Reglas de correo — El Cartero{% endblock %}
+{% block title %}Reglas de correo — Cartero{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Reglas" as breadcrumb_items %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cartero" "/ajustes/cartero/" "Reglas" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Correos que salen solos" subtitulo="Ata un momento del día a día con la plantilla que quieres que se mande. Todas nacen apagadas: enciéndelas cuando la plantilla esté lista." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/plantillas/" back_label="Plantillas" %}
 
 <div class="mb-6 rounded-2xl border border-blue-light-200 bg-blue-light-50 p-4 text-xs text-blue-light-800 dark:border-blue-light-800 dark:bg-blue-light-900/20 dark:text-blue-light-200">

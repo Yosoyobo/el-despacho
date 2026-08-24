@@ -596,7 +596,7 @@ def enviar_correo(accion, usuario, contexto=None):
         _exigir(
             plantilla is not None,
             f"No hay una plantilla activa llamada «{tipo}». "
-            "Revisa Ajustes → El Cartero → Plantillas.",
+            "Revisa Ajustes → Cartero → Plantillas.",
         )
 
     mensaje = sanear_contexto((payload.get("mensaje") or "").strip())
@@ -632,7 +632,7 @@ def enviar_correo(accion, usuario, contexto=None):
                                  origen="chalan"),
     )
     _exigir(bool(getattr(resultado, "ok", False)),
-            f"El Cartero no pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")
+            f"No se pudo entregar el correo: {getattr(resultado, 'error', 'error desconocido')}")
 
     accion.entidad_tipo = "correo"
     accion.entidad_id = cliente.pk if cliente else None

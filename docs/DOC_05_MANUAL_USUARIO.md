@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Cuatro configuraciones salen al menú de La Gerencia (24 de agosto de 2026)
+
+**Cartero, KPIs, Rutas y Cobranza ya tienen su renglón**
+
+Estaban escondidas detrás de los botones chicos del panel de *Los Ajustes*: había
+que entrar a Ajustes, buscar el botón entre otros diez y de ahí saltar. Ahora las
+cuatro tienen su propio renglón en el menú de La Gerencia, debajo de **Tasas**:
+
+| Renglón | Para qué es |
+|---|---|
+| **Cartero** | Por dónde salen los correos del sistema, sus plantillas, las direcciones de envío y los correos que salen solos. |
+| **KPIs** | Las metas del mes (ingresos, egresos, utilidad) que pintan la barra de progreso en el Inicio. |
+| **Rutas** | Con qué supuestos el planeador estima la vuelta del día: velocidad, minutos por parada, hora de salida y tope de paradas. |
+| **Cobranza** | Los recordatorios de pago automáticos a los clientes con factura vencida. |
+
+Los botones del panel de Ajustes siguen donde estaban, así que llegas por donde te
+acomode. El permiso es el mismo de siempre (*Los Ajustes*): quien no podía entrar a
+esas pantallas tampoco las ve ofrecidas en el menú.
+
+**Los nombres se simplificaron**
+
+Se les fue el artículo y el paréntesis explicativo: *El Cartero* ahora se lee
+**Cartero**, *La Cobranza* es **Cobranza** y *Metas KPI* es **KPIs**. El cambio va
+parejo en el menú, en el encabezado de cada pantalla, en las migas de pan y en los
+avisos que salen al guardar — el nombre del menú y el de la pantalla son el mismo,
+que es de lo que se trataba.
+
+---
+
 ## Novedades — El planeador ya respeta a quien trae el mandado (23 de agosto de 2026)
 
 **Si un mandado ya tiene runner, la ruta se arma a SU nombre**
@@ -4318,7 +4347,7 @@ mensuales por usuario.
 - **Contaduría** — libro contable interno con estados financieros (con
   estimación de ISR/PTU), **cierre de periodo**, **conciliación bancaria** y
   exportación para el contador externo (CSV y XML estilo SAT).
-- **La Cobranza** — recordatorios de pago automáticos por correo a clientes con
+- **Cobranza** — recordatorios de pago automáticos por correo a clientes con
   facturas vencidas (se activa y configura en Ajustes).
 - **Chalanes (IA)** — 5 asistentes de inteligencia artificial con respaldo
   automático entre ellos, y **El Dictado** para dar instrucciones en lenguaje
@@ -4368,7 +4397,7 @@ En orden aproximado de prioridad:
 > **Contabilidad avanzada y cobranza: listas.** El cierre de periodo, la
 > conciliación bancaria, la estimación de ISR/PTU y el export XML para el
 > contador ya están en Contaduría; y los recordatorios de cobro a clientes se
-> activan en Ajustes → La Cobranza.
+> activan en Ajustes → Cobranza.
 
 > **Google Drive quedó conectado de punta a punta:** adjuntos en Mensajes, Buzón
 > y El Chalán; comprobantes y lectura de recibos (OCR) en Tesorería; PDF de
@@ -5669,12 +5698,12 @@ Botón **"+ Nuevo movimiento"** te lleva a un wizard:
 
 ---
 
-## La Cobranza (recordatorios de pago)
+## Cobranza (recordatorios de pago)
 
 El sistema puede mandarle un correo al cliente recordándole una factura vencida,
 para que no tengas que perseguirlo a mano.
 
-**Arranca apagada.** El super admin la activa en **Ajustes → La Cobranza** y ahí
+**Arranca apagada.** El super admin la activa en **Ajustes → Cobranza** y ahí
 elige:
 
 - Si está **activa** o no.
@@ -5683,9 +5712,9 @@ elige:
 - Si además quiere un **aviso antes de vencer** (cuántos días antes).
 - Si **adjunta el PDF** de la factura (requiere Google Drive).
 
-El correo sale por El Cartero (el mismo canal que usas para cotizaciones y
+El correo sale por Cartero (el mismo canal que usas para cotizaciones y
 facturas) y usa la plantilla **"Recordatorio de cobranza"**, que se edita en
-*Ajustes → El Cartero → Plantillas*. En el detalle de cada factura puedes ver
+*Ajustes → Cartero → Plantillas*. En el detalle de cada factura puedes ver
 los recordatorios que ya se enviaron.
 
 > El cliente debe tener correo registrado en su ficha de Clientes; si no, el
@@ -5713,14 +5742,19 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Credenciales** (llaves de API: Stripe, OpenAI, Anthropic, Google, etc.) — cifradas.
 - **Fiscal** (régimen, ISR, PTU, IVA) — ver abajo.
 - **Tasas e impuestos** (IVA, retenciones, ISR para cotizaciones/facturas).
-- **La Cobranza** (recordatorios de pago automáticos a clientes).
+- **Cobranza** (recordatorios de pago automáticos a clientes).
 - **Catálogos** (categorías, centros de costo).
 - **Orden del sidebar** para todo el equipo.
-- **Metas KPI** (ingresos/egresos/utilidad del mes con barra de progreso).
+- **KPIs** (metas de ingresos/egresos/utilidad del mes con barra de progreso).
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
 - **El Celador** (token del monitor externo que vigila que el sistema esté en pie).
+
+Cuatro de esas configuraciones ya no están escondidas detrás de los botones del
+panel: **Cartero**, **KPIs**, **Rutas** y **Cobranza** tienen su propio renglón en
+el menú de La Gerencia, debajo de *Tasas*. Los botones del panel siguen ahí, así
+que llegas por donde te acomode.
 
 ### La Limpieza (soltar caché, RAM y disco)
 
@@ -5767,12 +5801,12 @@ Google, y revisa que de verdad explique para qué sirve la aplicación. Si algun
 vez Google objeta ese punto, lo que hay que corregir es el texto de esa página,
 no la configuración de la consola.
 
-### El correo saliente (El Cartero)
+### El correo saliente (Cartero)
 
-El Cartero es quien manda los correos que salen del sistema: cotizaciones,
+Cartero es quien manda los correos que salen del sistema: cotizaciones,
 facturas, recordatorios de cobranza y campañas. El Despacho **escribe** el
 correo y decide cuándo mandarlo; el canal solo lo entrega. Hay dos canales y se
-elige en *Ajustes → El Cartero*:
+elige en *Ajustes → Cartero*:
 
 - **SMTP directo** — el sistema se conecta él mismo al servidor de correo.
 - **n8n** — el sistema entrega el correo ya armado a n8n y n8n lo manda.
@@ -5802,7 +5836,7 @@ padrón varias veces al día puede toparlo.
 ### Las plantillas de correo
 
 Cada correo que manda el sistema sale de una **plantilla**: su asunto y su
-cuerpo. Se editan en *Ajustes → El Cartero → Plantillas*, con un editor visual
+cuerpo. Se editan en *Ajustes → Cartero → Plantillas*, con un editor visual
 de arrastrar y soltar, y El Chalán puede redactarlas por ti con el botón de la
 varita.
 
@@ -5833,7 +5867,7 @@ identidad: la cobranza desde `cobranza@learningcenter.mx`, las ventas desde
 
 ### Qué direcciones falta dar de alta
 
-No hace falta llevar la cuenta a mano: *Ajustes → El Cartero → **Direcciones de
+No hace falta llevar la cuenta a mano: *Ajustes → Cartero → **Direcciones de
 envío*** arma la lista sola, con las direcciones que tus plantillas declaran.
 
 **Hay dos clases de dirección, y no se comportan igual:**
@@ -5882,7 +5916,7 @@ Tres caminos:
 
 ### Correos que salen solos
 
-En *Ajustes → El Cartero → Correos que salen solos* atas un momento del día a
+En *Ajustes → Cartero → Correos que salen solos* atas un momento del día a
 día con una plantilla:
 
 | Cuándo | Qué tienes que elegir |
@@ -5911,7 +5945,7 @@ notificaciones, correo, IA, integraciones y respaldos. Cada pieza sale en uno de
 cuatro estados: **funciona**, **funciona de menos** (hay algo que revisar),
 **apagado a propósito** o **roto**. Solo el último cuenta como caída, y solo dos
 cosas lo provocan: que no responda la base de datos o que no responda la cola de
-notificaciones. Que falte una llave de IA o que El Cartero no tenga canal **no es
+notificaciones. Que falte una llave de IA o que Cartero no tenga canal **no es
 una falla** — está así porque alguien lo decidió.
 
 **Ahí no aparece nada del negocio.** Ni clientes, ni proveedores, ni cifras de

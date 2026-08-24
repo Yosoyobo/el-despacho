@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}El Cartero — Ajustes{% endblock %}
+{% block title %}Cartero — Ajustes{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="El Cartero" subtitulo="El Despacho compone el correo; tú eliges por qué canal sale. El canal solo entrega." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cartero" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Cartero" subtitulo="El Despacho compone el correo; tú eliges por qué canal sale. El canal solo entrega." breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
 
 <div class="mb-4">
     <a href="{% url 'ajustes-cartero-plantillas' %}" class="btn-secundario">✏️ Plantillas de correo →</a>
@@ -18,7 +18,7 @@
         <span class="text-2xl">{% if configurado %}🟢{% else %}🟡{% endif %}</span>
         <div>
             <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {% if configurado %}El Cartero está listo para enviar{% else %}Falta configurar el canal activo{% endif %}
+                {% if configurado %}El correo está listo para enviar{% else %}Falta configurar el canal activo{% endif %}
             </p>
             <p class="text-xs text-gray-600 dark:text-gray-300">
                 Canal activo: <strong>{{ cfg.get_proveedor_display }}</strong>

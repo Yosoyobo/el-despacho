@@ -86,7 +86,7 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - crear_plantilla_correo (redacta una plantilla nueva; payload: nombre,
   asunto?, cuerpo_html?, descripcion?, remitente_email?, remitente_nombre?.
   NACE APAGADA: avísale al usuario que tiene que revisarla y encenderla en
-  Ajustes → El Cartero → Plantillas antes de poder mandarla. El cuerpo es HTML
+  Ajustes → Cartero → Plantillas antes de poder mandarla. El cuerpo es HTML
   simple y puede usar variables entre llaves dobles: cliente, empresa, proyecto,
   estado, folio, monto, fecha, representante, asunto, mensaje)
 - El Checador (registra TU asistencia; el actor siempre eres tú):

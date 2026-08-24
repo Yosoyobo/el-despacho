@@ -12136,3 +12136,87 @@ nunca le encarga nada nuevo — es lo pedido, y la pantalla lo dice. «Rehacer d
 cero» no toca las despachadas, así que un día con una ruta ya enviada sólo se
 puede rearmar parcialmente. Y el planeador no se invoca desde El Chalán (lee, no
 planea).
+
+---
+
+# BITÁCORA — S-Menu-Gerencia (2026-08-24, VERSION 2026.08.32)
+
+> Pedido de Oscar, literal: «Saca a el sidebar de la gerencia (y esteriliza los
+> nombres): Cartero, KPIs, Rutas, Cobranza».
+
+## Qué estaba mal
+
+Las cuatro pantallas existían y funcionaban, pero **sólo se llegaba a ellas por un
+botón chico del panel de Los Ajustes**, entre otros diez botones de la misma forma
+y color. Nada las anunciaba en el menú, así que para configurar la cobranza había
+que acordarse de que vive dentro de Ajustes. Las cuatro se gatean con el mismo
+permiso que el propio panel (`ajustes.acceder`), así que sacarlas al menú no
+cambia quién las ve.
+
+## Lo entregado
+
+- **Cuatro renglones nuevos** en el menú de La Gerencia, debajo de *Tasas* y dentro
+  del mismo `{% if permisos_modulos.ajustes %}`: **Cartero · KPIs · Rutas ·
+  Cobranza**. Los botones del panel se conservan (precedente de *Tasas*, que vive
+  en los dos lados desde S2a).
+- **Nombres esterilizados** — se les fue el artículo y el paréntesis explicativo:
+  «El Cartero» → **Cartero**, «La Cobranza» → **Cobranza**, «Metas KPI» → **KPIs**,
+  «Rutas (velocidad, tiempo por parada)» → **Rutas**. El cambio va parejo donde el
+  nombre se VE: menú, `<title>`, encabezado de la pantalla, migas de pan,
+  `back_label`, los botones del panel, las rutas que el propio texto cita
+  («Ajustes → Cartero → Plantillas», en Gerencia y en las dos pantallas de Campañas
+  del Taller) y los avisos de `messages` al guardar. **El código no se toca**: los
+  módulos siguen siendo `lib/cartero.py`, `ajustes-cartero`, `ConfiguracionCobranza`
+  — el naming corporativo vive ahí (§3), no en la etiqueta.
+
+## El defecto que salió al agregar los renglones
+
+El renglón de «Los Ajustes» se marcaba activo con `'/ajustes/' in request.path and
+'/ajustes/tasas' not in request.path`: o sea, **cualquier** sub-página de ajustes lo
+prendía, con *Tasas* como única excepción escrita a mano. Al darles renglón propio a
+las cuatro, abrir `/ajustes/cobranza/` habría dejado **dos renglones marcados a la
+vez**. La condición pasó a tres casos explícitos: ruta exacta → activo; sub-página
+**con** su propio renglón → inactivo; cualquier otra sub-página de ajustes (fiscal,
+orden del menú, recordatorios, Google Drive…) → activo. Esas últimas siguen
+apoyándose en «Los Ajustes» y hay una prueba que lo exige, porque es justo lo que
+una lista de exclusiones mal escrita rompería en silencio.
+
+## Lo que costó escribir la prueba (y vale para cualquier prueba del menú)
+
+`tests/django_settings.py` pone **los dos** `templates/` en el mismo `DIRS` y el de
+El Taller va **primero**, así que `_componentes_tailadmin/sidebar.html` resuelve al
+menú de **El Taller** incluso en las pruebas de La Gerencia. Una prueba que leyera
+el menú de una respuesta del cliente saldría **verde sin haber mirado nunca el
+archivo que se está probando**. La prueba abre el archivo de La Gerencia por su
+ruta y lo pinta con `engines["django"].from_string(...)` y un contexto armado
+(`request` de `RequestFactory` + `permisos_modulos`). El primer intento además
+anclaba en el primer `<nav>` de la página — que es el de las **migas**, donde
+aparecen las mismas rutas: otro verde falso. Ahora ancla en
+`<aside data-ta-sidebar>`.
+
+## Tests
+
+**19 nuevos** en `tests/gerencia/test_sidebar_gerencia_ajustes.py` (cada renglón
+existe con su nombre, la página que abre da 200, sin el permiso no se ofrece, sólo
+su renglón queda marcado, y «Los Ajustes» sigue marcado en sus propias
+sub-páginas). **Verificados contra el código sin arreglar en dos mutaciones**:
+devolviendo la condición vieja de «Los Ajustes» caen 4; quitando los cuatro
+renglones caen 8.
+
+Se actualizaron **tres** pruebas ajenas que fijaban contratos que este sprint
+cambió a propósito: `test_cartero_ui` y `test_cobranza_ui` afirmaban el nombre con
+artículo (ahora afirman el esterilizado **y** que el viejo ya no aparece), y
+`test_chalan_correo::test_ejecutor_cartero_caido_falla_legible` casaba el error con
+`match="Cartero"` — el mensaje ahora dice «No se pudo entregar el correo: …», así
+que casa con `"entregar el correo"`, que es lo que la prueba de verdad quería
+comprobar (que el error sea legible). Regresión: **296 verdes** en toda la suite de
+Gerencia + los candados de comentarios (Bug C), Cartero, Cobranza, Campañas,
+plantillas, planeador y Ago07. Ruff limpio.
+
+## Deuda diseñada
+
+El menú de La Gerencia sigue siendo **HTML fijo**: no pasa por `SidebarOrden` (eso
+es sólo de El Taller), así que ni el orden ni la visibilidad de estos renglones se
+configuran desde una pantalla. Y quedan con artículo los nombres que **no** pidió
+Oscar: «El Directorio», «El Site», «El Interfón», «Los Ajustes» — si algún día se
+quiere el menú parejo, es el mismo cambio de etiqueta, pero es decisión suya.
