@@ -116,7 +116,6 @@ def test_documentos_no_prende_tambien_los_ajustes():
     activos a la vez. Se agregó con la pantalla de Documentos (2026-08-24)."""
     from pathlib import Path
 
-    from django.template import engines
 
     raiz = Path(__file__).resolve().parent.parent.parent
     ruta = raiz / "la-gerencia/templates/_componentes_tailadmin/sidebar.html"

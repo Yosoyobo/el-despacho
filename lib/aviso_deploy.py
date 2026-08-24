@@ -148,8 +148,16 @@ def _piezas_caidas() -> int:
     caidos = 0
     for c in lista:
         estado = (c.get("State") or c.get("state") or "").lower()
-        if estado and estado != "running":
+        if estado in {"restarting", "dead", "paused"}:
             caidos += 1
+        elif estado == "exited":
+            # Un contenedor que TERMINÓ BIEN no está caído: hizo su trabajo y
+            # se fue. Contarlo encendería la alarma cada vez que corre una
+            # tarea de mantenimiento — y una alarma que se prende sin razón
+            # enseña a ignorar el tablero.
+            estatus = (c.get("Status") or c.get("status") or "")
+            if "(0)" not in estatus:
+                caidos += 1
     return caidos
 
 

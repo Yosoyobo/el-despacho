@@ -209,6 +209,16 @@ Cuatro decisiones que conviene no deshacer:
       <p class="p-5 text-sm vg-4">Preguntando por Los Chalanes…</p>
     </section>
 
+    {# Quién usa la máquina: los relojes dicen cuánto, esto dice quién. #}
+    <section class="flex min-h-[18rem] flex-col overflow-hidden rounded-2xl border
+                    vg-borde vg-tarjeta md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0">
+      <div hx-get="{% url 'site-vivo-procesos' %}"
+           hx-trigger="load, every 5s" hx-swap="innerHTML"
+           class="flex min-h-0 flex-1 flex-col">
+        <p class="p-5 text-sm vg-4">Viendo quién trabaja…</p>
+      </div>
+    </section>
+
     {# Las piezas de la máquina. #}
     <section class="min-h-[18rem] overflow-hidden rounded-2xl border
                     vg-borde vg-tarjeta md:col-span-6 lg:col-span-4 lg:row-span-2 lg:min-h-0"
