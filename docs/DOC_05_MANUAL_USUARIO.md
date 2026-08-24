@@ -5,6 +5,33 @@
 
 ---
 
+## Novedades — Ver quién usa la máquina, y los relojes en el Inicio (24 de agosto de 2026)
+
+**Una tarjeta nueva: quién se está comiendo el servidor**
+
+Los relojes del sistema dicen *cuánto* se está usando (CPU al 47 %, memoria al
+70 %). Lo que faltaba era saber **quién**: si el servidor va lento, ¿qué lo está
+pidiendo? Ahora hay una tarjeta que lo lista, ordenado por consumo, con el
+procesador y la memoria que usa cada cosa.
+
+Está en las dos pantallas de siempre: la del servidor (**Gerencia → El Site**) y
+la pantalla de pared. Se actualiza sola.
+
+**Los cuatro relojes, ahora también en el Inicio**
+
+Hasta abajo del Inicio de El Taller aparecen los cuatro medidores del servidor
+—procesador, memoria, disco y piezas trabajando— para ver de un vistazo cómo va
+la máquina sin tener que entrar a La Gerencia. Sólo los ve quien tiene permiso
+para ver El Site.
+
+**Y un arreglo del aviso de mantenimiento**
+
+La franja se ponía roja cuando una tarea de mantenimiento terminaba bien y se
+retiraba, tomándola por una falla. Ahora distingue entre «terminó su trabajo» y
+«se cayó»: sólo se pone roja cuando algo de verdad dejó de responder.
+
+---
+
 ## Novedades — Los PDF se arman aquí, y su formato ya se puede editar (24 de agosto de 2026)
 
 **Las cotizaciones y facturas ya no dependen de Google para armarse**
