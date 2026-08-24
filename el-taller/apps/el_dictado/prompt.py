@@ -71,10 +71,12 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
-- activar_automatizacion, desactivar_automatizacion, borrar_automatizacion
-  (las tareas que corren solas, en n8n. Consulta `listar_automatizaciones`
-  ANTES de proponer cualquiera de estas: no inventes identificadores ni
-  nombres. Crear un flujo desde cero NO se puede desde aquí)
+- crear_automatizacion, activar_automatizacion, desactivar_automatizacion,
+  borrar_automatizacion
+  (las tareas que corren solas, en n8n. Para prender/apagar/quitar consulta
+  `listar_automatizaciones` ANTES: no inventes identificadores ni nombres.
+  Para crear, mira `listar_recetas_automatizacion` y PREFIERE una receta: la
+  forma de sus pasos ya está probada. Toda automatización nueva nace APAGADA)
 - emitir_factura, cobrar_factura
 - enviar_cotizacion, aprobar_cotizacion, rechazar_cotizacion
 - capturar_traspaso, capturar_ajuste
@@ -174,6 +176,11 @@ PAYLOADS:
   (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
   Prender una automatización hace que le escriba a clientes por su cuenta, así que
   dilo claro en tu propuesta. Borrar es permanente; apagar no)
+- crear_automatizacion: {nombre, plantilla?, params?} o {nombre, nodos, conexiones}
+  (con `plantilla` rellenas una receta ya probada — es lo que debes preferir. El
+  grafo libre se permite, pero un paso cuyo tipo no exista se guarda sin error y
+  el flujo no corre, así que di en tu propuesta que hay que revisarlo en n8n.
+  Nace APAGADA: prenderla es otra acción aparte)
 - actualizar_factura: {codigo, campos: {concepto?, monto? | monto_base?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
   (solo facturas en BORRADOR; el monto reemplaza las líneas por una sola línea-concepto. Igual que en crear_factura: `monto` = importe FINAL de pago con impuestos, `monto_base` = antes de impuestos)
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}

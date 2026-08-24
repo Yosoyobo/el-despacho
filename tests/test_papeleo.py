@@ -20,7 +20,6 @@ from django.db import IntegrityError, transaction
 
 from lib import nombres, paperless
 
-
 # ── lib.nombres — el criterio para comparar nombres de empresa ──────────────
 
 
@@ -161,6 +160,7 @@ def test_la_misma_liga_dos_veces_no_duplica(cliente):
 def test_el_mismo_documento_puede_ser_de_un_cliente_y_de_un_proyecto(cliente):
     """No es duplicado: una remisión pertenece al cliente Y a su proyecto."""
     from apps.los_proyectos.models import Proyecto
+
     from papeleo import ligado
     from papeleo.models import PapeleoLigado
 
@@ -225,6 +225,7 @@ def test_liga_solo_cuando_hay_un_unico_candidato(cliente, auto_encendido):  # no
 def test_con_dos_candidatos_no_adivina(cliente, auto_encendido):  # noqa: ARG001
     """El caso que justifica la cobardía: dos clientes mencionados, ninguno gana."""
     from apps.la_cartera.models import Cliente
+
     from papeleo import ligado
 
     Cliente.objects.create(razon_social="Optimist Marketing")
@@ -238,6 +239,7 @@ def test_con_dos_candidatos_no_adivina(cliente, auto_encendido):  # noqa: ARG001
 def test_el_proyecto_gana_sobre_el_cliente_porque_es_mas_especifico(
         cliente, auto_encendido):  # noqa: ARG001
     from apps.los_proyectos.models import Proyecto
+
     from papeleo import ligado
 
     pr = Proyecto.objects.create(nombre="Gorras bordadas", cliente=cliente)

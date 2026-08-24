@@ -388,6 +388,16 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "facturacion_crear",
     },
     {
+        "tipo": "crear_automatizacion",
+        "titulo": "Crear una automatización nueva",
+        "ejemplo": ("Arma una automatización que revise el buzón de contratos y "
+                    "los mande al archivo."),
+        "payload": ("nombre + plantilla (buzon_a_despacho | programado_a_despacho "
+                    "| webhook_a_despacho) + params; o nombre + nodos + conexiones "
+                    "para armarla libre. Nace APAGADA en los dos casos."),
+        "gating": "automatizacion",
+    },
+    {
         "tipo": "activar_automatizacion",
         "titulo": "Prender una automatización",
         "ejemplo": "Prende la automatización de las facturas por correo.",

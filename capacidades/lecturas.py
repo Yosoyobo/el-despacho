@@ -1109,6 +1109,26 @@ def _h_ejecuciones_flujo(usuario, flujo_id: str = "", limite: int = 10, **kw):
     return {"disponible": True, "corridas": corridas}
 
 
+def _h_listar_recetas_automatizacion(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Las recetas de las que se puede partir para crear una automatización.
+
+    No necesita llave: es el catálogo del repo, no una consulta a n8n. Existe
+    para que El Chalán parta de una forma probada en vez de inventar el grafo —
+    n8n guarda sin chistar un nodo cuyo tipo no existe, así que un flujo
+    inventado se «crea bien» y no corre.
+    """
+    from lib import n8n_plantillas
+
+    return {
+        "recetas": n8n_plantillas.catalogo(),
+        "nota": (
+            "Prefiere una receta. Si armas los pasos a mano, la automatización "
+            "nace apagada y hay que revisarla en n8n antes de prenderla."
+        ),
+    }
+
+
+
 # ── Papeleo (Paperless) ────────────────────────────────────────────────────
 # El archivo del papeleo que no tiene lugar en el sistema: contratos,
 # remisiones, comprobantes de proveedor sin CFDI. Se busca por el TEXTO que
@@ -1243,6 +1263,17 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="automatizacion", fn=_h_listar_flujos,
+    ),
+    "listar_recetas_automatizacion": Capacidad(
+        nombre="listar_recetas_automatizacion",
+        descripcion=(
+            "Las recetas listas para crear una automatización nueva (buzón a El "
+            "Despacho, algo programado, un webhook) con sus parámetros. Mírala "
+            "ANTES de proponer crear_automatizacion: partir de una receta es la "
+            "diferencia entre un flujo que corre y uno que sólo se ve bien."
+        ),
+        args_schema={},
+        gating="automatizacion", fn=_h_listar_recetas_automatizacion,
     ),
     "detalle_automatizacion": Capacidad(
         nombre="detalle_automatizacion",

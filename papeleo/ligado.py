@@ -18,6 +18,7 @@ sean el mismo.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -69,10 +70,9 @@ def candidatos(texto: str, minimo: int | None = None) -> dict:
             nombres = [c.razon_social, getattr(c, "razon_social_fiscal", "")]
             # También sus razones sociales alternas: el papeleo suele venir a
             # nombre de la que factura, no de la que todos usan de boca.
-            try:
+            # Si esa relación no existiera, con las dos de arriba alcanza.
+            with contextlib.suppress(Exception):
                 nombres += [r.razon_social for r in c.razones_sociales.all()]
-            except Exception:  # noqa: BLE001 — sin esa relación, con las dos basta
-                pass
             if any(menciona(texto, n, minimo) for n in nombres if n):
                 salida["clientes"].append(c)
 
