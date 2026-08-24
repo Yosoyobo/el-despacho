@@ -18,11 +18,16 @@ Reconocimiento del 2026-08-24, 08:40, contra `nuc-lc` por el tailnet:
 | Video por hardware | `/dev/dri/renderD128` presente → **Quick Sync sirve** |
 | Red | `eno1` **DOWN** — todo va por WiFi |
 
-**Lo que eso decide:** la RAM no es el límite (caben varios servicios
-más, ver §5). El disco y el cable sí lo son. **El cable de red sigue
-pendiente y ya estorba**: hoy el respaldo nocturno a HAL, las imágenes
-que entrega El Mostrador y todo el tráfico de los diez usuarios pasan
-por WiFi. Con OSRM encima, es el primer lugar donde se va a notar.
+**Lo que eso decide:** la RAM no es el límite (ver §5). El disco sí.
+
+**Sobre el cable de red — corrección del 2026-08-24.** Se dijo que era
+requisito; medido, **no lo es**: el enlace está a **-38 dBm** en 5 GHz
+con canal de 80 MHz, **866 Mbit/s** de bajada y **cero errores**. Con
+555 peticiones por hora no se roza. Lo único que compra un cable es
+**confiabilidad**, no velocidad: hoy el negocio entero depende de una
+asociación WiFi, y si esa interfaz se cae, se cae todo. Como el NUC está
+en una **ubicación temporal**, cablear ahora para recablear después es
+trabajo doble: **se hace cuando se mude a su lugar definitivo.**
 
 ---
 
@@ -277,7 +282,61 @@ Dos ajustes lo resuelven sin perder nada real:
 
 Con los dos, el peor escenario baja a **~8.3 G, con 6.5 G libres**.
 
-### 5.5 Regla para todo lo que se aloje de aquí en adelante
+### 5.5 ¿Cuándo aprietan de verdad los 14.8 G?
+
+**Por número de usuarios, nunca** — y el cálculo lo dice sin ambigüedad.
+
+Medido en producción el 2026-08-24: **555 peticiones en una hora** con
+cinco usuarios, o sea **0.15 por segundo contra un techo de 275**. Es el
+**0.06 %** de la máquina. Latencias: p50 39 ms, p90 143 ms, p99 602 ms.
+
+El presupuesto, con todo instalado y los ajustes de §5.4 puestos:
+
+| | |
+|---|---|
+| Base fija (sistema + El Despacho + los 4 servicios) | 5.74 G |
+| Hasta la línea de alarma (14.8 − 4 de colchón) | 10.8 G |
+| **Disponible para carga** | **5.06 G** |
+| − Gotenberg con 4 conversiones | −1.05 G |
+| − Paperless con 2 OCR | −0.6 G |
+| **Queda para consultas concurrentes** | **3.4 G** |
+
+Una consulta pesada cuesta **~40 MB** (medido en agosto: 60 consultas
+movieron la RAM de 4.12 a 6.53 G). Entonces:
+
+> **3.4 G ÷ 40 MB = 85 consultas pesadas concurrentes** antes de que
+> suene la alarma. Y gunicorn sólo puede tener **96 peticiones en
+> vuelo** (64 en El Taller + 32 en La Gerencia). Los dos números están
+> **casi empatados**: el sistema no puede pedir mucho más de lo que la
+> RAM aguanta. Está balanceado, pero con un pelo de margen.
+
+Para sostener 85 consultas pesadas a la vez harían falta ~85 por
+segundo. Al ritmo por usuario que se midió (0.031 peticiones/s), eso son
+**del orden de 2,700 usuarios simultáneos si TODOS hicieran sólo
+reportes pesados**, y unos 8,900 con el mix real de uso. El CPU se
+rendiría mucho antes que la memoria.
+
+**Learning Center tiene cinco personas. El margen es de tres órdenes de
+magnitud.**
+
+### 5.6 Lo que sí va a apretar, en orden de cercanía
+
+| Cuándo | Qué | Cómo se evita |
+|---|---|---|
+| **La noche que se instale OSRM** | El preprocesado del mapa de México pide **6-8 G de pico**. Es el aprieto más cercano en el tiempo | Correrlo con lo demás quieto, o procesar en HAL y copiar el resultado ya cocido |
+| **El día que se instale Gotenberg** | Sin tope de concurrencia, diez PDFs a la vez son **3 G de golpe** | Acotar a cuatro conversiones (§5.3.1). Una línea de configuración |
+| **Al quinto o sexto servicio nuevo** | Quedan **~3 G** de margen para lo que venga después de estos cuatro | Cada servicio nuevo entra con `mem_limit` y sale de este presupuesto, no del aire |
+| **Cualquier día, por descuido** | Subir workers, `work_mem` o `shared_buffers` «por si acaso». Así se llegó a los techos de 4 G y 3 G | Cambiar un parámetro y **comprobarlo con `SHOW`**, no con `docker compose config` |
+| **Cualquier día, por una fuga** | Un flujo mal hecho en n8n puede crecer sin techo | Para eso es el `mem_limit`: que muera el juguete, no El Taller |
+| **En años** | Que el working set de Postgres llene sus 2 G. La base son 29 MB: tiene que crecer **70 veces** | Nada. El aviso de `presion_memoria()` lo dirá con meses de anticipación |
+
+**Y el orden en que truenan los recursos, para no vigilar el equivocado:**
+primero el **disco** (92 G hoy; el SSD de 1 TB lo resuelve por años),
+después el **CPU** (4 núcleos: los reportes concurrentes lo tocan antes
+que la memoria), y **la RAM al final**. El WiFi no está en la lista
+(§0).
+
+### 5.7 Regla para todo lo que se aloje de aquí en adelante
 
 **Todo servicio nuevo lleva `mem_limit` en el compose.** El NUC sostiene
 el negocio: ningún juguete puede tumbarlo compitiendo por memoria. Si
@@ -291,6 +350,8 @@ Gotenberg se desboca con cinco PDFs, que muera Gotenberg — no El Taller.
 | OSRM (México) | ~2.2 G | 3 G |
 | **Suma en reposo** | **~3.5 G** | |
 
+---
+
 ## 6. Orden de ejecución
 
 0. **Bajar los techos de Postgres y Redis** (§5.4) — cinco minutos, y
@@ -302,7 +363,8 @@ Gotenberg se desboca con cinco PDFs, que muera Gotenberg — no El Taller.
 5. **Etiquetas** — desarrollo chico dentro de El Despacho
 6. **Tablero en pared** — colgar El Vigía y armar la vista del día
 
-**Antes del 4: el cable de red.** El SSD antes del 3.
+El SSD antes del 3. **El cable de red no bloquea nada** (§0): se hace
+cuando el NUC llegue a su lugar definitivo.
 
 ## 7. Lo que hace falta de tu lado
 
