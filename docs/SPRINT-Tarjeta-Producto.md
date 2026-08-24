@@ -1,6 +1,7 @@
 # Sprint — Tarjeta de producto del proyecto
 
-**Notas que cierra:** 12, 13, 8 (diagnóstico) y verificar la 5.
+**Notas que cierra:** 13, 8 (diagnóstico) y verificar la 5.
+**La nota 12 ya está hecha** — entró con el Sprint 1 el 22 de agosto.
 **Zona:** `el-taller/templates/proyectos/_producto_card.html` +
 `_form_productos_js.html` + `apps/los_proyectos/` · **Riesgo:** medio.
 
@@ -9,9 +10,12 @@
 
 ---
 
-## 1 · Bote de basura en lugar de la ✕ (nota 12)
+## 1 · Bote de basura en lugar de la ✕ (nota 12) — ✅ YA ESTÁ
 
-Trivial. El botón ya está dentro del recuadro, al pie de la tarjeta:
+Entró con el Sprint 1. El botón `producto-eliminar` ya usa un `<svg>` de bote en
+`origin/main`. Se conserva la descripción abajo sólo como registro.
+
+~~El botón ya está dentro del recuadro, al pie de la tarjeta:~~
 [`_producto_card.html:368`](../el-taller/templates/proyectos/_producto_card.html),
 clase `producto-eliminar`. Sólo cambia el glifo por un SVG de bote de basura,
 conservando el tamaño (`h-8 w-8`), el color de error y el `aria-label`.
@@ -147,5 +151,5 @@ ruff check .
 2. `docs/DOC_05_MANUAL_USUARIO.md` — bloque de Novedades **y** cuerpo del manual.
 3. `CLAUDE.md §8` · 4. `BITACORA.md` · 5. `memory/` + línea en `MEMORY.md`.
 
-**Despliegue:** manual al NUC (el CI está gateado por el secreto de Tailscale).
-**Árbol:** `git worktree` propio — `agent/plantillas-correo` ocupa el principal.
+**Despliegue:** el CI despliega al NUC al hacer merge a `main`.
+**Árbol:** `git worktree` propio sólo si hay otra sesión en paralelo.

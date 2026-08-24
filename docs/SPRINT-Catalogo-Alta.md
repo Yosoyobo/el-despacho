@@ -1,10 +1,18 @@
 # Sprint — Catálogo · alta de producto y ficha
 
-**Notas que cierra:** 2, 3, 4, 10, 11 del buzón del 21 de agosto.
-**Zona:** `el-taller/apps/el_catalogo/` · **Riesgo:** medio · **Un despliegue.**
+> ## ✅ ENTREGADO — 22 de agosto, en `main` (VERSION 2026.08.24)
+>
+> Verificado contra `origin/main`: el atajo ya acepta proveedores y fija el
+> principal · la calculadora ya aparece en el alta · el JS de la tarjeta ya
+> **pisa** el proveedor al cambiar de producto (`if (prov && datos.proveedor_id)`,
+> sin el `!prov.value`) · la ficha ya tiene archivar y eliminar.
+>
+> **Queda sólo el punto 5** (navegación entre categorías en la ficha) y la
+> decisión de producto de 3c. El resto del documento se conserva como registro
+> de lo que se pidió y por qué.
 
-> Es el sprint más valioso de la ronda: hoy el flujo de captura de producto está
-> a medias y por eso fallan tres cosas que parecen distintas.
+**Notas que cerró:** 2, 3, 4, 10. **Pendiente:** 11.
+**Zona:** `el-taller/apps/el_catalogo/` · **Riesgo:** medio.
 
 ---
 
@@ -216,8 +224,8 @@ ruff check .
 4. `BITACORA.md` — cierre de sesión.
 5. `memory/` — archivo del sprint + una línea en `MEMORY.md`.
 
-**Despliegue:** el CI **no** llega al NUC todavía (falta el secreto de
-Tailscale). El `pull && up -d` se hace a mano — ver `docs/MUDANZA-AL-NUC-LC.md`.
+**Despliegue:** el CI **sí** despliega al NUC al hacer merge a `main` (la nota
+que decía lo contrario se corrigió el 22 de agosto, commit `6354ec0`).
 
-**Árbol:** trabajar en un `git worktree` propio. `agent/plantillas-correo` tiene
-cambios sin commitear en el árbol principal.
+**Árbol:** `git worktree` propio sólo si hay otra sesión trabajando en paralelo.
+El árbol principal quedó limpio.

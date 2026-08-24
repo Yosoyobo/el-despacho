@@ -96,5 +96,5 @@ ruff check .
 2. `docs/DOC_05_MANUAL_USUARIO.md` — bloque de Novedades **y** cuerpo del manual.
 3. `CLAUDE.md §8` · 4. `BITACORA.md` · 5. `memory/` + línea en `MEMORY.md`.
 
-**Despliegue:** manual al NUC (el CI está gateado por el secreto de Tailscale).
-**Árbol:** `git worktree` propio — `agent/plantillas-correo` ocupa el principal.
+**Despliegue:** el CI despliega al NUC al hacer merge a `main`.
+**Árbol:** `git worktree` propio sólo si hay otra sesión en paralelo.

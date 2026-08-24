@@ -1,73 +1,98 @@
 # El Reparto — notas del buzón del 21 de agosto
 
-**Estado al 22 de agosto de 2026.** Las notas de esa ronda, repartidas por zona
-del sistema. Este archivo es el índice; cada sprint tiene su propio documento.
+**Estado al 23 de agosto de 2026**, verificado contra `origin/main`
+(VERSION 2026.08.24). Este archivo es el índice; cada sprint tiene su documento.
 
 | | |
 |---|---|
 | Notas de la ronda | 14 |
-| **Ya resueltas** | **2** (Bloque 0) |
-| Listas para ejecutar | 9, en 3 sprints |
-| Bloqueadas | 3 (falta información) |
+| **Cerradas** | **8** |
+| Listas para ejecutar | 4, en 2 sprints |
+| Pendientes | 2 (una de diseño, una de información) |
 
 ---
 
-## ✅ Cerrado — Bloque 0 · Las fotos de producto
+## ✅ Cerrado
 
-**Las dos partes quedaron resueltas entre el 21 y el 22 de agosto.** No hay nada
-que hacer aquí.
+### Bloque 0 · Las fotos de producto (21-22 de agosto)
 
-**Problema 1 — la credencial.** Era lo que se diagnosticó: el permiso guardado de
-Drive es del 7 de junio y el cliente OAuth del login se reemplazó el 21 de
-agosto. Se resolvió **sin tocar la consola de Google**: el respaldo del 13 de
-agosto trae el cliente viejo cifrado con la misma llave maestra, así que descifra
-hoy; se pegó en los campos **dedicados** de Drive. El acceso con Google se quedó
-con el cliente nuevo y Drive recuperó su historia. Verificado bajando una foto
-real por la API.
+**La credencial.** Era lo diagnosticado: el permiso de Drive es del 7 de junio y
+el cliente del login se reemplazó el 21 de agosto. Se resolvió **sin tocar la
+consola de Google** — el respaldo del 13 de agosto trae el cliente viejo cifrado
+con la misma llave maestra, así que descifra hoy; se pegó en los campos
+**dedicados** de Drive.
 
-> La trampa que se señaló se esquivó: **nunca se picó «Reconectar»** con el
-> cliente nuevo. Sigue vigente como regla — hacerlo dejaría ciego todo el
-> histórico, en silencio.
+> La trampa se esquivó: **nunca se picó «Reconectar»** con el cliente nuevo.
+> Sigue vigente como regla — hacerlo dejaría ciego todo el histórico, en silencio.
 
-**Problema 2 — Drive en el camino de lectura.** El Almacén está desplegado
-(`lib/almacen.py` ya en `main`). Los medios viven en disco, los sirve El
-Mostrador, y Drive quedó de espejo. La importación bajó **87 de 88** archivos
-(21.1 MB); el que falta es un adjunto de junio que ya habían borrado de Drive.
+**Drive fuera del camino de lectura.** El Almacén está desplegado. Los medios
+viven en disco, los sirve El Mostrador y Drive quedó de espejo. La importación
+bajó 87 de 88 archivos (el que falta es un adjunto de junio ya borrado de Drive).
 
-**Nota 5 («cambié un producto y no se actualizó la imagen»)** era esto mismo: la
-subida fallaba en silencio. Sólo falta **volver a probarla una vez** para
-cerrarla formalmente.
+**Nota 5** («cambié un producto y no se actualizó la imagen») era esto mismo.
+Falta **probarla una vez** para cerrarla formalmente — va en el Sprint 2.
+
+### Sprint 1 · Catálogo (22 de agosto, VERSION 2026.08.24)
+
+📄 [`SPRINT-Catalogo-Alta.md`](SPRINT-Catalogo-Alta.md) — **entregado.**
+Cerró las notas **2, 3, 4 y 10**. Verificado en `main`: el atajo ya acepta
+proveedores y fija el principal, la calculadora aparece en el alta, el JS de la
+tarjeta ya **pisa** el proveedor al cambiar de producto, y la ficha ya tiene
+archivar y eliminar.
+
+Quedó fuera el punto 5 del sprint (**nota 11**, navegación entre categorías) y la
+decisión de producto 3c.
+
+### Nota 12 · Bote de basura en la tarjeta
+
+Entró junto con el Sprint 1. El botón `producto-eliminar` ya usa un `<svg>`.
 
 ---
 
-## Lo que sigue pendiente
-
-### Sprint 1 — Catálogo · alta de producto y ficha
-📄 [`SPRINT-Catalogo-Alta.md`](SPRINT-Catalogo-Alta.md)
-**Notas 2, 3, 4, 10, 11.** El atajo «+ Crear producto nuevo en el catálogo» no
-pide proveedor, y de ahí se caen la calculadora de Simil y el proveedor
-principal. Más los dos botones que faltan en la ficha.
-**Riesgo:** medio · **Es el más valioso**: destraba el flujo de captura.
+## Lo que sigue
 
 ### Sprint 2 — Tarjeta de producto del proyecto
 📄 [`SPRINT-Tarjeta-Producto.md`](SPRINT-Tarjeta-Producto.md)
-**Notas 12, 13, 8 y verificar la 5.** Bote de basura, la tarjeta que tarda en
-aparecer, y el diagnóstico de los colores repetidos.
+**Notas 13 y 8, más verificar la 5.** La tarjeta que tarda en aparecer (causa ya
+identificada: el autoguardado devuelve el formset entero), el diagnóstico de los
+colores repetidos, y probar una vez la subida de imagen.
 **Riesgo:** medio · un archivo grande y sensible.
 
 ### Sprint 3 — Semáforo de cotización + estilo del Kanban
 📄 [`SPRINT-Visual-Cotizacion-Kanban.md`](SPRINT-Visual-Cotizacion-Kanban.md)
-**Notas 9 y 1.** Los dos son de bajo riesgo y caben en un despliegue corto.
+**Notas 9 y 1.** Intacto: verificado que el detalle de la cotización sigue sin
+semáforo y que la ficha del Kanban sigue con su contorno de 2px.
+**Riesgo:** bajo · despliegue corto.
+
+### Nota 11 — navegación entre categorías en la ficha
+Quedó suelta al cerrar el Sprint 1. Es chica; cabe en el Sprint 3 o en cualquier
+despliegue de Catálogo que venga.
 
 ---
 
-## 🔒 Bloqueadas — falta información
+## Cómo se ejecutan: 2 sesiones, un mensaje cada una
+
+Una sesión por sprint. El mensaje es literalmente:
+
+> Lee `docs/SPRINT-Tarjeta-Producto.md` y ejecútalo completo.
+
+**Ahora sí pueden ir en paralelo.** El conflicto que había era entre los Sprints
+1 y 2 (los dos tocaban `proyectos/_form_productos_js.html`); con el 1 ya
+entregado, el 2 y el 3 no comparten un solo archivo.
+
+**Por qué no los dos en una sesión:** cada sprint sube `VERSION` y escribe su
+bloque de Novedades. Dos en uno serían un despliegue que no se puede revertir por
+partes.
+
+---
+
+## 🔒 Pendientes
 
 ### Nota 7 · Se cortó un título en el documento
 **Lo que pide Oscar ya es el diseño que está en el código.** El título del
-concepto vive dentro de la misma tabla que sus especificaciones y su foto, y
-todo el bloque va en **una sola fila** de la tabla envoltorio — la única
-primitiva que el convertidor de Google no parte entre páginas
+concepto vive dentro de la misma tabla que sus especificaciones y su foto, y todo
+el bloque va en **una sola fila** de la tabla envoltorio — la única primitiva que
+el convertidor de Google no parte entre páginas
 ([`pdf.html:265-267`](../el-taller/templates/cotizaciones/pdf.html)). Antes de
 exportar se le pide además a la API de Documentos que marque esas filas como
 «no partir».
@@ -76,9 +101,8 @@ Falló la **aplicación**, no el formato. Tres causas posibles:
 
 1. **La protección no se aplicó.** Es lo primero y es gratis: cuando eso falla el
    sistema deja un aviso en la bitácora con el id del documento
-   ([`lib/google_drive.py:610`](../lib/google_drive.py)). Ahora que todo corre en
-   el NUC, se ve con `docker compose logs el-taller | grep "blindar la paginación"`
-   o desde El Vigía.
+   ([`lib/google_drive.py:610`](../lib/google_drive.py)). Se ve con
+   `docker compose logs el-taller | grep "blindar la paginación"` o desde El Vigía.
 2. **El convertidor aplana las tablas anidadas** y el envoltorio no protege el
    bloque de adentro. Hipótesis abierta desde julio.
 3. **El bloque es más alto que una hoja.** Ahí ninguna protección sirve: una fila
@@ -90,66 +114,27 @@ exacto** donde pasó, el archivo, no la captura.
 ### Nota 6 · «@ de tareas en cada tarjeta de productos involucrados»
 **Pendiente de diseño (decisión de Oscar, 22 de agosto).** No se ejecuta hasta
 definir qué hace la @: crear una tarea ligada al producto, mencionar a una
-persona, o listar las tareas que ya existen. Toca el mismo archivo que el
-Sprint 2, así que irá en un sprint propio y posterior.
+persona, o listar las que ya existen. Toca el mismo archivo que el Sprint 2, así
+que irá en un sprint propio y posterior.
 
-### Nota 4 · Proveedor principal — ya NO está bloqueada
-Se rastreó en el código y son **dos bugs concretos**, los dos dentro del
-Sprint 1. Guardar el campo funciona bien; lo que falla es que la tarjeta del
-proyecto no pisa el proveedor al cambiar de producto, y que el dropdown de
-«★ Proveedor principal» no se entera de los proveedores que agregas o quitas en
-la misma pantalla. Detalle en el sprint.
-
-Lo único que queda como decisión de producto: **si cambiar el principal en el
-catálogo debe propagarse a los proyectos ya abiertos** (hoy no lo hace, igual que
-un precio negociado). El sprint entrega los dos bugs sin esperar esa respuesta.
+### Decisión de producto abierta (no bloquea nada)
+Cambiar el proveedor principal en el catálogo **no toca las líneas de proyecto
+que ya existían** — el proveedor se copió al crear la línea, igual que un precio
+negociado. ¿Debe propagarse a los proyectos abiertos, como sí hace la calculadora
+con el costo? Si la respuesta es sí, es un añadido chico reusando
+`apps/el_catalogo/propagacion.py`.
 
 ---
 
-## Cómo se ejecutan: 3 sesiones, un mensaje cada una
+## Contexto para ejecutar
 
-**Una sesión por sprint.** El mensaje es literalmente:
-
-> Lee `docs/SPRINT-Catalogo-Alta.md` y ejecútalo completo.
-
-**Por qué no los tres en una sola sesión:** cada sprint sube `VERSION` y escribe
-su bloque de Novedades. Tres en uno serían un solo despliegue que no se puede
-revertir por partes — justo lo que este reparto quiere evitar. Y una sesión con
-las tres zonas encima acumula contexto de más y empieza a mezclar.
-
-**El orden importa entre 1 y 2:** los dos tocan
-`proyectos/_form_productos_js.html` — el Sprint 1 la llamada del alta rápida, el
-Sprint 2 la tarjeta y el rerender. **Van secuenciales**, nunca en paralelo.
-
-**El Sprint 3 es independiente:** no comparte archivos con los otros dos. Puede
-correr en paralelo en su propio worktree, o dejarse al final. Es el más barato.
-
-```
-Sesión A → Sprint 1 (Catálogo)      ──┐ secuenciales:
-Sesión B → Sprint 2 (Tarjeta)       ──┘ comparten _form_productos_js.html
-
-Sesión C → Sprint 3 (Cotización + Kanban)   independiente, cuando quieras
-```
-
----
-
-## Antes de empezar cualquier sprint
-
-Tres cosas del contexto nuevo que cambian cómo se ejecuta:
-
-1. **El árbol de trabajo está ocupado.** La rama `agent/plantillas-correo` tiene
-   cambios sin commitear (alias de remitente). Cualquier sprint nuevo va en su
-   **propio `git worktree`** — dos sesiones en el mismo árbol se pisan, y ya pasó
-   una vez con pérdida de trabajo.
-
-2. **El despliegue al NUC es MANUAL.** El job del CI está gateado hasta que
-   existan los secretos de Tailscale; hoy sale con un aviso «Deploy al NUC
-   omitido». El `pull && up -d` se hace a mano — ver
-   [`MUDANZA-AL-NUC-LC.md`](MUDANZA-AL-NUC-LC.md).
-
-3. **Las fotos ya no salen de Drive.** Si un sprint toca imágenes de producto, se
-   usa el filtro `|medio_url` sobre El Almacén. La tarjeta del proyecto ya está
-   migrada.
+1. **El CI sí despliega al NUC** al hacer merge a `main`. La nota que decía lo
+   contrario se corrigió el 22 de agosto (commit `6354ec0`).
+2. **El árbol principal está limpio** — el trabajo de plantillas de correo ya se
+   fusionó. Un `git worktree` propio sólo hace falta si hay otra sesión en
+   paralelo.
+3. **Las fotos ya no salen de Drive.** Si un sprint toca imágenes, se usa el
+   filtro `|medio_url` sobre El Almacén. La tarjeta del proyecto ya está migrada.
 
 ---
 
