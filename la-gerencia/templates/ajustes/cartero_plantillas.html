@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Plantillas de correo — El Cartero{% endblock %}
+{% block title %}Plantillas de correo — Cartero{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Plantillas de correo" subtitulo="El cuerpo y el asunto de cada correo que manda El Cartero. Edítalas gráficamente o pídele a El Chalán que las redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cartero" "/ajustes/cartero/" "Plantillas" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Plantillas de correo" subtitulo="El cuerpo y el asunto de cada correo que manda el sistema. Edítalas gráficamente o pídele a El Chalán que las redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="Cartero" %}
 
 {% if alias_faltantes %}
 <div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">

@@ -1,4 +1,4 @@
-"""UI de El Cartero en La Gerencia (/ajustes/cartero/). Solo super_admin."""
+"""UI de Cartero en La Gerencia (/ajustes/cartero/). Solo super_admin."""
 
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ def test_panel_super_admin(client, usuario_factory):
     resp = client.get("/ajustes/cartero/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    assert "El Cartero" in body
+    assert "Cartero" in body
+    assert "El Cartero" not in body
     assert "SMTP" in body
 
 

@@ -1,7 +1,8 @@
 {% load static forms_helpers permisos %}
 {% comment %} Sidebar — La Gerencia (Pre-S2b.2: backend puro). Items operativos se
    movieron a El Taller. Aquí solo: Dashboard ejecutivo, Directorio,
-   Site, Interfón, Chalanes, Ajustes, Tasas. {% endcomment %}
+   Site, Interfón, Chalanes, Ajustes, Tasas, Cartero, KPIs, Rutas,
+   Cobranza y los catálogos. {% endcomment %}
 <aside data-ta-sidebar
        class="fixed left-0 top-0 z-40 flex h-screen w-72 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white px-5 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)] transition-transform duration-300 lg:sticky lg:translate-x-0 dark:border-gray-800 dark:bg-gray-950">
     <a href="/" class="mb-8 flex items-center gap-2">
@@ -50,13 +51,34 @@
         {% endif %}
 
         {% if permisos_modulos.ajustes %}
-        <a href="/ajustes/" class="menu-item {% if '/ajustes/' == request.path or request.path == '/ajustes' %}menu-item-active{% elif '/ajustes/' in request.path and '/ajustes/tasas' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+        {% comment %}Las sub-páginas con su propio botón en el menú NO prenden también
+        «Los Ajustes» — si no, se verían dos renglones activos a la vez.{% endcomment %}
+        <a href="/ajustes/" class="menu-item {% if request.path == '/ajustes/' or request.path == '/ajustes' %}menu-item-active{% elif '/ajustes/tasas' in request.path or '/ajustes/cartero' in request.path or '/ajustes/metas-kpi' in request.path or '/ajustes/rutas' in request.path or '/ajustes/cobranza' in request.path %}menu-item-inactive{% elif '/ajustes/' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.3 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.3l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.2.6.7 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Los Ajustes
         </a>
         <a href="/ajustes/tasas/" class="menu-item {% if '/ajustes/tasas' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h4l3-9 4 18 3-9h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Tasas
+        </a>
+        {% comment %}LC 2026-08-24 (Oscar): estas cuatro configuraciones vivían escondidas
+        detrás de los botones del panel de Los Ajustes. Salen al menú con su nombre
+        sencillo. Todas se gatean con el mismo permiso (ajustes.acceder).{% endcomment %}
+        <a href="{% url 'ajustes-cartero' %}" class="menu-item {% if '/ajustes/cartero' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16v12H4z" stroke-linecap="round" stroke-linejoin="round"/><path d="m4 7 8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Cartero
+        </a>
+        <a href="{% url 'ajustes-metas-kpi' %}" class="menu-item {% if '/ajustes/metas-kpi' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 20V10M12 20V5M19 20v-7" stroke-linecap="round"/><path d="M3 20h18" stroke-linecap="round"/></svg>
+            KPIs
+        </a>
+        <a href="{% url 'ajustes-rutas' %}" class="menu-item {% if '/ajustes/rutas' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H14a3.5 3.5 0 0 1 0 7h-4a3.5 3.5 0 0 0 0 7h5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Rutas
+        </a>
+        <a href="{% url 'ajustes-cobranza' %}" class="menu-item {% if '/ajustes/cobranza' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5a2.5 2.5 0 0 0-2.5-1.5c-1.4 0-2.5.9-2.5 2s1.1 2 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2a2.5 2.5 0 0 1-2.5-1.5M12 6v1.9M12 16.1V18" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Cobranza
         </a>
         {% endif %}
 

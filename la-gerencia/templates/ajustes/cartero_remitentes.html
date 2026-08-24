@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Direcciones de envío — El Cartero{% endblock %}
+{% block title %}Direcciones de envío — Cartero{% endblock %}
 {% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Direcciones de envío" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Direcciones de envío" subtitulo="Las direcciones desde las que salen tus correos, y cuáles falta dar de alta en Google." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="El Cartero" %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cartero" "/ajustes/cartero/" "Direcciones de envío" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Direcciones de envío" subtitulo="Las direcciones desde las que salen tus correos, y cuáles falta dar de alta en Google." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/" back_label="Cartero" %}
 
 {% if faltan %}
 <div class="mb-6 rounded-2xl border border-warning-300 bg-warning-50 p-5 dark:border-warning-700 dark:bg-warning-900/20">

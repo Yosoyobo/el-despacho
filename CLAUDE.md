@@ -7334,6 +7334,50 @@ healthcheck), pero es el origen del folclore de «los 3 fallos locales de Redis�
 Se deja fuera a propósito: cambia cómo corren ~3 000 tests y no pertenece a un
 sprint de CI.
 
+### S-Menu-Gerencia ✅ — Cartero, KPIs, Rutas y Cobranza salen al menú (2026-08-24, VERSION 2026.08.32)
+
+Pedido de Oscar: «saca a el sidebar de la gerencia (y esteriliza los nombres):
+Cartero, KPIs, Rutas, Cobranza». Sin migraciones.
+
+- **Cuatro renglones nuevos** en `la-gerencia/templates/_componentes_tailadmin/sidebar.html`,
+  debajo de *Tasas* y dentro del mismo `{% if permisos_modulos.ajustes %}` — las
+  cuatro vistas ya estaban gateadas con `@requiere_permiso("ajustes","acceder")`,
+  así que sacarlas al menú no cambia quién las ve. Los botones del panel se
+  conservan (precedente de *Tasas*, que vive en los dos lados desde S2a).
+- **Nombres esterilizados**: «El Cartero» → **Cartero** · «La Cobranza» →
+  **Cobranza** · «Metas KPI» → **KPIs** · «Rutas (velocidad, tiempo por parada)» →
+  **Rutas**. Parejo donde el nombre se VE (menú, `<title>`, encabezado, migas,
+  `back_label`, botones del panel, las rutas que cita el propio texto —
+  «Ajustes → Cartero → Plantillas», también en las dos pantallas de Campañas del
+  Taller — y los `messages` al guardar). **El código NO se toca** (§3): siguen
+  siendo `lib/cartero.py`, `ajustes-cartero`, `ConfiguracionCobranza`.
+- **Defecto cazado al agregarlos**: «Los Ajustes» se marcaba activo con
+  `'/ajustes/' in request.path` y *Tasas* como única excepción escrita a mano, así
+  que abrir `/ajustes/cobranza/` habría dejado **dos renglones marcados**. Ahora son
+  tres casos explícitos: ruta exacta → activo; sub-página **con** renglón propio →
+  inactivo; cualquier otra sub-página de ajustes (fiscal, orden del menú,
+  recordatorios, Drive) → activo, con prueba que lo exige.
+- **GOTCHA de las pruebas del menú**: `tests/django_settings.py` pone los dos
+  `templates/` en el mismo `DIRS` y **el de El Taller va primero**, así que
+  `_componentes_tailadmin/sidebar.html` resuelve al menú de **El Taller** incluso en
+  las pruebas de Gerencia — leer el menú de una respuesta del cliente da **verde sin
+  mirar el archivo que se prueba**. La prueba abre el archivo de La Gerencia por su
+  ruta y lo pinta con `engines["django"].from_string(...)`. Y hay que anclar en
+  `<aside data-ta-sidebar>`, **no** en el primer `<nav>`: ése es el de las migas, y
+  ahí aparecen las mismas rutas (segundo verde falso).
+- **19 tests** en `tests/gerencia/test_sidebar_gerencia_ajustes.py`, verificados
+  contra el código sin arreglar en dos mutaciones (condición vieja → 4 rojos; sin
+  los renglones → 8 rojos). Se actualizaron 3 pruebas ajenas que fijaban los
+  nombres viejos (`test_cartero_ui`, `test_cobranza_ui`) y el error del ejecutor de
+  correo (`test_chalan_correo`, que casaba con `"Cartero"` y ahora con
+  `"entregar el correo"` — lo que de verdad quería comprobar). Gerencia: 296 verdes.
+
+**Deuda diseñada**: el menú de La Gerencia sigue siendo HTML fijo (no pasa por
+`SidebarOrden`, que es sólo de El Taller), así que ni el orden ni la visibilidad de
+estos renglones se configuran por GUI. Y quedan con artículo los nombres que Oscar
+NO pidió cambiar («El Directorio», «El Site», «El Interfón», «Los Ajustes») — es el
+mismo cambio de etiqueta si algún día se quiere el menú parejo, pero es su decisión.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

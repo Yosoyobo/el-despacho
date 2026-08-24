@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load forms_helpers %}
-{% block title %}Editar plantilla — El Cartero{% endblock %}
+{% block title %}Editar plantilla — Cartero{% endblock %}
 
 {% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "El Cartero" "/ajustes/cartero/" "Plantillas" "/ajustes/cartero/plantillas/" pl.nombre as breadcrumb_items %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Cartero" "/ajustes/cartero/" "Plantillas" "/ajustes/cartero/plantillas/" pl.nombre as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo=pl.nombre subtitulo="Diseña el correo gráficamente. Usa los botones de código y vista previa del editor, o pídele a El Chalán que lo redacte." breadcrumb_items=breadcrumb_items back_url="/ajustes/cartero/plantillas/" back_label="Plantillas" %}
 
 {# GrapesJS — editor visual de correo (vendoreado vía CDN pin, regla §4 #1). #}

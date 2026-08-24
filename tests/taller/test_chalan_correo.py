@@ -153,8 +153,10 @@ def test_ejecutor_cartero_caido_falla_legible(cliente_con_email):
     admin, cli = cliente_con_email
     PermisoUsuario.objects.get_or_create(usuario=admin, modulo="comunicacion",
                                          permiso="enviar_correo", defaults={"activo": True})
+    # LC 2026-08-24: el mensaje se esterilizó — ya no nombra a «El Cartero»,
+    # dice qué pasó. Lo que importa sigue siendo que sea legible.
     with mock.patch("lib.cartero.enviar", return_value=_ResultadoFalla()), \
-         pytest.raises(ValueError, match="Cartero"):
+         pytest.raises(ValueError, match="entregar el correo"):
         enviar_correo(_accion({"cliente_slug": cli.slug,
                                "tipo_plantilla": "generico", "mensaje": "x"}), admin)
 
