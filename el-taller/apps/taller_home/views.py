@@ -397,12 +397,12 @@ def _infra_gauges(user):
 
     if not puede(user, "site", "ver"):
         return None
-    from lib.site.gauges import snapshot_gauges_minimo
+    from lib.site.fierro import contexto
 
-    datos = snapshot_gauges_minimo()
+    datos = contexto()
     # Sin /proc montado no hay nada que enseñar; mejor no pintar la sección que
     # pintar cuatro relojes en «n/d».
-    if not datos or not datos.get("host", {}).get("disponible", True):
+    if not datos or not datos.get("disponible"):
         return None
     return datos
 

@@ -1125,7 +1125,20 @@ def rutas_panel(request):
         messages.success(request, "Supuestos del planeador de rutas actualizados.")
         return redirect("ajustes-rutas")
 
-    return render(request, "ajustes/rutas_panel.html", {"cfg": cfg})
+    # Si el mapa está en pie, las distancias son de calle y no estimaciones a
+    # vuelo de pájaro. La pantalla tiene que decir cuál de las dos cosas está
+    # pasando: hasta 2026-08-24 afirmaba «se mide en línea recta» y desde que
+    # entró OSRM eso dejó de ser cierto.
+    try:
+        from lib import ruteo
+        mapa_vivo = ruteo.disponible(forzar=True)
+    except Exception:  # noqa: BLE001 — no poder preguntar no rompe la pantalla
+        mapa_vivo = False
+
+    return render(request, "ajustes/rutas_panel.html", {
+        "cfg": cfg,
+        "mapa_vivo": mapa_vivo,
+    })
 
 
 # ── Documentos — cómo se arman los PDF que ve el cliente ─────────────────
