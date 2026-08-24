@@ -231,3 +231,45 @@ def test_el_context_processor_no_relee_la_bandera(monkeypatch):
     monkeypatch.setattr(ad, "obtener_deploy_en_curso", _contar)
     ad.contexto_aviso_deploy(request=None)
     assert lecturas["n"] == 1, "se leyó la bandera más de una vez por petición"
+
+
+def test_una_pieza_caida_pone_el_banner_en_rojo(monkeypatch):
+    """El hueco que Oscar cazó el 2026-08-24: dos contenedores reiniciándose en
+    bucle y el banner seguía ámbar. El Vigía sí lo veía («9/11 · 2 abajo»); el
+    aviso miraba una lista de sondas que había quedado vacía."""
+    from lib import aviso_deploy as ad
+
+    monkeypatch.setattr(ad, "obtener_deploy_en_curso", lambda: "sha")
+    monkeypatch.setattr(ad, "_base_responde", lambda: True)
+    monkeypatch.setattr(ad, "_sondas_configuradas", list)
+    monkeypatch.setattr(ad, "_piezas_caidas", lambda: 2)
+    monkeypatch.setattr(ad, "_client", lambda: _RedisFalso())
+    assert ad.nivel_aviso() == ad.NIVEL_ROJO
+
+
+def test_no_poder_contar_contenedores_no_enciende_la_alarma(monkeypatch):
+    """Sin socket de Docker montado no se puede saber, y no saber no es lo
+    mismo que estar mal. Quien no tiene el socket es porque no le toca."""
+    from lib import aviso_deploy as ad
+
+    class _SinSocket:
+        @staticmethod
+        def disponible():
+            return False
+
+    monkeypatch.setitem(__import__("sys").modules, "lib.site.contenedores", _SinSocket)
+    assert ad._piezas_caidas() == 0
+
+
+def test_se_cuenta_lo_que_no_esta_corriendo(monkeypatch):
+    from lib.site import contenedores
+
+    monkeypatch.setattr(contenedores, "disponible", lambda: True)
+    monkeypatch.setattr(contenedores, "listar", lambda: [
+        {"State": "running"},
+        {"State": "restarting"},
+        {"State": "exited"},
+    ])
+    from lib import aviso_deploy as ad
+
+    assert ad._piezas_caidas() == 2

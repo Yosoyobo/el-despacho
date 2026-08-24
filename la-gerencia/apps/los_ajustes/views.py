@@ -1127,6 +1127,103 @@ def rutas_panel(request):
 
     return render(request, "ajustes/rutas_panel.html", {"cfg": cfg})
 
+
+# ── Documentos — cómo se arman los PDF que ve el cliente ─────────────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def documentos_panel(request):
+    """Márgenes, pie, tamaño de hoja y quién arma el PDF.
+
+    Estos valores vivían como constantes en el código y sólo se podían mover
+    con un despliegue (Oscar, 2026-08-24: «debemos poder editar todo lo posible
+    de los PDFs en el GUI de la gerencia»).
+
+    El selector de motor es además la salida de emergencia: si los documentos
+    salen mal con Chromium, se vuelve a Google con un clic en vez de esperar a
+    que pase un despliegue completo — que es justo lo que uno quiere tener a
+    mano el día que un formato se rompe frente a un cliente.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from ajustes.models import ConfiguracionDocumento
+    from ajustes.models.documento import MOTORES, TAMANOS_CHOICES
+
+    cfg = ConfiguracionDocumento.obtener()
+
+    if request.method == "POST":
+        def _entero(nombre, actual, minimo, tope):
+            try:
+                return max(minimo, min(int(request.POST.get(nombre) or actual), tope))
+            except (TypeError, ValueError):
+                return actual
+
+        # Las opciones se validan contra las del modelo: el `select` del
+        # navegador se puede manipular, así que no se confía en lo que llega.
+        motor = (request.POST.get("motor") or "").strip()
+        if motor in {clave for clave, _ in MOTORES}:
+            cfg.motor = motor
+        tamano = (request.POST.get("tamano_papel") or "").strip()
+        if tamano in {clave for clave, _ in TAMANOS_CHOICES}:
+            cfg.tamano_papel = tamano
+
+        # Tope de 216pt (3 pulgadas): más que eso deja la hoja sin contenido.
+        cfg.margen_superior_pt = _entero("margen_superior_pt", cfg.margen_superior_pt, 0, 216)
+        cfg.margen_inferior_pt = _entero("margen_inferior_pt", cfg.margen_inferior_pt, 0, 216)
+        cfg.margen_izquierdo_pt = _entero("margen_izquierdo_pt", cfg.margen_izquierdo_pt, 0, 216)
+        cfg.margen_derecho_pt = _entero("margen_derecho_pt", cfg.margen_derecho_pt, 0, 216)
+
+        cfg.pie_texto = (request.POST.get("pie_texto") or "").strip()[:120]
+        cfg.numerar_paginas = bool(request.POST.get("numerar_paginas"))
+
+        try:
+            inter = Decimal(str(request.POST.get("interlineado") or cfg.interlineado))
+        except (InvalidOperation, ValueError, TypeError):
+            inter = cfg.interlineado
+        # Menos de 0.8 encima los acentos; más de 2 desperdicia media hoja.
+        cfg.interlineado = max(Decimal("0.8"), min(inter, Decimal("2.0")))
+
+        cfg.actualizado_por = request.user
+        cfg.save()
+
+        # Que el cambio se vea en el siguiente PDF y no dentro de un minuto.
+        try:
+            from lib.documentos import olvidar_configuracion
+            olvidar_configuracion()
+        except Exception:  # noqa: BLE001 — guardar no depende de poder limpiar el caché
+            pass
+
+        emitir(EventoPortavoz(
+            tipo="ajuste.documentos_configurado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={
+                "motor": cfg.motor,
+                "tamano_papel": cfg.tamano_papel,
+                "margen_superior_pt": cfg.margen_superior_pt,
+                "numerar_paginas": cfg.numerar_paginas,
+            },
+        ))
+        messages.success(request, "Formato de los documentos actualizado.")
+        return redirect("ajustes-documentos")
+
+    # Para que la pantalla pueda decir si el motor propio está en pie ahora
+    # mismo, en vez de dejar al usuario adivinando por qué eligió uno y sale
+    # el otro.
+    try:
+        from lib import gotenberg
+        gotenberg_vivo = gotenberg.disponible(forzar=True)
+    except Exception:  # noqa: BLE001
+        gotenberg_vivo = False
+
+    return render(request, "ajustes/documentos_panel.html", {
+        "cfg": cfg,
+        "motores": MOTORES,
+        "tamanos": TAMANOS_CHOICES,
+        "gotenberg_vivo": gotenberg_vivo,
+        "alto_util_pt": cfg.alto_util_pt,
+    })
+
+
 # ── El Análisis — los umbrales con los que El Chalán juzga ───────────────
 
 @requiere_permiso("ajustes", "acceder")

@@ -109,3 +109,20 @@ def test_los_ajustes_sigue_marcado_en_sus_propias_subpaginas(usuario_factory, ru
     sub-páginas que NO tienen su propio renglón (fiscal, orden del menú, …)."""
     menu = _pintar(usuario_factory(rol="super_admin"), ruta)
     assert "menu-item-active" in _clases_del_renglon(menu, "/ajustes/"), ruta
+
+
+def test_documentos_no_prende_tambien_los_ajustes():
+    """Sub-página con renglón propio: si no se excluye, se ven DOS renglones
+    activos a la vez. Se agregó con la pantalla de Documentos (2026-08-24)."""
+    from pathlib import Path
+
+    from django.template import engines
+
+    raiz = Path(__file__).resolve().parent.parent.parent
+    ruta = raiz / "la-gerencia/templates/_componentes_tailadmin/sidebar.html"
+    html = ruta.read_text(encoding="utf-8")
+    assert "'/ajustes/documentos' in request.path" in html, (
+        "abrir Documentos marcaría también «Los Ajustes» como activo"
+    )
+    # Y el renglón propio existe.
+    assert "ajustes-documentos" in html

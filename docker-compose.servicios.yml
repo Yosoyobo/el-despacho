@@ -62,6 +62,11 @@ services:
   # Sin el archivo cocido en ./data/osrm el contenedor no arranca; el planeador
   # cae a línea recta como hasta hoy, así que no rompe nada mientras tanto.
   osrm:
+    # Detrás de un perfil: sin el mapa cocido el contenedor no puede arrancar y
+    # se quedaría reiniciando en bucle para siempre, ensuciando el tablero y
+    # —desde 2026-08-24— encendiendo el banner rojo con razón. El script de
+    # despliegue activa el perfil sólo cuando el archivo existe.
+    profiles: ["osrm"]
     image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
     container_name: despacho-osrm
     restart: always
@@ -98,6 +103,11 @@ services:
       N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY:?falta N8N_ENCRYPTION_KEY en el .env}"
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+    # n8n corre como el usuario `node` (1000). Docker crea el volumen como root
+    # y entonces no puede ni escribir su config: «EACCES /home/node/.n8n/config».
+    # Se declara aquí para que quede dicho, y el script de despliegue endereza
+    # el dueño de la carpeta — lo uno sin lo otro no basta.
+    user: "1000:1000"
     volumes:
       - ./data/n8n:/home/node/.n8n
     mem_limit: 1g

@@ -623,8 +623,21 @@ def test_generar_pdf_le_pasa_los_margenes_a_drive(monkeypatch, entorno):
 
     monkeypatch.setattr("lib.documentos.generar_pdf", _falso)
     services.generar_pdf(cot, entorno["admin"])
-    assert capturado["pagina"] == services.PAGINA_DOCUMENTO
-    assert capturado["pagina"]["pie_texto"] == "1/1"
+
+    # S-NUC-Servicios (2026-08-24): esto comparaba contra `PAGINA_DOCUMENTO` y
+    # exigía `pie_texto == "1/1"`. Las dos cosas cambiaron a propósito:
+    #
+    # - los márgenes ya NO son una constante: se editan en Gerencia → Ajustes →
+    #   Documentos, y `PAGINA_DOCUMENTO` pasó a ser sólo el valor por defecto;
+    # - el «1/1» era texto LITERAL porque la API de Google no tenía forma de
+    #   insertar un número de página que avanzara. Ahora lo pone el motor con
+    #   `numerar_paginas`, y en un documento de tres hojas dice «1/3» de verdad.
+    #
+    # Lo que sigue importando es que los márgenes lleguen y que el pie se pida.
+    pagina = capturado["pagina"]
+    assert pagina["margen_superior_pt"] == services._MARGEN_SUPERIOR_PT
+    assert pagina["margen_inferior_pt"] == services._MARGEN_INFERIOR_PT
+    assert pagina["numerar_paginas"] is True, "el documento debe seguir numerando"
 
 
 def test_el_ojo_de_la_opcion_a_siempre_viaja_en_el_post(client, entorno):
