@@ -7400,6 +7400,54 @@ estos renglones se configuran por GUI. Y quedan con artículo los nombres que Os
 NO pidió cambiar («El Directorio», «El Site», «El Interfón», «Los Ajustes») — es el
 mismo cambio de etiqueta si algún día se quiere el menú parejo, pero es su decisión.
 
+### S-NUC-Servicios ✅ (en curso 2026-08-24, VERSION 2026.08.33) — El aviso que respira, los techos a la realidad y cuatro servicios propios
+
+Oscar: «arranca con todo… ponle el anuncio de mantenimiento hasta que
+terminemos». Cuatro rondas de preguntas definieron qué se aloja en el NUC ahora
+que sostiene el negocio. Plan completo en `docs/SPRINT-NUC-Servicios.md`.
+
+- **Regla nueva §4 #23 — todo despliegue avisa** (decisión Oscar: «esta forma de
+  avisar la vamos a adoptar como estándar de ahora en adelante»). El banner
+  **respira**: ámbar mientras la ventana esté abierta, **rojo automático** cuando
+  algo deja de responder — lo enciende `lib.aviso_deploy.nivel_aviso()` con
+  sondas, nadie tiene que acordarse de marcarlo. **Ojo con el TTL**: son 10
+  minutos por defecto, pensados para un deploy de tres; para una jornada hay que
+  pasar `ttl_segundos` o el aviso se apaga a media faena. La pantalla de
+  mantenimiento del `Caddyfile` lleva **roadmap con barra de avance**, y se
+  retira al cerrar la ventana (un roadmap que sobrevive al trabajo miente).
+  El veredicto de las sondas se cachea **en Redis, no por proceso**: el banner
+  pollea cada 10s desde cada pestaña, así que sin caché compartido el costo se
+  multiplicaría por el número de personas mirando. Redis caído cuenta como caída.
+- **Techos a la realidad**: `shared_buffers` 4 G → **2 G** y Redis 3 G → **1 G**.
+  Se pusieron altos en agosto para «no volver en meses», cuando el NUC sólo
+  cargaba El Despacho; con los servicios nuevos, esos 7 G comprometidos para una
+  base de 29 MB y una cola de 15 MB **no cabían**. Liberan 4 G sin perder nada.
+- **`docker-compose.servicios.yml`** con Gotenberg, OSRM, n8n y Paperless. Dos
+  reglas: **todo lleva `mem_limit`** (si algo se desboca, que muera el juguete y
+  no El Taller) y **lo que guarda credenciales no sale del tailnet** (n8n y
+  Paperless escuchan en la IP de Tailscale, no en 0.0.0.0, así que tampoco quedan
+  en el WiFi de la oficina). Gotenberg lleva **tope de conversiones simultáneas
+  además** del límite de memoria: es el único que escala con la GENTE y no con
+  los datos (un Chromium por PDF), y el `mem_limit` lo mataría a media
+  conversión. Paperless lleva **Redis propio** porque el del negocio corre con
+  `volatile-lru` y las colas de Celery no caducan: podrían desalojarse y perder
+  trabajos en silencio.
+- **Guarda en los dos scripts de despliegue**: el compose de servicios pide dos
+  variables del `.env` y, si faltan, `up -d` aborta el stack **completo, El
+  Despacho incluido**. Se comprueba antes y se despliega sin ellos.
+- **Mediciones que ordenan el resto** (todas en `docs/SPRINT-NUC-Servicios.md`):
+  555 peticiones/hora con 5 usuarios = **0.06 % del techo**; la RAM aprieta a las
+  **85 consultas pesadas concurrentes** y gunicorn sólo puede tener 96 en vuelo;
+  el WiFi **no era el cuello** (-38 dBm, 866 Mbit/s, cero errores) — se corrigió
+  la recomendación del cable.
+- **Trampa documentada**: `ps` cuenta la memoria compartida una vez por proceso
+  (798 MB sumados contra 254 reales en Postgres). **El número honesto es el de
+  cgroups**, y es la razón más común por la que se sobredimensiona un servidor.
+
+**Pendiente del sprint**: Gotenberg integrado de punta a punta (prioridad de
+Oscar: A → C → B, o sea PDFs → rutas → CFDIs), levantar los servicios, cocinar
+el mapa de México y la receta de n8n contra `facturas@learningcenter.mx`.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
