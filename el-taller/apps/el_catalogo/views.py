@@ -1031,6 +1031,8 @@ def proveedor_detalle(request, pk: int):
         .distinct().order_by("-creado_en")[:100]
     )
 
+    from papeleo.ligado import contexto_ficha
+
     return render(request, "catalogo/proveedor_detalle.html", {
         "proveedor": prov,
         "form": form,
@@ -1042,6 +1044,9 @@ def proveedor_detalle(request, pk: int):
         "subcats_sel": set(prov.subcategorias.values_list("pk", flat=True)),
         "puede_gestionar_servicios": puede(request.user, "catalogo", "editar"),
         "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
+        # Su papeleo (cotizaciones que mandó, comprobantes sin CFDI). Sale de
+        # nuestra base, así que la ficha se pinta igual si el archivo está caído.
+        **contexto_ficha(request.user, prov),
     })
 
 

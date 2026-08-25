@@ -199,10 +199,17 @@ def test_el_gating_es_el_de_ajustes():
             assert c["gating"] == "automatizacion"
 
 
-def test_crear_flujos_no_esta_expuesto():
-    """A propósito: pedirle a un modelo que invente el grafo de nodos de n8n
-    produce flujos que se ven bien y no corren. Crear se hace en n8n, donde se
-    puede probar antes de prenderlo."""
+def test_crear_flujos_si_esta_expuesto_pero_nace_apagado():
+    """**Esto cambió el 2026-08-24, a pedido de Oscar** («a ver qué puede hacer
+    con los guardrails que pusimos»). Antes se exigía lo contrario, porque un
+    modelo inventando el grafo de nodos de n8n produce flujos que se ven bien y
+    no corren.
+
+    Esa objeción sigue en pie; lo que la vuelve intentable son las trancas: la
+    automatización nace APAGADA, se revisa contra los nodos que conocemos y hay
+    recetas de las que partir. El detalle vive en
+    `tests/taller/test_crear_automatizacion.py`; aquí sólo queda fijado que la
+    acción existe y por qué es segura intentarla."""
     from apps.el_dictado.ejecutores import EJECUTORES
 
-    assert "crear_automatizacion" not in EJECUTORES
+    assert "crear_automatizacion" in EJECUTORES

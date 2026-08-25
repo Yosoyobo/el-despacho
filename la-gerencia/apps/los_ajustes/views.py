@@ -2,6 +2,8 @@
 Solo super_admin (regla #3). Los valores se cifran con La Bóveda antes de DB.
 """
 
+import os
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
@@ -26,9 +28,38 @@ def _estado_slots():
     ]
 
 
+def _slots_por_grupo():
+    """Los mismos slots, repartidos por tema (Oscar, 2026-08-24: «se ve feo»).
+
+    Una lista de veintiocho llaves sueltas obliga a leerlas todas para
+    encontrar una. Agrupadas, se busca por el tema —los Chalanes, Google, las
+    herramientas del servidor— que es como uno piensa en ellas.
+
+    Cada grupo trae cuántas están puestas, para ver de un vistazo qué falta sin
+    abrirlo.
+    """
+    from ajustes.models.credencial import GRUPOS_CREDENCIAL
+
+    configurados = set(Credencial.objects.values_list("clave", flat=True))
+    grupos = []
+    for titulo, ayuda, slots in GRUPOS_CREDENCIAL:
+        filas = [(c, e, d, c in configurados) for (c, e, d) in slots]
+        grupos.append({
+            "titulo": titulo,
+            "ayuda": ayuda,
+            "slots": filas,
+            "puestas": sum(1 for f in filas if f[3]),
+            "total": len(filas),
+        })
+    return grupos
+
+
 @requiere_permiso("ajustes", "acceder")
 def panel(request):
-    return render(request, "ajustes/panel.html", {"slots": _estado_slots()})
+    return render(request, "ajustes/panel.html", {
+        "slots": _estado_slots(),
+        "grupos_credenciales": _slots_por_grupo(),
+    })
 
 
 @requiere_permiso("ajustes", "acceder")
@@ -1500,3 +1531,212 @@ def cobranza_panel(request):
         "correo_configurado": cartero.esta_configurado(),
         "canal_correo": cartero.proveedor_activo(),
     })
+
+
+# ── Papeleo — el archivo de contratos, remisiones y comprobantes ──────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def papeleo_panel(request):
+    """Todo lo que decide un humano sobre el archivo del papeleo.
+
+    La llave se puede pegar o **canjear**: se teclea el usuario y la contraseña
+    de Paperless una vez y se guarda sólo el token, para no mandar a nadie a
+    buscarlo a otra app. La contraseña no se almacena.
+    """
+    from ajustes.models import ConfiguracionPapeleo
+    from ajustes.models.credencial import Credencial
+    from lib import paperless
+    from papeleo import entrada as papeleo_entrada
+
+    cfg = ConfiguracionPapeleo.obtener()
+
+    if request.method == "POST":
+        # Enmascarada = no la tocaron, así que no se sobreescribe con viñetas.
+        crudo = (request.POST.get("token") or "").strip()
+        if crudo and "\u2022" not in crudo:
+            Credencial.guardar(paperless.SLOT_LLAVE, crudo)
+
+        usuario = (request.POST.get("usuario") or "").strip()
+        contrasena = request.POST.get("contrasena") or ""
+        if usuario and contrasena:
+            canjeado = paperless.canjear_token(usuario, contrasena)
+            if canjeado:
+                Credencial.guardar(paperless.SLOT_LLAVE, canjeado)
+                messages.success(request, "Llave conseguida y guardada.")
+            else:
+                messages.error(request, "El archivo no aceptó ese usuario y "
+                                        "contraseña. La llave se queda como estaba.")
+
+        cfg.url_publica = (request.POST.get("url_publica") or "").strip()
+        cfg.ligar_automatico = bool(request.POST.get("ligar_automatico"))
+        cfg.etiqueta_entrada = (request.POST.get("etiqueta_entrada") or "").strip()[:64]
+        cfg.avisar_al_entrar = bool(request.POST.get("avisar_al_entrar"))
+        try:
+            minimo = int(request.POST.get("minimo_caracteres_nombre")
+                         or cfg.minimo_caracteres_nombre)
+        except (TypeError, ValueError):
+            minimo = cfg.minimo_caracteres_nombre
+        # Acotado como el modelo: con menos de tres letras cualquier nombre
+        # aparece por casualidad y ligaría documentos que no son.
+        cfg.minimo_caracteres_nombre = max(3, min(minimo, 40))
+        cfg.save()
+
+        emitir(EventoPortavoz(
+            tipo="ajuste.papeleo_configurado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"liga_solo": cfg.ligar_automatico,
+                     "tiene_direccion": bool(cfg.url_publica),
+                     "etiqueta": cfg.etiqueta_entrada},
+        ))
+
+        if request.POST.get("probar"):
+            if paperless.disponible():
+                messages.success(request, "El archivo contestó: la llave sirve.")
+            else:
+                messages.error(request, "El archivo no contestó, o la llave no "
+                                        "sirve. Revisa el token.")
+        else:
+            messages.success(request, "Ajustes del papeleo guardados.")
+        return redirect("ajustes-papeleo")
+
+    llave = paperless.llave()
+    return render(request, "ajustes/papeleo_panel.html", {
+        "cfg": cfg,
+        "hay_llave": bool(llave),
+        # Nunca se devuelve la llave entera a la pantalla: se muestra que hay
+        # una, no cuál es.
+        "token_enmascarado": (f"{llave[:4]}{chr(8226) * 12}{llave[-4:]}"
+                              if len(llave) > 12 else (chr(8226) * 12 if llave else "")),
+        "conectado": bool(llave) and paperless.disponible(),
+        "hay_token_entrada": bool(papeleo_entrada._tokens()),
+    })
+
+
+# ── Automatizaciones (n8n) ───────────────────────────────────────────────
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET"])
+def automatizaciones_panel(request):
+    """Las tareas que corren solas, con su interruptor y el catálogo de recetas.
+
+    Oscar, 2026-08-24, sobre n8n: «quiero un menú GUI, ¿qué hace? No sé,
+    recomienda». Lo que hace falta ver de una automatización es poco y siempre
+    lo mismo: **qué la dispara, si está prendida y cuándo corrió por última
+    vez**. Lo demás se edita en n8n, que para eso existe.
+
+    El interruptor está aquí porque es la decisión que se toma seguido y con
+    prisa: un flujo activo le escribe a clientes, y apagarlo no puede depender
+    de acordarse de otra dirección y otra contraseña.
+    """
+    from lib import n8n, n8n_plantillas
+
+    hay_llave = n8n.esta_configurado()
+    flujos = n8n.listar_flujos() if hay_llave else None
+    corridas = n8n.ejecuciones(limite=8) if hay_llave else None
+
+    # La última corrida de cada flujo, para no pintar una tabla aparte que
+    # obligue a cruzar dos listas con la vista.
+    ultima = {}
+    for c in corridas or []:
+        ultima.setdefault(c["flujo"], c)
+    for f in flujos or []:
+        f["ultima"] = ultima.get(f["nombre"])
+
+    return render(request, "ajustes/automatizaciones_panel.html", {
+        "hay_llave": hay_llave,
+        # `None` no es lo mismo que lista vacía: una es «no contestó» y la otra
+        # «no hay ninguna». Confundirlas manda a buscar el problema donde no está.
+        "contesta": flujos is not None,
+        "flujos": flujos or [],
+        "corridas": corridas or [],
+        "recetas": n8n_plantillas.catalogo(),
+        "url_n8n": os.environ.get("N8N_URL_PUBLICA", "http://100.121.244.5:5678"),
+    })
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def automatizacion_interruptor(request):
+    """Prende o apaga una automatización.
+
+    Prender es lo delicado: desde ese momento el flujo actúa solo. Por eso el
+    aviso de la pantalla es explícito y el resultado se dice tal cual — n8n
+    puede negarse (por ejemplo, si al flujo le falta una credencial) y decir
+    «listo» sin comprobarlo dejaría a alguien creyendo que ya corre.
+    """
+    from lib import n8n
+
+    flujo_id = (request.POST.get("flujo_id") or "").strip()
+    prender = request.POST.get("prender") == "1"
+    nombre = (request.POST.get("nombre") or flujo_id).strip()
+    if not flujo_id:
+        messages.error(request, "Falta decir cuál automatización.")
+        return redirect("ajustes-automatizaciones")
+
+    ok = n8n.activar(flujo_id) if prender else n8n.desactivar(flujo_id)
+    if ok:
+        messages.success(
+            request,
+            f"«{nombre}» quedó {'prendida' if prender else 'apagada'}.")
+        emitir(EventoPortavoz(
+            tipo="automatizacion.interruptor",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"flujo_id": flujo_id, "nombre": nombre, "activo": prender},
+        ))
+    else:
+        messages.error(
+            request,
+            f"n8n no aceptó {'prender' if prender else 'apagar'} «{nombre}». "
+            "Ábrela en n8n para ver qué le falta.")
+    return redirect("ajustes-automatizaciones")
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["POST"])
+def automatizacion_instalar(request):
+    """Crea una automatización a partir de una receta. Siempre APAGADA.
+
+    Las recetas existen porque n8n **guarda sin chistar** un flujo con un paso
+    cuyo tipo no existe: se crea «con éxito» y aparece roto en el editor. La
+    forma de estas ya está probada contra el n8n que corre en el NUC.
+
+    Nace apagada sin excepción: un flujo nuevo que arranca solo puede mandarle
+    correo a un cliente antes de que nadie lo haya visto funcionar.
+    """
+    from lib import n8n, n8n_plantillas
+
+    plantilla = (request.POST.get("plantilla") or "").strip()
+    nombre = (request.POST.get("nombre") or "").strip()
+    if not nombre:
+        messages.error(request, "Ponle un nombre a la automatización.")
+        return redirect("ajustes-automatizaciones")
+
+    try:
+        nodos, conexiones = n8n_plantillas.armar(plantilla, {})
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("ajustes-automatizaciones")
+
+    avisos = n8n_plantillas.revisar(nodos, conexiones)
+    creado = n8n.crear(nombre, nodos, conexiones)
+    if not creado:
+        messages.error(
+            request,
+            "n8n no la aceptó. Revisa que la llave siga sirviendo en Los Ajustes.")
+        return redirect("ajustes-automatizaciones")
+
+    faltante = (n8n_plantillas.PLANTILLAS.get(plantilla) or {}).get("falta_a_mano")
+    detalle = f" Falta hacerlo a mano en n8n: {faltante}" if faltante else ""
+    messages.success(
+        request,
+        f"«{nombre}» quedó creada y APAGADA. Ábrela en n8n, revísala y "
+        f"préndela cuando la veas correcta.{detalle}")
+    for a in avisos:
+        messages.warning(request, f"Ojo con «{nombre}»: {a}")
+    emitir(EventoPortavoz(
+        tipo="automatizacion.creada",
+        actor_id=request.user.pk, actor_email=request.user.email,
+        payload={"nombre": nombre, "plantilla": plantilla, "avisos": len(avisos)},
+    ))
+    return redirect("ajustes-automatizaciones")

@@ -17,12 +17,18 @@ haya filtrado por rol — el prompt es una sugerencia, esto es la puerta.
 manda correos a clientes. Que un modelo pueda encenderla sin que nadie la mire
 sería regalarle la voz del despacho a un programa.
 
-**Lo que NO está aquí, a propósito: crear un flujo desde cero.** Un flujo de
-n8n es un grafo de nodos con su forma exacta; pedirle a un modelo que lo invente
-produce, casi siempre, un flujo que se ve bien y no corre. Crear se hace en n8n,
-donde se puede probar antes de prenderlo; El Chalán ayuda a operarlos, no a
-adivinarlos. El cliente ya tiene `n8n.crear()` para el día que existan
-plantillas de las que partir.
+**Crear un flujo desde cero** se abrió el 2026-08-24, a pedido de Oscar («a ver
+qué puede hacer con los guardrails que pusimos»). La objeción que lo tenía
+cerrado sigue siendo cierta —un modelo inventando un grafo produce, casi
+siempre, algo que se ve bien y no corre— así que no se abrió a pelo:
+
+- hay **recetas** de las que partir (`lib/n8n_plantillas.py`), con la forma de
+  los nodos ya verificada, para que armar un flujo sea rellenar huecos;
+- el grafo libre se permite, pero **se revisa y se dice la verdad**: n8n guarda
+  sin chistar un nodo cuyo tipo no existe, así que «creado con éxito» no
+  significa nada por sí solo;
+- y **nace apagado**, siempre. Un flujo apagado es un borrador que no toca
+  nada; el peor caso de una invención es algo que alguien borra en dos clics.
 """
 
 from __future__ import annotations
@@ -117,3 +123,66 @@ def borrar_automatizacion(accion, usuario, contexto=None):
         raise ValueError(f"n8n no pudo quitar «{nombre}» (quedó apagada).")
     return {"entidad_tipo": "automatizacion", "entidad_id": fid,
             "resumen": f"Automatización «{nombre}» quitada."}
+
+
+@registrar("crear_automatizacion")
+def crear_automatizacion(accion, usuario, contexto=None):  # noqa: ARG001
+    """Crea una automatización NUEVA, siempre apagada.
+
+    Dos caminos, y el primero es el que sirve:
+
+    - **Con receta** (`plantilla`): la forma de los nodos ya está verificada y
+      sólo se rellenan los huecos. Es lo que hay que preferir.
+    - **Libre** (`nodos`): el grafo que armó El Chalán. Se crea, se revisa y el
+      resumen dice qué no se reconoció — porque n8n acepta un nodo inexistente
+      sin quejarse, y reportar éxito a secas sería mentir.
+
+    En los dos casos queda **apagada**: prenderla es otra acción, que también
+    pasa por confirmación humana.
+    """
+    from lib import n8n_plantillas
+
+    _gate(usuario, "puede_acceder_ajustes", "crear automatizaciones")
+    n8n = _exigir_llave()
+
+    payload = accion.payload if hasattr(accion, "payload") else (accion or {})
+    nombre = str(payload.get("nombre") or "").strip()
+    if not nombre:
+        raise ValueError("Falta el nombre de la automatización.")
+
+    plantilla = str(payload.get("plantilla") or "").strip()
+    if plantilla:
+        nodos, conexiones = n8n_plantillas.armar(plantilla,
+                                                 payload.get("params") or {})
+        receta = n8n_plantillas.PLANTILLAS[plantilla]
+        pendiente = receta["falta_a_mano"]
+    else:
+        nodos = payload.get("nodos") or []
+        conexiones = payload.get("conexiones") or {}
+        if not isinstance(nodos, list) or not nodos:
+            recetas = ", ".join(sorted(n8n_plantillas.PLANTILLAS))
+            raise ValueError(
+                "Para crear una automatización hace falta una receta "
+                f"({recetas}) o la lista de pasos."
+            )
+        pendiente = ""
+
+    avisos = n8n_plantillas.revisar(nodos, conexiones)
+
+    creado = n8n.crear(nombre, nodos, conexiones)
+    if not creado:
+        raise ValueError(f"n8n no pudo crear «{nombre}».")
+
+    # Se lee de vuelta para contar lo que REALMENTE quedó guardado, no lo que
+    # se mandó. Si n8n se comió un nodo, el resumen lo dice.
+    guardado = n8n.detalle_flujo(creado["id"]) or creado
+    partes = [f"Automatización «{nombre}» creada con {guardado.get('pasos', len(nodos))} "
+              f"paso(s), y queda APAGADA."]
+    if pendiente:
+        partes.append(f"Falta a mano en n8n: {pendiente}")
+    if avisos:
+        partes.append("Ojo: " + " ".join(avisos))
+    partes.append("Revísala en n8n y préndela desde ahí (o pídemelo).")
+
+    return {"entidad_tipo": "automatizacion", "entidad_id": creado["id"],
+            "resumen": " ".join(partes)}

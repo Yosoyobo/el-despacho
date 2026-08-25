@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Automatizaciones — Ajustes{% endblock %}
+
+{% comment %}
+Las tareas que corren solas (n8n), con su interruptor.
+
+De una automatización hace falta ver poco y siempre lo mismo: qué la dispara,
+si está prendida y cuándo corrió por última vez. Lo demás se edita en n8n, que
+para eso existe — esta pantalla no lo reemplaza, le pone la puerta.
+
+El interruptor vive aquí porque es la decisión que se toma con prisa: un flujo
+activo le escribe a clientes, y apagarlo no puede depender de acordarse de otra
+dirección y otra contraseña.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Automatizaciones" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Automatizaciones" subtitulo="Las tareas que corren solas, sin que nadie las pique" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+{% if not hay_llave %}
+<div class="mb-6 max-w-3xl rounded-2xl border border-warning-200 bg-warning-50 p-5 dark:border-warning-500/30 dark:bg-warning-500/10">
+    <h2 class="text-theme-xl font-medium text-warning-700 dark:text-warning-400">Falta la llave</h2>
+    <p class="mt-2 text-sm leading-relaxed text-warning-700 dark:text-warning-400">
+        Sin ella no se puede ni ver qué automatizaciones hay. Se genera dentro de
+        n8n, en <strong>Configuración → API</strong>, y se pega en
+        <a href="/ajustes/" class="underline">Los Ajustes</a>, en
+        «Automatizaciones (n8n) — llave de la API».
+    </p>
+    <p class="mt-2 text-xs text-warning-700/80 dark:text-warning-400/80">
+        n8n vive en <code>{{ url_n8n }}</code> — sólo por el tailnet, nunca desde
+        internet, porque guarda credenciales del negocio.
+    </p>
+</div>
+{% elif not contesta %}
+<div class="mb-6 max-w-3xl rounded-2xl border border-error-200 bg-error-50 p-5 dark:border-error-500/30 dark:bg-error-500/10">
+    <h2 class="text-theme-xl font-medium text-error-700 dark:text-error-400">n8n no contesta</h2>
+    <p class="mt-2 text-sm leading-relaxed text-error-700 dark:text-error-400">
+        La llave está puesta, pero el servicio no responde. Puede estar apagado o
+        la llave puede haber caducado. Mira
+        <a href="{% url 'ajustes-servicios' %}" class="underline">Servicios</a>
+        para saber cuál de las dos cosas es.
+    </p>
+</div>
+{% endif %}
+
+{% if hay_llave and contesta %}
+<section class="mb-8 max-w-4xl">
+    <div class="mb-3 flex items-end justify-between gap-3">
+        <h2 class="text-theme-xl font-medium text-gray-800 dark:text-white/90">Las que hay</h2>
+        <a href="{{ url_n8n }}" target="_blank" rel="noopener"
+           class="text-sm text-brand-600 hover:underline dark:text-brand-400">Abrir n8n →</a>
+    </div>
+
+    {% if flujos %}
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% for f in flujos %}
+        <div class="flex flex-col gap-3 border-b border-gray-100 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+            <div class="min-w-0">
+                <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ f.nombre }}</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Arranca con <strong>{{ f.disparador }}</strong> · {{ f.pasos }} paso{{ f.pasos|pluralize:"s" }}
+                    {% if f.ultima %}
+                    · última vez {{ f.ultima.cuando }}
+                    {% if f.ultima.estado == "success" or f.ultima.estado == "ok" %}
+                    <span class="text-success-600 dark:text-success-400">(bien)</span>
+                    {% else %}
+                    <span class="text-error-600 dark:text-error-400">({{ f.ultima.estado }})</span>
+                    {% endif %}
+                    {% else %}
+                    · todavía no ha corrido
+                    {% endif %}
+                </p>
+            </div>
+
+            <form method="post" action="{% url 'ajustes-automatizacion-interruptor' %}" class="shrink-0">
+                {% csrf_token %}
+                <input type="hidden" name="flujo_id" value="{{ f.id }}">
+                <input type="hidden" name="nombre" value="{{ f.nombre }}">
+                {% if f.activo %}
+                <input type="hidden" name="prender" value="0">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-full bg-success-50 px-3 py-1.5 text-xs font-medium text-success-700 hover:bg-success-100 dark:bg-success-500/10 dark:text-success-400">
+                    ● Prendida — apagar
+                </button>
+                {% else %}
+                <input type="hidden" name="prender" value="1">
+                <button type="submit"
+                        onclick="return confirm('Desde que la prendas, «{{ f.nombre|escapejs }}» actúa sola. ¿La prendo?')"
+                        class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400">
+                    ○ Apagada — prender
+                </button>
+                {% endif %}
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Todavía no hay ninguna" descripcion="Instala una de las recetas de abajo para empezar: nacen apagadas, así que se pueden revisar antes de soltarlas." icono="sparkles" %}
+    {% endif %}
+</section>
+
+<section class="mb-8 max-w-4xl">
+    <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">Recetas</h2>
+    <p class="mb-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+        Puntos de partida con la forma ya probada. Se crean <strong>apagadas,
+        siempre</strong>: hay que abrirlas en n8n, terminar de configurarlas y
+        prenderlas a mano cuando se vean correctas.
+    </p>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {% for r in recetas %}
+        <form method="post" action="{% url 'ajustes-automatizacion-instalar' %}"
+              class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            {% csrf_token %}
+            <input type="hidden" name="plantilla" value="{{ r.plantilla }}">
+            <h3 class="font-medium text-gray-800 dark:text-white/90">{{ r.titulo }}</h3>
+            <p class="mt-1.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ r.para_que }}</p>
+            {% if r.falta_a_mano %}
+            <p class="mt-2 text-xs leading-relaxed text-warning-600 dark:text-warning-400">
+                Después hay que hacer esto a mano en n8n: {{ r.falta_a_mano }}
+            </p>
+            {% endif %}
+            <div class="mt-4 flex gap-2">
+                <input type="text" name="nombre" required maxlength="80"
+                       placeholder="Cómo se va a llamar"
+                       class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-white/90">
+                <button type="submit"
+                        class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                    Instalar
+                </button>
+            </div>
+        </form>
+        {% endfor %}
+    </div>
+</section>
+
+{% if corridas %}
+<section class="max-w-4xl">
+    <h2 class="mb-3 text-theme-xl font-medium text-gray-800 dark:text-white/90">Últimas corridas</h2>
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% for c in corridas %}
+        <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2.5 text-sm last:border-0 dark:border-gray-800">
+            <span class="truncate text-gray-700 dark:text-gray-300">{{ c.flujo }}</span>
+            <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                {{ c.cuando }}
+                {% if c.estado == "success" or c.estado == "ok" %}
+                <span class="text-success-600 dark:text-success-400">· bien</span>
+                {% else %}
+                <span class="text-error-600 dark:text-error-400">· {{ c.estado }}</span>
+                {% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

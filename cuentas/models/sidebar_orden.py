@@ -29,6 +29,7 @@ SLUGS_SIDEBAR_TALLER = [
     ("analisis", "El Análisis"),
     ("productos", "Productos"),
     ("proveedores", "Proveedores"),
+    ("papeleo", "Papeleo (el archivo)"),
     ("notificaciones", "Notificaciones"),
     ("chalanes", "Chalanes"),
     ("cotizaciones", "Cotizaciones"),

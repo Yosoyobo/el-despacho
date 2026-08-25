@@ -5,6 +5,115 @@
 
 ---
 
+## Novedades — Las automatizaciones tienen pantalla y El Chalán alcanza todas las herramientas (24 de agosto de 2026)
+
+**Automatizaciones: una pantalla para prenderlas y apagarlas**
+
+En **Ajustes → Automatizaciones** están ahora las tareas que corren solas: las
+que revisan un buzón, las que llaman a una hora fija, las que esperan a que
+otro sistema toque la puerta.
+
+De cada una se ve lo que hace falta saber y nada más: **qué la dispara, si está
+prendida y cuándo corrió por última vez**. El interruptor está ahí porque es la
+decisión que se toma con prisa — una automatización prendida le escribe a
+clientes, y apagarla no puede depender de acordarse de otra dirección y otra
+contraseña.
+
+Abajo hay **recetas**: puntos de partida con la forma ya probada. Se instalan
+con un nombre y **nacen apagadas, siempre**. Se abren en n8n, se revisan, y se
+prenden a mano cuando se ven correctas. Si a una le falta algo que sólo se puede
+hacer allá —como elegir la cuenta de correo— la pantalla lo dice al crearla, en
+vez de dejar un flujo que nunca va a arrancar.
+
+Y si n8n no contesta, lo dice con esas palabras. No es lo mismo que «no hay
+ninguna»: son dos problemas distintos y se buscan en lugares distintos.
+
+**El Chalán ya alcanza las herramientas del servidor**
+
+Estaban instaladas y él no las sabía usar. Ahora se le puede pedir:
+
+- **«Genera el PDF de la COT-2026-0044»** — lo arma sin ir a buscarla.
+- **«Convierte a PDF ese Word»** — sin que nadie abra Office.
+- **«Archiva la cotización»** — la manda al archivo buscable. Ojo: el lector de
+  texto corre después, así que tarda unos minutos en poderse buscar, y él lo
+  dice así en vez de prometer que ya quedó.
+- **«¿Qué tan lejos queda?»** — mide **por calle**, no en línea recta. Y dice
+  con qué método midió: si el mapa no responde, avisa que el número queda corto.
+- **«¿Está funcionando todo?»** — enumera las piezas del servidor y cuáles
+  responden ahora mismo.
+
+Como siempre, todo lo que cambia algo pasa por tu confirmación antes de
+aplicarse.
+
+**Las llaves, ordenadas por tema**
+
+La lista de credenciales de **Los Ajustes** era una tira de veintitantas llaves
+sueltas. Ahora están repartidas por tema —Los Chalanes, Google, las herramientas
+del servidor, el papeleo y lo fiscal, los avisos, los cobros en línea— y cada
+grupo dice cuántas tiene puestas, para ver de un vistazo qué falta sin abrirlo.
+
+---
+
+## Novedades — El papeleo por fin se busca, y El Chalán arma automatizaciones (24 de agosto de 2026)
+
+**Papeleo: buscar por lo que dice adentro**
+
+Hay un renglón nuevo en el menú: **Papeleo**. Ahí viven los contratos, las
+remisiones firmadas y los comprobantes de proveedor que hasta ahora no tenían
+lugar en el sistema.
+
+Lo que lo hace distinto de una carpeta: **se busca por lo que el documento dice
+adentro**, no por cómo se llama el archivo. Escribe «Optimist» y aparece la
+remisión donde firmaron, aunque el archivo se llame `scan_0042.pdf`. Eso
+funciona porque un lector de texto pasa por cada documento cuando entra.
+
+Dos cosas que conviene saber:
+
+- **Un documento recién subido tarda unos minutos** en poder buscarse. El lector
+  corre después de que llega; hasta que termine, el documento existe pero su
+  texto todavía no.
+- **Los CFDI no van aquí.** Ésos siguen entrando por Facturación, que los liga a
+  su factura y les saca el UUID. Si mandas un XML al papeleo, te lo rechaza y te
+  dice a dónde va.
+
+**De quién es cada documento**
+
+A cada documento se le puede decir de quién es: de un cliente, de un proyecto o
+de un proveedor. Una vez dicho, aparece en la ficha de ese cliente (o proyecto,
+o proveedor) en un recuadro nuevo, sin tener que ir a buscarlo.
+
+También puede ligarse solo: si se enciende esa opción, al entrar un documento se
+busca en su texto a quién menciona. **Sólo lo liga cuando no hay duda** — si el
+documento menciona a dos clientes, lo deja sin dueño para que alguien decida.
+Adivinar sería peor: un contrato en la ficha del cliente equivocado no lo nota
+nadie hasta que es tarde.
+
+**Lo puedes preguntar al Chalán**
+
+«¿Dónde está el contrato de Optimist?» o «¿qué papeleo tiene el proyecto
+LC-0044?» funcionan en el chat, sin salir de El Despacho.
+
+**El Chalán ahora arma automatizaciones nuevas**
+
+Antes sólo podía prender, apagar y quitar las que ya existían. Ahora también
+puede **armar una nueva** — por ejemplo, la que revisa un buzón de correo y
+manda lo que llegue al papeleo.
+
+Dos cosas para que sea de fiar:
+
+- **Nace apagada, siempre.** Una automatización prendida le manda correos a
+  clientes, así que la nueva queda como borrador hasta que alguien la revise y
+  la prenda a mano.
+- **Te dice si algo no le cuadró.** Si armó un paso que no reconocemos, lo
+  advierte en lugar de decir «listo». Vale la pena leer ese aviso antes de
+  prenderla.
+
+**Antes de que sirva, un paso**
+
+El papeleo necesita que alguien pegue su llave una vez, en **Gerencia →
+Papeleo**. Ahí mismo se puede pegar el token o simplemente teclear el usuario y
+la contraseña de Paperless, y el sistema consigue el token solo. Mientras eso no
+pase, la pantalla lo dice en lugar de salir vacía.
 ## Novedades — Las rutas, con sus perillas y con «cómo llegar» (24 de agosto de 2026)
 
 Ya que el mapa de calles está en el servidor, se le pueden pedir cosas que antes
@@ -5510,6 +5619,66 @@ Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
 
 ---
 
+## Papeleo (el archivo)
+
+Los contratos, las remisiones firmadas y los comprobantes de proveedor sin CFDI.
+Lo que no tiene lugar en ningún otro módulo y antes se perdía en una carpeta o en
+un cajón.
+
+**Se busca por lo que dice adentro.** Un lector de texto pasa por cada documento
+al entrar, así que se encuentra por el nombre del cliente, un folio o cualquier
+palabra del contenido — no importa cómo se llame el archivo.
+
+### Cómo se busca
+
+Menú → **Papeleo** → escribe una palabra que esté DENTRO del documento. Sale la
+lista, con «Abrir →» para verlo completo.
+
+Si un documento acaba de entrar y no aparece, es normal: su lectura tarda unos
+minutos. Aparece primero y se vuelve buscable después.
+
+### Cómo entra un documento
+
+Tres caminos:
+
+- **A mano**, desde la misma pantalla de Papeleo (con permiso de subir).
+- **Por correo**, si se armó la automatización del buzón: lo que llegue ahí se
+  archiva solo. Pídesela a El Chalán: «arma la automatización del buzón de
+  contratos».
+- **Escaneado**, directamente en el archivo (Paperless).
+
+**Los CFDI no van aquí.** Ésos entran por Facturación, que los liga a su factura
+y les saca el UUID. Si un XML de CFDI llega al papeleo, se rechaza y se dice a
+dónde va.
+
+### De quién es cada documento
+
+A cada documento se le dice de quién es: cliente, proyecto o proveedor. Desde
+entonces aparece en la ficha de ese cliente (o proyecto, o proveedor), en el
+recuadro **Papeleo**.
+
+Si el ligado automático está encendido (Gerencia → Papeleo), al entrar un
+documento se busca en su texto a quién menciona. **Sólo liga cuando no hay
+duda**: si menciona a dos clientes, lo deja sin dueño para que una persona
+decida.
+
+Quitar la liga (la ✕) **no borra el documento** del archivo: sólo deja de
+aparecer en esa ficha.
+
+### Preguntárselo a El Chalán
+
+- «¿Dónde está el contrato de Optimist?»
+- «¿Qué papeleo tiene el proyecto LC-0044?»
+- «Muéstrame el documento 31»
+
+### Permisos
+
+Tres, que se dan por separado en El Directorio: **ver** (buscar y abrir),
+**ligar** (decir de quién es) y **subir** (mandar un archivo al archivo). De
+arranque sólo los tiene el super admin.
+
+---
+
 ## Chalanes (IA)
 
 Seis asistentes virtuales conectados a proveedores de IA:
@@ -5556,6 +5725,19 @@ Abajo, una sección "Qué pueden hacer Los Chalanes" lista las acciones que el C
 - Crear recado · Crear mensaje del buzón
 - Registrar egreso · Registrar ingreso · Crear factura (borrador)
 - **Editar un ingreso · Editar un egreso · Editar una factura en borrador**
+- **Armar el PDF de una cotización · Convertir un Word o Excel a PDF · Mandar un
+  documento al archivo buscable**
+- **Prender, apagar, quitar y crear automatizaciones** (siempre nacen apagadas)
+
+Y sin cambiar nada, sólo para contestar:
+
+- **«¿Qué tan lejos queda?»** entre dos puntos — mide **por calle**, no en línea
+  recta, y dice con qué método midió: si el mapa no responde avisa que el número
+  queda corto, en vez de darlo como bueno.
+- **«¿Está funcionando todo?»** — enumera las piezas del servidor y cuáles
+  responden ahora mismo. Úsalo antes de creerle a un «no se puede».
+- **«¿Tenemos el contrato de…?»** — busca en el archivo del papeleo por lo que
+  el documento dice adentro.
 
 **Registrar una factura dictándosela.** Le pasas los datos como los tengas y él
 arma la factura en borrador para que la confirmes:
@@ -6063,6 +6245,32 @@ Cuatro de esas configuraciones ya no están escondidas detrás de los botones de
 panel: **Cartero**, **KPIs**, **Rutas** y **Cobranza** tienen su propio renglón en
 el menú de La Gerencia, debajo de *Tasas*. Los botones del panel siguen ahí, así
 que llegas por donde te acomode.
+
+**Las llaves están agrupadas por tema.** Eran una tira de veintitantas sueltas;
+ahora se reparten en Los Chalanes, Google, las herramientas del servidor, el
+papeleo y lo fiscal, los avisos y monitoreo, y los cobros en línea. Cada grupo
+dice cuántas tiene puestas, para ver qué falta sin abrirlo.
+
+### Automatizaciones (las tareas que corren solas)
+
+En **Ajustes → Automatizaciones** están las tareas que trabajan sin que nadie las
+pique: las que revisan un buzón de correo, las que llaman a una hora fija, las que
+esperan a que otro sistema toque la puerta.
+
+De cada una ves lo que hace falta y nada más: **qué la dispara, si está prendida y
+cuándo corrió por última vez**. Y su interruptor, porque apagar una que se está
+portando mal no puede depender de acordarse de otra dirección y otra contraseña.
+
+Abajo hay **recetas**: puntos de partida con la forma ya probada. Le pones nombre,
+picas *Instalar* y queda creada **apagada**. Siempre apagada — una automatización
+que arranca sola puede escribirle a un cliente antes de que nadie la haya visto
+funcionar. Se abre en n8n, se revisa, y se prende a mano.
+
+Si a una receta le falta algo que sólo se puede hacer allá —elegir la cuenta de
+correo, por ejemplo— la pantalla te lo dice al crearla.
+
+Si n8n no contesta, lo dice con esas palabras: no es lo mismo que «no hay
+ninguna», y cada cosa se busca en un lugar distinto.
 
 ### La Limpieza (soltar caché, RAM y disco)
 

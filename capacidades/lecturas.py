@@ -1109,7 +1109,228 @@ def _h_ejecuciones_flujo(usuario, flujo_id: str = "", limite: int = 10, **kw):
     return {"disponible": True, "corridas": corridas}
 
 
+def _h_listar_recetas_automatizacion(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Las recetas de las que se puede partir para crear una automatización.
+
+    No necesita llave: es el catálogo del repo, no una consulta a n8n. Existe
+    para que El Chalán parta de una forma probada en vez de inventar el grafo —
+    n8n guarda sin chistar un nodo cuyo tipo no existe, así que un flujo
+    inventado se «crea bien» y no corre.
+    """
+    from lib import n8n_plantillas
+
+    return {
+        "recetas": n8n_plantillas.catalogo(),
+        "nota": (
+            "Prefiere una receta. Si armas los pasos a mano, la automatización "
+            "nace apagada y hay que revisarla en n8n antes de prenderla."
+        ),
+    }
+
+
+
+# ── Papeleo (Paperless) ────────────────────────────────────────────────────
+# El archivo del papeleo que no tiene lugar en el sistema: contratos,
+# remisiones, comprobantes de proveedor sin CFDI. Se busca por el TEXTO que
+# sacó el OCR, así que «la remisión donde firmó Optimist» se encuentra aunque
+# el archivo se llame scan_0042.pdf.
+#
+# Los CFDI NO están aquí: tienen su propio camino, que los liga a su factura.
+
+
+def _papeleo_apagado() -> dict:
+    return {
+        "disponible": False,
+        "nota": (
+            "El archivo de papeleo no está conectado: falta la llave de Paperless "
+            "en Gerencia → Papeleo. Mientras tanto no se puede buscar."
+        ),
+    }
+
+
+def _h_buscar_papeleo(args: dict, usuario) -> dict:  # noqa: ARG001
+    from lib import paperless
+
+    if not paperless.esta_configurado():
+        return _papeleo_apagado()
+    texto = str(args.get("texto") or "").strip()
+    if not texto:
+        return {"error": "Dime qué buscar (una palabra que esté dentro del documento)."}
+    hallados = paperless.buscar(texto, int(args.get("limite") or 10))
+    if hallados is None:
+        return {"disponible": False, "nota": "El archivo de papeleo no contestó."}
+    if not hallados:
+        return {
+            "disponible": True, "total": 0, "documentos": [],
+            "nota": (
+                f"Nada con «{texto}». Ojo: sólo se encuentra lo que ya pasó por el "
+                "lector de texto, y un documento recién subido tarda unos minutos."
+            ),
+        }
+    for d in hallados:
+        d["abrir"] = paperless.url_web(d["id"])
+    return {"disponible": True, "total": len(hallados), "documentos": hallados}
+
+
+def _h_detalle_papeleo(args: dict, usuario) -> dict:  # noqa: ARG001
+    from lib import paperless
+
+    if not paperless.esta_configurado():
+        return _papeleo_apagado()
+    doc = paperless.detalle(str(args.get("documento_id") or "").strip())
+    if not doc:
+        return {"error": "No se encontró ese documento en el archivo."}
+    doc["abrir"] = paperless.url_web(doc["id"])
+    # De quién es, si alguien ya lo dijo. Sale de nuestra base, no de Paperless.
+    try:
+        from papeleo.models import PapeleoLigado
+
+        doc["de_quien"] = [f.a_quien for f in
+                           PapeleoLigado.objects.filter(documento_id=doc["id"])[:5]]
+    except Exception:  # noqa: BLE001 — sin la tabla, el documento igual se lee
+        doc["de_quien"] = []
+    return doc
+
+
+def _h_papeleo_de(args: dict, usuario) -> dict:  # noqa: ARG001
+    """El papeleo ligado a un cliente, proyecto o proveedor."""
+    from papeleo.models import PapeleoLigado
+
+    filtros = {}
+    for arg, campo in (("cliente", "cliente__razon_social__icontains"),
+                       ("proyecto", "proyecto__codigo__iexact"),
+                       ("proveedor", "proveedor__razon_social__icontains")):
+        valor = str(args.get(arg) or "").strip()
+        if valor:
+            filtros[campo] = valor
+    if not filtros:
+        return {"error": "Dime de quién: cliente, proyecto o proveedor."}
+
+    filas = list(PapeleoLigado.objects.filter(**filtros)
+                 .select_related("cliente", "proyecto", "proveedor")[:20])
+    if not filas:
+        return {"total": 0, "documentos": [],
+                "nota": "No hay papeleo ligado a eso todavía."}
+    return {
+        "total": len(filas),
+        "documentos": [{"id": f.documento_id, "titulo": f.titulo,
+                        "de_quien": f.a_quien, "abrir": f.url_web,
+                        "ligado": "solo" if f.automatico else "a mano"}
+                       for f in filas],
+    }
+
+
+
+# ── Las herramientas del servidor ──────────────────────────────────────────
+# Oscar, 2026-08-24: «si puedo clickear, teclear, lo puede hacer el chalán».
+# Estaban instaladas y él no las alcanzaba: podía medir una ruta por calles y
+# decir qué piezas están en pie, y no lo sabía.
+
+
+def _h_distancia_entre(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Cuánto hay entre dos puntos POR CALLE, no en línea recta.
+
+    Acepta «lat,lng» en los dos extremos. Y **dice cómo lo midió**: 14 km en
+    recta y 20 por calle son la misma pregunta con dos respuestas, y sólo una
+    sirve para prometer una hora de entrega.
+    """
+    from lib import ruteo
+
+    def _punto(txt):
+        try:
+            a, b = str(txt).split(",")[:2]
+            return (float(a.strip()), float(b.strip()))
+        except (ValueError, AttributeError):
+            return None
+
+    o, d = _punto(args.get("origen")), _punto(args.get("destino"))
+    if not o or not d:
+        return {"error": "Hacen falta las dos coordenadas, en formato «lat,lng»."}
+
+    metros = ruteo.distancia(o, d)
+    if metros is None:
+        return {"error": "No se pudo medir esa distancia."}
+    por_calle = ruteo.ultima_fuente() == ruteo.FUENTE_CALLES
+    return {
+        "km": round(metros / 1000, 1),
+        "medido": "por calles reales" if por_calle else "en línea recta (el mapa no responde)",
+        "nota": ("" if por_calle else
+                 "Sin el mapa, la distancia queda corta: no sabe de vueltas ni de sentidos."),
+    }
+
+
+def _h_estado_herramientas(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Qué piezas del servidor están en pie AHORA, y para qué sirve cada una.
+
+    Se sondean de verdad; no se dan por vivas porque el compose las declare.
+    """
+    from lib.site import servicios
+
+    lista = servicios.estado()
+    return {
+        "resumen": servicios.resumen(lista),
+        "piezas": [{
+            "nombre": s["nombre"],
+            "responde": s["vivo"],
+            "para_que": s["oficio"],
+        } for s in lista],
+    }
+
+
 _LECTURAS: dict[str, Capacidad] = {
+    "distancia_entre": Capacidad(
+        nombre="distancia_entre",
+        descripcion=(
+            "Cuántos kilómetros hay entre dos puntos por CALLE (no en línea "
+            "recta). Args: origen y destino, los dos como «lat,lng». Dice con "
+            "qué método midió: si el mapa no responde el número queda corto."
+        ),
+        args_schema={"origen": {"tipo": "str", "requerido": True},
+                     "destino": {"tipo": "str", "requerido": True}},
+        gating="rutas", fn=_h_distancia_entre,
+    ),
+    "estado_herramientas": Capacidad(
+        nombre="estado_herramientas",
+        descripcion=(
+            "Qué piezas corren en el servidor, para qué sirve cada una y si "
+            "responden ahora mismo (documentos, mapa, automatizaciones, "
+            "archivo). Úsala antes de decir que algo «no se puede»."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_estado_herramientas,
+    ),
+    "buscar_papeleo": Capacidad(
+        nombre="buscar_papeleo",
+        descripcion=(
+            "Busca en el archivo de papeleo (contratos, remisiones, comprobantes "
+            "de proveedor) por el TEXTO que dice adentro, no por el nombre del "
+            "archivo. Los CFDI no están aquí: ésos viven en Facturación. "
+            "Args: texto (requerido), limite (opcional)."
+        ),
+        args_schema={"texto": {"tipo": "str", "requerido": True},
+                     "limite": {"tipo": "int", "requerido": False}},
+        gating="papeleo", fn=_h_buscar_papeleo,
+    ),
+    "detalle_papeleo": Capacidad(
+        nombre="detalle_papeleo",
+        descripcion=(
+            "Un documento del archivo: su título, cuándo entró, un pedazo de su "
+            "texto y de quién es, si alguien ya lo dijo. Arg: documento_id."
+        ),
+        args_schema={"documento_id": {"tipo": "str", "requerido": True}},
+        gating="papeleo", fn=_h_detalle_papeleo,
+    ),
+    "papeleo_de": Capacidad(
+        nombre="papeleo_de",
+        descripcion=(
+            "Qué papeleo tiene ligado un cliente, un proyecto o un proveedor. "
+            "Args (uno): cliente (nombre), proyecto (código LC-…), proveedor."
+        ),
+        args_schema={"cliente": {"tipo": "str", "requerido": False},
+                     "proyecto": {"tipo": "str", "requerido": False},
+                     "proveedor": {"tipo": "str", "requerido": False}},
+        gating="papeleo", fn=_h_papeleo_de,
+    ),
     "listar_automatizaciones": Capacidad(
         nombre="listar_automatizaciones",
         descripcion=(
@@ -1119,6 +1340,17 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="automatizacion", fn=_h_listar_flujos,
+    ),
+    "listar_recetas_automatizacion": Capacidad(
+        nombre="listar_recetas_automatizacion",
+        descripcion=(
+            "Las recetas listas para crear una automatización nueva (buzón a El "
+            "Despacho, algo programado, un webhook) con sus parámetros. Mírala "
+            "ANTES de proponer crear_automatizacion: partir de una receta es la "
+            "diferencia entre un flujo que corre y uno que sólo se ve bien."
+        ),
+        args_schema={},
+        gating="automatizacion", fn=_h_listar_recetas_automatizacion,
     ),
     "detalle_automatizacion": Capacidad(
         nombre="detalle_automatizacion",

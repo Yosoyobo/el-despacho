@@ -97,7 +97,7 @@ PIEZAS: tuple[dict[str, Any], ...] = (
         ),
         "sonda": lambda: _http("http://paperless:8000/api/", ok_hasta=500),
         "entrada": "http://100.121.244.5:8204",
-        "ajustes": None,
+        "ajustes": "ajustes-papeleo",
         "acceso": (
             "Usuario «admin». La contraseña se generó al instalarlo y vive en el "
             "archivo .env del servidor, en PAPERLESS_ADMIN_PASSWORD."

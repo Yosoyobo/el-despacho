@@ -388,6 +388,16 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "facturacion_crear",
     },
     {
+        "tipo": "crear_automatizacion",
+        "titulo": "Crear una automatización nueva",
+        "ejemplo": ("Arma una automatización que revise el buzón de contratos y "
+                    "los mande al archivo."),
+        "payload": ("nombre + plantilla (buzon_a_despacho | programado_a_despacho "
+                    "| webhook_a_despacho) + params; o nombre + nodos + conexiones "
+                    "para armarla libre. Nace APAGADA en los dos casos."),
+        "gating": "automatizacion",
+    },
+    {
         "tipo": "activar_automatizacion",
         "titulo": "Prender una automatización",
         "ejemplo": "Prende la automatización de las facturas por correo.",
@@ -407,6 +417,27 @@ COMANDOS_DICTADO: list[dict] = [
         "ejemplo": "Quita la automatización de prueba.",
         "payload": "flujo_id (o nombre)",
         "gating": "automatizacion",
+    },
+    {
+        "tipo": "generar_pdf_cotizacion",
+        "titulo": "Armar el PDF de una cotización",
+        "ejemplo": "Genera el PDF de la COT-2026-0044.",
+        "payload": "codigo",
+        "gating": "cotizaciones_crear",
+    },
+    {
+        "tipo": "archivar_documento",
+        "titulo": "Mandar un documento al archivo",
+        "ejemplo": "Archiva la cotización COT-2026-0044.",
+        "payload": "codigo",
+        "gating": "papeleo_subir",
+    },
+    {
+        "tipo": "convertir_a_pdf",
+        "titulo": "Convertir un Word o Excel a PDF",
+        "ejemplo": "Convierte a PDF el archivo que subió el proveedor.",
+        "payload": "archivo (clave), nombre",
+        "gating": "cotizaciones_crear",
     },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
@@ -438,6 +469,8 @@ def _gating_checks():
         # Prender o apagar una automatización es tocar la voz del
         # despacho: un flujo activo le escribe a clientes.
         "automatizacion": permisos.puede_acceder_ajustes,
+        # Mandar un documento al archivo del papeleo.
+        "papeleo_subir": permisos.puede_subir_papeleo,
     }
 
 

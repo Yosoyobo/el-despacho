@@ -26,6 +26,7 @@
         <a href="{% url 'ajustes-documentos' %}" class="btn-secundario">Documentos (márgenes, pie, motor del PDF) →</a>
         <a href="{% url 'ajustes-servicios' %}" class="btn-secundario">Servicios (qué corre en el servidor) →</a>
         <a href="{% url 'ajustes-cfdi' %}" class="btn-secundario">CFDI recibidos por correo →</a>
+        <a href="{% url 'ajustes-automatizaciones' %}" class="btn-secundario">Automatizaciones (n8n) →</a>
         <form method="post" action="{% url 'ajustes-probar-analistas' %}">{% csrf_token %}
             <button type="submit" class="btn-secundario">Probar Chalanes</button>
         </form>
@@ -35,9 +36,31 @@
     </div>
 </header>
 
-<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <ul class="divide-y divide-gray-200 dark:divide-gray-800">
-        {% for clave, etiqueta, descripcion, configurado in slots %}
+{% comment %}
+Las llaves, por tema (Oscar, 2026-08-24: «se ve feo»). Veintiocho sueltas
+obligan a leerlas todas para encontrar una; agrupadas se busca por el tema, que
+es como uno piensa en ellas. Cada grupo dice cuántas están puestas, para ver qué
+falta sin abrirlo.
+
+Se usa `<details>` de HTML y no un acordeón con JavaScript: no hace falta nada
+más, y el navegador ya sabe abrirlo, cerrarlo y encontrarlo con Ctrl+F.
+{% endcomment %}
+<div class="space-y-3">
+    {% for g in grupos_credenciales %}
+    <details class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" {% if g.puestas < g.total %}open{% endif %}>
+        <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-5 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+            <div class="min-w-0">
+                <h2 class="text-theme-xl font-medium text-gray-800 dark:text-white/90">{{ g.titulo }}</h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ g.ayuda }}</p>
+            </div>
+            {% if g.puestas == g.total %}
+            <span class="shrink-0 rounded-full bg-success-50 px-2.5 py-1 text-xs font-medium text-success-700 dark:bg-success-500/10 dark:text-success-400">{{ g.puestas }} de {{ g.total }}</span>
+            {% else %}
+            <span class="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">{{ g.puestas }} de {{ g.total }}</span>
+            {% endif %}
+        </summary>
+    <ul class="divide-y divide-gray-200 border-t border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+        {% for clave, etiqueta, descripcion, configurado in g.slots %}
         <li class="grid grid-cols-1 items-start gap-4 p-5 md:grid-cols-[1fr_auto]">
             <div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -67,6 +90,8 @@
         </li>
         {% endfor %}
     </ul>
+    </details>
+    {% endfor %}
 </div>
 
 <p class="mt-6 text-xs text-gray-500 dark:text-gray-400">
