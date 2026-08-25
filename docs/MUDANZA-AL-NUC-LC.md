@@ -142,7 +142,7 @@ Palacev.
 | RAM | **22 G útiles** hoy: SODIMM1 **16 G** Crucial 2400, SODIMM2 **8 G** genérico | OBO **la baja a 16 G** sacando el de 8 G. Quedará en **canal sencillo**; para Postgres + Django es un costo menor. Aun así son ~8× el droplet |
 | **Disco** | **UNO solo: 119 G**, SanDisk M.2 **SATA**, sin LVM, la raíz se lo come todo (97 G libres) | **⚠️ NO HAY HDD DE 1 TB.** La regla de OBO no se puede cumplir como está escrita |
 | Ranuras | 3 puertos SATA, **un solo disco conectado**; sin NVMe. El M.2 está ocupado | **La bahía de 2.5" está libre** → cabe un 1 TB como el del NUC compartido |
-| Red | **`eno1` DOWN** — está trabajando por **WiFi** (`wlp0s20f3`) | Un servidor de producción va en **cable**. Explica el RTT de 20-208 ms |
+| Red | **`eno1` DOWN** — está trabajando por **WiFi** (`wlp0s20f3`) | Un servidor de producción va en **cable**. Explica el RTT de 20-208 ms. **✅ Resuelto el 2026-08-24:** cable puesto, 1 Gb/s full duplex sin errores, RTT a **1.5 ms**; el WiFi queda de respaldo |
 | SO | **Ubuntu 25.04 "plucky", NO LTS** | **⚠️ Release muerto:** `plucky-security` publicó por última vez el **19-ene-2026**. `resolute-security` (26.04 LTS, el del NUC compartido) publicó **hoy**. Son ~7 meses sin parches, y `pro` no aplica a non-LTS |
 | Docker | **No instalado** | Se instala en la Fase 1 |
 | Tailscale | 1.102.3, nodo al día | Falta el guardián y apagar el vencimiento de la llave |
@@ -170,7 +170,9 @@ OBO va a abrir la máquina para sacar el módulo de 8 G. Ese es el momento de ha
 todo lo físico junto:
 
 1. **Sacar el módulo de 8 G** (queda en 16 G, canal sencillo).
-2. **Conectar el cable de red** a `eno1` — hoy sirve producción por WiFi.
+2. ~~**Conectar el cable de red** a `eno1`~~ — **hecho el 2026-08-24.** Quedó a
+   1 Gb/s full duplex, ruta por default, y Tailscale conservó `100.121.244.5`
+   (la ventana no se enteró). El WiFi se queda de respaldo automático.
 3. **Reinstalar con Ubuntu 26.04 LTS** desde USB, **con LVM y root de ~40 G**. Hoy
    la máquina está **vacía**: reinstalar cuesta media hora. Después de la Fase 1
    —con Docker, Postgres y la data adentro— cuesta una mudanza completa.
@@ -278,9 +280,11 @@ mismo SSH de siempre y desaparece.
   (`nuc-learning-center` expira el **2027-02-18**). Sin esto, ese día el sitio se
   cae solo. **No hay forma de hacerlo por CLI.**
 - Guardián de Tailscale instalado y verificado (Fase 1).
-- **BIOS: "Restore on AC Power Loss = Power On".** Es la lección del apagón del
-  19-ago y **no se cierra por SSH**: el NUC es headless, pide monitor y teclado a
-  propósito.
+- ~~**BIOS: "Restore on AC Power Loss = Power On".**~~ **Hecho el 2026-08-24.** Era
+  la lección del apagón del 19-ago y no se cerraba por SSH: el NUC es headless, pide
+  monitor y teclado a propósito. **Tampoco se puede VERIFICAR por software** — la
+  única prueba real es cortarle la corriente, fuera de horario. Su complemento sí se
+  verificó: 11 contenedores en `restart: always`, `docker` y `tailscaled` `enabled`.
 - **Respaldos**: `pg_dump` diario al disco del NUC **y** copia al RAID de HAL
   (decisión de OBO de hoy).
 
@@ -327,7 +331,8 @@ mismo SSH de siempre y desaparece.
 1. **La línea en la consola del NUC** que instala sshd — bloquea todo.
 2. **Apagar el vencimiento de la llave** del nodo en la consola de Tailscale.
 3. **Crear el cliente OAuth** de Tailscale para el CI.
-4. **El BIOS** del NUC: encendido automático tras corte de luz.
+4. ~~**El BIOS** del NUC: encendido automático tras corte de luz.~~ **Hecho el
+   2026-08-24.**
 5. **Revisar en el panel de DO** si `157.230.48.232` es Reserved IP, antes de
    pensar en bajarle el tamaño al droplet.
 
