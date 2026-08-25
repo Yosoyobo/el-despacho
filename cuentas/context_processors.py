@@ -2,9 +2,14 @@
 
 `permisos_modulos`: inyecta dict {modulo: bool} con `puede(user, modulo, "ver")`
 para usar como `{% if permisos_modulos.cartera %}` en el sidebar y otros
-componentes condicionales. Una sola query a `PermisoUsuario` por request
-(vía la cache interna de `_puede` — cada lookup hace `.exists()`, podríamos
-optimizar a una sola query luego si se vuelve cuello de botella).
+componentes condicionales.
+
+Cuesta **dos consultas** por petición, y sólo si la plantilla lo usa:
+`lib.permisos.puede()` lee los permisos del usuario una vez y resuelve en
+memoria, y `@perezoso` difiere todo el cuerpo hasta que alguien lo toque. Hasta
+2026-08-24 este docstring prometía "una sola query" mientras en realidad hacía
+**46** (dos por cada módulo del catálogo) en CADA petición, la usara la plantilla
+o no.
 """
 
 from __future__ import annotations
