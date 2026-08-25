@@ -10546,6 +10546,52 @@ así en el repo que despliegan bien). Lo que truena es **insertar** en la tabla
 cuyo índice quedó diferido. Cuando dudes, pártela: no cuesta nada.
 
 
+### Bug J — un contenedor creado a mano rompe el `up -d`, y el deploy sale verde igual
+
+Recrear un contenedor con `docker run` (para agregarle una bandera, probar algo)
+lo deja **sin las etiquetas de compose**. Compose ya no lo reconoce como suyo:
+intenta crear el suyo, choca por el nombre y **aborta el `up -d` completo**.
+
+```
+Container despacho-osrm  Error response from daemon: Conflict.
+The container name "/despacho-osrm" is already in use by container "611f13b…"
+```
+
+Lo caro no es el conflicto: es que **el deploy se reporta VERDE**. `deploy_nuc.sh`
+corría con `set -uo pipefail` (sin `-e`) y no miraba el resultado; como los
+contenedores **viejos siguen sanos**, los healthchecks pasan al primer intento y
+el job dice «✅ Deploy verde» mientras producción sirve la versión anterior. El
+2026-08-24 pasó **dos veces seguidas** y sólo se descubrió comparando la versión
+del footer de `/acerca/` contra la de `main`.
+
+**Las dos comprobaciones que lo cierran** (ya en el guion, con candado en
+`tests/test_deploy_no_miente.py`):
+
+1. `if ! docker compose … up -d; then … exit 1; fi` — mirar el resultado.
+2. **Comparar la imagen que CORRE contra los digests fijados**
+   (`docker inspect --format '{{.Config.Image}}'` tiene que aparecer en
+   `docker-compose.prod.yml`). Es la única que contesta «¿desplegó?»: un
+   healthcheck sólo dice que el sitio contesta.
+
+**Para encontrar huérfanos:**
+
+```bash
+for c in $(docker ps -aq); do
+  [ -z "$(docker inspect $c --format '{{index .Config.Labels "com.docker.compose.project"}}')" ] \
+    && docker inspect $c --format 'HUERFANO {{.Name}}'
+done
+```
+
+Se quitan con `docker rm -f <nombre>` —los datos viven en `./data`, no en el
+contenedor— y se vuelve a desplegar. **La regla que evita crearlos: nunca
+`docker run` para ajustar un servicio del compose; se edita el compose y se
+recrea con compose** (misma familia que el alias de red perdido, §8 S-NUC-Servicios).
+
+**Y una trampa al escribir la ayuda de un guion:** las comillas invertidas dentro
+de comillas dobles **las ejecuta bash**. Escribir ``echo "❌ `docker compose up -d` falló"``
+volvería a correr el despliegue dentro del propio manejador de error. Usar «» o
+escaparlas.
+
 ---
 
 ## §15. El Site — monitoreo del Droplet (S2a.2)

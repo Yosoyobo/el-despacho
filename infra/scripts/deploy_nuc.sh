@@ -98,7 +98,30 @@ echo "=== docker compose pull ==="
 docker compose $COMPOSE_FILES pull
 
 echo "=== docker compose up -d ==="
-docker compose $COMPOSE_FILES up -d
+# El resultado SE MIRA. El 2026-08-24 este comando falló dos veces seguidas
+# —«Conflict. The container name /despacho-osrm is already in use»— y el deploy
+# terminó en verde las dos: los contenedores viejos seguían sanos, así que los
+# healthchecks de más abajo pasaron y nadie se enteró de que producción llevaba
+# horas sirviendo la versión anterior.
+#
+# La causa de aquel conflicto: un contenedor recreado a mano con `docker run`
+# (para agregarle una bandera) nace SIN las etiquetas de compose, así que
+# compose no puede adoptarlo, intenta crear el suyo y choca por el nombre. Si
+# vuelve a pasar, el mensaje de abajo dice exactamente qué hacer.
+if ! docker compose $COMPOSE_FILES up -d; then
+  echo "❌ «docker compose up -d» FALLÓ. Nada nuevo se levantó."
+  echo "   Los contenedores VIEJOS siguen corriendo, así que el sitio responde"
+  echo "   y los healthchecks pasarían: por eso esto aborta aquí y no allá."
+  echo
+  echo "   Causa más común: un contenedor con el mismo nombre que compose no"
+  echo "   reconoce como suyo (creado a mano con «docker run»). Para verlos:"
+  echo "     for c in \$(docker ps -aq); do \\"
+  echo "       [ -z \"\$(docker inspect \$c --format '{{index .Config.Labels \"com.docker.compose.project\"}}')\" ] \\"
+  echo "       && docker inspect \$c --format 'HUERFANO {{.Name}}'; done"
+  echo "   Se quitan con «docker rm -f <nombre>» (los datos viven en ./data,"
+  echo "   no en el contenedor) y se vuelve a correr este guion."
+  exit 1
+fi
 
 # El Caddyfile YA NO se aplica aquí. Desde la mudanza del 2026-08-21,
 # Caddy (El Portero) vive en la ventana y no en esta máquina; su
@@ -163,6 +186,34 @@ rm -f docker-compose.prod.yml.previo
 # (idempotente, bloque gestionado). El repo ya está en el commit
 # nuevo por el `git reset --hard` de arriba. Best-effort: un fallo
 # de crontab no debe tumbar un deploy ya verde.
+# Los healthchecks prueban que el sitio CONTESTA, no que esté corriendo el código
+# nuevo: unos contenedores viejos y sanos los pasan igual —fue exactamente lo que
+# pasó el 2026-08-24—. Esta comprobación es la que responde «¿desplegó?»: la
+# imagen que corre tiene que ser, literalmente, una de las fijadas en el archivo
+# de digests que este mismo despliegue trajo.
+echo "=== Comprobando que lo que corre ES lo que se acaba de traer ==="
+DIGEST_MAL=""
+for svc in el-taller la-gerencia portavoz-worker; do
+  CID=$(docker compose $COMPOSE_FILES ps -q "$svc" 2>/dev/null | head -1)
+  if [ -z "$CID" ]; then
+    DIGEST_MAL="$DIGEST_MAL ${svc}=sin-contenedor"
+    continue
+  fi
+  CORRIENDO=$(docker inspect "$CID" --format '{{.Config.Image}}' 2>/dev/null)
+  if [ -n "$CORRIENDO" ] && ! grep -qF "$CORRIENDO" docker-compose.prod.yml; then
+    DIGEST_MAL="$DIGEST_MAL ${svc}=imagen-vieja"
+  fi
+done
+if [ -n "$DIGEST_MAL" ]; then
+  echo "❌ EL DEPLOY NO SURTIÓ EFECTO:$DIGEST_MAL"
+  echo "   El sitio responde, pero con la versión anterior. Revisar el «up -d»"
+  echo "   de más arriba: casi siempre es un contenedor huérfano con el mismo"
+  echo "   nombre (ver la ayuda que imprime este guion cuando «up -d» falla)."
+  docker compose $COMPOSE_FILES ps
+  exit 1
+fi
+echo "✅ Las imágenes que corren son las de este despliegue."
+
 echo "=== Sincronizando crons (infra/cron/el-despacho.cron) ==="
 bash infra/scripts/sync_crons.sh || echo "⚠️  sync de crons falló — revisar manualmente en La Sede"
 

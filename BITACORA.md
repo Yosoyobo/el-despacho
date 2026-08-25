@@ -12668,3 +12668,48 @@ validación del servidor, el perfil del compose, la variable del overlay y la
 limpieza del deploy, falla exactamente el test que las cubre. Se actualizó
 `test_ruteo::test_demasiados_puntos_se_recortan` → `..._NO_se_recortan`: fijaba
 el recorte que este sprint quitó a propósito. Suite completa verde.
+## Addendum del mismo día — el deploy salía verde sin desplegar (Bug J, §14)
+
+Al verificar el despliegue **contra producción** (regla propia: la conclusión del
+job no dice si desplegó) salió que el sitio seguía en `2026.08.41` con el job en
+verde. La causa, leyendo el log del `up -d`:
+
+```
+Container despacho-osrm  Error response from daemon: Conflict.
+The container name "/despacho-osrm" is already in use by container "611f13b…"
+```
+
+`despacho-osrm` **no tenía etiquetas de compose**: se recreó con `docker run` en
+el sprint anterior para agregarle `--mmap`. Compose no puede adoptar un
+contenedor así, intenta crear el suyo, choca por el nombre y **aborta el `up -d`
+completo** — El Taller y La Gerencia nunca se recrearon. Y como los contenedores
+**viejos seguían sanos**, los healthchecks pasaron al primer intento y el guion
+imprimió «✅ Deploy verde».
+
+Al destrabarlo apareció **el segundo**, `despacho-n8n`, del mismo `docker run`.
+Los dos se quitaron (sus datos viven en `./data`, no en el contenedor) y el
+despliegue corrió limpio: El Taller, La Gerencia y el worker **recreados**.
+Producción quedó en **2026.08.42**, con los tres `/ping` en 200 y las imágenes
+que corren coincidiendo con los digests fijados.
+
+**El arreglo durable** en `deploy_nuc.sh`, con candado en
+`tests/test_deploy_no_miente.py` (verificado contra el guion sin arreglar: caen
+3 de 5):
+
+1. `if ! docker compose … up -d; then … exit 1; fi` — el resultado se mira, y el
+   mensaje explica cómo encontrar y quitar huérfanos.
+2. **Se compara la imagen que CORRE contra los digests fijados.** Es la única
+   comprobación que contesta «¿desplegó?»: el healthcheck sólo dice que el sitio
+   contesta, y unos contenedores viejos y sanos lo pasan igual. Probada contra el
+   NUC en los dos sentidos (pasa con las imágenes buenas, detecta un digest
+   inventado).
+
+**Y una trampa que casi meto en el propio arreglo:** las comillas invertidas
+dentro de comillas dobles **las ejecuta bash**. La ayuda que escribí decía
+``echo "❌ `docker compose up -d` FALLÓ"`` — o sea que habría **vuelto a correr el
+despliegue dentro del manejador de error**. Se cazó revisando el archivo generado,
+y hay un test que prohíbe el patrón.
+
+**La regla que evita crearlos:** nunca `docker run` para ajustar un servicio del
+compose; se edita el compose y se recrea con compose. Es la misma familia que el
+alias de red perdido de S-NUC-Servicios.
