@@ -967,6 +967,16 @@ def mandado_avanzar(request, pk):
             svc.cancelar(m, motivo=(request.POST.get("motivo") or "").strip())
             evento = "cancelado"
             messages.success(request, "Mandado cancelado.")
+        elif accion == "reactivar":
+            # La salida que no existía: `sincronizar_mandado` respeta la
+            # cancelación para siempre, así que un mandado cancelado por error
+            # dejaba la tarea Pendiente y la entrega sin salir, sin aviso.
+            svc.reactivar(m)
+            evento = "reactivado"
+            messages.success(
+                request,
+                "Reparto reactivado: la entrega vuelve a entrar al planeador.",
+            )
         else:
             messages.error(request, "Acción no válida.")
     except ValueError as exc:
@@ -975,7 +985,11 @@ def mandado_avanzar(request, pk):
         # Push a los involucrados (quien lo mandó, asignado, runner) — A8.
         svc.notificar_involucrados(m, evento, actor=request.user)
         _emitir_mandado("mandado.estado_cambiado", request.user, m, {"accion": accion})
-    return redirect("mandados-lista")
+    # A dónde regresa lo decide el recorrido: este botón también vive en el
+    # panel de rutas, y mandar de ahí a la lista de Mandados saca al usuario de
+    # donde estaba trabajando (`lib.navegacion`, contrato único de «volver»).
+    from lib.navegacion import destino_de_regreso
+    return redirect(destino_de_regreso(request, reverse("mandados-lista")))
 
 
 #: A cuántos metros de una calle deja de ser creíble un pin. Cien metros es
@@ -1169,7 +1183,11 @@ def _rutas_del_dia(request, fecha):
 def rutas_panel(request):
     """El planeador: las rutas del día, el mapa y lo que quedó sin repartir."""
     from apps.el_pizarron.models.ruta import COLORES_RUTA_MAPA
-    from apps.el_pizarron.planeador import enlaces_de, sueltos_del_dia
+    from apps.el_pizarron.planeador import (
+        enlaces_de,
+        paradas_con_dueno_ajeno,
+        sueltos_del_dia,
+    )
 
     from lib.permisos import (
         puede_despachar_rutas,
@@ -1198,8 +1216,21 @@ def rutas_panel(request):
     # destino puesto salía acusado de no tenerlo.
     sueltos = (
         sueltos_del_dia(fecha) if puede_planear_rutas(request.user)
-        else {"con_destino": [], "sin_destino": []}
+        else {"con_destino": [], "sin_destino": [], "cancelados": []}
     )
+
+    # El descuadre se muestra ANTES de picar nada: la ruta se ve perfectamente
+    # bien en la pantalla mientras el mandado dice que es de otra persona, y
+    # nadie va a apretar «Planear el día» para arreglar algo que no sabe que
+    # está roto. Al planear se endereza y se dice qué se movió.
+    descuadres = [
+        {"parada": parada, "dueno": dueno,
+         "ya_despachada": parada.ruta.estado != "borrador"}
+        for parada, dueno in (
+            paradas_con_dueno_ajeno(fecha) if puede_planear_rutas(request.user)
+            else []
+        )
+    ]
 
     return render(request, "mandados/rutas_panel.html", {
         "titulo_pagina": "Planeador de rutas",
@@ -1207,6 +1238,8 @@ def rutas_panel(request):
         "tarjetas": tarjetas,
         "por_repartir": sueltos["con_destino"],
         "sin_destino": sueltos["sin_destino"],
+        "cancelados": sueltos["cancelados"],
+        "descuadres": descuadres,
         "sedes": _sedes_con_pin(),
         "puede_planear": puede_planear_rutas(request.user),
         "puede_despachar": puede_despachar_rutas(request.user),
@@ -1287,6 +1320,22 @@ def rutas_planear(request):
     rehacer = request.POST.get("rehacer") == "1"
     res = planear_dia(fecha, origen_modo=modo, sede=sede, actor=request.user,
                       rehacer=rehacer)
+
+    # Lo primero que se dice es lo que se MOVIÓ, porque cambia la vuelta de
+    # alguien más. Si esa ruta ya estaba despachada, esa persona recibió el
+    # correo con una entrega que ya no es suya y eso sólo se arregla avisándole:
+    # el mensaje la nombra en vez de dejarlo pasar.
+    for m in res.get("reconciliadas") or []:
+        aviso = (
+            f"«{m['titulo']}» volvió con {m['a'].nombre_completo}, que es quien "
+            f"la trae asignada: estaba en la ruta de {m['de'].nombre_completo}."
+        )
+        if m["ya_despachada"]:
+            aviso += (
+                f" Esa ruta ya estaba despachada, así que a "
+                f"{m['de'].nombre_completo} le llegó por correo: avísale."
+            )
+        messages.warning(request, aviso)
 
     if res["sin_runner"]:
         messages.warning(

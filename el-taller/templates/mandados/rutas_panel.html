@@ -82,6 +82,35 @@ tienen cita son fijas: el orden las respeta aunque cueste kilómetros.
 </form>
 {% endif %}
 
+{% comment %}
+Va arriba del mapa a propósito: la ruta se ve perfectamente bien y el descuadre
+sólo aparece si comparas la tarjeta con el mandado. Sin este aviso nadie va a
+apretar «Planear el día» para arreglar algo que no sabe que está roto.
+{% endcomment %}
+{% if descuadres %}
+<section class="mb-6 rounded-xl border border-error-300 bg-error-25 p-4 dark:border-error-500/40 dark:bg-error-500/10">
+    <h2 class="text-sm font-semibold text-error-700 dark:text-error-400">
+        Hay {{ descuadres|length }} parada{{ descuadres|length|pluralize }} en la ruta de quien no es su dueño
+    </h2>
+    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        El mandado está asignado a una persona y la vuelta salió a nombre de otra.
+        Aprieta «Planear el día» y cada una vuelve con su dueño.
+    </p>
+    <ul class="mt-3 space-y-1">
+        {% for d in descuadres %}
+        <li class="text-sm text-gray-700 dark:text-gray-300">
+            <span class="font-medium">{{ d.parada.mandado.tarea.titulo }}</span>
+            · está en la ruta de {{ d.parada.ruta.runner.nombre_completo }}
+            · la trae asignada <span class="font-medium">{{ d.dueno.nombre_completo }}</span>
+            {% if d.ya_despachada %}
+            <span class="text-xs text-error-600 dark:text-error-400"> · esa ruta ya se despachó por correo</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 {% if mapa.lineas %}
 {% include "_componentes_tailadmin/_leaflet.html" %}
 <div id="mapa-rutas" class="mb-6 h-80 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"></div>
@@ -254,6 +283,41 @@ perfectamente puesto salía acusado de no tenerlo — lo que reportó Oscar.
             <button type="button" class="shrink-0 text-xs text-brand-600 underline dark:text-brand-400"
                     hx-get="{% url 'mandado-destino' m.pk %}?volver={{ request.get_full_path|urlencode }}"
                     hx-target="#modal-slot" hx-swap="innerHTML">fijar destino</button>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% comment %}
+El tercer grupo. Cancelar el reparto no cancela la tarea, así que ésta se sigue
+viendo Pendiente (y Atrasada al día siguiente) mientras el planeador la excluye
+para siempre. Antes no aparecía en ninguno de los otros dos paneles y se perdía
+en silencio: la entrega no iba a salir y nadie se enteraba.
+{% endcomment %}
+{% if cancelados %}
+<section class="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+    <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        Con el reparto cancelado ({{ cancelados|length }})
+    </h2>
+    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        Su tarea sigue abierta, pero el reparto está cancelado: no van a entrar a
+        ninguna ruta. Reactívalo si la entrega sí va, o cierra la tarea si no.
+    </p>
+    <ul class="mt-3 space-y-1">
+        {% for m in cancelados %}
+        <li class="flex items-center justify-between gap-2 text-sm">
+            <span class="truncate text-gray-700 dark:text-gray-300">
+                {{ m.tarea.titulo }}
+                {% if m.tarea.destino_etiqueta %}<span class="text-xs text-gray-400 dark:text-gray-500"> · {{ m.tarea.destino_etiqueta }}</span>{% endif %}
+                {% if m.tarea.runner %}<span class="text-xs text-brand-600 dark:text-brand-400"> · {{ m.tarea.runner.nombre_completo }}</span>{% endif %}
+            </span>
+            <form method="post" action="{% url 'mandado-avanzar' m.pk %}" class="shrink-0">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="reactivar">
+                <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                <button type="submit" class="text-xs text-brand-600 underline dark:text-brand-400">reactivar</button>
+            </form>
         </li>
         {% endfor %}
     </ul>
