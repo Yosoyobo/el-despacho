@@ -7883,11 +7883,22 @@ código no se ve, y el tiempo total no dice de dónde viene.
 quitar el caché → 47 vs 2; quitar el perezoso → 2 vs 0; devolver el push al
 request → 2 rojos). Suite completa: **3407 pass, 1 skipped, 0 fallos**.
 
-**Deuda diseñada**: `_productos_calc()` sigue **recargando la lista en cada
-acceso** (`monto_calculado`, `productos_incluidos`, `utilidad`… cada uno rehace la
-consulta con sus prefetch): son ~4 consultas por acceso en vez de las 59 de antes,
-y memoizarlo se descartó a propósito porque el autosave del proyecto guarda y
-vuelve a leer en la misma petición — un memo ahí serviría el dinero viejo. El
+**Medido tras el deploy** (mismo método, con el código ya en el NUC): el banner de
+deploy y el semáforo —los dos que se piden **cada 10 s por pestaña**— pasaron de
+**65 consultas a 1**; la bandeja de 76 a 12; el detalle del proyecto de **231 a
+131** (295→233 ms) y el Dashboard de 228 a 171. En el proyecto,
+`cuentas_permiso_usuario` **salió del top 8** (era la tabla #1 con 60) y las
+escalas bajaron de 59 a 19. El pool responde en 0.89 ms y su hilo consulta la base
+sin problema.
+
+**Deuda diseñada, ahora con número**: la medición posterior destapó lo que el N+1
+de escalas tapaba — `proyectos_producto`, `…_proceso`, `…_venta` y `…_escala` dan
+18/18/18/19, o sea que **`_productos_calc()` se recarga 18 veces por petición**:
+**73 de las 131 consultas restantes (56 %)**. Memoizarlo se descartó a propósito
+porque el autosave del proyecto guarda y vuelve a leer en la misma petición, y un
+memo ingenuo serviría el dinero viejo; pero el patrón correcto ya está validado en
+este mismo sprint (memo por instancia + invalidación por signal, como los
+permisos). Aplicado a las cuatro tablas, el detalle bajaría de 131 a ~60. El
 caché de permisos NO cubre el camino de «ver como rol» (sigue consultando `Rol`
 por llamada; es un modo de depuración). Y el polling en sí no se tocó: el banner y
 el semáforo se siguen pidiendo cada 10 s, ahora casi gratis; si algún día estorba,
