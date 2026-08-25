@@ -12713,3 +12713,160 @@ y hay un test que prohíbe el patrón.
 **La regla que evita crearlos:** nunca `docker run` para ajustar un servicio del
 compose; se edita el compose y se recrea con compose. Es la misma familia que el
 alias de red perdido de S-NUC-Servicios.
+
+
+---
+
+# BITÁCORA — S-Latencia-Ago24 (2026-08-24, VERSION 2026.08.44)
+
+> Disparador: una captura de El Vigía con `POST /recados/c/1/enviar` en **2832 ms**
+> y `POST /proyectos/65/` en **1275 ms**. «Hay DEMASIADA latencia en algunas cosas.»
+
+## El método, antes que el resultado
+
+Nada de esto se veía leyendo el código, y por eso lo primero fue medir contra
+producción. Dos herramientas, las dos reutilizables:
+
+1. **El ranking de rutas** sale del log de acceso de gunicorn, que desde
+   S-Vigia-NUC trae los microsegundos al final de cada renglón (`%(D)s`). Un `awk`
+   sobre `docker logs` que normalice los ids numéricos de las rutas
+   (`/proyectos/65/` → `/proyectos/N/`) da media y pico por ruta. Ahí salieron los
+   sospechosos.
+2. **El desglose fino** sale del `Client` de Django corriendo **dentro del
+   contenedor**, con `settings.DEBUG=True` y `connection.queries` agrupado por
+   tabla con un regex sobre el `FROM`. Es la única forma de ver un N+1: el tiempo
+   total dice que algo tarda, no de dónde viene.
+
+Medición base (test client, sin red ni competencia por el trabajador):
+
+| Ruta | ms | consultas |
+|---|---|---|
+| `/sistema/aviso-deploy/` | 52 | **65** |
+| `/sistema/aviso-deploy/semaforo/` | 52 | 65 |
+| `/recados/partials/bandeja` | 65 | 76 |
+| `/recados/c/1/` | 154 | 135 |
+| `/proyectos/65/` | 295 | **231** |
+| `/` (Dashboard) | 298 | 228 |
+
+El dato que ordenó el sprint: **el banner de deploy hace 65 consultas para
+devolver un div vacío, y se pide cada 10 segundos por pestaña.**
+
+Y el desglose de las 231 del proyecto, por tabla:
+
+```
+ 60  cuentas_permiso_usuario     ← 26% del total, sólo permisos
+ 59  proyectos_producto_escala   ← N+1 puro
+ 18  proyectos_producto
+ 18  proyectos_producto_proceso
+ 18  proyectos_producto_venta
+```
+
+## Las cuatro causas
+
+**1 · El push se despachaba dentro de la petición.** `transaction.on_commit` no
+saca nada del request: sus callbacks corren ahí mismo, antes de responder. Así que
+quien escribía un mensaje esperaba a que Apple y Google acusaran recibo de los
+avisos **de los demás**, uno por uno y abriendo TLS nuevo cada vez. Medido desde
+el contenedor del NUC:
+
+```
+web.push.apple.com   tcp=78ms  tls=84ms  total=162ms
+fcm.googleapis.com   tcp=12ms  tls=71ms  total=83ms
+```
+
+Jorge tiene **5 suscripciones activas**, Oscar 3 (17 registradas, 8 vivas). Ocho
+handshakes más el POST de cada uno da los 2.8 segundos, sin misterio.
+
+Arreglo: `lib/tareas_fondo.py`. Pool acotado de 8 hilos, cierra las conexiones de
+Django al terminar (con `CONN_MAX_AGE=60` una conexión de hilo quedaría reservada
+un minuto sin que nadie la use), nunca deja escapar una excepción, y **corre
+síncrono en las pruebas** (`TAREAS_EN_FONDO=False` en el settings de tests: un
+hilo suelto haría que el test compitiera contra el trabajo que quiere comprobar).
+
+La regla que queda escrita en su docstring: va al fondo lo que **avisa a
+terceros**; se queda en la petición todo lo que el usuario va a ver. El registro
+en `InterfonoEntrega` se escribe **antes** de mandar nada al fondo, así que lo que
+puede perderse en la ventana de un reciclado es el aviso — nunca el dato ni su
+rastro. Oscar eligió esta opción sabiendo el precio.
+
+De paso, las suscripciones del mismo usuario **reusan la conexión TLS**
+(`webpush(..., requests_session=)`): cinco dispositivos del mismo proveedor pagan
+un handshake, no cinco.
+
+**2 · `puede()` cobraba dos consultas por pregunta.** Y el sistema pregunta
+decenas de veces por petición: `permisos_modulos` recorre los ~23 módulos del
+catálogo y encima vistas y plantillas repreguntan. Ahora se leen los permisos del
+usuario **una vez** (dos consultas: sus filas y las de sus roles) y se resuelve en
+memoria.
+
+El memo vive **en la instancia de `Usuario`**, o sea lo que dura la petición. Eso
+es lo que lo hace seguro: no es un caché compartido entre peticiones ni entre
+trabajadores, así que no puede servirle permisos viejos a nadie más. La única
+ventana en que mentiría es una petición que MUTA permisos y los relee — el panel
+de El Directorio — y la cierran los signals de `PermisoUsuario`, `Rol` y del M2M
+`roles_extra`, con **`weak=False`** (sin él la closure se la lleva el recolector y
+el signal deja de dispararse en silencio, §14).
+
+La precedencia no cambió: revocado individual → concedido individual → rol.
+
+**3 · Django corre los 16 context processors en cada petición**, use la plantilla
+sus variables o no. `lib/perezoso.py` los difiere. Dos cosas que no son obvias y
+quedaron con test:
+
+- **`formato_hora` NO puede ser perezoso.** Fija el thread-local que lee el filtro
+  `hfmt`, así que su efecto tiene que ocurrir aunque la plantilla nunca nombre la
+  variable. Diferirlo dejaría **todas** las horas del sistema en el formato
+  equivocado. Regla general: un context processor con efectos secundarios corre
+  siempre.
+- **Los contadores necesitan `tipo=int`.** `SimpleLazyObject` sabe pintarse, decir
+  si es verdadero y dejarse indexar — de sobra para un dict o un texto — pero **no
+  compara ni suma**: `notificaciones_no_leidas >= 1` truena con `TypeError`. Para
+  esos va `lazy(fn, int)`, que sí implementa las operaciones del tipo declarado.
+
+**4 · El prefetch al que le faltaba una palabra.** `Proyecto._productos_calc()`
+precargaba `procesos` y `ventas`, pero no `escalas` — que es exactamente lo que
+consultan `precio_efectivo`, `costo_efectivo`, `cantidad_efectiva` y
+`piezas_efectivas` a través de `escala_activa`. Cincuenta y nueve consultas por
+una omisión de una palabra.
+
+## Lo que cazó el test ajeno, no el propio
+
+El `TypeError` de `SimpleLazyObject` con `>=` **no lo encontró el archivo de tests
+nuevo**: lo encontró `test_notificaciones_v10` en la corrida COMPLETA. Es la
+lección de Ago17 otra vez — un cambio transversal se valida con la suite entera,
+no con el archivo del sprint.
+
+## Verificación de mutación
+
+Los cuatro arreglos se revirtieron uno por uno con el commit ya hecho (para poder
+restaurar con `git checkout` sin riesgo):
+
+| Mutación | Resultado |
+|---|---|
+| Quitar `"escalas"` del prefetch | **35 consultas contra 8** con sólo 8 líneas |
+| `puede()` sin caché | **47 consultas contra 2** para 20 módulos |
+| `permisos_modulos` no perezoso | 2 consultas donde debía haber 0 |
+| Push de vuelta al request | 2 candados de forma en rojo |
+
+## Tests
+
+18 nuevos en `tests/taller/test_latencia_ago24.py`. Suite completa: **3407 pass,
+1 skipped, 0 fallos**. Ruff limpio.
+
+## Deuda diseñada
+
+- **`_productos_calc()` sigue recargando la lista en cada acceso.** `monto_calculado`,
+  `productos_incluidos`, `utilidad`… cada uno rehace la consulta con sus prefetch:
+  ~4 consultas por acceso en lugar de las 59 de antes. Memoizarlo se descartó **a
+  propósito**: el autosave del proyecto guarda el formset y vuelve a leer el panel
+  económico en la misma petición, y un memo ahí serviría el dinero viejo. Si algún
+  día se quiere, tiene que venir con invalidación explícita al guardar.
+- **El caché de permisos no cubre «ver como rol»** (sigue consultando `Rol` por
+  llamada). Es un modo de depuración de super_admin, no un camino caliente.
+- **El polling no se tocó.** El banner y el semáforo se siguen pidiendo cada 10 s,
+  ahora casi gratis. Si algún día estorba, lo que corresponde es unificarlos en un
+  solo endpoint — no espaciarlos, que sería empeorar el aviso para arreglar un
+  costo que ya no existe.
+- **Las 8 suscripciones vivas de 17 registradas** dicen que hay dispositivos que
+  ya no existen acumulando filas. No estorban (el push al fondo las absorbe), pero
+  una purga de las que llevan meses sin entregar sería higiene barata.

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from lib.perezoso import perezoso
 
+
+@perezoso("buzon_no_leidos_count", tipo=int)
 def buzon_no_leidos(request):
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):

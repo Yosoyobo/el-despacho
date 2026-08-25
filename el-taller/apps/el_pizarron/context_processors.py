@@ -22,7 +22,10 @@ from __future__ import annotations
 
 import contextlib
 
+from lib.perezoso import perezoso
 
+
+@perezoso("tareas_despacho_count", "tareas_mias_count", "mandados_activos_count", tipo=int)
 def mandados_badge(request):
     user = getattr(request, "user", None)
     cero = {

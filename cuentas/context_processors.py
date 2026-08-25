@@ -9,6 +9,7 @@ optimizar a una sola query luego si se vuelve cuello de botella).
 
 from __future__ import annotations
 
+from lib.perezoso import perezoso
 from lib.permisos import puede as _puede
 
 # Mapa de módulo → acción que se evalúa para decidir si el item del
@@ -54,6 +55,7 @@ MODULOS_VISIBLES = (
 )
 
 
+@perezoso("permisos_modulos")
 def permisos_modulos(request):
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):
@@ -68,6 +70,7 @@ def permisos_modulos(request):
     return {"permisos_modulos": accesos}
 
 
+@perezoso("sidebar_orden", "sidebar_carpetas_json")
 def sidebar_orden(request):
     """Orden del sidebar del Taller — global (super_admin) + override por usuario.
 
@@ -99,6 +102,7 @@ def sidebar_orden(request):
         return {"sidebar_orden": {}, "sidebar_carpetas_json": "{}"}
 
 
+@perezoso("novedades_no_vistas", tipo=int)
 def novedades_badge(request):
     """S-Chalanes-UX #5 — contador de novedades no vistas para el badge del
     sidebar (item Ayuda). Se acumula y se limpia al abrir /ayuda/novedades/."""

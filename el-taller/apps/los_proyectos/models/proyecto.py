@@ -194,10 +194,15 @@ class Proyecto(models.Model):
         return f"{float(self.iva_tasa_efectiva * 100):g}%"
 
     def _productos_calc(self):
+        # `escalas` va en el prefetch por la misma razón que `procesos` y
+        # `ventas`: sin él, cada `precio_efectivo` / `costo_efectivo` /
+        # `cantidad_efectiva` de cada línea vuelve a preguntar por sus escalas.
+        # Medido en producción (2026-08-24), el detalle de un proyecto gastaba
+        # **59 consultas** en la tabla de escalas por esta sola omisión.
         return list(
             self.productos
             .select_related("servicio", "variacion", "proveedor")
-            .prefetch_related("procesos__proveedor", "ventas")
+            .prefetch_related("procesos__proveedor", "ventas", "escalas")
             .all()
         )
 

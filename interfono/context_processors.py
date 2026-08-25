@@ -6,7 +6,10 @@ Si las credenciales no están configuradas o La Bóveda no descifra, retorna
 
 from __future__ import annotations
 
+from lib.perezoso import perezoso
 
+
+@perezoso("vapid_public_key")
 def vapid_public_key(request) -> dict:
     try:
         from lib.interfono import InterfonoConfig
@@ -15,6 +18,7 @@ def vapid_public_key(request) -> dict:
         return {"vapid_public_key": None}
 
 
+@perezoso("notificaciones_no_leidas", tipo=int)
 def notificaciones_no_leidas(request) -> dict:
     """S-LC-Feedback-V10 — contador ROJO de notificaciones sin ver en el sidebar.
 

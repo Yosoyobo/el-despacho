@@ -184,3 +184,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 LOGGING = {"version": 1, "disable_existing_loggers": True}
+
+# Las tareas de fondo (push del Interfón) corren SÍNCRONAS en las pruebas: un
+# hilo suelto haría que el test compitiera contra el trabajo que quiere
+# comprobar. Ver `lib/tareas_fondo.py`.
+TAREAS_EN_FONDO = False
