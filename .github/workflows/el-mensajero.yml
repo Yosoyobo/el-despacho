@@ -396,15 +396,31 @@ jobs:
       - name: 🚥 Smoke test de la cadena completa (DNS → ventana → tailnet → NUC)
         run: |
           set -uo pipefail
-          fallos=""
-          # La homepage se sirve DESDE la ventana: tiene que dar 200 incluso si el
-          # NUC está caído (es el requisito del failover).
-          code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 https://learningcenter.mx/ || echo FAIL)
-          [ "$code" = "200" ] || fallos="$fallos homepage=$code"
-          # Las apps viven en el NUC: estas dos prueban ventana + tailnet + NUC.
-          for h in gerencia taller; do
-            code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 "https://$h.learningcenter.mx/ping" || echo FAIL)
-            [ "$code" = "200" ] || fallos="$fallos $h=$code"
+          # Este job corre EN PARALELO con La Mudanza, que en ese momento está
+          # reiniciando las apps del NUC. Sin espera, el 502 de un contenedor a
+          # medio arrancar pinta el deploy de rojo sin que nada esté roto — pasó
+          # el 2026-08-25 y un rojo que no significa nada enseña a ignorarlos.
+          # Así que se REINTENTA: lo que se prueba es que la cadena quede en pie,
+          # no el instante exacto en que se probó.
+          intento=1
+          while :; do
+            fallos=""
+            # La homepage se sirve DESDE la ventana: tiene que dar 200 incluso si
+            # el NUC está caído (es el requisito del failover).
+            code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 https://learningcenter.mx/ || echo FAIL)
+            [ "$code" = "200" ] || fallos="$fallos homepage=$code"
+            # Las apps viven en el NUC: estas dos prueban ventana + tailnet + NUC.
+            for h in gerencia taller; do
+              code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 "https://$h.learningcenter.mx/ping" || echo FAIL)
+              [ "$code" = "200" ] || fallos="$fallos $h=$code"
+            done
+            [ -z "$fallos" ] && break
+            if [ "$intento" -ge 10 ]; then
+              echo "❌ Falla la cadena tras $intento intentos:$fallos"
+              exit 1
+            fi
+            echo "· intento $intento:$fallos — el NUC puede estar reiniciando; se reintenta en 20s"
+            intento=$((intento + 1))
+            sleep 20
           done
-          if [ -n "$fallos" ]; then echo "❌ Falla la cadena:$fallos"; exit 1; fi
           echo "✅ Cadena completa verde: homepage en la ventana, apps en el NUC."
