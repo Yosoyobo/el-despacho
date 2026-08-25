@@ -88,6 +88,32 @@ services:
     # significa que un pico lo mata. Con 8.6 G libres, el aire no cuesta nada.
     mem_limit: 4g
 
+  # ── OSRM en bicicleta ───────────────────────────────────────────────────────
+  # El perfil de OSRM se HORNEA al preparar el mapa: pedirle `/route/v1/bike/…`
+  # al servidor de coche devuelve, sin avisar, una ruta de coche. Por eso medir
+  # en bicicleta necesita un servidor con su propio mapa y no una bandera.
+  #
+  # OJO antes de cocinarlo (`./infra/scripts/cocinar_mapa.sh bicycle`): el
+  # perfil de OSRM es de BICICLETA, no de motocicleta. Prohíbe autopistas y
+  # calcula a ~15 km/h, así que para una moto —que circula como un coche— las
+  # estimaciones saldrían PEOR que las de hoy. Sirve si el reparto es de verdad
+  # en bici; para moto, el mapa de coche ya es el correcto.
+  #
+  # Mientras no exista el mapa, este servicio no arranca y la pantalla de
+  # Ajustes → Rutas dice en pantalla que la bicicleta no está cargada.
+  osrm-bici:
+    profiles: ["osrm-bici"]
+    image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
+    container_name: despacho-osrm-bici
+    restart: always
+    command: ["osrm-routed", "--algorithm", "mld", "--mmap", "--max-table-size", "2000", "/data/mexico-latest.osrm"]
+    volumes:
+      - ./data/osrm-bici:/data:ro
+    # Mismo techo que el de coche y por la misma razón: el mapa va mapeado en
+    # memoria, así que el kernel puede recuperarlo bajo presión, pero rozar el
+    # límite significa que un pico lo mata.
+    mem_limit: 4g
+
   # ── n8n ─────────────────────────────────────────────────────────────────────
   # Automatiza. El Portavoz lleva desde mayo encolando eventos hacia un n8n que
   # no existía: el cableado (eventos tipados, cola en Redis, firma HMAC, worker)

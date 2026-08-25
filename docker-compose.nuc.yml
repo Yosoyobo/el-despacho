@@ -60,6 +60,11 @@ services:
       # Cuesta ~1.8 G de los 11 G libres. El techo real no es la RAM sino las
       # conexiones a Postgres: 32 (Taller) + 16 (Gerencia) + el worker = 49,
       # contra `max_connections=100`. Sobra el doble.
+      # El segundo mapa de OSRM (bicicleta). Va vacío mientras no esté cocido:
+      # así `lib.ruteo` sabe que no existe y la pantalla de Ajustes → Rutas lo
+      # dice en pantalla, en vez de medir en coche fingiendo que mide en bici.
+      # El guion de despliegue la llena sola cuando encuentra el mapa.
+      OSRM_URL_BICI: "${OSRM_URL_BICI:-}"
       GUNICORN_WORKERS: "8"
       # 8 × 8 = 64 peticiones a la vez. Los HILOS se duplican y los workers no,
       # porque el techo más bajo del sistema no es el CPU: son las esperas. Los
@@ -88,6 +93,8 @@ services:
       # Taller, pero es la que corre El Vigía: cinco paneles pidiendo cada 2-30 s,
       # y algunos hablan con el socket de Docker o con internet. Con 2 workers,
       # un sondeo lento a DigitalOcean podía dejar la pared esperando.
+      # La pantalla de Ajustes → Rutas sondea si el mapa de bicicleta responde.
+      OSRM_URL_BICI: "${OSRM_URL_BICI:-}"
       GUNICORN_WORKERS: "4"
       GUNICORN_THREADS: "8"
       MALLOC_ARENA_MAX: "8"

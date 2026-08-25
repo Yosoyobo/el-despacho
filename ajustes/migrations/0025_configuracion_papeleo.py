@@ -11,7 +11,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("ajustes", "0023_documento_encabezado_y_marca"),
+        ("ajustes", "0024_rutas_opciones_del_mapa"),
     ]
 
     operations = [

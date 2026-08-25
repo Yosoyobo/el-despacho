@@ -7700,6 +7700,86 @@ valores por default (los parámetros se ajustan en n8n); `archivar_documento`
 sólo archiva cotizaciones (una factura sube su CFDI por su propio camino); y el
 flujo del buzón sigue pidiendo que alguien elija la cuenta de correo en n8n —
 sus credenciales viven allá y no hay forma de traerlas.
+### S-OSRM-GUI ✅ — Las perillas del mapa, indicaciones en español y el N+1 del planeador (2026-08-24, VERSION 2026.08.42)
+
+Oscar: «el software de rutas que instalamos SEGURO tiene MILES de ajustes y
+opciones que podría usar el taller y la gerencia en GUI, repasa». **La premisa
+había que corregirla y se corrigió con datos**: OSRM tiene **6 servicios** y
+~15 opciones de ejecución, no miles — y **lo grande está horneado**. Después de
+enseñarle el inventario real eligió «Todo, incluido lo grande».
+
+**Todo se verificó CONTRA EL SERVIDOR VIVO antes de escribir una línea**
+(desde dentro de la red de Docker: el puerto no sale al tailnet). De ahí salió
+el hallazgo que definió la GUI: **`exclude` NO combina**. El perfil declara
+`excludable = Sequence { Set{'toll'}, Set{'motorway'}, Set{'ferry'} }`, o sea
+tres conjuntos de UNO; pedir `toll,motorway` devuelve
+`InvalidValue`. Por eso la pantalla ofrece un **menú de una sola opción** y no
+dos casillas que producirían un error que nadie sabría leer.
+
+- **Dos arreglos que valían más que las perillas** (medidos, no supuestos):
+  - **El planeador hacía 3,508 consultas al mapa** para repartir un día. `_d()`
+    pedía una ruta **por cada par de puntos** y el 2-opt la llama en bucle.
+    Ahora `planear_dia` arma **UNA** tabla (`tabla_de`) antes de repartir y la
+    pasa por toda la cadena (`_repartir` → `_ordenar_con_citas` →
+    `_dos_opt_tramo` → `largo_de` → `estimar_horas` → `_persistir`).
+    **Verificado con el código sin arreglar: 1,344 llamadas contra 0.**
+  - **Las duraciones del mapa se tiraban.** OSRM las devuelve en la misma
+    respuesta y el planeador las ignoraba para recalcular con
+    `VELOCIDAD_KMH`. Medido en el caso real: el mapa dice **24 min** y la
+    velocidad promedio decía **49** — el doble. `_minutos_viaje` usa
+    `tabla.segundos()` y cae a la velocidad sólo si no hay.
+- **`lib/ruteo.py` gana `Opciones`** (frozen dataclass: `evitar`,
+  `acera_del_cliente`, `factor_trafico`, `modo`) leída de
+  `ajustes.ConfiguracionRutas` con caché de 60 s y **respaldos si la tabla no
+  está migrada** — un planeador que se niega a planear por no poder leer una
+  preferencia no sirve. Campos nuevos en migración `ajustes/0024` (sólo
+  `AddField`).
+- **El factor de tráfico se aplica UNA vez, en la frontera** (`matriz` e
+  `indicaciones`): los tiempos de OSRM son de **calle libre**. Multiplicarlo en
+  cada consumidor habría dado el factor al cuadrado en cualquier ruta que
+  pasara por dos capas.
+- **`Tabla`** (clase nueva) reemplaza el dict suelto: `metros()` / `segundos()`
+  por índice de punto, y `por_calles` para saber si el número es de calle o de
+  recta. **`MAX_PUNTOS_MATRIZ` 25 → 100 y la matriz YA NO RECORTA**: devolver
+  menos filas que puntos pedidos obliga a quien llama a adivinar cuáles faltan.
+  Por encima del tope se mide todo en recta, que es exacto en su forma.
+- **Indicaciones en español** (`indicaciones()`): OSRM las devuelve en inglés
+  estructurado (`{type, modifier}`), así que hay un refranero `_GIROS` y
+  `_frase()` arma «Da vuelta a la derecha en Av. Insurgentes». Botón
+  **🧭 Cómo llegar** por parada (modal Wave 5, gateado por `puede_ver_rutas` +
+  row-level) y **el trazo real** (`trazo()`, `overview=simplified`) dibujado en
+  el mapa del planeador en vez de la línea recta entre pines.
+- **El pin lejos de la calle se avisa** (`cerca_de_calle()` sobre el servicio
+  `nearest`, `_METROS_PIN_SOSPECHOSO = 100`): **avisa, nunca bloquea** — a
+  veces el destino está adentro de una nave. Es la causa más común de una
+  vuelta con kilómetros raros.
+- **GUI en Gerencia → Ajustes → Rutas** con las cuatro perillas + validación
+  **en el servidor** contra la lista de opciones (un `<select>` se manipula) +
+  `ruteo.olvidar_opciones()` al guardar para que el cambio se note ya.
+- **El segundo mapa (bicicleta)**: `OSRM_URL_BICI`, servicio `osrm-bici` tras
+  su propio perfil, y **`infra/scripts/cocinar_mapa.sh`** — que además escribe
+  por primera vez **cómo se cocinó el mapa de coche**, que se había hecho a
+  mano y no estaba en ningún lado (si el disco muere, nadie sabría rehacerlo).
+  **No se cocinó**, por dos razones que hay que saber antes de hacerlo:
+  Geofabrik **no publica extractos por estado de México** (o el país completo o
+  recortar con osmium), y el preprocesado **pasó de 7 G y el `mem_limit` lo
+  mató** — que es su trabajo: prefiero que muera el cocinado y no El Taller.
+  Mientras tanto la pantalla dice en pantalla que la bicicleta no está cargada.
+- **39 pruebas** (`test_ruteo_opciones.py` 23 · `test_ruteo_planeador_ago24.py`
+  13 · `test_rutas_opciones_mapa.py` 7 de Gerencia), las críticas verificadas
+  contra el código sin arreglar. Se actualizó `test_ruteo::test_demasiados_
+  puntos_se_recortan` → `..._NO_se_recortan`: fijaba el recorte que este sprint
+  quitó a propósito.
+
+**Deuda diseñada / advertencia de producto**: **el perfil de OSRM es de
+BICICLETA, no de motocicleta.** Prohíbe autopistas y calcula a ~15 km/h, así que
+para una moto —que circula como un coche— las estimaciones saldrían **peor** que
+las de hoy; para moto, el mapa de coche ya es el correcto. Queda escrito en el
+compose y en el guion. Lo demás: sólo se puede esquivar una cosa a la vez
+(límite del mapa, no de la pantalla); `alternatives` y `nearest` de OSRM quedan
+sin exponer (el primero no aplica a una vuelta de reparto, el segundo se usa
+sólo para el aviso del pin); y el planeador sigue sin considerar capacidad del
+vehículo ni volumen.
 
 ### S5 — La Recepción
 

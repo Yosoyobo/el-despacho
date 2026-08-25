@@ -12512,3 +12512,108 @@ default (los parámetros se ajustan allá). `archivar_documento` sólo archiva
 cotizaciones: una factura sube su CFDI por su propio camino. Y el flujo del
 buzón sigue pidiendo que alguien elija la cuenta de correo en n8n — sus
 credenciales viven allá y no hay forma de traerlas desde aquí.
+---
+
+# BITÁCORA — S-OSRM-GUI (2026-08-24, VERSION 2026.08.42)
+
+> Rama `agent/osrm-gui` en su propio `git worktree` — el árbol principal tenía
+> otro sprint sin commitear (regla de Ago12-B). Cierra el pedido de Oscar:
+> «el software de rutas que instalamos SEGURO tiene MILES de ajustes y opciones
+> que podría usar el taller y la gerencia en GUI, repasa» + su decisión
+> **«Todo, incluido lo grande»**.
+
+## La premisa había que corregirla, y se corrigió con datos
+
+No hay miles de opciones. OSRM expone **6 servicios** (`route`, `table`,
+`nearest`, `match`, `trip`, `tile`) y ~15 parámetros de ejecución. **Lo grande
+está horneado**: el perfil (coche/bici/pie), la velocidad de cada tipo de calle
+y las penalizaciones por vuelta se deciden al COCINAR el mapa, no al pedir la
+ruta. Se le enseñó el inventario real antes de elegir, y con eso eligió todo.
+
+**Todo se probó contra el servidor vivo antes de escribir una línea** — desde
+dentro de la red de Docker, porque el puerto no sale al tailnet. De ahí salió el
+hallazgo que definió la pantalla: **`exclude` NO combina**. El perfil declara
+`excludable = Sequence { Set{'toll'}, Set{'motorway'}, Set{'ferry'} }`: tres
+conjuntos de UNO. Pedir `toll,motorway` devuelve `InvalidValue`. Por eso la GUI
+ofrece un **menú de una sola opción** y no dos casillas que producirían un error
+que nadie sabría leer.
+
+## Lo que valía más que las perillas
+
+Dos defectos que nadie había reportado, los dos medidos:
+
+**El planeador hacía 3,508 consultas al mapa para repartir un día.** `_d()` pedía
+una ruta **por cada par de puntos** y el 2-opt la llama en bucle. Ahora
+`planear_dia` arma **UNA** tabla antes de repartir y la pasa por toda la cadena.
+Verificado con el código sin arreglar: **1,344 llamadas contra 0**.
+
+**Las duraciones del mapa se tiraban.** OSRM las devuelve en la misma respuesta y
+el planeador las ignoraba para recalcular con una velocidad promedio. En el caso
+real medido, el mapa dice **24 minutos** y la velocidad decía **49**: el doble.
+Un runner al que la ruta le promete la mitad del tiempo deja de creerle.
+
+## Lo entregado
+
+- **`Opciones`** (frozen dataclass) leída de `ajustes.ConfiguracionRutas` con
+  caché de 60 s y **respaldos si la tabla no está migrada**: un planeador que se
+  niega a planear por no poder leer una preferencia no sirve.
+- **El factor de tráfico se aplica UNA vez, en la frontera** (`matriz`,
+  `indicaciones`). En cada consumidor habría dado el factor al cuadrado en
+  cualquier ruta que pasara por dos capas.
+- **La matriz ya no recorta.** Devolver menos filas que puntos pedidos obliga a
+  quien llama a adivinar cuáles faltan — y el planeador no adivina: reparte
+  paradas. Por encima del tope (25 → 100) se mide todo en recta.
+- **Indicaciones en español**: OSRM las da en inglés estructurado
+  (`{type, modifier}`), así que hay refranero y `_frase()`. Botón **🧭 Cómo
+  llegar** por parada + **el trazo real** dibujado en el mapa, en vez de la línea
+  recta entre pines.
+- **El pin lejos de la calle avisa, nunca bloquea**: a veces el destino está
+  adentro de una nave. Es la causa más común de una vuelta con kilómetros raros.
+- **GUI en Gerencia → Ajustes → Rutas**, con la validación **en el servidor** (un
+  `<select>` se manipula) y `olvidar_opciones()` al guardar.
+
+## El segundo mapa: cableado, no cocinado — y por qué
+
+Queda todo listo (`OSRM_URL_BICI`, servicio con su perfil, el deploy que lo
+prende solo al encontrar el mapa) más **`infra/scripts/cocinar_mapa.sh`**, que
+además escribe por primera vez **cómo se cocinó el mapa de coche**: se había
+hecho a mano y no estaba en ningún lado, así que si el disco muere nadie sabría
+rehacerlo.
+
+**No se cocinó**, y las tres razones importan:
+
+1. **El perfil de OSRM es de BICICLETA, no de motocicleta.** Prohíbe autopistas
+   y calcula a ~15 km/h. Para una moto —que circula como un coche— las
+   estimaciones saldrían **peor** que las de hoy. Para moto, el mapa de coche ya
+   es el correcto. **Esto es decisión de producto y es de Oscar.**
+2. **Geofabrik no publica extractos por estado de México**: o el país completo
+   (~800 MB de origen, 9.2 G cocidos) o recortar un rectángulo con osmium.
+3. **El preprocesado pasó de 7 G y el `mem_limit` lo mató** — que es exactamente
+   su trabajo: prefiero que muera el cocinado y no El Taller. Correrlo pide la
+   máquina sin nadie trabajando, y eso se pide antes de hacerlo.
+
+Mientras tanto la pantalla **dice en pantalla** que la bicicleta no está cargada
+y que elegirla mediría como coche. Nada miente en silencio.
+
+## Tropiezos de la sesión, para que no se repitan
+
+- **`git checkout -- <archivo>` para deshacer una mutación de prueba se llevó
+  TODO lo no commiteado de ese archivo**, no sólo la mutación. Es la regla que yo
+  mismo tengo escrita (`regla-nunca-git-checkout-con-trabajo-sin-commitear`) y la
+  rompí. El resto de las mutaciones se hicieron con copia de respaldo y
+  restauración desde ella.
+- **Medir un N+1 con un `render` de calentamiento sobre el MISMO objeto lo
+  esconde**: el QuerySet se queda con su `_result_cache` y la segunda pasada da
+  cero consultas aunque el problema siga. Hay que armar el objeto **dentro** de
+  la medición.
+- **El puerto de OSRM no sale al tailnet**, así que los sondeos hay que hacerlos
+  desde dentro de la red de Docker (`docker compose exec el-taller python -`).
+
+## Pruebas
+
+39 nuevas (23 + 13 + 7 de Gerencia), las críticas verificadas contra el código
+sin arreglar: quitando el `select_related` del N+1, el `tabla.segundos()`, la
+validación del servidor, el perfil del compose, la variable del overlay y la
+limpieza del deploy, falla exactamente el test que las cubre. Se actualizó
+`test_ruteo::test_demasiados_puntos_se_recortan` → `..._NO_se_recortan`: fijaba
+el recorte que este sprint quitó a propósito. Suite completa verde.
