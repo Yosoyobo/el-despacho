@@ -12870,3 +12870,42 @@ restaurar con `git checkout` sin riesgo):
 - **Las 8 suscripciones vivas de 17 registradas** dicen que hay dispositivos que
   ya no existen acumulando filas. No estorban (el push al fondo las absorbe), pero
   una purga de las que llevan meses sin entregar sería higiene barata.
+
+
+---
+
+## S-Papeleo-Visor — 2026-08-24 (VERSION 2026.08.45)
+
+Pedido de Oscar: una sección para **ver** los documentos, no sólo buscarlos.
+
+### Lo que faltaba (y por qué se notaba)
+
+`/papeleo/` existía desde S-Papeleo-V1, pero `if conectado and texto:` — sin
+palabra no pintaba nada. Para saber si un documento estaba archivado había que
+adivinar una palabra de su contenido. Y el único camino al documento era «Abrir
+→» a Paperless: **otra app, otra sesión, y una dirección que sólo vive en el
+tailnet**, así que desde el celular en la calle no abría.
+
+### Entregado
+
+- `paperless.listar()` / `cuantos()` / `archivo(id, cara)` — los dos primeros
+  para ver sin buscar, el tercero para servir los bytes desde El Despacho.
+- Pantalla en tarjetas con miniatura; ficha `/papeleo/<id>/` con el PDF a la
+  vista, de quién es, datos y el texto del OCR; botones de abrir y bajar.
+- Proxy autenticado (`archivo`, `bajar`, `miniatura`) con el permiso comprobado
+  antes de traer nada, `CARAS` acotado y `no-store` en el documento.
+- Los enlaces apuntan adentro en los tres lugares: lista, recuadro de fichas y
+  las tres capacidades del Chalán.
+
+### Dos trampas que costaron tiempo
+
+1. **`t.index("{% endblock %}")` encontró el de la línea 2** (`{% block title %}
+   … {% endblock %}`), así que el corte quedó al revés y se duplicó media
+   plantilla. `rindex`, y un `assert fin > inicio` para que no vuelva a pasar.
+2. Un `{# … #}` multilínea en `ver.html`: lo cazó el candado de Bug C antes del
+   commit, como debe ser.
+
+### Números
+
+3591 pass, 1 skipped. Ruff limpio. Las 22 pruebas nuevas verificadas contra
+código mutado (sin el candado del proxy y sin el listado por default caen 4).

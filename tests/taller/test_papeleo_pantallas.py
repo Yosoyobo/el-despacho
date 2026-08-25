@@ -65,9 +65,15 @@ def test_buscar_pinta_lo_que_devuelve_el_archivo(client, jefe, monkeypatch):  # 
         {"id": 5, "titulo": "Contrato con Optimist", "creado": "2026-08-01",
          "etiquetas": [], "paginas": 3}])
     monkeypatch.setattr(paperless, "url_publica", lambda: "http://10.0.0.9:8204")
+    monkeypatch.setattr(paperless, "cuantos", lambda: 1)
     cuerpo = client.get("/papeleo/?q=optimist").content.decode()
     assert "Contrato con Optimist" in cuerpo
-    assert "http://10.0.0.9:8204/documents/5/details" in cuerpo
+    # 2026-08-24: el resultado ya NO manda a Paperless. Su dirección sólo existe
+    # dentro del tailnet —desde el celular en la calle no abre— y tiene su
+    # propia sesión. El documento se ve en El Taller, con el permiso ya
+    # comprobado (ver `test_papeleo_visor.py`).
+    assert 'href="/papeleo/5/"' in cuerpo
+    assert "10.0.0.9:8204" not in cuerpo
 
 
 def test_si_el_archivo_no_contesta_la_pantalla_lo_dice(client, jefe, monkeypatch):  # noqa: ARG001

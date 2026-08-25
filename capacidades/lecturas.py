@@ -1168,8 +1168,12 @@ def _h_buscar_papeleo(args: dict, usuario) -> dict:  # noqa: ARG001
             ),
         }
     for d in hallados:
-        d["abrir"] = paperless.url_web(d["id"])
-    return {"disponible": True, "total": len(hallados), "documentos": hallados}
+        d["ver"] = f"/papeleo/{d['id']}/"
+    return {
+        "disponible": True, "total": len(hallados), "documentos": hallados,
+        "nota": ("Cada documento se ve en su enlace `ver` — ábrelo ahí, no en "
+                 "otra aplicación. Ofrécele el enlace a quien preguntó."),
+    }
 
 
 def _h_detalle_papeleo(args: dict, usuario) -> dict:  # noqa: ARG001
@@ -1180,7 +1184,7 @@ def _h_detalle_papeleo(args: dict, usuario) -> dict:  # noqa: ARG001
     doc = paperless.detalle(str(args.get("documento_id") or "").strip())
     if not doc:
         return {"error": "No se encontró ese documento en el archivo."}
-    doc["abrir"] = paperless.url_web(doc["id"])
+    doc["ver"] = f"/papeleo/{doc['id']}/"
     # De quién es, si alguien ya lo dijo. Sale de nuestra base, no de Paperless.
     try:
         from papeleo.models import PapeleoLigado
@@ -1214,7 +1218,8 @@ def _h_papeleo_de(args: dict, usuario) -> dict:  # noqa: ARG001
     return {
         "total": len(filas),
         "documentos": [{"id": f.documento_id, "titulo": f.titulo,
-                        "de_quien": f.a_quien, "abrir": f.url_web,
+                        "de_quien": f.a_quien,
+                        "ver": f"/papeleo/{f.documento_id}/",
                         "ligado": "solo" if f.automatico else "a mano"}
                        for f in filas],
     }

@@ -50,60 +50,63 @@
 </div>
 {% endif %}
 
-{% if texto %}
-<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <table class="min-w-full text-sm">
-        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-            <tr>
-                <th class="px-5 py-3 text-left">Documento</th>
-                <th class="px-5 py-3 text-left">Entró</th>
-                <th class="px-5 py-3 text-left">De quién es</th>
-                <th class="px-5 py-3 text-right">Abrir</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-            {% for d in documentos %}
-            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ d.titulo }}</td>
-                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ d.creado|default:"—" }}</td>
-                <td class="px-5 py-3">
-                    {% for quien in d.de_quien %}
-                    <span class="badge badge-brand">{{ quien }}</span>
-                    {% empty %}
-                    {% if puede_ligar %}
-                    <form method="post" action="{% url 'papeleo-ligar' d.id %}" class="flex flex-wrap items-center gap-2">
-                        {% csrf_token %}
-                        <input type="hidden" name="titulo" value="{{ d.titulo }}">
-                        <input type="hidden" name="volver" value="{{ request.get_full_path }}">
-                        <select name="cliente" data-select-buscable class="rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900">
-                            <option value="">— ¿de quién es? —</option>
-                            {% for c in clientes %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
-                        </select>
-                        <button type="submit" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ligar</button>
-                    </form>
-                    {% else %}
-                    <span class="text-xs text-gray-400 dark:text-gray-500">sin dueño</span>
-                    {% endif %}
-                    {% endfor %}
-                </td>
-                <td class="px-5 py-3 text-right">
-                    {% if d.abrir %}
-                    <a href="{{ d.abrir }}" target="_blank" rel="noopener"
-                       class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
-                    {% else %}
-                    <span class="text-xs text-gray-400 dark:text-gray-500" title="Falta la dirección pública en Gerencia → Papeleo">sin enlace</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="px-5 py-10">
-                {% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada con esa palabra" descripcion="Ojo: sólo se encuentra lo que ya pasó por el lector de texto, y un documento recién subido tarda unos minutos." icono="search" %}
-            </td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% if conectado %}
+<section>
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-theme-xl font-medium text-gray-800 dark:text-white/90">
+            {% if texto %}Con «{{ texto }}»{% else %}Lo último que entró{% endif %}
+        </h2>
+        {% if total is not None %}
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+            {{ total }} documento{{ total|pluralize:"s" }} en el archivo{% if texto %} ·
+            <a href="{% url 'papeleo-buscar' %}" class="text-brand-600 hover:underline dark:text-brand-400">ver todo</a>{% endif %}
+        </p>
+        {% endif %}
+    </div>
+
+    {% if documentos %}
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {% for d in documentos %}
+        <article class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm transition hover:shadow-theme-md dark:border-gray-800 dark:bg-gray-900">
+            <a href="{% url 'papeleo-ver' d.id %}" class="block">
+                {% comment %}La miniatura es lo que deja reconocer un escaneo de un
+                vistazo: los títulos de un archivo suelen ser «scan_0042».{% endcomment %}
+                <img src="{% url 'papeleo-miniatura' d.id %}" alt="" loading="lazy"
+                     class="h-40 w-full bg-gray-100 object-cover object-top dark:bg-gray-950">
+                <div class="p-3">
+                    <p class="line-clamp-2 text-sm font-medium text-gray-800 dark:text-white/90">{{ d.titulo }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ d.creado|default:"—" }}</p>
+                </div>
+            </a>
+            <div class="px-3 pb-3">
+                {% for quien in d.de_quien %}
+                <span class="badge badge-brand">{{ quien }}</span>
+                {% empty %}
+                {% if puede_ligar %}
+                <form method="post" action="{% url 'papeleo-ligar' d.id %}" class="flex items-center gap-1.5">
+                    {% csrf_token %}
+                    <input type="hidden" name="titulo" value="{{ d.titulo }}">
+                    <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                    <select name="cliente" data-select-buscable
+                            class="min-w-0 flex-1 rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900">
+                        <option value="">— ¿de quién? —</option>
+                        {% for c in clientes %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="shrink-0 text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ligar</button>
+                </form>
+                {% else %}
+                <span class="text-xs text-gray-400 dark:text-gray-500">sin dueño</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% elif texto %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada con esa palabra" descripcion="Ojo: sólo se encuentra lo que ya pasó por el lector de texto, y un documento recién subido tarda unos minutos." icono="search" %}
+    {% else %}
+    {% include "_componentes_tailadmin/_empty_state.html" with titulo="El archivo está vacío" descripcion="Todavía no hay nada archivado. Sube un contrato o una remisión aquí arriba, o deja que entren solos por correo." icono="inbox" %}
+    {% endif %}
 </section>
-{% else %}
-{% include "_componentes_tailadmin/_empty_state.html" with titulo="Busca en el papeleo" descripcion="Escribe una palabra que esté dentro del documento — el nombre del cliente, un folio, lo que diga la remisión. No importa cómo se llame el archivo." icono="search" %}
 {% endif %}
 {% endblock %}

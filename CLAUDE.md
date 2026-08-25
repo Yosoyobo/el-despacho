@@ -7893,6 +7893,51 @@ por llamada; es un modo de depuración). Y el polling en sí no se tocó: el ban
 el semáforo se siguen pidiendo cada 10 s, ahora casi gratis; si algún día estorba,
 lo que corresponde es unificarlos en un solo endpoint, no espaciarlos.
 
+### S-Papeleo-Visor ✅ — El papeleo se VE dentro de El Taller (2026-08-24, VERSION 2026.08.45)
+
+Oscar: «crea una sección para ver documentos, los de Paperless — cierra el bucle
+del GUI y hay un lugar para buscar, además de que el Chalán busca, encuentra y
+muestra». La pantalla ya existía (S-Papeleo-V1) pero **sólo buscaba**: sin `?q=`
+salía vacía, y el único camino al documento era «Abrir →» a Paperless.
+
+- **Sin escribir nada se ve lo que hay.** `paperless.listar()` (recientes, por
+  `?ordering=-created`) + `cuantos()`. Una pantalla de archivo que sólo contesta
+  si le tecleas algo obliga a **adivinar una palabra** para descubrir que el
+  documento existe; eso no es «ver el archivo». Y «el archivo está vacío» ≠
+  «nada con esa palabra»: se distinguen, porque mandan a lugares distintos.
+- **Tarjetas con miniatura** (`/papeleo/<id>/miniatura`) en vez de una tabla de
+  títulos: los escaneos se titulan «scan_0042» y sin la imagen no se reconoce
+  ninguno.
+- **Ficha del documento** (`/papeleo/<id>/`): el PDF embebido en un `<object>`
+  —con la miniatura y un botón de respaldo dentro, porque varios navegadores de
+  celular no pintan PDF inline y si no la caja queda en blanco— más de quién es,
+  datos y el texto del OCR.
+- **El proxy es la decisión de seguridad**: `paperless.archivo(id, cara)` con
+  `CARAS` acotado (`preview`/`thumb`/`download` — `cara` viaja a una URL, sin
+  whitelist cualquier cadena se concatena) y `_servir` comprobando
+  `puede_ver_papeleo` **antes** de traer nada. El documento va `no-store` (quien
+  pierde el permiso entre dos visitas no se queda con él en el navegador); la
+  miniatura sí se cachea una hora.
+- **Los enlaces dejan de salir del sistema** — la dirección de Paperless sólo
+  existe dentro del tailnet, así que desde el celular en la calle no abría, y
+  además tiene su propia sesión. Se cambió en los tres lugares: la lista, el
+  recuadro de las fichas (`_recuadro.html`) y **las tres capacidades del Chalán**
+  (`buscar_papeleo`, `detalle_papeleo`, `papeleo_de`), que ahora devuelven `ver`.
+- **22 pruebas** (`tests/taller/test_papeleo_visor.py`), verificadas contra
+  código mutado: quitar el candado del proxy o el listado por default tumba 4.
+
+**Gotchas del sprint**: `t.index("{% endblock %}")` encuentra el que cierra
+`{% block title %}` **de la línea 2** — usar `rindex` o se duplica media
+plantilla. Y el candado de Bug C (§14) cazó un `{# … #}` multilínea mío en
+`ver.html` antes del commit. Se actualizó
+`test_papeleo_pantallas::test_buscar_pinta_lo_que_devuelve_el_archivo`, que
+fijaba el enlace a Paperless — el contrato que este sprint cambia a propósito.
+
+**Deuda diseñada**: la lista no pagina (tope de 20, el de `paperless.TOPE`); no
+hay filtro por etiqueta ni por fecha; ligar desde la ficha sólo ofrece clientes
+(proyecto y proveedor siguen siendo cosa del recuadro de cada ficha); y borrar
+un documento del archivo sigue haciéndose en Paperless.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
