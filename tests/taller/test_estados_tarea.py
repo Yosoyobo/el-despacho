@@ -60,11 +60,25 @@ def test_sin_fecha_no_atrasada(proyecto):
     assert t.esta_atrasada is False
 
 
-def test_hora_cuenta_para_atrasada(proyecto):
-    """Hoy con hora ya pasada → atrasada; hoy con hora futura → no."""
-    t1 = _tarea(proyecto, fecha_compromiso=date.today(), hora=time(0, 1))
+def test_hora_cuenta_para_atrasada(proyecto, monkeypatch):
+    """Hoy con hora ya pasada → atrasada; hoy con hora futura → no.
+
+    El reloj se fija a mediodía a propósito. Con la hora real, este test
+    **falla durante el último minuto de cada día**: a las 23:59:31 la tarea de
+    las 23:59 sí está atrasada, y la aserción de abajo dice lo contrario. Pasó
+    en CI el 2026-08-24 y tumbó un deploy que no tenía nada que ver.
+    """
+    from datetime import datetime
+
+    from django.utils import timezone
+
+    mediodia = timezone.make_aware(datetime(2026, 3, 10, 12, 0))
+    monkeypatch.setattr(timezone, "localtime", lambda *a, **k: mediodia)
+    hoy = mediodia.date()
+
+    t1 = _tarea(proyecto, fecha_compromiso=hoy, hora=time(0, 1))
     assert t1.esta_atrasada is True
-    t2 = _tarea(proyecto, fecha_compromiso=date.today(), hora=time(23, 59))
+    t2 = _tarea(proyecto, fecha_compromiso=hoy, hora=time(23, 59))
     assert t2.esta_atrasada is False
 
 
