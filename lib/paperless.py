@@ -142,6 +142,65 @@ def buscar(texto: str, limite: int = 10) -> list[dict] | None:
     return [_resumir(d) for d in (datos.get("results") or [])]
 
 
+def listar(limite: int = TOPE) -> list[dict] | None:
+    """Lo último que entró, sin tener que buscar nada.
+
+    Existe porque una pantalla de archivo que sólo contesta si le escribes algo
+    no deja **ver** lo que hay: obliga a adivinar una palabra para descubrir que
+    el documento existe. Los más recientes primero, que es lo que uno busca.
+    """
+    try:
+        limite = max(1, min(int(limite), TOPE))
+    except (TypeError, ValueError):
+        limite = TOPE
+    datos = _pedir(f"/api/documents/?ordering=-created&page_size={limite}")
+    if datos is None:
+        return None
+    return [_resumir(d) for d in (datos.get("results") or [])]
+
+
+def cuantos() -> int | None:
+    """Cuántos documentos hay archivados en total. None = no contestó."""
+    datos = _pedir("/api/documents/?page_size=1")
+    return None if datos is None else datos.get("count")
+
+
+#: Las tres caras de un documento. `preview` y `download` son el archivo (un PDF
+#: casi siempre); `thumb` es la imagen chica para las tarjetas.
+CARAS = ("preview", "thumb", "download")
+
+
+def archivo(doc_id: int | str, cara: str = "preview") -> tuple[bytes, str] | None:
+    """Los BYTES de un documento, para servirlos desde El Despacho.
+
+    Se pasa por aquí en vez de mandar al usuario a Paperless por dos razones:
+    su dirección sólo existe dentro del tailnet (desde el celular en la calle no
+    abre) y tiene su propia sesión. Con este proxy el documento se ve dentro del
+    sistema, con el permiso que ya se comprobó.
+
+    Devuelve `(contenido, tipo)` o None. Nunca lanza.
+    """
+    if cara not in CARAS:
+        return None
+    k = llave()
+    if not k:
+        return None
+    try:
+        import urllib.request
+
+        req = urllib.request.Request(
+            f"{BASE_URL}/api/documents/{int(doc_id)}/{cara}/",
+            headers={"Authorization": f"Token {k}"},
+        )
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            return r.read(), (r.headers.get("Content-Type") or "application/octet-stream")
+    except (TypeError, ValueError):
+        return None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("paperless: no se pudo traer %s de %s: %s", cara, doc_id, exc)
+        return None
+
+
 def detalle(doc_id: int | str) -> dict | None:
     """Un documento con un pedazo de su texto. None si no existe o no contesta."""
     d = _pedir(f"/api/documents/{doc_id}/")
@@ -319,6 +378,10 @@ def _multipart(campos: dict[str, str], archivos: list, repetidos: list | None = 
 
 
 __all__ = [
+    "CARAS",
+    "archivo",
+    "cuantos",
+    "listar",
     "BASE_URL",
     "ENV_LLAVE",
     "SLOT_LLAVE",

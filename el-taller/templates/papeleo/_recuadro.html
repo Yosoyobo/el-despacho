@@ -28,12 +28,11 @@ Espera en el contexto: `papeleo` (lista de PapeleoLigado) y
                 </span>
             </span>
             <span class="flex items-center gap-3">
-                {% if f.url_web %}
-                <a href="{{ f.url_web }}" target="_blank" rel="noopener"
-                   class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
-                {% else %}
-                <span class="text-xs text-gray-400 dark:text-gray-500" title="Falta la dirección del archivo en Gerencia → Papeleo">sin enlace</span>
-                {% endif %}
+                {% comment %}Al visor de El Despacho, no a Paperless: su dirección
+                sólo existe dentro del tailnet, así que desde el celular en la
+                calle no abre. Y aquí el permiso ya está comprobado.{% endcomment %}
+                <a href="{% url 'papeleo-ver' f.documento_id %}"
+                   class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver →</a>
                 {% if puede_ligar_papeleo %}
                 {% comment %}Va por HTMX y no en un <form> a propósito: este
                 recuadro se incluye en fichas cuyo sidebar YA vive dentro del

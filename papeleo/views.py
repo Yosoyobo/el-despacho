@@ -24,6 +24,29 @@ def _prohibido(mensaje: str = "No tienes permiso para ver el papeleo."):
     return HttpResponse(mensaje, status=403)
 
 
+def _con_duenos(documentos: list[dict]) -> list[dict]:
+    """Le pega a cada documento de quién es y por dónde se ve.
+
+    De quién es sale de NUESTRA base en **una sola consulta** — una por
+    documento sería un N+1 en la pantalla más usada del módulo. Y el enlace
+    apunta adentro de El Despacho, no a Paperless: su dirección sólo existe en
+    el tailnet y desde el celular en la calle no abre.
+    """
+    from papeleo.models import PapeleoLigado
+
+    duenos: dict[int, list[str]] = {}
+    filas = (PapeleoLigado.objects
+             .filter(documento_id__in=[d["id"] for d in documentos])
+             .select_related("cliente", "proyecto", "proveedor"))
+    for f in filas:
+        duenos.setdefault(f.documento_id, []).append(f.a_quien)
+    for d in documentos:
+        d["de_quien"] = duenos.get(d["id"], [])
+        d["ver"] = f"/papeleo/{d['id']}/"
+        d["miniatura"] = f"/papeleo/{d['id']}/miniatura"
+    return documentos
+
+
 @login_required
 def buscar(request):
     """La pantalla de búsqueda. Sin llave, lo dice en vez de salir vacía."""
@@ -36,26 +59,18 @@ def buscar(request):
     conectado = paperless.esta_configurado()
     documentos: list[dict] = []
     fallo = False
+    total = None
 
-    if conectado and texto:
-        hallados = paperless.buscar(texto, 20)
+    if conectado:
+        # Sin palabra se enseña lo último que entró. Una pantalla de archivo que
+        # sólo contesta si le escribes algo obliga a adivinar una palabra para
+        # descubrir que el documento existe: eso no es «ver el archivo».
+        hallados = paperless.buscar(texto, 20) if texto else paperless.listar(20)
         if hallados is None:
             fallo = True
         else:
-            documentos = hallados
-            # De quién es cada uno, de una sola consulta a NUESTRA base (no una
-            # por documento, que sería un N+1 en la pantalla más usada).
-            from papeleo.models import PapeleoLigado
-
-            duenos: dict[int, list[str]] = {}
-            filas = (PapeleoLigado.objects
-                     .filter(documento_id__in=[d["id"] for d in documentos])
-                     .select_related("cliente", "proyecto", "proveedor"))
-            for f in filas:
-                duenos.setdefault(f.documento_id, []).append(f.a_quien)
-            for d in documentos:
-                d["abrir"] = paperless.url_web(d["id"])
-                d["de_quien"] = duenos.get(d["id"], [])
+            documentos = _con_duenos(hallados)
+            total = paperless.cuantos()
 
     # Para el selector de «¿de quién es?». Sólo si esta persona puede ligar:
     # a quien sólo lee, la lista de clientes no le sirve de nada.
@@ -72,10 +87,106 @@ def buscar(request):
         "documentos": documentos,
         "conectado": conectado,
         "fallo": fallo,
+        "total": total,
         "puede_ligar": puede_ligar_papeleo(request.user),
         "puede_subir": puede_subir_papeleo(request.user),
         "breadcrumb_items": [{"label": "Papeleo"}],
     })
+
+
+@login_required
+def ver(request, documento_id: int):
+    """La ficha de UN documento, con el documento a la vista.
+
+    Antes el único camino era «Abrir →» a Paperless: otra app, otra sesión, y
+    una dirección que **sólo existe dentro del tailnet** — desde el celular en
+    la calle no abre. Aquí se ve dentro de El Despacho, con el permiso que ya
+    se comprobó, y al lado se dice de quién es y se puede ligar.
+    """
+    from lib import paperless
+
+    if not puede_ver_papeleo(request.user):
+        return _prohibido()
+
+    if not paperless.esta_configurado():
+        return render(request, "papeleo/ver.html", {
+            "conectado": False, "documento": None,
+            "breadcrumb_items": [{"label": "Papeleo", "url": "/papeleo/"},
+                                 {"label": "Documento"}],
+        })
+
+    doc = paperless.detalle(documento_id)
+    if doc is None:
+        # No se distingue «no existe» de «no contestó», y está bien: las dos se
+        # arreglan igual desde aquí (volver y reintentar), y afirmar la que no
+        # es manda a buscar el problema donde no está.
+        messages.error(request, "No se pudo traer ese documento del archivo.")
+        return redirect("papeleo-buscar")
+
+    doc = _con_duenos([doc])[0]
+
+    clientes = []
+    if puede_ligar_papeleo(request.user):
+        from apps.la_cartera.models import Cliente
+
+        clientes = list(Cliente.objects.filter(activo=True)
+                        .order_by("razon_social")[:500])
+
+    return render(request, "papeleo/ver.html", {
+        "conectado": True,
+        "documento": doc,
+        "clientes": clientes,
+        "puede_ligar": puede_ligar_papeleo(request.user),
+        "abrir_en_paperless": paperless.url_web(documento_id),
+        "breadcrumb_items": [{"label": "Papeleo", "url": "/papeleo/"},
+                             {"label": doc["titulo"]}],
+    })
+
+
+def _servir(request, documento_id: int, cara: str, *, descargar: bool = False):
+    """El proxy. Comprueba el permiso y entrega los bytes del documento.
+
+    Es un proxy y no un enlace público a propósito: el papeleo son contratos y
+    comprobantes del negocio. Quien no puede ver papeleo no lo ve, aunque
+    adivine el número del documento.
+    """
+    from lib import paperless
+
+    if not puede_ver_papeleo(request.user):
+        return _prohibido()
+
+    traido = paperless.archivo(documento_id, cara)
+    if traido is None:
+        return HttpResponse("No se pudo traer el documento.", status=404)
+
+    contenido, tipo = traido
+    r = HttpResponse(contenido, content_type=tipo)
+    # `inline` para que se vea sin bajarlo; `attachment` sólo cuando lo piden.
+    disp = "attachment" if descargar else "inline"
+    r["Content-Disposition"] = f'{disp}; filename="documento-{documento_id}"'
+    # La miniatura sí se puede guardar un rato: no cambia. El documento no, por
+    # si alguien pierde el permiso entre una visita y la siguiente.
+    r["Cache-Control"] = "private, max-age=3600" if cara == "thumb" else "private, no-store"
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+@login_required
+def archivo(request, documento_id: int):
+    """El documento, para verlo en la página."""
+    return _servir(request, documento_id, "preview")
+
+
+@login_required
+def descargar(request, documento_id: int):
+    """El documento, para guardarlo."""
+    return _servir(request, documento_id, "download", descargar=True)
+
+
+@login_required
+def miniatura(request, documento_id: int):
+    """La imagen chica de la tarjeta."""
+    return _servir(request, documento_id, "thumb")
 
 
 @login_required

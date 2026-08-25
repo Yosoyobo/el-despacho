@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{% if documento %}{{ documento.titulo }}{% else %}Documento{% endif %} — Papeleo{% endblock %}
+
+{% comment %}
+La ficha de un documento del archivo, con el documento a la vista.
+
+Antes el único camino era «Abrir →» a Paperless: otra app, otra sesión, y una
+dirección que sólo existe dentro del tailnet — desde el celular en la calle no
+abre. Aquí se ve dentro de El Despacho, con el permiso ya comprobado, y al lado
+se dice de quién es.
+{% endcomment %}
+
+{% block contenido %}
+{% load forms_helpers %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=documento.titulo|default:"Documento" subtitulo="Del archivo del papeleo" breadcrumb_items=breadcrumb_items back_url="/papeleo/" back_label="Papeleo" %}
+
+{% if not conectado %}
+<div class="max-w-3xl rounded-2xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-500/30 dark:bg-warning-500/10">
+    <p class="text-sm text-warning-700 dark:text-warning-400">
+        <strong>El archivo no está conectado.</strong> Falta la llave de Paperless
+        en Gerencia → Papeleo.
+    </p>
+</div>
+{% else %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+
+    {# El documento, grande. Es a lo que se vino. #}
+    <section class="xl:col-span-2">
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <object data="{% url 'papeleo-archivo' documento.id %}" type="application/pdf"
+                    class="h-[70vh] w-full bg-gray-100 dark:bg-gray-950">
+                {% comment %}Si el navegador no sabe pintar un PDF adentro —pasa en
+                varios celulares— no se deja la caja en blanco: se ofrece abrirlo.{% endcomment %}
+                <div class="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+                    <img src="{% url 'papeleo-miniatura' documento.id %}" alt=""
+                         class="max-h-64 rounded-lg border border-gray-200 shadow-theme-sm dark:border-gray-800">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Tu navegador no puede mostrarlo aquí dentro.
+                    </p>
+                    <a href="{% url 'papeleo-archivo' documento.id %}" target="_blank" rel="noopener"
+                       class="btn-primario">Abrir el documento</a>
+                </div>
+            </object>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-3">
+            <a href="{% url 'papeleo-archivo' documento.id %}" target="_blank" rel="noopener"
+               class="btn-secundario">Abrir en pestaña nueva</a>
+            <a href="{% url 'papeleo-descargar' documento.id %}" class="btn-secundario">Bajar</a>
+            {% if abrir_en_paperless %}
+            <a href="{{ abrir_en_paperless }}" target="_blank" rel="noopener"
+               class="text-sm text-gray-500 hover:underline dark:text-gray-400">Verlo en el archivo →</a>
+            {% endif %}
+        </div>
+    </section>
+
+    <aside class="flex flex-col gap-4">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-800 dark:text-white/90">De quién es</h2>
+            {% if documento.de_quien %}
+            <div class="flex flex-wrap gap-2">
+                {% for quien in documento.de_quien %}
+                <span class="badge badge-brand">{{ quien }}</span>
+                {% endfor %}
+            </div>
+            {% elif puede_ligar %}
+            <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+                Todavía no tiene dueño. Ligarlo lo hace aparecer en la ficha de
+                esa persona o proyecto.
+            </p>
+            <form method="post" action="{% url 'papeleo-ligar' documento.id %}" class="flex flex-wrap items-center gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="titulo" value="{{ documento.titulo }}">
+                <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                <select name="cliente" data-select-buscable
+                        class="min-w-0 flex-1 rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    <option value="">— ¿de quién es? —</option>
+                    {% for c in clientes %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn-primario">Ligar</button>
+            </form>
+            {% else %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Todavía no tiene dueño.</p>
+            {% endif %}
+        </section>
+
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-theme-xl font-medium text-gray-800 dark:text-white/90">Datos</h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between gap-3">
+                    <dt class="text-gray-500 dark:text-gray-400">Entró</dt>
+                    <dd class="text-gray-800 dark:text-gray-200">{{ documento.creado|default:"—" }}</dd>
+                </div>
+                {% if documento.paginas %}
+                <div class="flex justify-between gap-3">
+                    <dt class="text-gray-500 dark:text-gray-400">Páginas</dt>
+                    <dd class="text-gray-800 dark:text-gray-200">{{ documento.paginas }}</dd>
+                </div>
+                {% endif %}
+                {% if documento.etiquetas %}
+                <div class="flex justify-between gap-3">
+                    <dt class="text-gray-500 dark:text-gray-400">Etiquetas</dt>
+                    <dd class="text-gray-800 dark:text-gray-200">{{ documento.etiquetas|length }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </section>
+
+        {% if documento.texto %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-2 text-theme-xl font-medium text-gray-800 dark:text-white/90">Lo que dice adentro</h2>
+            <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                Es lo que sacó el lector de texto — por aquí es por donde se
+                encuentra al buscarlo.
+            </p>
+            <p class="mt-3 max-h-64 overflow-y-auto whitespace-pre-line text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ documento.texto }}</p>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endif %}
+{% endblock %}

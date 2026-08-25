@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — El papeleo ya se VE, sin salir del sistema (24 de agosto de 2026)
+
+**Papeleo dejó de ser sólo un buscador**
+
+Antes, entrar a **Papeleo** te dejaba frente a una caja de búsqueda vacía: para
+saber si un documento existía tenías que adivinar una palabra que estuviera
+adentro. Ahora **al entrar ves lo último que llegó**, en tarjetas con su
+miniatura — que es lo que deja reconocer un escaneo de un vistazo, porque los
+archivos suelen llamarse «scan_0042». Arriba dice cuántos hay en total.
+
+Buscar sigue funcionando igual, y desde los resultados hay un enlace para volver
+a ver todo.
+
+**Y ahora el documento se abre aquí adentro**
+
+Picas una tarjeta y se abre su ficha: el documento **a la vista**, y al lado de
+quién es, cuándo entró, cuántas páginas tiene y lo que el lector de texto sacó
+de adentro. Desde ahí lo abres en pestaña nueva o lo bajas.
+
+Esto arregla algo que estorbaba: el único camino era «Abrir →» a la otra
+aplicación, que **sólo funciona dentro de la red de la oficina**. Desde el
+celular en la calle no abría. Ahora se ve dentro de El Despacho, con tu misma
+sesión, y quien no tiene permiso de ver papeleo no lo ve aunque sepa el número
+del documento.
+
+Los recuadros de Papeleo en la ficha de un cliente, un proyecto o un proveedor
+también llevan al visor, no a la otra aplicación.
+
+**El Chalán también lo muestra**
+
+Cuando le preguntas «¿tenemos el contrato de Optimist?» y lo encuentra, el
+enlace que te ofrece abre la ficha aquí dentro.
+
+---
+
 ## Novedades — El sistema va más rápido (24 de agosto de 2026)
 
 **Mandar un mensaje ya es instantáneo**
@@ -5657,13 +5692,25 @@ un cajón.
 al entrar, así que se encuentra por el nombre del cliente, un folio o cualquier
 palabra del contenido — no importa cómo se llame el archivo.
 
-### Cómo se busca
+### Cómo se ve y cómo se busca
 
-Menú → **Papeleo** → escribe una palabra que esté DENTRO del documento. Sale la
-lista, con «Abrir →» para verlo completo.
+Menú → **Papeleo**. Al entrar ya ves **lo último que llegó**, en tarjetas con su
+miniatura — que es lo que deja reconocer un escaneo de un vistazo, porque los
+archivos suelen llamarse «scan_0042». Arriba dice cuántos hay en total.
 
-Si un documento acaba de entrar y no aparece, es normal: su lectura tarda unos
-minutos. Aparece primero y se vuelve buscable después.
+Para buscar, escribe una palabra que esté DENTRO del documento. Desde los
+resultados hay un enlace para volver a ver todo.
+
+**Picar una tarjeta abre el documento aquí dentro**: se ve completo, y al lado
+de quién es, cuándo entró, cuántas páginas tiene y lo que el lector de texto
+sacó. Desde ahí lo abres en pestaña nueva o lo bajas.
+
+No hace falta ir a la otra aplicación — de hecho, ésa **sólo funciona dentro de
+la red de la oficina**, así que desde el celular en la calle no abriría. Y quien
+no tiene permiso de ver papeleo no lo ve, aunque sepa el número del documento.
+
+Si un documento acaba de entrar y no aparece al buscarlo, es normal: su lectura
+tarda unos minutos. Aparece primero y se vuelve buscable después.
 
 ### Cómo entra un documento
 
