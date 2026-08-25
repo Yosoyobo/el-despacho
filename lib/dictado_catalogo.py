@@ -418,6 +418,27 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "flujo_id (o nombre)",
         "gating": "automatizacion",
     },
+    {
+        "tipo": "generar_pdf_cotizacion",
+        "titulo": "Armar el PDF de una cotización",
+        "ejemplo": "Genera el PDF de la COT-2026-0044.",
+        "payload": "codigo",
+        "gating": "cotizaciones_crear",
+    },
+    {
+        "tipo": "archivar_documento",
+        "titulo": "Mandar un documento al archivo",
+        "ejemplo": "Archiva la cotización COT-2026-0044.",
+        "payload": "codigo",
+        "gating": "papeleo_subir",
+    },
+    {
+        "tipo": "convertir_a_pdf",
+        "titulo": "Convertir un Word o Excel a PDF",
+        "ejemplo": "Convierte a PDF el archivo que subió el proveedor.",
+        "payload": "archivo (clave), nombre",
+        "gating": "cotizaciones_crear",
+    },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
@@ -448,6 +469,8 @@ def _gating_checks():
         # Prender o apagar una automatización es tocar la voz del
         # despacho: un flujo activo le escribe a clientes.
         "automatizacion": permisos.puede_acceder_ajustes,
+        # Mandar un documento al archivo del papeleo.
+        "papeleo_subir": permisos.puede_subir_papeleo,
     }
 
 

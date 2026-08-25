@@ -12436,3 +12436,79 @@ de cuentas de correo. `avisar_al_entrar` se guarda pero todavía no manda el avi
 (falta el hookpoint del Interfón). Y el **ligado automático no corre al entrar
 por el buzón**: cuando el documento llega su OCR no ha corrido y no hay texto que
 leer — hace falta un cron que lo repase después.
+
+---
+
+## S-NUC-Cierre — 2026-08-24 (VERSION 2026.08.43)
+
+Cierra el arco del NUC. Rama `agent/nuc-cierre`, **basada en `agent/paperless`**
+para que S-Papeleo-V1 y esto aterricen en el mismo deploy.
+
+### Lo primero: casi construyo lo mismo dos veces
+
+Iba a levantar el GUI de Paperless y el catálogo de recetas de n8n —los dos
+puntos que Oscar pidió— sin saber que **otra sesión los había construido ese
+mismo día** en el worktree `agent/paperless`: pushed, sin mergear, invisible en
+`git log` de `main`. Lo cazó `memory/regla-revisar-worktrees-antes-de-disenar`
+al ir a leer la memoria del proyecto antes de diseñar.
+
+Consecuencia práctica: mi `lib/paperless.py` (183 líneas) se **descartó entero**
+a favor del suyo (338, con `url_publica`, `canjear_token`, etiquetas y la
+distinción entre la dirección interna y la pública), y mis capacidades
+`buscar_archivo` / `cuanto_hay_archivado` a favor de su `buscar_papeleo`. Lo que
+sobrevivió de lo mío es lo que nadie más tenía.
+
+### Entregado
+
+- **Pantalla de Automatizaciones** (`/ajustes/automatizaciones/`) — era lo único
+  que faltaba de verdad. Lista con **disparador, estado, última corrida** e
+  interruptor; catálogo de recetas (`lib/n8n_plantillas.catalogo()`) que se
+  instalan con un nombre y **nacen apagadas**; últimas corridas; enlace a n8n.
+  Renglón propio en el menú de La Gerencia + botón en el panel de Ajustes.
+- **El Chalán alcanza las cuatro piezas**: `distancia_entre` y
+  `estado_herramientas` (lecturas), `generar_pdf_cotizacion`, `convertir_a_pdf`
+  y `archivar_documento` (ejecutores, los tres lugares del contrato).
+- **La Bóveda por temas**: `GRUPOS_CREDENCIAL` (6) pasa a ser la fuente y
+  `SLOTS_CREDENCIAL` se deriva — cero cambios para lo que ya la consumía.
+- **Roadmap de la ventana de mantenimiento** actualizado a 5 de 7 (§4 #23), con
+  el video de la espera intacto.
+- Eventos nuevos: `automatizacion.interruptor`, `automatizacion.creada`.
+
+### Bugs propios cazados al integrar
+
+1. **Mis handlers tenían la firma equivocada.** El registro llama
+   `fn(args, usuario)`; yo los escribí `(usuario, **kw)`. Mis pruebas los
+   llamaban directo con **mi** convención, así que salían verdes y habrían
+   fallado en producción con el primer argumento entrando como usuario. Ahora
+   hay un test que los ejerce **por el registro**, que es el camino real.
+2. **`emitir()` toma un `EventoPortavoz`, no `(str, dict)`.** Lo escribí con la
+   forma de otro proyecto; lo cazó leer los usos vecinos antes de correr nada.
+3. **`archivar_documento` prometía de más**: `paperless.subir()` devuelve el id
+   de la TAREA y el OCR corre después. Decir «ya quedó archivado» es mentir por
+   unos minutos, así que el resumen dice «va camino al archivo».
+
+### Candados nuevos
+
+- `tests/taller/test_chalan_alcanza_todo.py` recorre `servicios.PIEZAS` y exige
+  capacidad declarada por pieza. Instalar algo y no conectarlo es el error que se
+  cometió hoy con **tres de cuatro**.
+- Y un test que revisa que ningún comando del catálogo tenga un `gating`
+  inexistente: `comandos_para` cae a `None` y **se lo ofrece a cualquiera**. Se
+  ve bien y abre una puerta.
+- `tests/gerencia/test_automatizaciones_gui.py` (15), **verificados contra código
+  mutado**: si la vista da por hecho que n8n aceptó, o deja pasar una receta
+  inventada, caen dos.
+
+### Números
+
+3503 pass, 1 skipped (suite completa, 3:12). Ruff limpio sobre todo el repo.
+Candados de comentarios (Bug C §14) y de Novedades verdes.
+
+### Deuda diseñada
+
+La pantalla **no edita** el contenido de un flujo — eso es n8n, y duplicar su
+editor sería peor que no tenerlo. Las recetas se instalan con sus valores por
+default (los parámetros se ajustan allá). `archivar_documento` sólo archiva
+cotizaciones: una factura sube su CFDI por su propio camino. Y el flujo del
+buzón sigue pidiendo que alguien elija la cuenta de correo en n8n — sus
+credenciales viven allá y no hay forma de traerlas desde aquí.

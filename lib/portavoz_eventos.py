@@ -38,6 +38,9 @@ EventoTipo = Literal[
     "chalan.aprendizaje_destilado",
     "chalan.analisis_negocio",
     "chalan.conocimiento_destilado",
+    # Prender/apagar/crear una tarea que corre sola (n8n) desde La Gerencia.
+    "automatizacion.interruptor",
+    "automatizacion.creada",
     "tarea.creada",
     "tarea.completada",
     "tarea.eliminada",

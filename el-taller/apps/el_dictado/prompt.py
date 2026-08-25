@@ -71,6 +71,10 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
+- generar_pdf_cotizacion, convertir_a_pdf
+  (las herramientas del servidor: armar el PDF de una cotización y convertir un
+  Word/Excel a PDF. Consulta `estado_herramientas` si dudas de que alguna esté
+  funcionando; para mandar algo al archivo buscable usa el papeleo)
 - crear_automatizacion, activar_automatizacion, desactivar_automatizacion,
   borrar_automatizacion
   (las tareas que corren solas, en n8n. Para prender/apagar/quitar consulta
@@ -172,6 +176,9 @@ PAYLOADS:
   (el MONTO de un ingreso/egreso NO se puede editar: su asiento contable ya está
   registrado. Si el importe está mal, propón anular_ingreso/anular_egreso y
   volver a capturarlo con registrar_ingreso/registrar_egreso)
+- generar_pdf_cotizacion: {codigo}
+- archivar_documento: {codigo}  (necesita que la cotización YA tenga PDF)
+- convertir_a_pdf: {archivo, nombre}
 - activar_automatizacion / desactivar_automatizacion / borrar_automatizacion: {flujo_id}
   (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
   Prender una automatización hace que le escriba a clientes por su cuenta, así que

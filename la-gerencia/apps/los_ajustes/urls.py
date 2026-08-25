@@ -57,4 +57,7 @@ urlpatterns = [
     path("documentos/", views.documentos_panel, name="ajustes-documentos"),
     path("servicios/", views.servicios_panel, name="ajustes-servicios"),
     path("cfdi/", views.cfdi_panel, name="ajustes-cfdi"),
+    path("automatizaciones/", views.automatizaciones_panel, name="ajustes-automatizaciones"),
+    path("automatizaciones/interruptor", views.automatizacion_interruptor, name="ajustes-automatizacion-interruptor"),
+    path("automatizaciones/instalar", views.automatizacion_instalar, name="ajustes-automatizacion-instalar"),
 ]

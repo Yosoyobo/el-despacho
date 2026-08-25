@@ -7642,6 +7642,65 @@ corre al entrar por el buzón**: cuando el documento llega, su OCR no ha corrido
 no hay texto que leer — hace falta un cron que lo repase después. Y el flujo del
 lado de n8n sigue siendo configuración fuera del repo.
 
+### S-NUC-Cierre ✅ — La pantalla de las automatizaciones, El Chalán alcanza las cuatro piezas y La Bóveda por temas (2026-08-24, VERSION 2026.08.43)
+
+Cierra el arco del NUC: las cuatro piezas instaladas ese día quedan **operables
+desde la interfaz y alcanzables por El Chalán**. Rama `agent/nuc-cierre`, basada
+en `agent/paperless` (S-Papeleo-V1) para que los dos aterricen juntos.
+
+**El hallazgo que definió el sprint, y la regla que lo evitó de milagro:** iba a
+construir por segunda vez el GUI de Paperless y el catálogo de recetas de n8n.
+Los había construido **otra sesión, ese mismo día**, en el worktree
+`agent/paperless` — pushed, sin mergear, invisible en `git log` de main. Lo cazó
+`memory/regla-revisar-worktrees-antes-de-disenar` al ir a leer la memoria antes
+de diseñar. De ahí que este sprint **se base** en esa rama en vez de pelearse
+con ella: mi `lib/paperless.py` (183 líneas) se descartó entero a favor del suyo
+(338, con `url_publica`, `canjear_token` y etiquetas), y mis capacidades
+`buscar_archivo` / `cuanto_hay_archivado` a favor de su `buscar_papeleo`.
+
+- **Pantalla de Automatizaciones** (`/ajustes/automatizaciones/`, renglón propio
+  en el menú de Gerencia): era lo único que de verdad faltaba. De cada flujo se
+  ve **qué lo dispara, si está prendido y cuándo corrió**, y su interruptor —
+  apagar una automatización que se porta mal no puede depender de acordarse de
+  otra dirección y otra contraseña. Abajo, el **catálogo de recetas** de
+  `lib/n8n_plantillas`: se instalan con un nombre y **nacen apagadas**, con lo
+  que falta hacer a mano dicho al crearlas.
+  - **«No contesta» y «no hay ninguna» se distinguen** (`contesta` es
+    `flujos is not None`): son dos problemas y se buscan en lugares distintos.
+  - **Prender no se da por hecho**: n8n puede negarse —a un flujo le falta una
+    credencial— y decir «listo» sin comprobarlo deja a alguien creyendo que ya
+    corre. Verificado mutando la vista: el test cae.
+- **El Chalán alcanza las cuatro piezas.** Capacidades nuevas `distancia_entre`
+  (OSRM, **dice si midió por calle o en recta** — 14 km y 20 km son la misma
+  pregunta con dos respuestas) y `estado_herramientas`; ejecutores nuevos
+  `generar_pdf_cotizacion`, `convertir_a_pdf` y `archivar_documento` (gateado
+  por `papeleo_subir`; `subir()` devuelve el id de la TAREA, así que **no
+  promete** que ya quedó archivado).
+- **Bug propio, cazado al integrar:** mis handlers estaban escritos
+  `(usuario, **kw)` y el registro llama **`fn(args, usuario)`**. Mis pruebas los
+  llamaban directo con mi convención, así que salían verdes y **habrían fallado
+  en producción**. Ahora hay un test que los ejerce **por el registro**.
+- **Candado nuevo `tests/taller/test_chalan_alcanza_todo.py`**: recorre
+  `lib.site.servicios.PIEZAS` y exige que cada pieza instalada tenga capacidad
+  declarada. Si mañana se instala algo y se olvida conectarlo, falla — que es
+  justo lo que pasó hoy con tres de cuatro. Más un candado que revisa que ningún
+  comando del catálogo tenga un `gating` inexistente: `comandos_para` cae a
+  `None` y **se lo ofrece a todo el mundo**, se ve bien y abre una puerta.
+- **La Bóveda por temas** (Oscar: «se ve feo»): `GRUPOS_CREDENCIAL` (6 temas) es
+  ahora la fuente y `SLOTS_CREDENCIAL` se **deriva** de ella, así que todo lo que
+  ya la consumía sigue igual — agrupar es cosa de la pantalla, no del catálogo.
+- **Roadmap de la ventana de mantenimiento al día** (regla §4 #23): 5 de 7, y el
+  video de la espera se queda (pedido reafirmado por Oscar).
+- **3503 pass, 1 skipped**; ruff limpio; candados de comentarios y de Novedades
+  verdes.
+
+**Deuda diseñada**: la pantalla no edita el contenido de un flujo (eso es n8n, y
+duplicar su editor sería peor que no tenerlo); las recetas se instalan con sus
+valores por default (los parámetros se ajustan en n8n); `archivar_documento`
+sólo archiva cotizaciones (una factura sube su CFDI por su propio camino); y el
+flujo del buzón sigue pidiendo que alguien elija la cuenta de correo en n8n —
+sus credenciales viven allá y no hay forma de traerlas.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

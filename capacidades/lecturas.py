@@ -1221,7 +1221,84 @@ def _h_papeleo_de(args: dict, usuario) -> dict:  # noqa: ARG001
 
 
 
+# ── Las herramientas del servidor ──────────────────────────────────────────
+# Oscar, 2026-08-24: «si puedo clickear, teclear, lo puede hacer el chalán».
+# Estaban instaladas y él no las alcanzaba: podía medir una ruta por calles y
+# decir qué piezas están en pie, y no lo sabía.
+
+
+def _h_distancia_entre(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Cuánto hay entre dos puntos POR CALLE, no en línea recta.
+
+    Acepta «lat,lng» en los dos extremos. Y **dice cómo lo midió**: 14 km en
+    recta y 20 por calle son la misma pregunta con dos respuestas, y sólo una
+    sirve para prometer una hora de entrega.
+    """
+    from lib import ruteo
+
+    def _punto(txt):
+        try:
+            a, b = str(txt).split(",")[:2]
+            return (float(a.strip()), float(b.strip()))
+        except (ValueError, AttributeError):
+            return None
+
+    o, d = _punto(args.get("origen")), _punto(args.get("destino"))
+    if not o or not d:
+        return {"error": "Hacen falta las dos coordenadas, en formato «lat,lng»."}
+
+    metros = ruteo.distancia(o, d)
+    if metros is None:
+        return {"error": "No se pudo medir esa distancia."}
+    por_calle = ruteo.ultima_fuente() == ruteo.FUENTE_CALLES
+    return {
+        "km": round(metros / 1000, 1),
+        "medido": "por calles reales" if por_calle else "en línea recta (el mapa no responde)",
+        "nota": ("" if por_calle else
+                 "Sin el mapa, la distancia queda corta: no sabe de vueltas ni de sentidos."),
+    }
+
+
+def _h_estado_herramientas(args: dict, usuario) -> dict:  # noqa: ARG001
+    """Qué piezas del servidor están en pie AHORA, y para qué sirve cada una.
+
+    Se sondean de verdad; no se dan por vivas porque el compose las declare.
+    """
+    from lib.site import servicios
+
+    lista = servicios.estado()
+    return {
+        "resumen": servicios.resumen(lista),
+        "piezas": [{
+            "nombre": s["nombre"],
+            "responde": s["vivo"],
+            "para_que": s["oficio"],
+        } for s in lista],
+    }
+
+
 _LECTURAS: dict[str, Capacidad] = {
+    "distancia_entre": Capacidad(
+        nombre="distancia_entre",
+        descripcion=(
+            "Cuántos kilómetros hay entre dos puntos por CALLE (no en línea "
+            "recta). Args: origen y destino, los dos como «lat,lng». Dice con "
+            "qué método midió: si el mapa no responde el número queda corto."
+        ),
+        args_schema={"origen": {"tipo": "str", "requerido": True},
+                     "destino": {"tipo": "str", "requerido": True}},
+        gating="rutas", fn=_h_distancia_entre,
+    ),
+    "estado_herramientas": Capacidad(
+        nombre="estado_herramientas",
+        descripcion=(
+            "Qué piezas corren en el servidor, para qué sirve cada una y si "
+            "responden ahora mismo (documentos, mapa, automatizaciones, "
+            "archivo). Úsala antes de decir que algo «no se puede»."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_estado_herramientas,
+    ),
     "buscar_papeleo": Capacidad(
         nombre="buscar_papeleo",
         descripcion=(

@@ -5,6 +5,55 @@
 
 ---
 
+## Novedades — Las automatizaciones tienen pantalla y El Chalán alcanza todas las herramientas (24 de agosto de 2026)
+
+**Automatizaciones: una pantalla para prenderlas y apagarlas**
+
+En **Ajustes → Automatizaciones** están ahora las tareas que corren solas: las
+que revisan un buzón, las que llaman a una hora fija, las que esperan a que
+otro sistema toque la puerta.
+
+De cada una se ve lo que hace falta saber y nada más: **qué la dispara, si está
+prendida y cuándo corrió por última vez**. El interruptor está ahí porque es la
+decisión que se toma con prisa — una automatización prendida le escribe a
+clientes, y apagarla no puede depender de acordarse de otra dirección y otra
+contraseña.
+
+Abajo hay **recetas**: puntos de partida con la forma ya probada. Se instalan
+con un nombre y **nacen apagadas, siempre**. Se abren en n8n, se revisan, y se
+prenden a mano cuando se ven correctas. Si a una le falta algo que sólo se puede
+hacer allá —como elegir la cuenta de correo— la pantalla lo dice al crearla, en
+vez de dejar un flujo que nunca va a arrancar.
+
+Y si n8n no contesta, lo dice con esas palabras. No es lo mismo que «no hay
+ninguna»: son dos problemas distintos y se buscan en lugares distintos.
+
+**El Chalán ya alcanza las herramientas del servidor**
+
+Estaban instaladas y él no las sabía usar. Ahora se le puede pedir:
+
+- **«Genera el PDF de la COT-2026-0044»** — lo arma sin ir a buscarla.
+- **«Convierte a PDF ese Word»** — sin que nadie abra Office.
+- **«Archiva la cotización»** — la manda al archivo buscable. Ojo: el lector de
+  texto corre después, así que tarda unos minutos en poderse buscar, y él lo
+  dice así en vez de prometer que ya quedó.
+- **«¿Qué tan lejos queda?»** — mide **por calle**, no en línea recta. Y dice
+  con qué método midió: si el mapa no responde, avisa que el número queda corto.
+- **«¿Está funcionando todo?»** — enumera las piezas del servidor y cuáles
+  responden ahora mismo.
+
+Como siempre, todo lo que cambia algo pasa por tu confirmación antes de
+aplicarse.
+
+**Las llaves, ordenadas por tema**
+
+La lista de credenciales de **Los Ajustes** era una tira de veintitantas llaves
+sueltas. Ahora están repartidas por tema —Los Chalanes, Google, las herramientas
+del servidor, el papeleo y lo fiscal, los avisos, los cobros en línea— y cada
+grupo dice cuántas tiene puestas, para ver de un vistazo qué falta sin abrirlo.
+
+---
+
 ## Novedades — El papeleo por fin se busca, y El Chalán arma automatizaciones (24 de agosto de 2026)
 
 **Papeleo: buscar por lo que dice adentro**
@@ -5614,6 +5663,19 @@ Abajo, una sección "Qué pueden hacer Los Chalanes" lista las acciones que el C
 - Crear recado · Crear mensaje del buzón
 - Registrar egreso · Registrar ingreso · Crear factura (borrador)
 - **Editar un ingreso · Editar un egreso · Editar una factura en borrador**
+- **Armar el PDF de una cotización · Convertir un Word o Excel a PDF · Mandar un
+  documento al archivo buscable**
+- **Prender, apagar, quitar y crear automatizaciones** (siempre nacen apagadas)
+
+Y sin cambiar nada, sólo para contestar:
+
+- **«¿Qué tan lejos queda?»** entre dos puntos — mide **por calle**, no en línea
+  recta, y dice con qué método midió: si el mapa no responde avisa que el número
+  queda corto, en vez de darlo como bueno.
+- **«¿Está funcionando todo?»** — enumera las piezas del servidor y cuáles
+  responden ahora mismo. Úsalo antes de creerle a un «no se puede».
+- **«¿Tenemos el contrato de…?»** — busca en el archivo del papeleo por lo que
+  el documento dice adentro.
 
 **Registrar una factura dictándosela.** Le pasas los datos como los tengas y él
 arma la factura en borrador para que la confirmes:
@@ -6121,6 +6183,32 @@ Cuatro de esas configuraciones ya no están escondidas detrás de los botones de
 panel: **Cartero**, **KPIs**, **Rutas** y **Cobranza** tienen su propio renglón en
 el menú de La Gerencia, debajo de *Tasas*. Los botones del panel siguen ahí, así
 que llegas por donde te acomode.
+
+**Las llaves están agrupadas por tema.** Eran una tira de veintitantas sueltas;
+ahora se reparten en Los Chalanes, Google, las herramientas del servidor, el
+papeleo y lo fiscal, los avisos y monitoreo, y los cobros en línea. Cada grupo
+dice cuántas tiene puestas, para ver qué falta sin abrirlo.
+
+### Automatizaciones (las tareas que corren solas)
+
+En **Ajustes → Automatizaciones** están las tareas que trabajan sin que nadie las
+pique: las que revisan un buzón de correo, las que llaman a una hora fija, las que
+esperan a que otro sistema toque la puerta.
+
+De cada una ves lo que hace falta y nada más: **qué la dispara, si está prendida y
+cuándo corrió por última vez**. Y su interruptor, porque apagar una que se está
+portando mal no puede depender de acordarse de otra dirección y otra contraseña.
+
+Abajo hay **recetas**: puntos de partida con la forma ya probada. Le pones nombre,
+picas *Instalar* y queda creada **apagada**. Siempre apagada — una automatización
+que arranca sola puede escribirle a un cliente antes de que nadie la haya visto
+funcionar. Se abre en n8n, se revisa, y se prende a mano.
+
+Si a una receta le falta algo que sólo se puede hacer allá —elegir la cuenta de
+correo, por ejemplo— la pantalla te lo dice al crearla.
+
+Si n8n no contesta, lo dice con esas palabras: no es lo mismo que «no hay
+ninguna», y cada cosa se busca en un lugar distinto.
 
 ### La Limpieza (soltar caché, RAM y disco)
 
