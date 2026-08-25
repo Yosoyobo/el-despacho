@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import logging
 
+from lib.perezoso import perezoso
+
 logger = logging.getLogger(__name__)
 
 
+@perezoso("recados_no_leidos_count", tipo=int)
 def recados_no_leidos(request):
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):

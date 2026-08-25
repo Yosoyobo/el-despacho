@@ -24,6 +24,19 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
+def _al_confirmar(hacer) -> None:
+    """Manda el push cuando la transacción confirma, y FUERA de la petición.
+
+    `on_commit` solo no basta: sus callbacks corren dentro del mismo request,
+    así que quien guardó un proyecto seguía esperando a que Apple y Google
+    acusaran recibo de las notificaciones de los demás. `ejecutar_en_fondo` los
+    saca de ahí — el usuario recibe su respuesta y los avisos salen aparte.
+    """
+    from lib.tareas_fondo import ejecutar_en_fondo
+
+    transaction.on_commit(lambda: ejecutar_en_fondo(hacer))
+
+
 def _admins_activos():
     # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
     # personalizados (roles_extra) y ya filtra is_active=True.
@@ -96,7 +109,7 @@ def notificar_anticipo_por_registrar(cotizacion) -> None:
                 origen_modulo="cotizaciones",
                 origen_id=cotizacion.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 def notificar_buzon_nuevo(mensaje, autor) -> None:
@@ -115,7 +128,7 @@ def notificar_buzon_nuevo(mensaje, autor) -> None:
                 origen_modulo="buzon",
                 origen_id=mensaje.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 def notificar_buzon_estado(mensaje, actor) -> None:
@@ -136,7 +149,7 @@ def notificar_buzon_estado(mensaje, actor) -> None:
                 origen_modulo="buzon",
                 origen_id=mensaje.pk,
             )
-        transaction.on_commit(_hacer)
+        _al_confirmar(_hacer)
     elif accion == "notificar_admins":
         def _hacer():
             for admin in _admins_activos():
@@ -152,7 +165,7 @@ def notificar_buzon_estado(mensaje, actor) -> None:
                     origen_modulo="buzon",
                     origen_id=mensaje.pk,
                 )
-        transaction.on_commit(_hacer)
+        _al_confirmar(_hacer)
     elif accion == "notificar_todos":
         # Novedades para TODO el equipo (decisión Oscar: "que todos sepan"
         # cuando algo se implementa). Configurable: el admin asigna esta acción
@@ -171,7 +184,7 @@ def notificar_buzon_estado(mensaje, actor) -> None:
                     origen_modulo="buzon",
                     origen_id=mensaje.pk,
                 )
-        transaction.on_commit(_hacer)
+        _al_confirmar(_hacer)
 
 
 def notificar_buzon_comentario(mensaje, autor_comentario) -> None:
@@ -197,7 +210,7 @@ def notificar_buzon_comentario(mensaje, autor_comentario) -> None:
                 origen_modulo="buzon",
                 origen_id=mensaje.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 # ── Proyectos ──
@@ -219,7 +232,7 @@ def notificar_proyecto_creado(proyecto, creador) -> None:
                 origen_modulo="proyectos",
                 origen_id=proyecto.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 def notificar_proyecto_status_cambiado(proyecto, anterior: str, nuevo: str, actor) -> None:
@@ -245,7 +258,7 @@ def notificar_proyecto_status_cambiado(proyecto, anterior: str, nuevo: str, acto
                 origen_modulo="proyectos",
                 origen_id=proyecto.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 # ── Cobranza ──
@@ -275,7 +288,7 @@ def notificar_factura_vencida(factura, dias_vencida: int, saldo: float) -> None:
                 categoria="cobranza",
                 origen_modulo="facturacion", origen_id=factura.pk,
             )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 # ── Tareas ──
@@ -301,7 +314,7 @@ def notificar_tarea_asignada(tarea, actor) -> None:
             origen_modulo="tareas",
             origen_id=tarea.pk,
         )
-    transaction.on_commit(_hacer)
+    _al_confirmar(_hacer)
 
 
 def notificar_tarea_recordatorio(tarea, usuario, *, motivo: str, dias: int = 0) -> None:

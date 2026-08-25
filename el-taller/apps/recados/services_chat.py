@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+from lib.tareas_fondo import ejecutar_en_fondo
 
 from .models import Conversacion, Mensaje, MensajeLectura
 
@@ -88,8 +89,12 @@ def enviar_mensaje(*, conversacion: Conversacion, autor, cuerpo: str, permitir_v
         except Exception:
             logger.exception("recados_chat: sincronizar_referencias falló mensaje_id=%s", m.pk)
 
+    # El evento del Portavoz sólo encola en Redis (microsegundos), así que se
+    # queda aquí. El push SÍ sale de la petición: esperar a que Apple y Google
+    # acusen recibo de los avisos del otro le costaba 2.8 s a quien escribió el
+    # mensaje (medido en producción, 2026-08-24).
     transaction.on_commit(lambda: _emitir_creado(m))
-    transaction.on_commit(lambda: _disparar_push(m.pk))
+    transaction.on_commit(lambda: ejecutar_en_fondo(_disparar_push, m.pk))
     return m
 
 

@@ -413,6 +413,80 @@ def puede_ver_comentario(user, comentario) -> bool:
     return False
 
 
+# ── Caché de permisos por instancia de usuario ───────────────────────────────
+#
+# `puede()` hacía DOS consultas por llamada (revocado + concedido) y el sistema
+# la llama decenas de veces por petición: el context processor `permisos_modulos`
+# recorre los ~23 módulos del catálogo, y encima las vistas y las plantillas
+# vuelven a preguntar. Medido en producción (2026-08-24), el detalle de un
+# proyecto gastaba 60 de sus 231 consultas en la tabla de permisos, y el banner
+# de deploy —que sólo devuelve un div vacío y se pide cada 10 s— gastaba 46.
+#
+# El arreglo es leer TODOS los permisos del usuario de una vez y resolver en
+# memoria. El resultado se memoiza en la propia instancia de `Usuario`, que vive
+# lo que dura la petición: no es un caché compartido entre peticiones ni entre
+# trabajadores, así que no puede servir permisos viejos a nadie más.
+#
+# La única ventana en la que el memo podría mentir es dentro de UNA petición que
+# cambia permisos y vuelve a leerlos (el panel de El Directorio). Por eso los
+# signals de `PermisoUsuario` y del M2M de roles suben `_VERSION_PERMISOS`, y el
+# memo que se llenó con una versión anterior se descarta.
+
+_VERSION_PERMISOS = 0
+_ATRIBUTO_MEMO = "_despacho_memo_permisos"
+
+
+def invalidar_cache_permisos(*args, **kwargs) -> None:
+    """Descarta los memos vigentes. La llaman los signals de `PermisoUsuario`
+    y de `Usuario.roles_extra`; también sirve desde un test o un command que
+    mute permisos y quiera releerlos en el mismo proceso."""
+    global _VERSION_PERMISOS
+    _VERSION_PERMISOS += 1
+
+
+def _cargar_permisos(usuario) -> dict:
+    """Lee de la base todo lo que `puede()` necesita: DOS consultas.
+
+    Devuelve `{"revocados": set, "concedidos": set, "por_rol": set}` con pares
+    `(modulo, permiso)`. El orden de precedencia lo aplica `puede()`, no aquí.
+    """
+    revocados: set[tuple[str, str]] = set()
+    concedidos: set[tuple[str, str]] = set()
+    por_rol: set[tuple[str, str]] = set()
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    for modulo, permiso, activo in PermisoUsuario.objects.filter(
+        usuario=usuario
+    ).values_list("modulo", "permiso", "activo"):
+        (concedidos if activo else revocados).add((modulo, permiso))
+
+    for permisos_del_rol in usuario.roles_extra.values_list("permisos", flat=True):
+        for modulo, acciones in (permisos_del_rol or {}).items():
+            for accion in acciones or ():
+                por_rol.add((modulo, accion))
+
+    return {"revocados": revocados, "concedidos": concedidos, "por_rol": por_rol}
+
+
+def _permisos_de(usuario) -> dict:
+    """El mapa de permisos del usuario, memoizado en su propia instancia."""
+    memo = getattr(usuario, _ATRIBUTO_MEMO, None)
+    if memo is not None and memo["version"] == _VERSION_PERMISOS:
+        return memo["mapa"]
+    mapa = _cargar_permisos(usuario)
+    with contextlib.suppress(Exception):  # usuario sin __dict__ (raro, pero no truena)
+        setattr(usuario, _ATRIBUTO_MEMO, {"version": _VERSION_PERMISOS, "mapa": mapa})
+    return mapa
+
+
+def _permisos_del_rol_simulado(clave: str) -> dict:
+    """Permisos del rol que el super_admin está simulando ("ver como rol")."""
+    from cuentas.models.rol import Rol
+
+    rol = Rol.objects.filter(clave=clave).first()
+    return (rol.permisos or {}) if rol else {}
+
+
 def puede(usuario, modulo: str, permiso: str) -> bool:
     """Pre-S2b.1: consulta PermisoUsuario granular.
 
@@ -434,29 +508,21 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
     sim = getattr(usuario, "_rol_simulado", None)
     if sim:
         try:
-            from cuentas.models.rol import Rol
-            rol = Rol.objects.filter(clave=sim).first()
-            return bool(rol and permiso in (rol.permisos.get(modulo) or []))
+            permisos = _permisos_del_rol_simulado(sim)
+            return permiso in (permisos.get(modulo) or [])
         except Exception:
             return False
     try:
-        from cuentas.models.permiso_usuario import PermisoUsuario
+        mapa = _permisos_de(usuario)
+        par = (modulo, permiso)
         # Override individual (activo=False) revoca incluso permisos por rol extra.
-        revocado = PermisoUsuario.objects.filter(
-            usuario=usuario, modulo=modulo, permiso=permiso, activo=False
-        ).exists()
-        if revocado:
+        if par in mapa["revocados"]:
             return False
         # Activo individual → True directo.
-        if PermisoUsuario.objects.filter(
-            usuario=usuario, modulo=modulo, permiso=permiso, activo=True
-        ).exists():
+        if par in mapa["concedidos"]:
             return True
         # Fallback: roles extra del usuario (M2M Rol.permisos JSON).
-        return any(
-            permiso in (rol.permisos.get(modulo) or [])
-            for rol in usuario.roles_extra.all()
-        )
+        return par in mapa["por_rol"]
     except Exception:
         return False
 

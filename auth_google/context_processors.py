@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from lib.perezoso import perezoso
 
+
+@perezoso("google_oauth_configurado")
 def google_oauth_configurado(request) -> dict:
     try:
         from lib.google_oauth import GoogleOAuthConfig
