@@ -33,6 +33,8 @@ urlpatterns = [
     path("rutas/<int:pk>/reordenar", views.rutas_reordenar, name="rutas-reordenar"),
     path("rutas/<int:pk>/cancelar", views.rutas_cancelar, name="rutas-cancelar"),
     path("rutas/paradas/<int:pk>/mover", views.parada_mover, name="rutas-parada-mover"),
+    path("rutas/paradas/<int:pk>/indicaciones", views.parada_indicaciones,
+         name="rutas-parada-indicaciones"),
     path("mandados/<int:pk>/avanzar", views.mandado_avanzar, name="mandado-avanzar"),
     path("mandados/<int:pk>/destino", views.mandado_destino, name="mandado-destino"),
 ]

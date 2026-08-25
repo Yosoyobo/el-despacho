@@ -92,6 +92,71 @@ antes de tocarlos.
         </div>
     </div>
 
+    {% comment %}
+    Lo que se le pide al mapa. Son cosas que OSRM siempre supo hacer y a las
+    que nunca se les había puesto una perilla. Las exclusiones NO se combinan
+    (el mapa sólo trae precocidas las sueltas), por eso es un menú y no dos
+    casillas.
+    {% endcomment %}
+    <h2 class="mt-8 text-theme-xl font-medium text-gray-800 dark:text-gray-100">Cómo mide el mapa</h2>
+    <div class="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div>
+            <label for="evitar">Qué esquivar</label>
+            <select id="evitar" name="evitar">
+                {% for valor, etiqueta in opciones_evitar %}
+                <option value="{{ valor }}" {% if cfg.evitar == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Evitar casetas suele salir un poco más largo y más lento, pero sin
+                cobro. Sólo se puede elegir una: el mapa no tiene precocidas las
+                combinaciones.
+            </p>
+        </div>
+
+        <div>
+            <label for="factor_trafico">Factor de tráfico</label>
+            <input type="text" inputmode="decimal" id="factor_trafico" name="factor_trafico"
+                   value="{{ cfg.factor_trafico }}">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Multiplica los tiempos del mapa, que son de calle libre. 1.0 los deja
+                como vienen; 1.5 es hora pico de ciudad. No baja de 1.
+            </p>
+        </div>
+
+        <div>
+            <label for="modo">Con qué se reparte</label>
+            <select id="modo" name="modo" {% if not hay_bici %}data-sin-buscar{% endif %}>
+                {% for valor, etiqueta in opciones_modo %}
+                <option value="{{ valor }}" {% if cfg.modo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {% if hay_bici %}
+                El mapa de bicicleta está cargado en el servidor.
+                {% else %}
+                <span class="text-warning-600 dark:text-warning-400">El mapa de bicicleta
+                todavía no está cargado</span>, así que elegirla mediría como coche.
+                {% endif %}
+            </p>
+        </div>
+
+        <div>
+            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-300 p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:border-gray-700 dark:has-[:checked]:bg-brand-500/15">
+                <input type="checkbox" name="acera_del_cliente" value="1"
+                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500"
+                       {% if cfg.acera_del_cliente %}checked{% endif %}>
+                <span>
+                    <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">Llegar por la acera del cliente</span>
+                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                        Para no cruzar la avenida con la caja. Alarga un poco la ruta
+                        cuando toca dar vuelta.
+                    </span>
+                </span>
+            </label>
+        </div>
+    </div>
+
     <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50/60 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400">
         {% if mapa_vivo %}
         Las distancias son de calle, pero las horas siguen siendo <strong>estimadas</strong>:

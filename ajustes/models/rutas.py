@@ -1,8 +1,11 @@
 """ConfiguracionRutas — los números con los que el planeador estima la vuelta.
 
 Regla del proyecto: si algo se puede configurar, vive en un GUI de Gerencia.
-Estos cuatro estaban como constantes en `apps.el_pizarron.planeador` y Oscar
-pidió sacarlos (2026-08-23).
+Los primeros cuatro estaban como constantes en `apps.el_pizarron.planeador` y
+Oscar pidió sacarlos (2026-08-23). Los de abajo salieron del repaso del
+2026-08-24 a lo que el mapa (OSRM) sabe hacer y no se le estaba pidiendo:
+evitar casetas, evitar autopistas, llegar por la acera del cliente, y un factor
+de tráfico sobre unos tiempos que el mapa calcula a calle libre.
 
 Por qué importan: de la velocidad y del tiempo por parada salen las **horas
 estimadas** que ve el runner en su ruta. Con números que no se parecen a la
@@ -54,6 +57,54 @@ class ConfiguracionRutas(models.Model):
             "Tope de paradas por ruta. Nueve es lo que acepta el enlace de Google "
             "Maps con paradas intermedias; más que eso, el botón de «abrir en el "
             "mapa» deja fuera las últimas."
+        ),
+    )
+
+    # ── Cómo mide el mapa (OSRM) ──────────────────────────────────────────────
+    # Verificado contra el servidor: las exclusiones NO se combinan («Exclude
+    # flag combination is not supported»), así que es UNA a la vez y por eso es
+    # un menú y no dos casillas.
+    EVITAR = (
+        ("", "Nada — la ruta más rápida"),
+        ("toll", "Evitar casetas"),
+        ("motorway", "Evitar autopistas y vías rápidas"),
+        ("ferry", "Evitar transbordadores"),
+    )
+    MODOS = (
+        ("coche", "Coche o moto"),
+        ("bici", "Bicicleta"),
+    )
+
+    evitar = models.CharField(
+        max_length=12, choices=EVITAR, blank=True, default="",
+        help_text=(
+            "Qué esquivar al trazar la ruta. Evitar casetas suele salir un poco "
+            "más largo y más lento, pero sin cobro. Sólo se puede elegir una: el "
+            "mapa no tiene precocidas las combinaciones."
+        ),
+    )
+    acera_del_cliente = models.BooleanField(
+        default=False,
+        help_text=(
+            "Llegar por la acera donde está el cliente, para no cruzar la "
+            "avenida con la caja. Alarga un poco la ruta cuando toca dar vuelta."
+        ),
+    )
+    factor_trafico = models.DecimalField(
+        max_digits=3, decimal_places=1, default=Decimal("1.0"),
+        validators=[MinValueValidator(Decimal("1.0")), MaxValueValidator(Decimal("3.0"))],
+        help_text=(
+            "Multiplica los tiempos que calcula el mapa, que son de calle libre "
+            "y sin tráfico. 1.0 los deja como vienen; 1.5 es hora pico de "
+            "ciudad. No baja de 1: decir que se llega antes de lo que el mapa "
+            "cree es al revés de lo que pasa en la calle."
+        ),
+    )
+    modo = models.CharField(
+        max_length=8, choices=MODOS, default="coche",
+        help_text=(
+            "Con qué se reparte. La bicicleta necesita su propio mapa cargado en "
+            "el servidor; si no está, se mide como coche."
         ),
     )
 

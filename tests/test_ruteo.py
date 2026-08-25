@@ -145,17 +145,29 @@ def test_un_solo_punto_no_es_una_matriz():
     assert ruteo.matriz([]) is None
 
 
-def test_demasiados_puntos_se_recortan(monkeypatch):
-    """Una ruta de más de veinticinco paradas no existe en este negocio, y una
-    matriz enorme es una forma fácil de hacerse daño solo."""
+def test_muchos_puntos_NO_se_recortan(monkeypatch):
+    """Antes la matriz se recortaba al tope y devolvía menos filas que puntos
+    pedidos. Eso obliga a quien llama a adivinar cuáles faltan — y el planeador
+    no adivina: reparte paradas. Ahora se miden TODAS, en recta si son muchas.
+
+    Verificado contra el código sin arreglar: con el recorte, la matriz de 150
+    puntos traía sólo 100 filas.
+    """
     import urllib.request
 
     monkeypatch.setattr(urllib.request, "urlopen",
                         lambda *a, **k: (_ for _ in ()).throw(OSError("no")))
     monkeypatch.setattr(ruteo, "_recta", lambda a, b: 1.0)
 
+    # Por debajo del tope: matriz completa, como siempre.
     m = ruteo.matriz([(float(i), float(i)) for i in range(60)])
-    assert len(m["distancias"]) == ruteo.MAX_PUNTOS_MATRIZ
+    assert len(m["distancias"]) == 60
+
+    # Por encima: sigue completa, sólo cambia con qué se midió.
+    muchos = ruteo.matriz([(float(i), float(i)) for i in range(150)])
+    assert len(muchos["distancias"]) == 150
+    assert len(muchos["distancias"][0]) == 150
+    assert muchos["fuente"] == ruteo.FUENTE_RECTA
 
 
 # ── El caso raro que mentiría a la baja ────────────────────────────────────

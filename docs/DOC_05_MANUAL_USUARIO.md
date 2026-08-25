@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — Las rutas, con sus perillas y con «cómo llegar» (24 de agosto de 2026)
+
+Ya que el mapa de calles está en el servidor, se le pueden pedir cosas que antes
+no. Tres novedades.
+
+**1. Perillas nuevas en Gerencia → Ajustes → Rutas**, para que las horas se
+parezcan a la realidad de la ciudad y no a un promedio:
+
+| Perilla | Para qué |
+|---|---|
+| **Qué esquivar** | Casetas, autopistas o transbordadores. Evitar casetas suele salir un poco más largo y más lento, pero sin cobro. |
+| **Factor de tráfico** | Los tiempos del mapa son de calle libre. 1.0 los deja como vienen; 1.5 es hora pico de ciudad. |
+| **Llegar por la acera del cliente** | Para no cruzar la avenida con la caja. Alarga un poco la ruta cuando toca dar vuelta. |
+| **Con qué se reparte** | Coche o bicicleta. |
+
+Sólo se puede esquivar **una** cosa a la vez: el mapa no trae precocidas las
+combinaciones. Y la **bicicleta** avisa en pantalla que su mapa todavía no está
+cargado — mientras tanto mediría como coche.
+
+**2. Cada parada trae su «🧭 Cómo llegar».** Las indicaciones vienen escritas en
+español —«Da vuelta a la derecha en Av. Insurgentes», «Toma la salida»— con los
+metros de cada tramo, y el trazo dibujado por las calles en el mapa.
+
+**3. El pin que quedó lejos ahora se avisa.** Al fijar el lugar de un mandado, si
+el punto cae a más de 100 metros de cualquier calle, el sistema lo dice al
+guardar. No lo impide —a veces el destino está adentro de una nave o un predio—
+pero es la causa más común de una ruta con kilómetros que no cuadran.
+
+**Y la vuelta se arma mucho más rápido.** El planeador le preguntaba al mapa una
+vez por cada par de paradas; ahora pide todas las distancias de una sola vez. Los
+tiempos que ve el runner también salen del mapa, con sus vueltas y sus sentidos,
+en vez de calcularse con una velocidad promedio.
+
+---
+
 ## Novedades — El Chalán ya puede operar las automatizaciones (24 de agosto de 2026)
 
 **Preguntarle en vez de entrar a n8n**
@@ -5158,9 +5193,39 @@ kilómetros. Las que no tienen hora se acomodan por cercanía en los huecos. Cad
 parada dice **«Cita a las 10:00»** o, si no tiene, **«≈ 11:20»** de llegada
 estimada.
 
-Las horas y los kilómetros son **estimados**: se calculan en línea recta, sin
-tráfico. Sirven para decidir el orden de la vuelta, no para prometer un minuto
-exacto.
+Los kilómetros y las horas se calculan **por calles reales**, con sus vueltas y
+sus sentidos, usando el mapa que vive en el servidor. Siguen siendo **estimados**
+—el mapa no sabe del tráfico de hoy ni de que el portón tardó en abrir— pero ya
+no son una aproximación optimista. Si el mapa no estuviera disponible, el
+planeador vuelve a medir en línea recta y lo dice en *Ajustes → Rutas*.
+
+**Cómo llegar a cada parada**
+
+Cada parada tiene un botón **🧭 Cómo llegar**: abre las indicaciones escritas en
+español —«Da vuelta a la derecha en Av. Insurgentes», «Toma la salida»— con los
+metros de cada tramo, y el trazo por las calles dibujado en el mapa. Es para
+consultar antes de salir; para navegar en la calle están los botones de Waze,
+Google Maps y Apple Maps de más abajo.
+
+**Las perillas del cálculo** *(Gerencia → Ajustes → Rutas)*
+
+De estos números salen las horas que ve el repartidor, así que conviene que se
+parezcan a la ciudad real:
+
+| Perilla | Qué hace |
+|---|---|
+| **Velocidad, minutos por parada, hora de salida, tope de paradas** | Los supuestos de siempre. |
+| **Qué esquivar** | Casetas, autopistas o transbordadores. Sólo una a la vez: el mapa no trae precocidas las combinaciones. |
+| **Factor de tráfico** | Multiplica los tiempos del mapa, que son de calle libre. 1.0 los deja igual; 1.5 es hora pico. No baja de 1. |
+| **Llegar por la acera del cliente** | Evita cruzar la avenida con la caja. Alarga un poco la ruta cuando toca dar vuelta. |
+| **Con qué se reparte** | Coche o bicicleta. La bicicleta avisa si su mapa no está cargado — mientras tanto mediría como coche. |
+
+**Cuando el pin queda lejos de la calle**
+
+Al fijar el lugar de un mandado, si el punto cae a más de 100 metros de
+cualquier calle el sistema lo avisa al guardar. No lo impide (a veces el destino
+está adentro de una nave o un predio), pero es la causa más común de una vuelta
+con kilómetros que no cuadran.
 
 **Reacomodar**
 
