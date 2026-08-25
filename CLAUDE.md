@@ -7535,6 +7535,97 @@ n8n (configuración, fuera del repo, guía en `docs/RECETA-CFDI-POR-CORREO.md`),
 que los CFDI de proveedor generen egreso, y conectar «unir PDFs» y «convertir
 Office» a botones — las capacidades ya están, les falta dónde picarlas.
 
+### S-Latencia-Ago24 ✅ — El push sale de la petición y los permisos dejan de cobrarse por módulo (2026-08-24, VERSION 2026.08.44)
+
+Oscar mandó una captura de El Vigía: «hay DEMASIADA latencia en algunas cosas».
+`POST /recados/c/1/enviar` en **2832 ms** y `POST /proyectos/65/` en **1275 ms**.
+Medido contra producción antes de tocar nada, no era una causa sino **cuatro**, y
+ninguna se veía leyendo el código. Decisiones por AskUserQuestion: el push **fuera
+de la petición** y los context processors **perezosos**.
+
+**Cómo se midieron** (el método, que es lo reutilizable): el log de acceso de
+gunicorn ya trae los microsegundos (`%(D)s`, desde S-Vigia-NUC), así que un `awk`
+sobre `docker logs` da el ranking de rutas por latencia media con las rutas
+normalizadas. De ahí salieron los sospechosos; el desglose fino salió del `Client`
+de Django corriendo **dentro del contenedor** con `settings.DEBUG=True` y
+`connection.queries` agrupado por tabla. Es la única forma de ver un N+1: en el
+código no se ve, y el tiempo total no dice de dónde viene.
+
+| Ruta | ms medidos | consultas |
+|---|---|---|
+| `/sistema/aviso-deploy/` | 52 | **65** ← devuelve un div vacío, se pide cada 10 s |
+| `/recados/partials/bandeja` | 65 | 76 |
+| `/recados/c/1/` | 154 | 135 |
+| `/proyectos/65/` | 295 | **231** |
+
+**Las cuatro causas, con su arreglo:**
+
+1. **El push del Interfón se despachaba DENTRO de la petición.** `on_commit` no
+   basta: sus callbacks corren en el mismo request. Quien escribía un mensaje
+   esperaba a que Apple y Google acusaran recibo de los avisos **de los demás**,
+   en serie y **abriendo TLS nuevo cada vez** — medido desde el NUC: 160-230 ms
+   contra `web.push.apple.com`, 80-100 ms contra `fcm.googleapis.com`. Jorge tiene
+   **5 suscripciones activas** y Oscar 3: ocho handshakes ≈ los 2.8 s exactos.
+   Arreglo: **`lib/tareas_fondo.py`** (pool acotado de 8 hilos, cierra las
+   conexiones de Django al terminar —con `CONN_MAX_AGE=60` quedarían reservadas un
+   minuto—, nunca lanza, y **corre síncrono en las pruebas** vía
+   `TAREAS_EN_FONDO=False`). El registro en `InterfonoEntrega` se escribe **ANTES**
+   de mandar nada al fondo: lo que puede perderse en la ventana de un reciclado es
+   el aviso, nunca el rastro ni el dato. Aplicado en el chat y en los **10**
+   disparos de `push_handlers.py` (helper `_al_confirmar`).
+   Además, las suscripciones del mismo usuario ahora **reusan la conexión TLS**
+   (`webpush(..., requests_session=)`), que es donde se iba el tiempo.
+
+2. **`puede()` hacía dos consultas por llamada.** El context processor
+   `permisos_modulos` recorre los ~23 módulos del catálogo, y encima vistas y
+   plantillas repreguntan: **60 de las 231 consultas** del detalle de un proyecto
+   eran de la tabla de permisos, y el banner de deploy gastaba 46. Arreglo: leer
+   los permisos del usuario **una vez** (2 consultas: sus filas + las de sus roles)
+   y resolver en memoria, memoizado **en la instancia de `Usuario`**, que vive lo
+   que dura la petición — no es un caché compartido, así que no puede servirle
+   permisos viejos a nadie más. La única ventana en que mentiría es una petición
+   que MUTA permisos y los relee (el panel de El Directorio); la cierran signals
+   de `PermisoUsuario`, `Rol` y del M2M `roles_extra` (**`weak=False`**, §14).
+   La precedencia no cambia: revocado individual → concedido individual → rol.
+
+3. **Django corre los 16 context processors en cada petición**, aunque la
+   plantilla no toque una sola variable. Por eso un fragmento HTMX que no pinta
+   sidebar ni badges pagaba 64 consultas igual. Arreglo: **`lib/perezoso.py`**,
+   decorador `@perezoso("clave", …)` que envuelve los valores para que el cuerpo
+   no corra hasta que alguien los use. Aplicado a 9 context processors.
+   Dos cosas que NO son obvias y quedan con test:
+   - **`formato_hora` se queda inmediato a propósito**: fija el thread-local que
+     lee el filtro `hfmt`, o sea que su efecto ocurre aunque la plantilla nunca
+     nombre la variable. Diferirlo dejaría **todas** las horas en el formato
+     equivocado. Regla: un context processor con efectos secundarios no puede ser
+     perezoso.
+   - **Los contadores declaran `tipo=int`**. `SimpleLazyObject` sabe pintarse y
+     decir si es verdadero, pero **no compara ni suma**: `notificaciones_no_leidas
+     >= 1` truena con `TypeError`. Lo cazó un test ajeno
+     (`test_notificaciones_v10`) en la corrida completa, no la del archivo nuevo.
+     Para esos va `lazy(fn, int)`, que sí implementa las operaciones del tipo.
+
+4. **`_productos_calc()` precargaba `procesos` y `ventas` pero no `escalas`** — que
+   es justo lo que consultan `precio_efectivo`, `costo_efectivo`, `cantidad_efectiva`
+   y `piezas_efectivas` a través de `escala_activa`. **59 consultas** por la
+   omisión de una palabra en el prefetch. Con el test de mutación: 8 líneas de
+   producto pasan de **35 consultas a 8**.
+
+**18 tests** en `tests/taller/test_latencia_ago24.py`, los cuatro frentes
+**verificados contra el código sin arreglar** (revertir el prefetch → 35 vs 8;
+quitar el caché → 47 vs 2; quitar el perezoso → 2 vs 0; devolver el push al
+request → 2 rojos). Suite completa: **3407 pass, 1 skipped, 0 fallos**.
+
+**Deuda diseñada**: `_productos_calc()` sigue **recargando la lista en cada
+acceso** (`monto_calculado`, `productos_incluidos`, `utilidad`… cada uno rehace la
+consulta con sus prefetch): son ~4 consultas por acceso en vez de las 59 de antes,
+y memoizarlo se descartó a propósito porque el autosave del proyecto guarda y
+vuelve a leer en la misma petición — un memo ahí serviría el dinero viejo. El
+caché de permisos NO cubre el camino de «ver como rol» (sigue consultando `Rol`
+por llamada; es un modo de depuración). Y el polling en sí no se tocó: el banner y
+el semáforo se siguen pidiendo cada 10 s, ahora casi gratis; si algún día estorba,
+lo que corresponde es unificarlos en un solo endpoint, no espaciarlos.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

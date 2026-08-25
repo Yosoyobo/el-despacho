@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades — El sistema va más rápido (24 de agosto de 2026)
+
+**Mandar un mensaje ya es instantáneo**
+
+Enviar un mensaje en el chat tardaba casi tres segundos. No era el mensaje: se
+guardaba enseguida. Lo que tardaba era que el sistema se quedaba esperando a
+que Apple y Google confirmaran, uno por uno, que les había llegado la
+notificación a los demás — y con varios celulares registrados, eso se acumula.
+
+Ahora el mensaje se manda y la pantalla te responde de inmediato. Las
+notificaciones salen por su cuenta un instante después, igual que siempre.
+
+**Todas las páginas cargan más ligero**
+
+Cada vez que abrías cualquier pantalla, el sistema revisaba tus permisos de
+módulo por módulo, uno a uno, y volvía a preguntar lo mismo decenas de veces.
+Ahora los consulta una sola vez. La página de un proyecto hacía 231 preguntas a
+la base de datos para pintarse; ahora hace una fracción de eso.
+
+Lo mismo con las tarjetas de producto: el sistema volvía a preguntar por las
+opciones de volumen de cada tarjeta una y otra vez. Se nota sobre todo al
+guardar un proyecto con muchos productos.
+
+**Nada cambió de lugar.** Es la misma pantalla, los mismos permisos y los mismos
+avisos: sólo dejaron de hacerte esperar.
+
+---
+
 ## Novedades — El Chalán ya puede operar las automatizaciones (24 de agosto de 2026)
 
 **Preguntarle en vez de entrar a n8n**
