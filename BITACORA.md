@@ -12959,3 +12959,98 @@ tailnet**, así que desde el celular en la calle no abría.
 
 3591 pass, 1 skipped. Ruff limpio. Las 22 pruebas nuevas verificadas contra
 código mutado (sin el candado del proxy y sin el listado por default caen 4).
+
+---
+
+## S-Rutas-Descuadre — 2026-08-25 (VERSION 2026.08.46)
+
+**Reporte de Oscar:** cuatro capturas y una frase — «aquí algo no checa». Tres
+mandados con **Runner: Oscar · asignado manualmente** y la vuelta del día armada
+a nombre de **Alex**, con dos de esos mandados dentro. El tercero no aparecía en
+ninguna parte.
+
+### El diagnóstico, contra producción y antes de escribir código
+
+`ssh nuc-lc` + una consulta de sólo lectura al Taller. Lo que salió:
+
+| Dato | Valor |
+|---|---|
+| `ruta#1` | Alex Itzkowich · **despachada** · 2 paradas · creada **2026-08-24 04:23 UTC** |
+| parada 1 | `ninomeando` → tarea#18 «Test» · `runner=Oscar` · `runner_auto=False` |
+| parada 2 | `Stampa` → tarea#50 «Recoger el NUC» · `runner=Oscar` · `runner_auto=False` |
+| mandado#2 | «Entrega de playeras» · **`estado=cancelado`** · tarea#19 **`estado=pendiente`** |
+| correo de la ruta | **2026-08-25 05:54 UTC** — salió, y a la persona equivocada |
+
+Y la pieza que ordenó todo: **el código ya estaba bien**. `planeador.py` traía el
+fix de S-Rutas-Dueno y producción corría 2026.08.44, o sea con él. La ruta se
+creó **2026-08-23 22:23 local** y el commit del fix (`779a076f`) es de las
+**22:59** del mismo día: un fósil de treinta y seis minutos antes. Sin la marca
+de tiempo de la fila, el diagnóstico apuntaba al lugar equivocado.
+
+### Lo entregado
+
+**1. La parada vuelve con su dueño (y se dice antes de picar nada).**
+`paradas_con_dueno_ajeno` detecta; `devolver_a_su_dueno` mueve con `mover_parada`
+(recalcula las dos rutas), cancela la que se queda vacía, y devuelve el detalle
+con `ya_despachada` para que el mensaje **nombre a quién avisarle**. `planear_dia`
+lo corre antes de repartir. El aviso rojo vive en el panel sin necesidad de picar
+el botón: la ruta se ve perfectamente bien, y nadie arregla lo que no sabe que
+está roto.
+
+La razón de que no tuviera salida: `candidatos_del_dia` excluye lo ya ruteado y
+`tirar_borradores` sólo borra borradores. Una despachada mal armada era
+inamovible — apretar «Rehacer desde cero» y «Planear el día» no hacía nada, sin
+explicación. Estaba escrito como deuda diseñada del propio sprint; en producción
+se volvió el bug.
+
+**2. `dueno_de(tarea)` como única definición.** La regla («runner puesto a mano;
+`runner_auto=True` no cuenta») la necesitan las dos mitades del planeador. Dos
+copias de esa condición es exactamente cómo vuelven las dos verdades.
+
+**3. El reparto cancelado deja de ser invisible.** `repartos_cancelados` es el
+tercer grupo de `sueltos_del_dia`; `mandados.reactivar` es la salida que no
+existía (`sincronizar_mandado` respeta la cancelación «para siempre», así que un
+mandado cancelado por error era irrecuperable). El detalle de la tarea dice el
+estado del reparto **cuando contradice** al de la tarea. `mandado_avanzar` respeta
+`volver`, porque el botón vive en el planeador.
+
+**4. 17 tests** (`test_rutas_descuadre_ago25.py`), verificados contra el código
+sin arreglar: **los 17 fallan**. El fósil se arma a mano (`_ruta_ajena`) porque
+desde el código ya no se puede producir. Regresión del radio de impacto: 132
+verdes. Ruff limpio. Cero migraciones.
+
+### Incidente operativo — la segunda vez
+
+El trabajo empezó en el working tree compartido mientras **otra sesión commiteaba
+en él**. Su `commit -a` se llevó mi archivo de test al commit `d1bdaf0c`, que ya
+estaba en el **PR #103**: un test sin su código, o sea 17 rojos que iban a
+parecer culpa de su cambio de CI. Se cazó con `gh pr checks 103` (los tests
+estaban «pending», a minutos de fallar), se sacó el archivo de esa rama con un
+commit que lo explica, y el trabajo se mudó a `agent/rutas-descuadre` en su
+propio `git worktree`.
+
+**La señal a reconocer:** el HEAD del árbol compartido avanzando solo
+(`d9ed3062` → `d1bdaf0c`) mientras trabajas. **La regla de Ago12-B no es
+folclore.**
+
+### Verificación de las clases nuevas
+
+`static/css/tailwind.css` no está en el repo (lo compila el Dockerfile), así que
+la revisión visual local no es posible. En su lugar se comprobó que **cada clase
+introducida ya se usa en otras plantillas** (`bg-error-25` en 2, `border-error-300`
+en 25, `dark:bg-error-500/10` en 42…): Tailwind escanea todas las plantillas, así
+que el build de producción las incluye seguro. Lo que sí queda para verificar con
+el código en La Sede es cómo se ve el aviso en la pantalla real.
+
+### Deuda diseñada
+
+- La reconciliación mueve la parada aunque la ruta esté despachada —es la
+  decisión de Oscar aplicada a los datos— pero **no manda correo nuevo**: el
+  aviso es humano a propósito, porque un segundo correo automático sobre una
+  vuelta que cambió confunde más de lo que aclara.
+- Reactivar un reparto no reprograma la fecha: si la tarea quedó atrasada, sigue
+  atrasada.
+- La reconciliación no se invoca desde El Chalán: cambia la vuelta de alguien más
+  y conviene verla antes de aplicarla.
+- **Pendiente de Oscar:** decidir qué pasa con «Entrega de playeras» (reactivar
+  el reparto o cerrar la tarea). El botón ya está; la decisión es suya.

@@ -5,6 +5,54 @@
 
 ---
 
+## Novedades — El planeador ya no puede decir una cosa y el mandado otra (25 de agosto de 2026)
+
+**La parada vuelve con quien la trae asignada**
+
+Pasó esto: tres entregas decían **Runner: Oscar**, y la vuelta del día estaba
+armada a nombre de **Alex**, con dos de esas entregas dentro. Dos pantallas, dos
+respuestas, y encima a Alex le llegó por correo una vuelta que no era suya.
+
+Eso ya no se arma solo desde el 23 de agosto, pero **la que ya estaba armada mal
+no tenía forma de arreglarse**: apretabas «Rehacer desde cero», apretabas
+«Planear el día», y no pasaba nada — porque el planeador no vuelve a repartir lo
+que ya está en una ruta, y «rehacer» sólo tira las rutas que todavía no se han
+mandado. Sin salida y sin una explicación.
+
+Ahora:
+
+- **El planeador lo dice antes de que piques nada.** Si una parada está en la
+  ruta de quien no es su dueño, arriba del mapa sale un aviso rojo que la nombra,
+  dice en la ruta de quién está y quién la trae asignada.
+- **Al apretar «Planear el día», cada parada vuelve con su dueño.** No se borra
+  nada: la parada se mueve, las dos vueltas se recalculan y la ruta que se queda
+  sin trabajo se cancela.
+- **Y te dice a quién avisarle.** Si esa ruta ya se había mandado por correo, el
+  mensaje lo dice con nombre y apellido: esa persona tiene en su bandeja una
+  entrega que ya no le toca, y eso sólo se arregla hablándole.
+
+**Las entregas con el reparto cancelado dejan de desaparecer**
+
+La tercera entrega del caso no aparecía en ningún lado. Tenía el **reparto
+cancelado** pero la **tarea abierta**, así que se veía Pendiente —y Atrasada al
+día siguiente— mientras el planeador no la iba a considerar nunca. Nada en la
+pantalla lo decía, y no había manera de deshacerlo.
+
+- El planeador tiene un tercer apartado: **«Con el reparto cancelado»**, con un
+  botón **reactivar** por entrega. Reactivada, vuelve a entrar al reparto.
+- En la página de la tarea, la tarjeta del Runner ahora avisa cuando el reparto
+  está cancelado (y también el caso contrario: reparto entregado con la tarea
+  todavía abierta).
+- El botón te deja donde estabas: reactivar desde el planeador te regresa al
+  planeador, no a otra lista.
+
+**Con El Chalán:** puedes preguntarle *«¿qué mandados hay para hoy?»* o *«¿cómo
+va la ruta de hoy?»* y te responde con lo que el planeador ya guardó. Enderezar
+el reparto y reactivar una entrega se hacen desde el planeador, con el botón:
+son acciones que cambian la vuelta de alguien más y conviene verlas antes.
+
+---
+
 ## Novedades — El papeleo ya se VE, sin salir del sistema (24 de agosto de 2026)
 
 **Papeleo dejó de ser sólo un buscador**
@@ -5357,6 +5405,26 @@ dicen lo mismo.
 Si salió mal, marca la casilla **«Rehacer desde cero»** junto al botón y vuelve a
 planear: se tiran los borradores del día y se arma otra vez. Las rutas **ya
 despachadas no se tocan** — ésas ya están en manos de alguien.
+
+**Cuando una parada está en la vuelta de quien no le toca**
+
+Si el mandado dice una persona y la vuelta salió a nombre de otra, arriba del mapa
+aparece un **aviso rojo** que la nombra: en la ruta de quién está y quién la trae
+asignada. Al apretar **«Planear el día»** cada una **vuelve con su dueño** — la
+parada se mueve, las dos vueltas se recalculan y la que se queda sin trabajo se
+cancela. Nada se borra.
+
+Si esa ruta ya se había despachado, el mensaje te dice **a quién avisarle**: esa
+persona tiene un correo con una entrega que ya no le toca, y eso sólo se arregla
+hablándole.
+
+**Entregas con el reparto cancelado**
+
+Cancelar el reparto no cierra la tarea, así que la tarea sigue abierta mientras la
+entrega ya no va a salir. Esas aparecen abajo en **«Con el reparto cancelado»**,
+con un botón **reactivar** por entrega: reactivada, vuelve a entrar al reparto. Si
+la entrega de veras no va, cierra la tarea. En la página de la tarea, la tarjeta
+del Runner también lo avisa.
 
 **Las citas manda**
 

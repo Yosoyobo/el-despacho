@@ -7904,6 +7904,84 @@ por llamada; es un modo de depuración). Y el polling en sí no se tocó: el ban
 el semáforo se siguen pidiendo cada 10 s, ahora casi gratis; si algún día estorba,
 lo que corresponde es unificarlos en un solo endpoint, no espaciarlos.
 
+### S-Rutas-Descuadre ✅ — El descuadre que quedó vivo: la ruta decía Alex y el mandado decía Oscar (2026-08-25, VERSION 2026.08.46)
+
+Reporte de Oscar con cuatro capturas: tres mandados con **Runner: Oscar ·
+asignado manualmente** y la vuelta del día armada a nombre de **Alex**, con dos
+de esos mandados dentro. El tercero no aparecía en ninguna parte. Diagnosticado
+**contra producción antes de escribir una línea** (SSH al NUC, consulta de sólo
+lectura) y salieron **tres** cosas distintas, no una.
+
+- **El hallazgo que ordenó el sprint: el código ya estaba bien.** `planeador.py`
+  traía el fix de S-Rutas-Dueno y producción corría 2026.08.44 (o sea, con él).
+  Lo roto eran los **datos**: `ruta#1` se creó el **2026-08-23 22:23** local y el
+  commit del fix es de las **22:59** del mismo día — un fósil de treinta y seis
+  minutos antes. Sin la marca de tiempo de la fila el diagnóstico habría apuntado
+  al lugar equivocado.
+- **Bug 1 — el descuadre no tenía salida, y nada lo decía.** El fix evita
+  *crear* contradicciones nuevas; a las viejas no las repara ni las denuncia.
+  `candidatos_del_dia` excluye lo que ya está ruteado y `tirar_borradores` sólo
+  borra borradores, así que una ruta **despachada** mal armada es inamovible: se
+  aprieta «Rehacer desde cero», «Planear el día», y no pasa nada. Encima el
+  correo salió (2026-08-25 05:54 UTC): **Alex recibió una vuelta que no era
+  suya**. Era la deuda diseñada del propio sprint, y en producción se volvió el
+  bug.
+  - `paradas_con_dueno_ajeno(fecha)` detecta; `devolver_a_su_dueno(...)` mueve la
+    parada a la ruta del dueño con `mover_parada` (recalcula las dos), **cancela
+    la ruta que se queda vacía** y devuelve el detalle —incluido
+    `ya_despachada`— para que la pantalla pueda **nombrar a quién avisarle**.
+    `planear_dia` lo corre **antes** de repartir y lo expone en
+    `reconciliadas`.
+  - El aviso vive en el panel **sin picar nada**: la ruta se ve perfectamente
+    bien y nadie va a apretar un botón para arreglar algo que no sabe que está
+    roto.
+  - **`dueno_de(tarea)` es ahora la única definición** de «dueño» (runner puesto
+    a mano; `runner_auto=True` no cuenta). La usaban el reparto y ahora también
+    la reconciliación: dos copias de esa condición es exactamente cómo vuelven
+    las dos verdades.
+- **Bug 2 — un reparto cancelado dejaba su tarea viva y muda.** `mandado#2`
+  estaba `cancelado` con `tarea#19` en `pendiente`: se veía **Pendiente /
+  Atrasada** con su runner y su destino (pin incluido), el planeador la excluía
+  para siempre y **ninguna pantalla lo decía** — ni el detalle de la tarea, ni el
+  panel, donde no caía en ninguno de los dos grupos existentes. Y no había forma
+  de deshacerlo: `sincronizar_mandado` respeta la cancelación «para siempre».
+  - `repartos_cancelados(fecha)` es el tercer grupo de `sueltos_del_dia`
+    (excluye tarea terminal y archivada, donde no contradice nada) y el panel lo
+    pinta con un botón **reactivar** por entrega.
+  - `mandados.reactivar(mandado)` es la salida que faltaba: limpia la
+    cancelación y deja que `sincronizar_mandado` derive el estado, que es quien
+    sabe la regla. No adivina.
+  - El detalle de la tarea dice el estado del reparto cuando **contradice** al de
+    la tarea (cancelado con tarea abierta, y el caso inverso: entregado con
+    tarea abierta).
+  - `mandado_avanzar` pasa a respetar `volver` (`lib.navegacion`): el botón vive
+    en el planeador y mandar de ahí a la lista de Mandados saca al usuario de
+    donde estaba.
+- **17 tests** en `tests/taller/test_rutas_descuadre_ago25.py`, **verificados
+  contra el código sin arreglar: los 17 fallan**. Armar el fósil hay que hacerlo
+  a mano (`_ruta_ajena`) porque desde el código ya no se puede producir. Cero
+  migraciones.
+
+**Incidente operativo (segunda vez, y por eso queda escrito):** este trabajo
+empezó en el working tree compartido mientras **otra sesión commiteaba en él**.
+Su `commit -a` se llevó mi archivo de test al commit `d1bdaf0c`, que ya estaba en
+el PR #103 — un test sin su código, o sea 17 rojos que iban a parecer culpa de su
+cambio de CI. Se detectó mirando `gh pr checks` (estaban «pending»), se sacó el
+archivo de esa rama con un commit que lo explica, y el trabajo se mudó a
+`agent/rutas-descuadre` en su propio `git worktree`. **La regla de Ago12-B no es
+folclore: si hay dos sesiones, la segunda arranca en un worktree.** Y el HEAD del
+árbol compartido avanzando solo (`d9ed3062` → `d1bdaf0c`) es la señal a
+reconocer.
+
+**Deuda diseñada**: la reconciliación mueve la parada aunque la ruta esté
+despachada —es la decisión de Oscar («manda el dueño») aplicada a los datos, y el
+mensaje dice a quién avisarle— pero **no le manda correo nuevo a nadie**: el aviso
+es humano a propósito, porque un segundo correo automático sobre una vuelta que
+cambió confunde más de lo que aclara. Reactivar un reparto no reprograma la fecha
+(si la tarea quedó atrasada, sigue atrasada). Y la reconciliación no se invoca
+desde El Chalán: cambia la vuelta de alguien más y conviene verla antes de
+aplicarla.
+
 ### S-Papeleo-Visor ✅ — El papeleo se VE dentro de El Taller (2026-08-24, VERSION 2026.08.45)
 
 Oscar: «crea una sección para ver documentos, los de Paperless — cierra el bucle
