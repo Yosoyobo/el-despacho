@@ -20,10 +20,18 @@ Las cuatro decisiones de Oscar, y cómo se cumplen:
    `runner_abierta` (sale de donde está el runner y termina en la última
    parada).
 
-Todo con distancia en línea recta (`ruta._distancia` → el haversine de El
-Checador). No hay servicio de ruteo por calles porque cuesta: para decidir el
-ORDEN de 5-10 paradas alcanza, para prometerle una hora exacta al cliente no —
-y por eso las horas que calcula se llaman «estimadas» en la pantalla.
+Las distancias salen del mapa (OSRM en el NUC) y se piden **de una sola vez**:
+`ruteo.Tabla` trae la matriz completa del día —los orígenes de cada runner y
+todas las paradas— y luego se consulta como un diccionario. Antes se preguntaba
+de un par a la vez desde dentro de los bucles de optimización, que para doce
+paradas entre tres runners eran **3,508 consultas** (medido el 2026-08-24);
+ahora es una. Si el mapa no contesta, la Tabla se arma con el haversine de El
+Checador y el planeador sigue planeando: pierde precisión, no funcionalidad.
+
+Las horas salen de las duraciones que da el mapa —que sí saben de tipos de
+calle y límites de velocidad— multiplicadas por el factor de tráfico de
+Ajustes → Rutas, porque OSRM las calcula a calle libre. Sólo cuando no hay
+duración se cae a repartir los metros entre la velocidad promedio configurada.
 
 Ojo con los nombres: `apps.el_pizarron.ruta` es el ayudante de V1 (orden al
 vuelo + enlaces a las apps) y `apps.el_pizarron.models.ruta` son los modelos.
@@ -196,12 +204,24 @@ def sueltos_del_dia(fecha) -> dict:
 
 # ── Distancias ────────────────────────────────────────────────────────────────
 
-def _d(a, b) -> float:
-    """Metros entre dos puntos; 0 si alguno no se puede ubicar."""
-    from apps.el_pizarron.ruta import _distancia
+def _d(a, b, tabla=None) -> float:
+    """Metros entre dos puntos; 0 si alguno no se puede ubicar.
+
+    Con `tabla` es una consulta a un diccionario; sin ella pega al mapa, que es
+    lo caro. Todo lo que corre dentro de un bucle de optimización DEBE pasarla.
+    """
     if not a or not b:
         return 0.0
+    if tabla is not None:
+        return tabla.metros(a, b)
+    from apps.el_pizarron.ruta import _distancia
     return _distancia(a, b) or 0.0
+
+
+def tabla_de(puntos):
+    """La matriz de un conjunto de puntos, en una sola consulta al mapa."""
+    from lib import ruteo
+    return ruteo.Tabla([p for p in puntos if p])
 
 
 def _pt(parada):
@@ -209,16 +229,16 @@ def _pt(parada):
     return (lat, lng) if lat is not None and lng is not None else None
 
 
-def largo_de(origen, secuencia, *, cerrar: bool) -> float:
+def largo_de(origen, secuencia, *, cerrar: bool, tabla=None) -> float:
     """Metros del recorrido completo en ese orden."""
     puntos = [p for p in (_pt(x) for x in secuencia) if p]
     if origen:
         puntos.insert(0, origen)
     if len(puntos) < 2:
         return 0.0
-    total = sum(_d(a, b) for a, b in zip(puntos, puntos[1:], strict=False))
+    total = sum(_d(a, b, tabla) for a, b in zip(puntos, puntos[1:], strict=False))
     if cerrar and origen and puntos[-1] != origen:
-        total += _d(puntos[-1], origen)
+        total += _d(puntos[-1], origen, tabla)
     return total
 
 
@@ -241,14 +261,14 @@ def _tramos(secuencia):
     return tramos
 
 
-def _dos_opt_tramo(origen, secuencia, desde, hasta, *, cerrar):
+def _dos_opt_tramo(origen, secuencia, desde, hasta, *, cerrar, tabla=None):
     """2-opt dentro de un tramo, con los extremos clavados.
 
     Invierte sub-rutas mientras el recorrido total baje. Como sólo toca
     `[desde:hasta]` y ahí no hay anclas, ninguna cita se puede mover.
     """
     mejor = secuencia[:]
-    mejor_largo = largo_de(origen, mejor, cerrar=cerrar)
+    mejor_largo = largo_de(origen, mejor, cerrar=cerrar, tabla=tabla)
     hubo_mejora = True
     while hubo_mejora:
         hubo_mejora = False
@@ -256,14 +276,14 @@ def _dos_opt_tramo(origen, secuencia, desde, hasta, *, cerrar):
             for j in range(i + 1, hasta):
                 cand = mejor[:]
                 cand[i:j + 1] = reversed(cand[i:j + 1])
-                largo = largo_de(origen, cand, cerrar=cerrar)
+                largo = largo_de(origen, cand, cerrar=cerrar, tabla=tabla)
                 if largo < mejor_largo - 0.5:  # medio metro: evita zumbido
                     mejor, mejor_largo = cand, largo
                     hubo_mejora = True
     return mejor
 
 
-def _ordenar_con_citas(origen, paradas, *, cerrar: bool):
+def _ordenar_con_citas(origen, paradas, *, cerrar: bool, tabla=None):
     """Ordena respetando las citas: anclas en orden de reloj, el resto donde
     menos estorbe, y pulido sólo dentro de los tramos libres."""
     ubicables = [p for p in paradas if _pt(p)]
@@ -276,19 +296,20 @@ def _ordenar_con_citas(origen, paradas, *, cerrar: bool):
     # Cada parada libre entra donde el recorrido crezca menos. Se procesan de la
     # más lejana al origen a la más cercana: mete primero las difíciles, que son
     # las que de verdad condicionan el trazo.
-    libres.sort(key=lambda p: -_d(origen, _pt(p)) if origen else 0)
+    libres.sort(key=lambda p: -_d(origen, _pt(p), tabla) if origen else 0)
     for libre in libres:
         mejor_pos, mejor_costo = len(secuencia), None
         for pos in range(len(secuencia) + 1):
             cand = secuencia[:pos] + [libre] + secuencia[pos:]
-            costo = largo_de(origen, cand, cerrar=cerrar)
+            costo = largo_de(origen, cand, cerrar=cerrar, tabla=tabla)
             if mejor_costo is None or costo < mejor_costo:
                 mejor_pos, mejor_costo = pos, costo
         secuencia.insert(mejor_pos, libre)
 
     for desde, hasta in _tramos(secuencia):
         if hasta - desde > 1:
-            secuencia = _dos_opt_tramo(origen, secuencia, desde, hasta, cerrar=cerrar)
+            secuencia = _dos_opt_tramo(origen, secuencia, desde, hasta,
+                                       cerrar=cerrar, tabla=tabla)
 
     # Las que no se pueden ubicar no se pierden: van al final, en su orden.
     return secuencia + sin_ubicar
@@ -297,10 +318,26 @@ def _ordenar_con_citas(origen, paradas, *, cerrar: bool):
 # ── Horas estimadas ───────────────────────────────────────────────────────────
 
 def _minutos_de(metros: float) -> int:
+    """Minutos a la velocidad promedio configurada. El respaldo de siempre."""
     return int(round((metros / 1000.0) / _cfg().velocidad_kmh * 60)) if metros else 0
 
 
-def estimar_horas(origen, secuencia, *, inicio: time | None = None):
+def _minutos_viaje(a, b, metros: float, tabla=None) -> int:
+    """Cuánto se tarda entre dos puntos.
+
+    Con la duración del mapa cuando la hay: sabe de tipos de calle y límites de
+    velocidad, y ya viene multiplicada por el factor de tráfico. Repartir los
+    metros entre una velocidad plana ignora todo eso — medido Zócalo→Satélite,
+    el mapa dice 24 minutos y la velocidad plana decía 49.
+    """
+    if tabla is not None and a and b:
+        segundos = tabla.segundos(a, b)
+        if segundos is not None:
+            return int(round(segundos / 60.0))
+    return _minutos_de(metros)
+
+
+def estimar_horas(origen, secuencia, *, inicio: time | None = None, tabla=None):
     """Llegada estimada a cada parada. Devuelve `[(parada, hora, metros)]`.
 
     Si una parada tiene cita y se llega antes, se espera: la hora que se muestra
@@ -319,8 +356,8 @@ def estimar_horas(origen, secuencia, *, inicio: time | None = None):
     salida = []
     for parada in secuencia:
         punto = _pt(parada)
-        metros = _d(anterior, punto) if (anterior and punto) else 0.0
-        reloj += timedelta(minutes=_minutos_de(metros))
+        metros = _d(anterior, punto, tabla) if (anterior and punto) else 0.0
+        reloj += timedelta(minutes=_minutos_viaje(anterior, punto, metros, tabla))
         cita = parada.get("hora")
         if cita:
             hora_cita = datetime(2000, 1, 1, cita.hour, cita.minute)
@@ -353,7 +390,7 @@ def _origen_para(runner, modo: str, sede):
     return None, ""
 
 
-def _repartir(candidatos, contextos):
+def _repartir(candidatos, contextos, *, tabla=None):
     """Reparte las paradas entre los runners por inserción más barata.
 
     `contextos` es `{runner_pk: {"runner", "origen", "cerrar", "paradas", "acepta"}}`.
@@ -381,11 +418,14 @@ def _repartir(candidatos, contextos):
                 continue
             if len(ctx["paradas"]) >= tope:
                 continue
-            antes = largo_de(ctx["origen"], ctx["paradas"], cerrar=ctx["cerrar"])
+            antes = largo_de(ctx["origen"], ctx["paradas"],
+                             cerrar=ctx["cerrar"], tabla=tabla)
             tentativa = _ordenar_con_citas(
                 ctx["origen"], [*ctx["paradas"], parada], cerrar=ctx["cerrar"],
+                tabla=tabla,
             )
-            despues = largo_de(ctx["origen"], tentativa, cerrar=ctx["cerrar"])
+            despues = largo_de(ctx["origen"], tentativa,
+                               cerrar=ctx["cerrar"], tabla=tabla)
             # El costo es lo que CRECE la ruta, más un empujón por carga para
             # que el reparto quede parejo y no todo con el más cercano.
             costo = (despues - antes) + len(ctx["paradas"]) * 250
@@ -398,7 +438,7 @@ def _repartir(candidatos, contextos):
 
     for ctx in contextos.values():
         ctx["paradas"] = _ordenar_con_citas(
-            ctx["origen"], ctx["paradas"], cerrar=ctx["cerrar"],
+            ctx["origen"], ctx["paradas"], cerrar=ctx["cerrar"], tabla=tabla,
         )
     return sobrantes
 
@@ -493,7 +533,13 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
         return {"rutas": [], "sobrantes": [], "sin_ubicar": sin_ubicar,
                 "sin_runner": True, "sin_permiso": []}
 
-    sobrantes = _repartir(libres, contextos)
+    # UNA matriz para el día entero: los orígenes de cada runner y todas las
+    # paradas. De aquí en adelante nadie vuelve a pegarle al mapa.
+    tabla = tabla_de(
+        [ctx["origen"] for ctx in contextos.values()] + [_pt(c) for c in ubicables]
+    )
+
+    sobrantes = _repartir(libres, contextos, tabla=tabla)
 
     rutas = []
     with transaction.atomic():
@@ -512,7 +558,7 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
             ruta.origen_lng = ctx["origen"][1] if ctx["origen"] else None
             ruta.origen_etiqueta = ctx["etiqueta"][:200]
             ruta.save(update_fields=["origen_lat", "origen_lng", "origen_etiqueta"])
-            _persistir(ruta, ctx["paradas"])
+            _persistir(ruta, ctx["paradas"], tabla=tabla)
             rutas.append(ruta)
 
     _emitir("ruta.planeada", {
@@ -520,11 +566,15 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
         "paradas": sum(r.total_paradas for r in rutas),
         "sin_ubicar": len(sin_ubicar), "sobrantes": len(sobrantes),
         "sin_permiso": [u.pk for u in sin_permiso],
+        "fuente": tabla.fuente,
     })
     return {
         "rutas": rutas, "sobrantes": sobrantes,
         "sin_ubicar": sin_ubicar, "sin_runner": False,
         "sin_permiso": sin_permiso,
+        # `calles` o `recta`: la pantalla lo dice, porque de ahí depende si las
+        # horas que verá el runner son de calle o a vuelo de pájaro.
+        "por_calles": tabla.por_calles,
     }
 
 
@@ -543,7 +593,7 @@ def _ruta_viva(fecha, runner, origen_modo, sede, actor):
     )
 
 
-def _persistir(ruta, secuencia):
+def _persistir(ruta, secuencia, *, tabla=None):
     """Escribe las paradas de la ruta en su orden y recalcula tiempos.
 
     Las que ya existían se actualizan (no se borran y se recrean): si se borraran
@@ -553,7 +603,9 @@ def _persistir(ruta, secuencia):
     from apps.el_pizarron.models.ruta import ParadaRuta
 
     origen = ruta.origen_punto
-    estimadas = estimar_horas(origen, secuencia)
+    if tabla is None:
+        tabla = tabla_de([origen] + [_pt(p) for p in secuencia])
+    estimadas = estimar_horas(origen, secuencia, tabla=tabla)
     for i, (parada, hora, metros) in enumerate(estimadas, start=1):
         mandado = parada["mandado"]
         ParadaRuta.objects.update_or_create(
@@ -568,7 +620,8 @@ def _persistir(ruta, secuencia):
                 "distancia_desde_anterior_m": metros,
             },
         )
-    ruta.distancia_m = int(largo_de(origen, secuencia, cerrar=ruta.es_redonda))
+    ruta.distancia_m = int(largo_de(origen, secuencia,
+                                    cerrar=ruta.es_redonda, tabla=tabla))
     ruta.save(update_fields=["distancia_m"])
     return ruta
 
@@ -585,12 +638,14 @@ def recalcular(ruta):
         "etiqueta": p.etiqueta, "hora": p.hora_cita,
     } for p in paradas]
     origen = ruta.origen_punto
-    estimadas = estimar_horas(origen, secuencia)
+    tabla = tabla_de([origen] + [_pt(p) for p in secuencia])
+    estimadas = estimar_horas(origen, secuencia, tabla=tabla)
     for parada, (_, hora, metros) in zip(paradas, estimadas, strict=False):
         parada.llegada_estimada = hora
         parada.distancia_desde_anterior_m = metros
         parada.save(update_fields=["llegada_estimada", "distancia_desde_anterior_m"])
-    ruta.distancia_m = int(largo_de(origen, secuencia, cerrar=ruta.es_redonda))
+    ruta.distancia_m = int(largo_de(origen, secuencia,
+                                    cerrar=ruta.es_redonda, tabla=tabla))
     ruta.save(update_fields=["distancia_m"])
     return ruta
 

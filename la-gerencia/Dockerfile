@@ -30,6 +30,7 @@ COPY proximamente/ /app/proximamente/
 COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
 COPY campanas/ /app/campanas/
+COPY papeleo/ /app/papeleo/
 # S2b.3: la app `apps.tesoreria` vive en El Taller, pero La Gerencia
 # importa el modelo CentroDeCosto + el form para su CRUD admin en
 # /catalogos/. Y como Tesorería tiene FK a `cartera.Cliente` y

@@ -38,6 +38,9 @@ EventoTipo = Literal[
     "chalan.aprendizaje_destilado",
     "chalan.analisis_negocio",
     "chalan.conocimiento_destilado",
+    # Prender/apagar/crear una tarea que corre sola (n8n) desde La Gerencia.
+    "automatizacion.interruptor",
+    "automatizacion.creada",
     "tarea.creada",
     "tarea.completada",
     "tarea.eliminada",
@@ -139,6 +142,11 @@ EventoTipo = Literal[
     "site.integracion_fallo",
     # La Limpieza a mano desde El Vigía o El Site (LC 2026-08-23).
     "site.limpieza",
+    # El archivo de papeleo (Paperless), S-Papeleo-V1.
+    "papeleo.ligado",
+    "papeleo.desligado",
+    "papeleo.subido",
+    "ajuste.papeleo_configurado",
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",

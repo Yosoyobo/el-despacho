@@ -1,0 +1,49 @@
+{% comment %}
+Modal HTMX (Wave 5) con las indicaciones giro a giro de UNA parada.
+Las arma el mapa del NUC y se traducen al español en `lib.ruteo._frase`.
+Si el mapa no contesta se dice, y quedan los botones de siempre (Waze,
+Google Maps, Apple Maps) que nunca dependieron de nosotros.
+{% endcomment %}
+{% load horas %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="modal-alto relative mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div class="min-w-0">
+                <h2 class="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Cómo llegar a {{ parada.etiqueta|default:parada.mandado.tarea.titulo }}
+                </h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Desde {{ desde }}
+                    {% if datos %} · {{ datos.metros|floatformat:0 }} m · aprox. {{ datos.segundos|floatformat:0 }} s{% endif %}
+                </p>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+            {% if datos and datos.pasos %}
+            <ol class="space-y-2">
+                {% for paso in datos.pasos %}
+                <li class="flex items-start gap-3 rounded-lg border border-gray-200 p-2.5 dark:border-gray-800">
+                    <span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">{{ forloop.counter }}</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm text-gray-800 dark:text-gray-100">{{ paso.texto }}</p>
+                        {% if paso.metros %}
+                        <p class="text-xs text-gray-400 dark:text-gray-500">{{ paso.metros }} m</p>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            {% include "_componentes_tailadmin/_empty_state.html" with titulo="No se pudieron armar las indicaciones" descripcion="El mapa no contestó, o a esta parada le falta el punto en el mapa. Los botones de Waze y Google Maps siguen sirviendo." icono="alert" %}
+            {% endif %}
+        </div>
+
+        <footer class="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">Cerrar</button>
+        </footer>
+    </div>
+</div>

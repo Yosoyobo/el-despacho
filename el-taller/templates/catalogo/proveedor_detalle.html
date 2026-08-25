@@ -144,6 +144,10 @@ botones llevan sus propios <form> y no se pueden anidar).{% endcomment %}
     </div>
 </section>
 
+{% comment %}Su papeleo. El botón de desligar va por HTMX, así que convive con
+el formulario de autoguardado de arriba sin anidarse.{% endcomment %}
+{% if puede_ver_papeleo %}<div class="mt-6">{% include "papeleo/_recuadro.html" %}</div>{% endif %}
+
 {# Indicador "● Sin guardar" al editar; el OOB del autoguardado lo regresa a ✓/✕. #}
 <script>
 (function () {
@@ -174,6 +178,8 @@ botones llevan sus propios <form> y no se pueden anidar).{% endcomment %}
             </div>
         </section>
         {% include "cartera/_ubicacion.html" with nombre=proveedor.razon_social direccion=proveedor.direccion direccion_fiscal=proveedor.direccion_fiscal fiscal_igual=proveedor.fiscal_igual ultima_visita=ultima_visita %}
+
+        {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" %}{% endif %}
         <section>
             <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Productos</h2>
             <div class="ta-card">

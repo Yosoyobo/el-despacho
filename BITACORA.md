@@ -12308,6 +12308,316 @@ corren; crear se hace en n8n, donde se puede probar antes de prenderlo.
 n8n (configuración, fuera del repo), que los CFDI de proveedor generen egreso, y
 conectar «unir PDFs» y «convertir Office» a botones.
 
+
+---
+
+## S-Papeleo-V1 — 2026-08-24 (VERSION 2026.08.42)
+
+Oscar subió un documento de prueba a Paperless y preguntó **«¿y luego?»**. El
+reconocimiento contestó la pregunta antes de escribir una línea: Paperless
+llevaba un día de pie y era **el único de los cuatro servicios del NUC que seguía
+desconectado**. Gotenberg arma los PDF, OSRM mide las rutas, n8n se consulta
+desde El Chalán; de Paperless, El Despacho sólo sabía *si responde*.
+
+Se verificó en vivo antes de diseñar: la API contesta por el tailnet, su papeleo
+está detrás de credenciales (401 sin ellas), y **existen** la búsqueda
+full-text, la subida y `/api/token/` — este último es el que permitió que la
+pantalla canjee usuario y contraseña por el token en lugar de mandar a alguien a
+buscarlo a otra app.
+
+**Lo que Oscar decidió**: los tres bloques (buscador, ligado a entidades, buzón)
+y **todo configurable desde el GUI de Gerencia**. A media entrega pidió además
+que El Chalán pudiera **crear flujos de n8n** — «a ver qué puede hacer con los
+guardrails que pusimos».
+
+### La lección de Ago12-B, aplicada a tiempo
+
+Mientras exploraba, **otra sesión commiteó en el mismo árbol**: su `927e9fd`
+entró a los 26 segundos de mi último comando. Ese es exactamente el escenario que
+costó rehacer un sprint el 13 de agosto. Se creó un `git worktree` propio
+(`agent/paperless`) **desde el HEAD de esa rama y no desde `main`**, para
+construir encima de `lib/n8n.py` y del patrón de servicios que acababa de entrar
+— así el merge final no pelea por los mismos archivos.
+
+### Las decisiones que valen más que el código
+
+**La liga vive en nuestra base, no en las etiquetas de Paperless.** Para pintar
+la ficha de un cliente hay que saber qué papeleo tiene; del otro lado, cada ficha
+tendría que preguntarle a Paperless y se rompería cuando el archivo esté caído.
+Es el criterio de El Almacén. El título se copia, así que borrar el documento
+deja una fila legible en vez de un número huérfano.
+
+**El ligado automático es cobarde a propósito.** Sólo liga cuando no hay duda: si
+el texto menciona dos clientes, deja el documento sin dueño **y dice por qué**.
+Uno sin ligar se arregla en diez segundos; uno en la ficha del cliente equivocado
+no lo nota nadie hasta que es caro.
+
+**Los constraints son la garantía, no el código.** `CheckConstraint` de una sola
+entidad + **tres** `UniqueConstraint` parciales, uno por FK: uno solo con las
+tres columnas dejaría pasar duplicados, porque en Postgres NULL nunca es igual a
+NULL. Y un mismo documento SÍ puede ser del cliente **y** de su proyecto.
+
+**Permiso propio, no el de Ajustes.** Leer contratos no es configurar el
+despacho, y hay quien necesita lo uno sin lo otro en los dos sentidos. Sólo
+super_admin de arranque: quién lee el papeleo lo decide Oscar en El Directorio.
+
+**Dos direcciones que no son la misma.** El contenedor habla por la red de Docker
+y el navegador necesita la del tailnet. Confundirlas da el bug obvio —todo
+funciona del lado del servidor y el enlace no abre—, así que `url_web` devuelve
+**vacío** antes que un enlace que no sirve, y la pantalla lo dice.
+
+**Nada promete que el documento ya quedó archivado.** `subir()` devuelve el id de
+la TAREA: cuando la llamada regresa, el documento no existe todavía porque su OCR
+corre después. Decir «ya quedó» sería mentir por unos minutos.
+
+### El Chalán creando flujos: se revirtió una decisión de horas antes
+
+`927e9fd` había dejado crear fuera **a propósito**, y su objeción sigue siendo
+cierta: un modelo inventando un grafo de n8n produce, casi siempre, algo que se
+ve bien y no corre. No se abrió a pelo — se abrió con tres trancas:
+
+1. **Nace apagada, siempre**, con candado propio: si alguien agregara
+   `active: True` al cuerpo, el flujo empezaría a escribirle a clientes antes de
+   que nadie lo mire y **nada en la pantalla lo delataría**.
+2. **Se revisa y no se miente.** n8n **guarda sin chistar** un nodo cuyo tipo no
+   existe, así que «creada con éxito» no significa nada por sí solo. `revisar()`
+   avisa de tipos desconocidos, de un flujo que nada arranca, de pasos sin
+   conectar y de dos pasos con el mismo nombre (las conexiones son por nombre).
+3. **Recetas** con la forma de los nodos y la `typeVersion` verificadas contra el
+   n8n del NUC (**1.70.1**, consultado en vivo): una versión más alta que la
+   instalada deja el nodo roto, y ése es el error que nadie nota hasta que el
+   flujo no corre.
+
+Con eso, el peor caso de una invención es un borrador apagado y roto que alguien
+borra en dos clics, con un resumen que ya avisó qué revisar.
+
+`test_crear_flujos_no_esta_expuesto` se **reescribió**, no se borró: fijaba el
+contrato que este cambio invierte, y su reemplazo explica por qué cambió.
+
+### Lo que cazaron los candados del repo
+
+- **Bug C (§14)**: un `{# … #}` multilínea mío en la ficha del proveedor. Es el
+  que ha tumbado deploys antes.
+- **El candado de Novedades**: exigió su bloque al bumpear `VERSION_FECHA`.
+- **Un include en la variante equivocada**: la ficha del proveedor tiene DOS
+  (editable y solo lectura) y el recuadro cayó sólo en la de solo lectura — el
+  super_admin ve la otra. Lo cazó el test que pide la página, no el que lee la
+  plantilla.
+- **Formularios anidados**: el sidebar de la ficha del proyecto vive dentro del
+  formulario de autoguardado, y un `<form>` dentro de otro queda muerto **sin que
+  nada lo avise**. El botón de desligar pasó a HTMX y hay un test que lo exige.
+
+### Tests
+
+~104 nuevos (`tests/test_papeleo.py` 27, `tests/taller/test_papeleo_pantallas.py`
+26, `tests/gerencia/test_papeleo_ajustes.py` 10,
+`tests/taller/test_crear_automatizacion.py` 27, más los de regresión). Los dos
+del guardrail de n8n **verificados contra el código mutado**: sin la revisión de
+tipos, fallan. Ruff limpio.
+
+### Pasos manuales (Oscar)
+
+1. **Gerencia → Papeleo**: pegar la llave (o teclear usuario y contraseña de
+   Paperless y que la consiga) y la **dirección pública**
+   `http://100.121.244.5:8204` — sin ella los enlaces a un documento no abren.
+2. **Los Ajustes → «Papeleo por correo»**: el token de entrada, con el mismo
+   valor del lado de n8n, si se quiere el buzón.
+3. **La llave de n8n**, que sigue pendiente del sprint anterior: sin ella El
+   Chalán no puede ni ver ni crear automatizaciones.
+
+### Deuda diseñada
+
+`lib/nombres.py` duplica a propósito el criterio de comparación de nombres de
+`el_dictado/ejecutores/basicos.py` (ese módulo vive en una app que La Gerencia no
+instala); unificarlo es moverlo allá con la suite de los ejecutores como red, y
+no se hizo para no meterle riesgo en un sprint que ya toca cuatro frentes. El
+**buzón IMAP nativo** de Paperless (`mail_rules`) no se expone: duplicaría su UI
+de cuentas de correo. `avisar_al_entrar` se guarda pero todavía no manda el aviso
+(falta el hookpoint del Interfón). Y el **ligado automático no corre al entrar
+por el buzón**: cuando el documento llega su OCR no ha corrido y no hay texto que
+leer — hace falta un cron que lo repase después.
+
+---
+
+## S-NUC-Cierre — 2026-08-24 (VERSION 2026.08.43)
+
+Cierra el arco del NUC. Rama `agent/nuc-cierre`, **basada en `agent/paperless`**
+para que S-Papeleo-V1 y esto aterricen en el mismo deploy.
+
+### Lo primero: casi construyo lo mismo dos veces
+
+Iba a levantar el GUI de Paperless y el catálogo de recetas de n8n —los dos
+puntos que Oscar pidió— sin saber que **otra sesión los había construido ese
+mismo día** en el worktree `agent/paperless`: pushed, sin mergear, invisible en
+`git log` de `main`. Lo cazó `memory/regla-revisar-worktrees-antes-de-disenar`
+al ir a leer la memoria del proyecto antes de diseñar.
+
+Consecuencia práctica: mi `lib/paperless.py` (183 líneas) se **descartó entero**
+a favor del suyo (338, con `url_publica`, `canjear_token`, etiquetas y la
+distinción entre la dirección interna y la pública), y mis capacidades
+`buscar_archivo` / `cuanto_hay_archivado` a favor de su `buscar_papeleo`. Lo que
+sobrevivió de lo mío es lo que nadie más tenía.
+
+### Entregado
+
+- **Pantalla de Automatizaciones** (`/ajustes/automatizaciones/`) — era lo único
+  que faltaba de verdad. Lista con **disparador, estado, última corrida** e
+  interruptor; catálogo de recetas (`lib/n8n_plantillas.catalogo()`) que se
+  instalan con un nombre y **nacen apagadas**; últimas corridas; enlace a n8n.
+  Renglón propio en el menú de La Gerencia + botón en el panel de Ajustes.
+- **El Chalán alcanza las cuatro piezas**: `distancia_entre` y
+  `estado_herramientas` (lecturas), `generar_pdf_cotizacion`, `convertir_a_pdf`
+  y `archivar_documento` (ejecutores, los tres lugares del contrato).
+- **La Bóveda por temas**: `GRUPOS_CREDENCIAL` (6) pasa a ser la fuente y
+  `SLOTS_CREDENCIAL` se deriva — cero cambios para lo que ya la consumía.
+- **Roadmap de la ventana de mantenimiento** actualizado a 5 de 7 (§4 #23), con
+  el video de la espera intacto.
+- Eventos nuevos: `automatizacion.interruptor`, `automatizacion.creada`.
+
+### Bugs propios cazados al integrar
+
+1. **Mis handlers tenían la firma equivocada.** El registro llama
+   `fn(args, usuario)`; yo los escribí `(usuario, **kw)`. Mis pruebas los
+   llamaban directo con **mi** convención, así que salían verdes y habrían
+   fallado en producción con el primer argumento entrando como usuario. Ahora
+   hay un test que los ejerce **por el registro**, que es el camino real.
+2. **`emitir()` toma un `EventoPortavoz`, no `(str, dict)`.** Lo escribí con la
+   forma de otro proyecto; lo cazó leer los usos vecinos antes de correr nada.
+3. **`archivar_documento` prometía de más**: `paperless.subir()` devuelve el id
+   de la TAREA y el OCR corre después. Decir «ya quedó archivado» es mentir por
+   unos minutos, así que el resumen dice «va camino al archivo».
+
+### Candados nuevos
+
+- `tests/taller/test_chalan_alcanza_todo.py` recorre `servicios.PIEZAS` y exige
+  capacidad declarada por pieza. Instalar algo y no conectarlo es el error que se
+  cometió hoy con **tres de cuatro**.
+- Y un test que revisa que ningún comando del catálogo tenga un `gating`
+  inexistente: `comandos_para` cae a `None` y **se lo ofrece a cualquiera**. Se
+  ve bien y abre una puerta.
+- `tests/gerencia/test_automatizaciones_gui.py` (15), **verificados contra código
+  mutado**: si la vista da por hecho que n8n aceptó, o deja pasar una receta
+  inventada, caen dos.
+
+### Números
+
+3503 pass, 1 skipped (suite completa, 3:12). Ruff limpio sobre todo el repo.
+Candados de comentarios (Bug C §14) y de Novedades verdes.
+
+### Deuda diseñada
+
+La pantalla **no edita** el contenido de un flujo — eso es n8n, y duplicar su
+editor sería peor que no tenerlo. Las recetas se instalan con sus valores por
+default (los parámetros se ajustan allá). `archivar_documento` sólo archiva
+cotizaciones: una factura sube su CFDI por su propio camino. Y el flujo del
+buzón sigue pidiendo que alguien elija la cuenta de correo en n8n — sus
+credenciales viven allá y no hay forma de traerlas desde aquí.
+---
+
+# BITÁCORA — S-OSRM-GUI (2026-08-24, VERSION 2026.08.42)
+
+> Rama `agent/osrm-gui` en su propio `git worktree` — el árbol principal tenía
+> otro sprint sin commitear (regla de Ago12-B). Cierra el pedido de Oscar:
+> «el software de rutas que instalamos SEGURO tiene MILES de ajustes y opciones
+> que podría usar el taller y la gerencia en GUI, repasa» + su decisión
+> **«Todo, incluido lo grande»**.
+
+## La premisa había que corregirla, y se corrigió con datos
+
+No hay miles de opciones. OSRM expone **6 servicios** (`route`, `table`,
+`nearest`, `match`, `trip`, `tile`) y ~15 parámetros de ejecución. **Lo grande
+está horneado**: el perfil (coche/bici/pie), la velocidad de cada tipo de calle
+y las penalizaciones por vuelta se deciden al COCINAR el mapa, no al pedir la
+ruta. Se le enseñó el inventario real antes de elegir, y con eso eligió todo.
+
+**Todo se probó contra el servidor vivo antes de escribir una línea** — desde
+dentro de la red de Docker, porque el puerto no sale al tailnet. De ahí salió el
+hallazgo que definió la pantalla: **`exclude` NO combina**. El perfil declara
+`excludable = Sequence { Set{'toll'}, Set{'motorway'}, Set{'ferry'} }`: tres
+conjuntos de UNO. Pedir `toll,motorway` devuelve `InvalidValue`. Por eso la GUI
+ofrece un **menú de una sola opción** y no dos casillas que producirían un error
+que nadie sabría leer.
+
+## Lo que valía más que las perillas
+
+Dos defectos que nadie había reportado, los dos medidos:
+
+**El planeador hacía 3,508 consultas al mapa para repartir un día.** `_d()` pedía
+una ruta **por cada par de puntos** y el 2-opt la llama en bucle. Ahora
+`planear_dia` arma **UNA** tabla antes de repartir y la pasa por toda la cadena.
+Verificado con el código sin arreglar: **1,344 llamadas contra 0**.
+
+**Las duraciones del mapa se tiraban.** OSRM las devuelve en la misma respuesta y
+el planeador las ignoraba para recalcular con una velocidad promedio. En el caso
+real medido, el mapa dice **24 minutos** y la velocidad decía **49**: el doble.
+Un runner al que la ruta le promete la mitad del tiempo deja de creerle.
+
+## Lo entregado
+
+- **`Opciones`** (frozen dataclass) leída de `ajustes.ConfiguracionRutas` con
+  caché de 60 s y **respaldos si la tabla no está migrada**: un planeador que se
+  niega a planear por no poder leer una preferencia no sirve.
+- **El factor de tráfico se aplica UNA vez, en la frontera** (`matriz`,
+  `indicaciones`). En cada consumidor habría dado el factor al cuadrado en
+  cualquier ruta que pasara por dos capas.
+- **La matriz ya no recorta.** Devolver menos filas que puntos pedidos obliga a
+  quien llama a adivinar cuáles faltan — y el planeador no adivina: reparte
+  paradas. Por encima del tope (25 → 100) se mide todo en recta.
+- **Indicaciones en español**: OSRM las da en inglés estructurado
+  (`{type, modifier}`), así que hay refranero y `_frase()`. Botón **🧭 Cómo
+  llegar** por parada + **el trazo real** dibujado en el mapa, en vez de la línea
+  recta entre pines.
+- **El pin lejos de la calle avisa, nunca bloquea**: a veces el destino está
+  adentro de una nave. Es la causa más común de una vuelta con kilómetros raros.
+- **GUI en Gerencia → Ajustes → Rutas**, con la validación **en el servidor** (un
+  `<select>` se manipula) y `olvidar_opciones()` al guardar.
+
+## El segundo mapa: cableado, no cocinado — y por qué
+
+Queda todo listo (`OSRM_URL_BICI`, servicio con su perfil, el deploy que lo
+prende solo al encontrar el mapa) más **`infra/scripts/cocinar_mapa.sh`**, que
+además escribe por primera vez **cómo se cocinó el mapa de coche**: se había
+hecho a mano y no estaba en ningún lado, así que si el disco muere nadie sabría
+rehacerlo.
+
+**No se cocinó**, y las tres razones importan:
+
+1. **El perfil de OSRM es de BICICLETA, no de motocicleta.** Prohíbe autopistas
+   y calcula a ~15 km/h. Para una moto —que circula como un coche— las
+   estimaciones saldrían **peor** que las de hoy. Para moto, el mapa de coche ya
+   es el correcto. **Esto es decisión de producto y es de Oscar.**
+2. **Geofabrik no publica extractos por estado de México**: o el país completo
+   (~800 MB de origen, 9.2 G cocidos) o recortar un rectángulo con osmium.
+3. **El preprocesado pasó de 7 G y el `mem_limit` lo mató** — que es exactamente
+   su trabajo: prefiero que muera el cocinado y no El Taller. Correrlo pide la
+   máquina sin nadie trabajando, y eso se pide antes de hacerlo.
+
+Mientras tanto la pantalla **dice en pantalla** que la bicicleta no está cargada
+y que elegirla mediría como coche. Nada miente en silencio.
+
+## Tropiezos de la sesión, para que no se repitan
+
+- **`git checkout -- <archivo>` para deshacer una mutación de prueba se llevó
+  TODO lo no commiteado de ese archivo**, no sólo la mutación. Es la regla que yo
+  mismo tengo escrita (`regla-nunca-git-checkout-con-trabajo-sin-commitear`) y la
+  rompí. El resto de las mutaciones se hicieron con copia de respaldo y
+  restauración desde ella.
+- **Medir un N+1 con un `render` de calentamiento sobre el MISMO objeto lo
+  esconde**: el QuerySet se queda con su `_result_cache` y la segunda pasada da
+  cero consultas aunque el problema siga. Hay que armar el objeto **dentro** de
+  la medición.
+- **El puerto de OSRM no sale al tailnet**, así que los sondeos hay que hacerlos
+  desde dentro de la red de Docker (`docker compose exec el-taller python -`).
+
+## Pruebas
+
+39 nuevas (23 + 13 + 7 de Gerencia), las críticas verificadas contra el código
+sin arreglar: quitando el `select_related` del N+1, el `tabla.segundos()`, la
+validación del servidor, el perfil del compose, la variable del overlay y la
+limpieza del deploy, falla exactamente el test que las cubre. Se actualizó
+`test_ruteo::test_demasiados_puntos_se_recortan` → `..._NO_se_recortan`: fijaba
+el recorte que este sprint quitó a propósito. Suite completa verde.
+
 ---
 
 # BITÁCORA — S-Latencia-Ago24 (2026-08-24, VERSION 2026.08.44)

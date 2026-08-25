@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Papeleo — El Taller{% endblock %}
+{% block contenido %}
+{% load forms_helpers %}
+{% breadcrumb_items "Papeleo" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Papeleo" subtitulo="Contratos, remisiones y comprobantes. Se busca por lo que dicen adentro." breadcrumb_items=breadcrumb_items %}
+
+{% if not conectado %}
+<div class="mb-5 max-w-3xl rounded-2xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-500/30 dark:bg-warning-500/10">
+    <p class="text-sm text-warning-700 dark:text-warning-400">
+        <strong>El archivo todavía no está conectado.</strong>
+        Falta la llave de Paperless. Se pega una vez en
+        <a href="https://gerencia.learningcenter.mx/ajustes/papeleo/" class="underline" target="_blank" rel="noopener">Gerencia → Papeleo</a>
+        y desde entonces se puede buscar aquí.
+    </p>
+</div>
+{% endif %}
+
+<form method="get" class="mb-5 flex flex-wrap items-center gap-3">
+    <input type="search" name="q" value="{{ texto }}" autofocus
+           placeholder="Una palabra que esté DENTRO del documento…"
+           class="min-w-0 flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+    <button type="submit" class="btn-primario">Buscar</button>
+</form>
+
+{% if puede_subir %}
+<form method="post" action="{% url 'papeleo-subir' %}" enctype="multipart/form-data"
+      class="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    {% csrf_token %}
+    <label class="text-sm">
+        <span class="mb-1 block text-gray-600 dark:text-gray-300">Archivo</span>
+        <input type="file" name="archivo" required class="text-sm">
+    </label>
+    <label class="text-sm">
+        <span class="mb-1 block text-gray-600 dark:text-gray-300">Título (opcional)</span>
+        <input type="text" name="titulo" class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+    </label>
+    <button type="submit" class="btn-primario">Mandar al archivo</button>
+    <p class="w-full text-xs text-gray-500 dark:text-gray-400">
+        El archivo lo lee en unos minutos; hasta entonces no se puede buscar por
+        su texto. Los CFDI no van aquí — ésos entran por Facturación, que los liga
+        a su factura.
+    </p>
+</form>
+{% endif %}
+
+{% if fallo %}
+<div class="mb-5 rounded-2xl border border-error-200 bg-error-50 p-4 dark:border-error-500/30 dark:bg-error-500/10">
+    <p class="text-sm text-error-700 dark:text-error-400">El archivo no contestó. Vuelve a intentar en un momento.</p>
+</div>
+{% endif %}
+
+{% if texto %}
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr>
+                <th class="px-5 py-3 text-left">Documento</th>
+                <th class="px-5 py-3 text-left">Entró</th>
+                <th class="px-5 py-3 text-left">De quién es</th>
+                <th class="px-5 py-3 text-right">Abrir</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for d in documentos %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-5 py-3 text-gray-900 dark:text-gray-100">{{ d.titulo }}</td>
+                <td class="px-5 py-3 text-gray-600 dark:text-gray-300">{{ d.creado|default:"—" }}</td>
+                <td class="px-5 py-3">
+                    {% for quien in d.de_quien %}
+                    <span class="badge badge-brand">{{ quien }}</span>
+                    {% empty %}
+                    {% if puede_ligar %}
+                    <form method="post" action="{% url 'papeleo-ligar' d.id %}" class="flex flex-wrap items-center gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="titulo" value="{{ d.titulo }}">
+                        <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                        <select name="cliente" data-select-buscable class="rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900">
+                            <option value="">— ¿de quién es? —</option>
+                            {% for c in clientes %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Ligar</button>
+                    </form>
+                    {% else %}
+                    <span class="text-xs text-gray-400 dark:text-gray-500">sin dueño</span>
+                    {% endif %}
+                    {% endfor %}
+                </td>
+                <td class="px-5 py-3 text-right">
+                    {% if d.abrir %}
+                    <a href="{{ d.abrir }}" target="_blank" rel="noopener"
+                       class="text-brand-600 hover:text-brand-700 dark:text-brand-400">Abrir →</a>
+                    {% else %}
+                    <span class="text-xs text-gray-400 dark:text-gray-500" title="Falta la dirección pública en Gerencia → Papeleo">sin enlace</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="px-5 py-10">
+                {% include "_componentes_tailadmin/_empty_state.html" with titulo="Nada con esa palabra" descripcion="Ojo: sólo se encuentra lo que ya pasó por el lector de texto, y un documento recién subido tarda unos minutos." icono="search" %}
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% else %}
+{% include "_componentes_tailadmin/_empty_state.html" with titulo="Busca en el papeleo" descripcion="Escribe una palabra que esté dentro del documento — el nombre del cliente, un folio, lo que diga la remisión. No importa cómo se llame el archivo." icono="search" %}
+{% endif %}
+{% endblock %}

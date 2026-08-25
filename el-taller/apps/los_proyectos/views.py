@@ -50,6 +50,7 @@ from lib.permisos import (
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
+from papeleo.ligado import contexto_ficha
 
 
 def _servicios_datos_json():
@@ -644,6 +645,9 @@ def detalle(request, pk):
         "pagos_desglose": pagos_desglose,
         "pagos_pendientes_total": sum((g["monto"] for g in pagos_pendientes), Decimal("0.00")),
         "pasos_undo": services_undo.pasos_disponibles(proyecto),
+        # Su papeleo (remisiones firmadas, contratos). Sale de nuestra base, así
+        # que el detalle se pinta igual si el archivo de Paperless está caído.
+        **contexto_ficha(request.user, proyecto),
         "equipo_opciones": _ctx_equipo(proyecto),
         "equipo_grupos": _ctx_equipo_grupos(proyecto),
         "roles_proyecto": ROLES_PROYECTO,

@@ -48,7 +48,7 @@ MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "chalan", "analisis", "checador", "comunicacion", "runner",
-    "rutas",
+    "rutas", "papeleo",
     "directorio", "ajustes", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",
