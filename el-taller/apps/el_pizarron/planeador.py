@@ -163,22 +163,34 @@ def _etiqueta_de(mandado) -> str:
     return (tarea.titulo or "")[:200]
 
 
-def _candidato(mandado) -> dict:
-    """La parada como diccionario, en la forma que ya usa `ruta.py`.
-
-    `runner` es el DUEÑO: quien fue puesto A MANO en la tarea. El reparto lo
-    respeta y no se lo quita (ver `planear_dia`).
+def dueno_de(tarea):
+    """El DUEÑO del mandado: el runner que alguien puso A MANO, o nadie.
 
     Un runner que puso el propio reparto (`runner_auto=True`) NO cuenta como
     dueño: si contara, «rehacer desde cero» nunca podría mover una parada de
     persona, porque el primer reparto ya habría dejado su nombre escrito.
+
+    Es la regla de Oscar del 2026-08-23 («manda el dueño») y vive en UN solo
+    lugar porque la usan las dos mitades del planeador: el reparto (`_candidato`)
+    y la reconciliación (`paradas_con_dueno_ajeno`). Dos copias de esta condición
+    es exactamente cómo vuelven las dos verdades sobre quién hace la entrega.
+    """
+    if not getattr(tarea, "runner_id", None):
+        return None
+    return None if getattr(tarea, "runner_auto", False) else tarea.runner
+
+
+def _candidato(mandado) -> dict:
+    """La parada como diccionario, en la forma que ya usa `ruta.py`.
+
+    `runner` es el DUEÑO (ver `dueno_de`). El reparto lo respeta y no se lo
+    quita (ver `planear_dia`).
     """
     tarea = mandado.tarea
-    a_mano = bool(getattr(tarea, "runner_id", None)) and not getattr(tarea, "runner_auto", False)
     punto = _punto_de(mandado)
     return {
         "mandado": mandado,
-        "runner": tarea.runner if a_mano else None,
+        "runner": dueno_de(tarea),
         "lat": punto[0] if punto else None,
         "lng": punto[1] if punto else None,
         "etiqueta": _etiqueta_de(mandado),
@@ -186,20 +198,46 @@ def _candidato(mandado) -> dict:
     }
 
 
-def sueltos_del_dia(fecha) -> dict:
-    """Los mandados del día que todavía no están en una ruta, separados por si se
-    sabe a dónde van.
+def repartos_cancelados(fecha):
+    """Mandados con el reparto CANCELADO cuya tarea sigue viva.
 
-    Son dos problemas distintos y la pantalla los tiene que decir distinto: uno
-    se arregla apretando «Planear el día» y el otro poniéndole el destino. Antes
-    se mostraban juntos bajo «no se sabe a dónde van», así que un mandado con su
+    Cancelar el reparto no cancela la tarea, así que queda una tarea que se ve
+    Pendiente —y Atrasada al día siguiente— y que el planeador no va a considerar
+    NUNCA: `candidatos_del_dia` excluye a los cancelados. Sin este grupo el
+    mandado no aparece en ninguno de los otros dos y desaparece de la pantalla en
+    silencio: nadie se entera de que esa entrega no va a salir.
+
+    Se excluyen las tareas ya terminadas: ahí el reparto cancelado no contradice
+    nada.
+    """
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+    from apps.el_pizarron.models.mandado import Mandado
+
+    return list(
+        Mandado.objects
+        .filter(estado="cancelado", tarea__fecha_compromiso=fecha,
+                tarea__archivada=False)
+        .exclude(tarea__estado__in=slugs_terminales_tarea())
+        .select_related("tarea", "tarea__runner", "tarea__proyecto__cliente")
+        .order_by("tarea__titulo")
+    )
+
+
+def sueltos_del_dia(fecha) -> dict:
+    """Los mandados del día que no están en una ruta, cada uno con su razón.
+
+    Son tres problemas distintos y la pantalla los tiene que decir distinto:
+    «todavía no lo repartiste» se arregla apretando el botón, «no se sabe a dónde
+    va» poniéndole el destino, y «su reparto está cancelado» reactivándolo. Los
+    dos primeros iban juntos bajo el segundo texto, así que un mandado con su
     destino perfectamente puesto salía acusado de no tenerlo — el reporte de
-    Oscar del 2026-08-23.
+    Oscar del 2026-08-23. El tercero no se mostraba en ningún lado.
     """
     con, sin = [], []
     for mandado in candidatos_del_dia(fecha):
         (con if _punto_de(mandado) else sin).append(mandado)
-    return {"con_destino": con, "sin_destino": sin}
+    return {"con_destino": con, "sin_destino": sin,
+            "cancelados": repartos_cancelados(fecha)}
 
 
 # ── Distancias ────────────────────────────────────────────────────────────────
@@ -463,6 +501,98 @@ def tirar_borradores(fecha) -> int:
     return len(borradores)
 
 
+# ── Reconciliación: la parada vuelve con su dueño ─────────────────────────────
+
+def paradas_con_dueno_ajeno(fecha):
+    """Paradas de rutas vivas que están en la ruta de quien NO es su dueño.
+
+    Es el descuadre que dejaba el planeador viejo (hasta el 2026-08-23): armaba
+    la vuelta a nombre de un elegible, ignoraba al runner que la tarea ya traía a
+    mano y no escribía nada en la tarea. Resultado, dos verdades sobre quién hace
+    la entrega —la ruta dice una persona y el mandado dice otra— con la pantalla
+    mostrando la ruta como si estuviera bien.
+
+    El reparto nuevo ya no las crea, pero las que quedaron son **inamovibles**
+    sin esto: `candidatos_del_dia` las excluye por estar ya ruteadas y
+    `tirar_borradores` no toca una ruta despachada. Se aprieta «Rehacer desde
+    cero», no pasa nada, y no hay nada que lo explique.
+
+    Devuelve `[(parada, dueño)]`. Sólo mira lo que todavía se puede mover: un
+    mandado entregado o cancelado ya no le toca a nadie.
+    """
+    from apps.el_pizarron.models.ruta import ESTADOS_RUTA_VIVOS
+
+    qs = (
+        _ParadaRuta().objects
+        .filter(ruta__fecha=fecha, ruta__estado__in=ESTADOS_RUTA_VIVOS)
+        .exclude(mandado__estado__in=("entregado", "cancelado"))
+        .select_related("ruta", "ruta__runner", "mandado__tarea__runner")
+        .order_by("ruta__pk", "orden")
+    )
+    fuera = []
+    for parada in qs:
+        dueno = dueno_de(parada.mandado.tarea)
+        if dueno is not None and dueno.pk != parada.ruta.runner_id:
+            fuera.append((parada, dueno))
+    return fuera
+
+
+def _ruta_para(fecha, runner, origen_modo, sede, actor):
+    """La ruta viva de ese runner, con su punto de partida puesto.
+
+    `_ruta_viva` sólo la crea; el origen lo escribe `planear_dia` después. Cuando
+    la ruta nace desde la reconciliación no hay quien lo haga, y una ruta sin
+    origen reporta la vuelta en cero kilómetros.
+    """
+    ruta = _ruta_viva(fecha, runner, origen_modo, sede, actor)
+    if not ruta.tiene_origen:
+        punto, etiqueta = _origen_para(runner, origen_modo, sede)
+        if punto:
+            ruta.origen_lat, ruta.origen_lng = punto
+            ruta.origen_etiqueta = (etiqueta or "")[:200]
+            ruta.save(update_fields=["origen_lat", "origen_lng", "origen_etiqueta"])
+    return ruta
+
+
+def devolver_a_su_dueno(fecha, *, origen_modo: str = "sede_redonda", sede=None,
+                        actor=None) -> list[dict]:
+    """Manda cada parada descuadrada a la ruta de su dueño. Idempotente.
+
+    No borra la ruta ajena ni la deja a medias: la parada se MUEVE con
+    `mover_parada` (que recalcula las dos) y si la de origen se queda sin trabajo
+    se cancela — una ruta vacía en la pantalla no significa nada.
+
+    Devuelve `[{titulo, de, a, ya_despachada}]` para que la pantalla lo pueda
+    DECIR. Que la ruta de origen ya estuviera despachada importa y por eso viaja
+    en el resultado: a esa persona le llegó un correo con una vuelta que ya no es
+    suya, y eso sólo se arregla avisándole.
+    """
+    from django.db import transaction
+
+    descuadres = paradas_con_dueno_ajeno(fecha)
+    if not descuadres:
+        return []
+
+    movidas = []
+    with transaction.atomic():
+        for parada, dueno in descuadres:
+            origen_ruta = parada.ruta
+            info = {
+                "titulo": parada.mandado.tarea.titulo,
+                "de": origen_ruta.runner,
+                "a": dueno,
+                "ya_despachada": origen_ruta.estado != "borrador",
+            }
+            mover_parada(parada, _ruta_para(fecha, dueno, origen_modo, sede, actor))
+            movidas.append(info)
+            origen_ruta.refresh_from_db()
+            if origen_ruta.esta_viva and not origen_ruta.paradas.exists():
+                cancelar(origen_ruta,
+                         motivo="Se quedó sin paradas: cada mandado volvió con su dueño.")
+    _emitir("ruta.reconciliada", {"fecha": str(fecha), "movidas": len(movidas)})
+    return movidas
+
+
 def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
                 runners=None, actor=None, rehacer: bool = False) -> dict:
     """Arma (o rearma) las rutas del día y las guarda.
@@ -479,6 +609,11 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
     ignoraba al dueño y armaba la ruta a nombre de otro sin tocar la tarea: dos
     verdades sobre quién hace la entrega.
 
+    Y **repara** el descuadre que dejó la versión anterior: si una parada quedó en
+    la ruta de alguien que no es su dueño, `devolver_a_su_dueno` la manda con él
+    antes de repartir. Sin eso el descuadre no tenía salida por la pantalla, ni
+    apretando «Rehacer desde cero».
+
     Idempotente por diseño: los mandados que ya están en una ruta viva no se
     vuelven a repartir (`candidatos_del_dia` los excluye), así que replanear el
     mismo día agrega lo nuevo en vez de duplicar lo que ya se despachó. Con
@@ -490,6 +625,13 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
 
     if rehacer:
         tirar_borradores(fecha)
+
+    # Primero se endereza lo que ya está mal: una parada que quedó en la ruta de
+    # otro vuelve con su dueño. Va ANTES de repartir porque si no el descuadre es
+    # inamovible — `candidatos_del_dia` la excluye por estar ya ruteada y
+    # `tirar_borradores` no toca una ruta despachada.
+    reconciliadas = devolver_a_su_dueno(
+        fecha, origen_modo=origen_modo, sede=sede, actor=actor)
 
     elegibles = list(runners) if runners else usuarios_runner()
     pks_elegibles = {u.pk for u in elegibles}
@@ -531,7 +673,8 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
     if not contextos:
         # Nadie elegible y ningún mandado con dueño: no hay nada que planear.
         return {"rutas": [], "sobrantes": [], "sin_ubicar": sin_ubicar,
-                "sin_runner": True, "sin_permiso": []}
+                "sin_runner": True, "sin_permiso": [],
+                "reconciliadas": reconciliadas}
 
     # UNA matriz para el día entero: los orígenes de cada runner y todas las
     # paradas. De aquí en adelante nadie vuelve a pegarle al mapa.
@@ -572,6 +715,9 @@ def planear_dia(fecha, *, origen_modo: str = "sede_redonda", sede=None,
         "rutas": rutas, "sobrantes": sobrantes,
         "sin_ubicar": sin_ubicar, "sin_runner": False,
         "sin_permiso": sin_permiso,
+        # Lo que se enderezó: paradas que estaban en la ruta de otro y volvieron
+        # con su dueño. La pantalla lo dice, y dice a quién avisarle.
+        "reconciliadas": reconciliadas,
         # `calles` o `recta`: la pantalla lo dice, porque de ahí depende si las
         # horas que verá el runner son de calle o a vuelo de pájaro.
         "por_calles": tabla.por_calles,

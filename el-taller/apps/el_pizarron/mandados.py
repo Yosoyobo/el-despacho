@@ -154,6 +154,27 @@ def cancelar(mandado, *, motivo: str = ""):
     return mandado
 
 
+def reactivar(mandado):
+    """Deshace la cancelación del reparto: el mandado vuelve a la vida.
+
+    Hace falta porque `sincronizar_mandado` respeta la cancelación para siempre
+    («la transición manual gana sobre todo»), así que un mandado cancelado por
+    error no tenía forma de volver: la tarea seguía Pendiente —y Atrasada al día
+    siguiente— pero el planeador ya no la iba a considerar nunca, y nada en la
+    pantalla lo decía.
+
+    El estado no se adivina: se limpia la cancelación y se deja que
+    `sincronizar_mandado` lo derive del runner y del estado de la tarea, que es
+    quien sabe la regla.
+    """
+    if mandado.estado != "cancelado":
+        return mandado
+    mandado.estado = "por_asignar"
+    mandado.cancelado_en = None
+    mandado.save(update_fields=["estado", "cancelado_en", "actualizado_en"])
+    return sincronizar_mandado(mandado.tarea) or mandado
+
+
 def fijar_destino(mandado, *, lat=None, lng=None, etiqueta: str = ""):
     """Fija el destino en la Tarea subyacente (fuente única). Guarda lo que haya.
 
