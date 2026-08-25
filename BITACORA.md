@@ -12853,6 +12853,56 @@ restaurar con `git checkout` sin riesgo):
 18 nuevos en `tests/taller/test_latencia_ago24.py`. Suite completa: **3407 pass,
 1 skipped, 0 fallos**. Ruff limpio.
 
+## Resultado, medido en producción tras el deploy
+
+Mismo método que el diagnóstico, con el código ya corriendo en el NUC:
+
+| Ruta | antes | ahora | ahorro |
+|---|---|---|---|
+| `/sistema/aviso-deploy/` | 52 ms · **65 q** | 2 ms · **1 q** | −98 % |
+| `/sistema/aviso-deploy/semaforo/` | 52 ms · 65 q | 2 ms · 1 q | −98 % |
+| `/recados/partials/bandeja` | 65 ms · 76 q | 15 ms · 12 q | −84 % |
+| `/recados/c/1/` | 154 ms · 135 q | 107 ms · 74 q | −45 % |
+| `/proyectos/65/` | 295 ms · 231 q | 233 ms · 131 q | −43 % |
+| `/` (Dashboard) | 298 ms · 228 q | 256 ms · 171 q | −25 % |
+
+El banner de deploy y el semáforo —los dos que se piden **cada 10 segundos por
+pestaña**— pasaron de 65 consultas a **una**. Ese era el gasto más repetido del
+sistema y prácticamente desapareció.
+
+En el detalle del proyecto, `cuentas_permiso_usuario` **salió del top 8** (era la
+tabla #1 con 60 consultas) y las escalas bajaron de 59 a 19.
+
+El pool de hilos, comprobado en el NUC: la llamada vuelve en **0.89 ms**, el
+trabajo corre en `despacho-fondo_0` y desde ahí puede consultar la base.
+
+## Lo que la medición posterior destapó (y no se sabía al empezar)
+
+El desglose de las 131 consultas que quedan en el detalle del proyecto dice algo
+que el diagnóstico inicial no podía ver, porque el N+1 de escalas lo tapaba:
+
+```
+ 19  proyectos_producto_escala
+ 18  proyectos_producto
+ 18  proyectos_producto_proceso
+ 18  proyectos_producto_venta
+```
+
+Los cuatro números son casi el mismo: **`_productos_calc()` se está recargando 18
+veces por petición**. Cada acceso a `monto_calculado`, `productos_incluidos`,
+`utilidad`, `margen_porcentaje`… rehace la consulta con todos sus prefetch. Son
+**73 de las 131 consultas restantes (56 %)**.
+
+Memoizarlo se descartó en este sprint **a propósito** y el motivo sigue en pie: el
+autosave del proyecto guarda el formset y vuelve a leer el panel económico en la
+misma petición, así que un memo ingenuo serviría el dinero viejo. Pero el patrón
+correcto ya está validado en este mismo sprint — memo por instancia + invalidación
+por signal, exactamente lo que se hizo con los permisos. Aplicado a
+`ProyectoProducto`, `ProyectoProductoProceso`, `ProyectoProductoVenta` y
+`ProyectoProductoEscala`, el detalle del proyecto bajaría de 131 a ~60 consultas.
+
+Es el siguiente paso natural si la página del proyecto sigue sintiéndose lenta.
+
 ## Deuda diseñada
 
 - **`_productos_calc()` sigue recargando la lista en cada acceso.** `monto_calculado`,
