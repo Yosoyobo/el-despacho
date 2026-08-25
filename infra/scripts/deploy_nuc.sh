@@ -74,6 +74,20 @@ if [ -f docker-compose.servicios.yml ]; then
     else
       echo "OSRM: sin mapa cocido en data/osrm; queda apagado (las rutas siguen en línea recta)."
     fi
+    # El de bicicleta es un SEGUNDO mapa: el perfil de OSRM se hornea al
+    # cocinarlo, no se elige en la petición. La variable se llena sólo cuando
+    # el mapa existe; vacía, la app sabe que no hay bici y lo dice en pantalla
+    # en vez de medir en coche fingiendo que mide en bici.
+    mkdir -p data/osrm-bici
+    if [ -f data/osrm-bici/mexico-latest.osrm.properties ]; then
+      COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}osrm-bici"
+      export COMPOSE_PROFILES
+      export OSRM_URL_BICI="http://osrm-bici:5000"
+      echo "OSRM bicicleta: mapa presente, se levanta."
+    else
+      export OSRM_URL_BICI=""
+      echo "OSRM bicicleta: sin mapa (./infra/scripts/cocinar_mapa.sh bicycle para prepararlo)."
+    fi
   else
     echo "AVISO: faltan N8N_ENCRYPTION_KEY o PAPERLESS_ADMIN_PASSWORD en .env;"
     echo "       los servicios auxiliares NO se despliegan (El Despacho sí)."

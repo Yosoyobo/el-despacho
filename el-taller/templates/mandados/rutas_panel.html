@@ -160,6 +160,11 @@ window.addEventListener('load', function () {
                     {% elif p.llegada_estimada %}
                     <p class="text-xs text-gray-400 dark:text-gray-500">≈ {{ p.llegada_estimada|hfmt }}</p>
                     {% endif %}
+                    {% if p.lat is not None %}
+                    <button type="button" class="mt-1 text-xs text-brand-600 underline dark:text-brand-400"
+                            hx-get="{% url 'rutas-parada-indicaciones' p.pk %}"
+                            hx-target="#modal-slot" hx-swap="innerHTML">🧭 Cómo llegar</button>
+                    {% endif %}
                 </div>
             </li>
             {% endfor %}

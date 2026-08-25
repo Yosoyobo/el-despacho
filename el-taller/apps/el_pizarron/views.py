@@ -978,6 +978,36 @@ def mandado_avanzar(request, pk):
     return redirect("mandados-lista")
 
 
+#: A cuántos metros de una calle deja de ser creíble un pin. Cien metros es
+#: media manzana: más que eso y el runner llega a un punto sin acceso.
+_METROS_PIN_SOSPECHOSO = 100
+
+
+def _avisar_si_el_pin_quedo_lejos(request, lat, lng) -> None:
+    """Avisa —nunca bloquea— si el punto cayó lejos de cualquier calle.
+
+    La ubicación jamás detiene una acción en este repo; lo único que se hace es
+    decirlo, porque un pin en medio de una manzana manda al runner a un lugar
+    al que no se puede llegar en coche.
+    """
+    if lat is None or lng is None:
+        return
+    try:
+        from lib import ruteo
+        cerca = ruteo.cerca_de_calle(lat, lng)
+    except Exception:  # noqa: BLE001 — un aviso no puede tumbar el guardado
+        return
+    if not cerca or cerca["metros"] <= _METROS_PIN_SOSPECHOSO:
+        return
+    calle = f" (la más cercana es {cerca['calle']})" if cerca["calle"] else ""
+    messages.warning(
+        request,
+        f"Ojo: el punto quedó a {cerca['metros']:.0f} m de la calle más "
+        f"cercana{calle}. Se guardó igual, pero revisa que el runner pueda "
+        "llegar ahí.",
+    )
+
+
 @login_required
 def mandado_destino(request, pk):
     """Fija el destino (pin Leaflet). GET (HTMX) → modal con mapa; POST → guarda
@@ -1015,6 +1045,7 @@ def mandado_destino(request, pk):
         svc.fijar_destino(m, lat=lat, lng=lng, etiqueta=etiqueta)
         _emitir_mandado("mandado.destino_fijado", request.user, m,
                         {"lat": lat, "lng": lng, "con_pin": lat is not None})
+        _avisar_si_el_pin_quedo_lejos(request, lat, lng)
         if request.headers.get("HX-Request") == "true":
             from django.http import HttpResponse
             return HttpResponse(status=204, headers={"HX-Redirect": volver})
@@ -1183,6 +1214,23 @@ def rutas_panel(request):
     })
 
 
+def _trazo_por_calles(coords):
+    """El recorrido dibujado por las calles, o las líneas rectas de siempre.
+
+    Sin esto el mapa une los pines con una regla, que es una forma bonita de
+    mentir sobre por dónde va a pasar el runner. Best-effort: si el mapa no
+    contesta, se devuelven los mismos puntos y el mapa se ve como antes.
+    """
+    if len(coords) < 2:
+        return coords
+    try:
+        from lib import ruteo
+        calles = ruteo.trazo([(lat, lng) for lat, lng in coords])
+    except Exception:  # noqa: BLE001 — dibujar de más nunca tumba la pantalla
+        return coords
+    return calles or coords
+
+
 def _mapa_de(tarjetas) -> dict:
     """Datos para Leaflet: una línea por ruta, con su color y sus pines."""
     lineas, puntos = [], []
@@ -1202,7 +1250,7 @@ def _mapa_de(tarjetas) -> dict:
         if ruta.es_redonda and ruta.tiene_origen and len(coords) > 1:
             coords.append([ruta.origen_lat, ruta.origen_lng])
         if len(coords) > 1:
-            lineas.append({"color": t["color"], "coords": coords,
+            lineas.append({"color": t["color"], "coords": _trazo_por_calles(coords),
                            "runner": ruta.runner.nombre_completo})
     return {"lineas": lineas, "puntos": puntos}
 
@@ -1354,6 +1402,49 @@ def parada_mover(request, pk):
     destino = get_object_or_404(Ruta, pk=int(destino_pk))
     mover_parada(parada, destino)
     return HttpResponse(status=204)
+
+
+@login_required
+def parada_indicaciones(request, pk):
+    """GET (HTMX): cómo llegar a esta parada, giro por giro y en español.
+
+    El punto de partida es la parada anterior de la misma ruta; si es la
+    primera, el origen de la vuelta. Quien maneja puede verlas aunque no pueda
+    planear — es su ruta.
+    """
+    from apps.el_pizarron.models.ruta import ParadaRuta
+
+    from lib.permisos import puede_planear_rutas, puede_ver_rutas
+
+    if not puede_ver_rutas(request.user):
+        return HttpResponseForbidden("Sin permiso para ver las rutas.")
+    parada = get_object_or_404(
+        ParadaRuta.objects.select_related("ruta", "ruta__runner", "mandado__tarea"),
+        pk=pk,
+    )
+    # Un runner ve la suya; quien planea, todas.
+    if (parada.ruta.runner_id != request.user.pk
+            and not puede_planear_rutas(request.user)):
+        return HttpResponseForbidden("Esa ruta no es tuya.")
+
+    anteriores = list(
+        parada.ruta.paradas.filter(orden__lt=parada.orden).order_by("-orden")[:1]
+    )
+    desde = anteriores[0].punto if anteriores else parada.ruta.origen_punto
+    etiqueta_desde = (
+        anteriores[0].etiqueta if anteriores else parada.ruta.origen_etiqueta
+    )
+
+    datos = None
+    if desde and parada.punto:
+        from lib import ruteo
+        datos = ruteo.indicaciones(desde, parada.punto)
+
+    return render(request, "mandados/_modal_indicaciones.html", {
+        "parada": parada,
+        "desde": etiqueta_desde or "el punto de partida",
+        "datos": datos,
+    })
 
 
 @login_required

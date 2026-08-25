@@ -1066,12 +1066,17 @@ def fiscal_panel(request):
 @requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def rutas_panel(request):
-    """Velocidad, tiempo por parada, hora de salida y tope de paradas.
+    """Los supuestos del planeador y lo que se le pide al mapa.
 
-    De estos cuatro números salen las **horas estimadas** que ve el runner en su
-    ruta. Si no se parecen a la realidad, la ruta le promete horas que no va a
-    cumplir y deja de creerle — por eso los ajusta quien conoce la ciudad y el
-    trabajo, no quien escribe el código (Oscar, 2026-08-23).
+    De estos números salen las **horas estimadas** que ve el runner en su ruta.
+    Si no se parecen a la realidad, la ruta le promete horas que no va a cumplir
+    y deja de creerle — por eso los ajusta quien conoce la ciudad y el trabajo,
+    no quien escribe el código (Oscar, 2026-08-23).
+
+    Del repaso del 2026-08-24 salieron los de abajo: evitar casetas o
+    autopistas, llegar por la acera del cliente y un factor de tráfico. Son
+    cosas que el mapa siempre supo hacer y a las que nunca se les había puesto
+    una perilla.
     """
     from datetime import time as _time
     from decimal import Decimal, InvalidOperation
@@ -1097,6 +1102,21 @@ def rutas_panel(request):
         cfg.max_paradas_por_ruta = _entero("max_paradas_por_ruta",
                                            cfg.max_paradas_por_ruta, 1, 25)
 
+        # Las exclusiones NO se combinan (el mapa sólo trae precocidas las
+        # sueltas), así que llega UNA del menú y se valida contra la lista.
+        evitar = (request.POST.get("evitar") or "").strip()
+        cfg.evitar = evitar if evitar in dict(ConfiguracionRutas.EVITAR) else ""
+        cfg.acera_del_cliente = request.POST.get("acera_del_cliente") == "1"
+        modo = (request.POST.get("modo") or "").strip()
+        cfg.modo = modo if modo in dict(ConfiguracionRutas.MODOS) else "coche"
+        try:
+            factor = Decimal(str(request.POST.get("factor_trafico") or cfg.factor_trafico))
+        except (InvalidOperation, ValueError, TypeError):
+            factor = cfg.factor_trafico
+        # Bajo 1 diría que se llega antes de lo que el mapa cree, que es al revés
+        # de lo que pasa en la calle.
+        cfg.factor_trafico = max(Decimal("1.0"), min(factor, Decimal("3.0")))
+
         crudo = (request.POST.get("hora_inicio") or "").strip()
         if crudo:
             try:
@@ -1106,11 +1126,16 @@ def rutas_panel(request):
                 pass  # hora ilegible: se queda la de antes
 
         cfg.save()
-        # Que el cambio se note ya, sin esperar el minuto de caché del planeador.
+        # Que el cambio se note ya, sin esperar el minuto de caché.
         try:
             from apps.el_pizarron.planeador import olvidar_configuracion
             olvidar_configuracion()
         except Exception:  # noqa: BLE001 — Gerencia no depende del Taller para guardar
+            pass
+        try:
+            from lib import ruteo
+            ruteo.olvidar_opciones()
+        except Exception:  # noqa: BLE001
             pass
         emitir(EventoPortavoz(
             tipo="ajuste.rutas_configurada",
@@ -1120,6 +1145,10 @@ def rutas_panel(request):
                 "minutos_por_parada": cfg.minutos_por_parada,
                 "hora_inicio": cfg.hora_inicio.strftime("%H:%M"),
                 "max_paradas": cfg.max_paradas_por_ruta,
+                "evitar": cfg.evitar,
+                "acera_del_cliente": cfg.acera_del_cliente,
+                "factor_trafico": str(cfg.factor_trafico),
+                "modo": cfg.modo,
             },
         ))
         messages.success(request, "Supuestos del planeador de rutas actualizados.")
@@ -1129,15 +1158,24 @@ def rutas_panel(request):
     # vuelo de pájaro. La pantalla tiene que decir cuál de las dos cosas está
     # pasando: hasta 2026-08-24 afirmaba «se mide en línea recta» y desde que
     # entró OSRM eso dejó de ser cierto.
+    mapa_vivo = False
+    hay_bici = False
     try:
         from lib import ruteo
         mapa_vivo = ruteo.disponible(forzar=True)
+        # Sin el segundo mapa cargado, ofrecer «bicicleta» sería prometer algo
+        # que se mediría como coche sin que nadie se entere.
+        hay_bici = bool(ruteo.BASE_URL_BICI) and ruteo.disponible(
+            forzar=True, opciones=ruteo.Opciones(modo=ruteo.MODO_BICI))
     except Exception:  # noqa: BLE001 — no poder preguntar no rompe la pantalla
-        mapa_vivo = False
+        pass
 
     return render(request, "ajustes/rutas_panel.html", {
         "cfg": cfg,
         "mapa_vivo": mapa_vivo,
+        "hay_bici": hay_bici,
+        "opciones_evitar": ConfiguracionRutas.EVITAR,
+        "opciones_modo": ConfiguracionRutas.MODOS,
     })
 
 
