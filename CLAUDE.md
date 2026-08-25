@@ -7249,11 +7249,32 @@ la cadena completa (homepage + los dos `/ping`); `la-limpieza` apunta al NUC.
 **`mudanza` se SALTA** mientras no existan los secretos, en vez de fallar en rojo —
 ver §14 Bug H para el error que costó dos corridas muertas.
 
-**FALTA, y pide mano de OBO:** los secretos del CI (`TS_OAUTH_CLIENT_ID`,
-`TS_OAUTH_SECRET`, `NUC_HOST`, `NUC_USER`, `NUC_SSH_KEY`) · **apagar el vencimiento
-de la llave del nodo** en la consola de Tailscale (expira el **2027-02-18** y ese día
-se cae el sitio; no hay CLI) · el **cable de red** (`eno1` sigue DOWN, trabaja por
-WiFi) y el **BIOS** para que encienda tras un corte.
+**FALTA, y pide mano de OBO:** ~~los secretos del CI (`TS_OAUTH_CLIENT_ID`,
+`TS_OAUTH_SECRET`, `NUC_HOST`, `NUC_USER`, `NUC_SSH_KEY`)~~ — **ya no hacen falta**,
+ver la nota de abajo · **apagar el vencimiento de la llave del nodo** en la consola de
+Tailscale (expira el **2027-02-18** y ese día se cae el sitio; no hay CLI). **Ése es
+el ÚNICO pendiente de la mudanza que sigue abierto**: el cable y el BIOS se cerraron
+el 2026-08-24.
+
+> **RESUELTO el 2026-08-24: el cable de red y el BIOS.** OBO dejó el firmware en
+> «Restore on AC Power Loss = Power On», que era la lección del apagón del 19-ago.
+> **Ese ajuste no se puede leer por software** (BIOS `FNCML357.0058`, NUC10i5FNH):
+> la única comprobación de verdad es cortarle la corriente, y eso se hace fuera de
+> horario. Lo que sí se verificó desde aquí es su complemento: los **11 contenedores
+> en `restart: always`** y `docker` + `tailscaled` en `enabled`, así que la parte de
+> software de «vuelve solo» está completa. **Y el cable:** `eno1` a **1 Gb/s full
+> duplex, cero errores y cero drops**, y es la ruta por default (métrica 100 contra
+> 600 del WiFi, que se queda de **respaldo automático**: si el cable cae, la LAN
+> cambia de IP pero **Tailscale no**, así que la ventana ni se entera). De hecho no
+> hubo que tocar nada — el nodo conservó `100.121.244.5`. Confirma el diagnóstico de
+> la mudanza: la latencia al gateway pasó de **3.86 ms a 0.86 ms**, el RTT HAL→NUC
+> por el tailnet quedó en **1.5 ms** (venía de 20-208 ms, huella del ahorro de energía
+> del WiFi) y el throughput NUC→HAL en **49 MB/s** — ahí el tope ya es el cifrado de
+> Tailscale y el CPU del NUC, no el cable. **Y una medición de radio caduca:** el
+> WiFi se había degradado de −38 dBm/866 Mbit (agosto) a **−56 dBm/650 Mbit**, así
+> que el argumento de «no compra velocidad» ya no era cierto cuando llegó el cable.
+> Por LAN el NUC ahora es `192.168.100.202` (cable) además de `.95` (WiFi); las dos
+> son DHCP, y el acceso real sigue siendo por tailnet.
 
 > **RESUELTO el 2026-08-23: el deploy al NUC ya es automático.** No hizo falta credencial nueva — el CI hace SSH a **La Sede** (secretos `SEDE_*`, que existían desde mayo) y desde ahí salta al NUC por el tailnet con una llave que vive sólo en el Droplet, autorizada con `from=` a su IP. La lógica salió del YAML a `infra/scripts/deploy_nuc.sh`. **La lección que queda:** antes el job salía **VERDE aunque no desplegara nada**. Sin los secretos, sus dos pasos reales (`Entrar al tailnet` y `SSH al NUC y deploy`) quedan en `skipped` y el job reporta `success` igual. El 2026-08-23 eso me hizo escribir aquí lo contrario —que el deploy ya era automático— y afirmarle a Oscar que su sprint estaba en producción cuando el NUC seguía sirviendo `2026.08.22`. **La conclusión del job no dice si desplegó: hay que mirar los PASOS** (`gh api .../jobs --jq '.jobs[]|.steps[]|"\(.name): \(.conclusion)"'`) **o la versión que sirve producción** (el footer de `/acerca/`, que es pública). Desde este arreglo el job grita: hay un paso llamado «⚠️ NO SE DESPLEGÓ» y un aviso en el resumen de la corrida con el comando manual.
 

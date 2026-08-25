@@ -16,7 +16,7 @@ Reconocimiento del 2026-08-24, 08:40, contra `nuc-lc` por el tailnet:
 | RAM | 14 G totales · **11 G libres** (El Despacho usa 2.3 G) |
 | Disco | 116 G · **92 G libres** · SSD de 1 TB **por llegar** |
 | Video por hardware | `/dev/dri/renderD128` presente → **Quick Sync sirve** |
-| Red | `eno1` **DOWN** — todo va por WiFi |
+| Red | `eno1` **DOWN** — todo va por WiFi · **✅ cableado el 2026-08-24** |
 
 **Lo que eso decide:** la RAM no es el límite (ver §5). El disco sí.
 
@@ -28,6 +28,16 @@ con canal de 80 MHz, **866 Mbit/s** de bajada y **cero errores**. Con
 asociación WiFi, y si esa interfaz se cae, se cae todo. Como el NUC está
 en una **ubicación temporal**, cablear ahora para recablear después es
 trabajo doble: **se hace cuando se mude a su lugar definitivo.**
+
+**Cerrado el 2026-08-24 (mismo día, más tarde):** OBO conectó el cable. Y
+la corrección de arriba envejeció en horas — **una medición de radio
+caduca**: al conectarlo, el WiFi ya no estaba a −38 dBm/866 Mbit sino a
+**−56 dBm/650 Mbit**, sin que nadie tocara nada. El enlace por cable quedó
+a **1 Gb/s full duplex, cero errores**, la latencia al gateway bajó de
+**3.86 ms a 0.86 ms** y el RTT desde HAL por el tailnet, de 20-208 ms a
+**1.5 ms**. Lo que sí se sostuvo fue el argumento que no dependía de la
+medición: la **confiabilidad**. Y salió gratis en riesgo — Tailscale
+conservó `100.121.244.5`, así que la ventana no se enteró.
 
 ---
 
@@ -363,12 +373,12 @@ Gotenberg se desboca con cinco PDFs, que muera Gotenberg — no El Taller.
 5. **Etiquetas** — desarrollo chico dentro de El Despacho
 6. **Tablero en pared** — colgar El Vigía y armar la vista del día
 
-El SSD antes del 3. **El cable de red no bloquea nada** (§0): se hace
-cuando el NUC llegue a su lugar definitivo.
+El SSD antes del 3. **El cable de red ya se puso** (2026-08-24, ver §0).
 
 ## 7. Lo que hace falta de tu lado
 
-- **El cable de red** conectado (`eno1` sigue caído) y el **SSD de 1 TB**.
+- ~~**El cable de red** conectado~~ — **hecho el 2026-08-24.** Falta el
+  **SSD de 1 TB**.
 - **Visto bueno** a bajar los techos de Postgres y Redis (§5).
 - **A qué buzón llegan los CFDIs**, y con qué credenciales leerlo.
 - **Marca y modelo de la etiquetera**, para confirmar si habla TSPL o ZPL.

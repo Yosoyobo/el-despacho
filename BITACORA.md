@@ -10311,10 +10311,61 @@ de **6 contenedores y 22 crons** a **1 contenedor y 0 crons**, y su RAM usada de
 
 Los secretos del CI (`TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `NUC_HOST`, `NUC_USER`,
 `NUC_SSH_KEY`) · **apagar el vencimiento de la llave del nodo** en la consola de
-Tailscale (expira el **2027-02-18**; no hay CLI) · el **cable de red** (`eno1` sigue
-DOWN, trabaja por WiFi) y el **BIOS** para que encienda tras un corte. El bump de
+Tailscale (expira el **2027-02-18**; no hay CLI). **El cable de red y el BIOS quedaron
+listos el 2026-08-24** — ver la nota de cierre al final de esta entrada. El bump de
 `VERSION` va junto con el primer deploy verde del job `mudanza`, para no anunciar (ni
 pushear por Novedades) una versión que el NUC no está corriendo.
+
+### Cierre: el cable de red (2026-08-24)
+
+OBO conectó `eno1`. Verificado con el sistema en vivo, sin tocar una línea de
+configuración: el enlace quedó a **1 Gb/s full duplex, cero errores y cero drops**, y
+es la **ruta por default** (métrica 100 contra 600 del WiFi). **Tailscale conservó
+`100.121.244.5`**, que es de lo que cuelga la ventana, así que el cambio fue
+transparente: los tres `/ping` públicos siguieron en 200 y los 11 contenedores
+arriba.
+
+El WiFi se queda **como respaldo automático**, y eso es una ganancia, no un descuido:
+si el cable se cae, la LAN cambia de IP pero **el tailnet no**, así que la ventana
+sigue apuntando al mismo lugar y el sitio no se entera.
+
+Los números confirman el diagnóstico que se hizo el día de la mudanza:
+
+| | Antes (WiFi) | Ahora (cable) |
+|---|---|---|
+| Latencia al gateway | 3.86 ms (jitter 0.49) | **0.86 ms** (jitter 0.20) |
+| RTT HAL→NUC por tailnet | 20-208 ms | **1.5 ms**, 0 % de pérdida |
+| Throughput NUC→HAL | — | **49 MB/s** (~390 Mbit/s) |
+
+Los 20-208 ms se habían atribuido al ahorro de energía del WiFi; el cable los dejó en
+1.5 ms, así que la hipótesis era correcta. Los 49 MB/s son el tope del **cifrado de
+Tailscale y el CPU del NUC**, no del cable — con eso, el respaldo entero (dump de
+449 KB + 22 MB de medios) viaja en menos de un segundo.
+
+**La lección: una medición de radio caduca.** El 2026-08-24, más temprano, se había
+argumentado que el cable «no compra velocidad, sólo confiabilidad» apoyándose en una
+medición de agosto: −38 dBm y 866 Mbit/s. Al conectar el cable el WiFi estaba en
+**−56 dBm y 650 Mbit/s** — el entorno de radio cambió sin que nadie tocara nada. El
+argumento de la confiabilidad, que no dependía de la medición, es el que se sostuvo.
+
+### Cierre: el BIOS (2026-08-24, el mismo día)
+
+OBO dejó el firmware en «Restore on AC Power Loss = Power On» — la lección del apagón
+del 19-ago. **Ese ajuste no se puede leer por software** (BIOS `FNCML357.0058` del
+2022-07-20, NUC10i5FNH), así que aquí queda registrado como hecho, no como verificado:
+**la única comprobación de verdad es cortarle la corriente**, y eso se hace fuera de
+horario, no con el equipo trabajando.
+
+Lo que sí se verificó desde aquí es su complemento, que es la mitad que sí depende de
+nosotros: los **11 contenedores en `restart: always`** y `docker` y `tailscaled` en
+`enabled`. Con las dos mitades, un corte de luz ya no debería pedir mano de nadie.
+Ojo con el matiz: el reinicio que se probó en vivo el 2026-08-21 fue **por software**
+—no ejercitó este ajuste—, y aquel arranque tardó ~4 min porque el WiFi tenía que
+asociarse; ahora que entra por cable debería ser bastante más rápido.
+
+**Sigue pendiente, y es el último de la mudanza:** apagar el vencimiento de la llave
+de Tailscale (**2027-02-18**, y ese día se cae el sitio solo). No hay CLI: es un clic
+en la consola.
 
 ---
 
