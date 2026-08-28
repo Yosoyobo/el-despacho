@@ -1,6 +1,10 @@
 {% load proyectos_extras %}
 {% for p in proyectos %}
-<tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" onclick="window.location='{% url 'proyectos-detalle' p.pk %}'">
+{% comment %}LC 2026-08-28: la fila pasó de `onclick` a `data-href`. El manejador
+de `ui.js` navega igual pero IGNORA los clics que caen sobre un botón o un enlace
+— con `onclick` en el <tr>, el botón de duplicar habría abierto el proyecto además
+de su modal. También habilita cmd/ctrl-clic para abrir en otra pestaña.{% endcomment %}
+<tr data-href="{% url 'proyectos-detalle' p.pk %}" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]">
     <td class="px-5 py-3">
         {# S-LC-Feedback-V4: nombre prominente, código abajo en chiquito. #}
         <div class="font-semibold text-gray-900 dark:text-gray-100">{{ p.nombre }}</div>
@@ -24,7 +28,17 @@
             {% with nota=p|compromiso_nota %}{% if nota %}<div class="text-xs">{{ nota }}</div>{% endif %}{% endwith %}
         {% else %}—{% endif %}
     </td>
+    {% comment %}Duplicar (LC 2026-08-28, nota 4): ya existía al pie del detalle;
+    faltaba alcanzarlo desde aquí. Abre el mismo modal en `#modal-slot`.{% endcomment %}
+    {% if puede_crear %}
+    <td class="w-10 px-2 py-3 text-right">
+        <button type="button" data-no-row-click
+                hx-get="{% url 'proyectos-duplicar' p.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400"
+                title="Duplicar este proyecto" aria-label="Duplicar proyecto">⧉</button>
+    </td>
+    {% endif %}
 </tr>
 {% empty %}
-<tr><td colspan="4" class="px-5 py-10 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Crea el primer proyecto desde el botón de arriba." icono="folder" %}</div></td></tr>
+<tr><td colspan="{% if puede_crear %}5{% else %}4{% endif %}" class="px-5 py-10 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin proyectos" descripcion="Crea el primer proyecto desde el botón de arriba." icono="folder" %}</div></td></tr>
 {% endfor %}

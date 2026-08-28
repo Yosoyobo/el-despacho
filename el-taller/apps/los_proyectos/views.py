@@ -239,6 +239,27 @@ def _anotar_procesos(formset):
                         if inst and inst.pk else [])
         # El radio de la Opción A va marcado cuando NINGUNA escala manda.
         form.escala_activa = next((e for e in form.escalas if e.activa), None)
+    _anotar_tareas(formset)
+
+
+def _anotar_tareas(formset):
+    """Anota en cada form las tareas ligadas a esa línea (LC 2026-08-28, nota 6).
+
+    UNA consulta para todo el formset, no una por tarjeta: `_anotar_procesos` ya
+    paga un viaje por línea y no hay por qué sumarle otro (lección de
+    S-Latencia-Ago24). Las archivadas no cuentan — están escondidas del Pizarrón
+    y de las listas, y aquí también.
+    """
+    from apps.el_pizarron.models import Tarea
+    pks = [f.instance.pk for f in formset.forms if getattr(f.instance, "pk", None)]
+    por_producto: dict[int, list] = {pk: [] for pk in pks}
+    if pks:
+        for t in (Tarea.objects.filter(producto_id__in=pks, archivada=False)
+                  .select_related("asignada_a")
+                  .order_by("fecha_compromiso", "orden", "pk")):
+            por_producto[t.producto_id].append(t)
+    for f in formset.forms:
+        f.tareas = por_producto.get(getattr(f.instance, "pk", None), [])
 
 
 def _sync_procesos_formset(formset):
@@ -361,6 +382,19 @@ def lista(request):
             parts.append(f"q={q}")
         parts.append(f"kpi={slug}")
         return "?" + "&".join(parts)
+    # LC 2026-08-28: la columna de «duplicar» sólo existe para quien puede crear
+    # proyectos. La cabecera se condiciona con ella — una celda sin cabecera (o al
+    # revés) descuadra la tabla, que es la lección del sprint anterior.
+    puede_crear_proyecto = puede_editar_proyecto(request.user, None)
+    cabeceras = [
+        # S-LC-Feedback-V4: nombre es lo principal, código secundario.
+        {"label": "Proyecto", "sort_key": "nombre"},
+        {"label": "Cliente", "sort_key": "cliente"},
+        {"label": "Estado", "sort_key": "estado"},
+        {"label": "Compromiso", "sort_key": "fecha_compromiso"},
+    ]
+    if puede_crear_proyecto:
+        cabeceras.append({"label": "", "align": "right", "clase_th": "w-10"})
     return render(request, "proyectos/lista.html", {
         "proyectos": page_obj.object_list,
         "page_obj": page_obj,
@@ -370,14 +404,8 @@ def lista(request):
         "orden_actual": orden,
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
-        "cabeceras_proyectos": [
-            # S-LC-Feedback-V4: nombre es lo principal, código secundario.
-            {"label": "Proyecto", "sort_key": "nombre"},
-            {"label": "Cliente", "sort_key": "cliente"},
-            {"label": "Estado", "sort_key": "estado"},
-            {"label": "Compromiso", "sort_key": "fecha_compromiso"},
-        ],
-        "puede_crear": puede_editar_proyecto(request.user, None),
+        "cabeceras_proyectos": cabeceras,
+        "puede_crear": puede_crear_proyecto,
         "es_admin": es_admin(request.user),
         "ver_archivados": ver_archivados,
         "archivados_count": archivados_count,
@@ -866,6 +894,19 @@ def proyecto_productos_ia_aplicar(request, pk):
         "HX-Redirect": reverse("proyectos-detalle", args=[proyecto.pk])})
 
 
+def _producto_de(request, proyecto):
+    """La línea de producto desde cuya tarjeta se abrió el modal, o None.
+
+    Llega como `producto` (querystring en el GET, campo oculto en el POST). Se
+    exige que sea del MISMO proyecto: una tarea no puede colgar de un producto
+    ajeno, y el pk viaja por la URL.
+    """
+    crudo = (request.GET.get("producto") or request.POST.get("producto") or "").strip()
+    if not crudo.isdigit():
+        return None
+    return ProyectoProducto.objects.filter(pk=int(crudo), proyecto=proyecto).first()
+
+
 @login_required
 def tareas_chalan_modal(request, pk):
     """Mini-Chalán de tareas del proyecto (LC 2026-07-29, Oscar).
@@ -887,11 +928,15 @@ def tareas_chalan_modal(request, pk):
     if not puede_usar_chalan(request.user):
         return HttpResponseForbidden("Sin permiso para usar El Chalán.")
 
-    ctx = {"proyecto": proyecto, "texto": ""}
-    if request.method == "POST":
+    producto = _producto_de(request, proyecto)
+    ctx = {"proyecto": proyecto, "texto": "", "producto": producto}
+    if request.method == "POST" and (request.POST.get("texto") or "").strip():
+        # Sin texto no se interpreta ni se avisa nada: el botón de la tarjeta
+        # postea aunque su campo esté vacío, y ahí lo correcto es abrir el modal
+        # para dictar dentro, no regañar.
         texto = (request.POST.get("texto") or "").strip()
         resultado = tareas_ia.interpretar_tareas(
-            proyecto=proyecto, texto=texto, usuario=request.user)
+            proyecto=proyecto, texto=texto, usuario=request.user, producto=producto)
         ctx.update({
             "texto": texto,
             "resultado": resultado,
@@ -918,7 +963,9 @@ def tareas_chalan_aplicar(request, pk):
         propuestas = []
     seleccion = set(request.POST.getlist("sel"))
     elegidas = [t for i, t in enumerate(propuestas) if str(i) in seleccion and isinstance(t, dict)]
-    res = tareas_ia.aplicar_tareas(proyecto=proyecto, tareas=elegidas, usuario=request.user)
+    res = tareas_ia.aplicar_tareas(
+        proyecto=proyecto, tareas=elegidas, usuario=request.user,
+        producto=_producto_de(request, proyecto))
     if res["creadas"]:
         messages.success(request, f"{res['creadas']} tarea(s) creada(s).")
     elif res["mensajes"]:
@@ -1392,11 +1439,15 @@ def agregar_tarea_modal(request, pk):
     from apps.el_pizarron.forms import TareaForm
     from apps.taller_home.push_handlers import notificar_tarea_asignada
     es_htmx = _es_htmx(request)
+    # LC 2026-08-28: si el alta se abrió desde una tarjeta de producto, la tarea
+    # queda ligada a esa línea (se ve luego en la tarjeta).
+    producto = _producto_de(request, proyecto)
     if request.method == "POST":
         form = TareaForm(request.POST)
         if form.is_valid():
             tarea = form.save(commit=False)
             tarea.proyecto = proyecto
+            tarea.producto = producto
             tarea.creado_por = request.user
             tarea.save()
             from apps.el_pizarron import runners
@@ -1420,7 +1471,8 @@ def agregar_tarea_modal(request, pk):
             return redirect(_redir_detalle(proyecto))
     else:
         form = TareaForm()
-    return render(request, "proyectos/_modal_agregar_tarea.html", {"form": form, "proyecto": proyecto})
+    return render(request, "proyectos/_modal_agregar_tarea.html",
+                  {"form": form, "proyecto": proyecto, "producto": producto})
 
 
 def _siguiente_orden_producto(proyecto) -> int:

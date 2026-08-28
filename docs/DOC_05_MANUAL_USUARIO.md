@@ -5,6 +5,58 @@
 
 ---
 
+## Novedades — Tareas colgadas del producto, y el buscador del Inicio encuentra clientes (28 de agosto de 2026)
+
+**Cada producto del proyecto puede tener sus propias tareas**
+
+Hasta abajo de cada tarjeta de producto hay un renglón nuevo: **Tareas de este
+producto**. Ahí se ven las que ya tiene (qué, quién y cuándo) y se crean dos
+nuevas de la forma más rápida:
+
+- **🤖 Dictar tareas** — escribes lo que hay que hacer con tus palabras y El
+  Chalán lo convierte en tareas. Ya entendía qué, quién y cuándo; ahora también
+  saca la **hora** y el **lugar**: «entregar el martes a las 4 en la bodega de
+  Optimist» sale con su hora puesta y con la bodega como destino. Como siempre,
+  **propone y tú confirmas** cuáles crear.
+- **+ tarea** — el alta de siempre, a mano, ya ligada a ese producto.
+
+Todas las que se creen desde ahí quedan colgadas de esa línea, así que la
+tarjeta te dice de un vistazo qué falta de ESE producto. Si más adelante quitas
+el producto del proyecto, **la tarea no se borra**: sigue en Tareas, sólo deja
+de estar ligada.
+
+Dos cosas que conviene saber:
+
+- **Si no dices a quién, la tarea queda del despacho** — no se le cuelga a
+  quien la dictó. (El aviso del modal decía lo contrario; ya dice la verdad.)
+- **El lugar se guarda siempre, pero el pin sólo cuando se puede.** Si lo que
+  dictas empata con una dirección que el sistema ya tiene guardada (una sede de
+  LC, o dónde se ha visitado a ese cliente o proveedor), se pone el punto en el
+  mapa. Si no, se guarda el texto y listo: el runner lo lee igual y el pin se
+  fija después desde el mapa del mandado. Preferimos no poner pin a poner uno
+  inventado que mande a alguien al lugar equivocado.
+
+También se le puede preguntar a El Chalán en el chat: «¿qué tareas tiene la
+playera del LC-0044?».
+
+**El buscador del Inicio ya encuentra clientes, productos y proveedores**
+
+Antes sólo buscaba proyectos. Ahora, debajo del tablero, aparecen tres bloques
+más con lo que empate: **Clientes**, **Productos** y **Proveedores**, cada uno
+con su contador y un enlace para verlos todos en su pantalla. Busca con los
+mismos criterios de siempre, así que un cliente sale aunque todavía no tenga
+proyectos, y un producto se encuentra por el nombre con el que se vendió en un
+proyecto, aunque en el catálogo se llame de otra forma. Si no tienes acceso a
+un módulo, su bloque simplemente no aparece.
+
+**Duplicar un proyecto, sin entrar a él**
+
+El botón ya existía, pero hasta el fondo de la ficha del proyecto. Ahora hay un
+**⧉** en cada renglón de la lista y en cada tarjeta del tablero: se pica ahí
+mismo y se abre la misma ventana de siempre para ponerle nombre a la copia.
+
+---
+
 ## Novedades — Los acentos, el producto duplicado y un solo lugar para los proveedores (28 de agosto de 2026)
 
 **Ya se pueden escribir acentos y ñ en la Descripción de un producto**
@@ -5120,6 +5172,7 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Tarjetas grandes:** cinco indicadores destacados — Proyectos activos, En producción, Tareas urgentes y (si tienes acceso a finanzas) Ingresos y Utilidad bruta del mes. Cada una se puede ocultar desde "Mi tablero → Tarjetas del header".
 - **Kanban de proyectos activos:** las cuatro columnas en marcha (Por cotizar, Esperando respuesta, En proceso de diseño, En proceso de producción). Arrastra una tarjeta entre columnas para cambiar su estado. El **buscador** va en el mismo renglón del título (largo, con letra normal: busca por nombre, cliente, código, producto, proveedor, equipo o contacto). Aquí también puedes **arrastrar las tarjetas dentro de su columna** para acomodarlas. "Ver tablero completo" abre el tablero con todas las columnas.
   - **Lo que buscas y ya no está en el tablero:** si tu búsqueda encuentra proyectos **fuera** de esas cuatro columnas, aparece abajo un segundo tablero, **«Fuera del tablero»**, con las otras cuatro columnas (**En pausa, Entregado, Cerrado, Cancelado**) y su contador cada una — así ves de un vistazo "0, 0, 1 y 0". Son resultados de búsqueda: se pican para abrirlos, pero no se arrastran ni cambian de estado desde ahí.
+  - **Y no sólo proyectos:** debajo de ese tablero salen también **Clientes**, **Productos** y **Proveedores** que empaten con lo que escribiste, cada bloque con su contador y un enlace para verlos todos en su pantalla. Busca con los mismos criterios de cada módulo, así que un **cliente** aparece aunque todavía no tenga proyectos (y también por su razón social de facturación, su RFC o el nombre de un contacto), y un **producto** se encuentra por el nombre con el que se vendió en algún proyecto, aunque en el catálogo se llame distinto. Si no tienes acceso a Clientes o a Productos, ese bloque simplemente no aparece.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
 - **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
@@ -5165,6 +5218,11 @@ El corazón del negocio. Cada proyecto tiene código `LC-NNNN`, cliente, product
     se leen de un vistazo y el desglose las ensuciaba. **Pero si buscas algo**,
     los resultados sí las muestran completas — cuando buscas un producto quieres
     ver dónde está, aunque el proyecto ya esté cerrado.
+
+**Duplicar un proyecto sin entrar a él.** En cada renglón de la **Lista** y en
+cada tarjeta del **Kanban** hay un **⧉** que abre la misma ventana de siempre
+para ponerle nombre a la copia. (Sigue estando, además, al pie de la ficha del
+proyecto.) Sólo se ve si puedes crear proyectos.
 
 Las tarjetas KPI del header (Prospectos / Activos / Pausa / Entregados) son clickeables como filtros.
 
@@ -5336,6 +5394,31 @@ La página es **editable directo** (los cambios se guardan solos; verás
     producto y, debajo, su **utilidad** en pesos y su **margen** en verde.
   - Para **reordenar** las tarjetas, arrastra por el asa de puntitos de la
     izquierda. En el celular funciona igual, con el dedo. El orden se guarda solo.
+  - **Tareas de este producto** (hasta abajo de la tarjeta). Lista las que ya
+    tiene —qué, quién y cuándo— y trae dos formas de crear más, las dos ligadas
+    a esta línea:
+    - **🤖 Dictar tareas:** escribe en el campo de al lado lo que hay que hacer
+      («el martes a las 4 entregamos en la bodega de Optimist») y pícalo. El
+      Chalán lo convierte en tareas con su responsable, su fecha, su **hora** y
+      su **lugar**, y te las muestra con casillas para que confirmes cuáles
+      crear. Si picas el botón con el campo vacío, se abre la ventana para
+      dictar ahí dentro.
+    - **+ tarea:** el alta de siempre, a mano, ya ligada a este producto.
+
+    Dos detalles: **si no dices a quién, la tarea queda del despacho** (no se le
+    cuelga a quien la dicta), y el **lugar** se guarda siempre como texto pero el
+    **punto en el mapa** sólo se pone cuando lo que dictaste empata con una
+    dirección que el sistema ya tiene guardada —una sede de LC, o dónde se ha
+    visitado a ese cliente o proveedor—. Si no empata, el runner lee la
+    dirección igual y el pin se fija después desde el mapa del mandado.
+
+    Las tareas creadas así viven también en **Tareas** y en el Calendario, como
+    cualquier otra. Si un día quitas el producto del proyecto, **la tarea no se
+    borra**: se queda sin producto, pero sigue asignada. Y en el chat le puedes
+    preguntar a El Chalán «¿qué tareas tiene la playera del LC-0044?».
+
+    La tarjeta tiene que estar **guardada** para poder colgarle tareas; una
+    recién agregada te lo dice.
 
 A la derecha:
 

@@ -537,6 +537,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "buscar_proveedor", "que": "Ficha completa de un proveedor: contacto, qué surte con precios y costos, en qué proyectos anda, cuánto se le debe y qué se le ha pagado (el dinero, sólo con permiso de finanzas). Pregunta: «háblame de Simil Cuero Plymouth» o «¿cuánto le debemos a Telas del Norte?»."},
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
+    {"nombre": "tareas_de_producto", "que": "Las tareas de un producto DENTRO de un proyecto (las que se crean desde su tarjeta). Pregunta: «¿qué falta de las playeras del LC-0044?»."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
     {"nombre": "listar_plantillas_correo", "que": "Qué plantillas de correo hay listas para mandar y de qué dirección sale cada una. Requiere permiso de Comunicación. Pregunta: «¿qué correos puedo mandar?»."},
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},

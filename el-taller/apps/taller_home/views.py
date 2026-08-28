@@ -16,8 +16,10 @@ con slugs sintéticos `hero-*` desde /perfil/dashboard.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from datetime import date, timedelta
+from urllib.parse import quote
 
 from apps.los_proyectos.models import ESTADOS_PROYECTO, Proyecto
 from django.contrib.auth.decorators import login_required
@@ -379,7 +381,102 @@ def buscar_proyectos(request):
          "proyectos": lista, "total": len(lista)}
         for slug, lista in por_estado.items()
     ]
+    ctx["secciones"] = _buscar_otras_fichas(request.user, q)
     return render(request, "taller_home/_kanban_resultados_fuera.html", ctx)
+
+
+# Tope por sección del buscador del Dashboard. Es un atajo, no una lista: quien
+# quiera verlas todas tiene el enlace a su pantalla con el término puesto.
+MAX_POR_SECCION = 8
+
+
+def _buscar_otras_fichas(usuario, q: str) -> list[dict]:
+    """Clientes, productos y proveedores que empatan con `q` (LC 2026-08-28).
+
+    Oscar: «en búsqueda del dashboard mostrar también clientes, etc. en
+    resultados fuera del tablero».
+
+    Los criterios NO se reinventan: son los mismos que usan la lista de Clientes
+    (`_buscar_clientes`) y las de Productos y Proveedores del Catálogo, para que
+    buscar desde el Dashboard encuentre exactamente lo mismo que buscar allá.
+
+    Sin el permiso del módulo, la sección **no aparece** — ni siquiera como un
+    «no puedes». Cada bloque nunca lanza: una sección que falle se salta y las
+    demás se pintan igual.
+    """
+    from django.urls import reverse
+
+    from lib.permisos import puede, puede_ver_cartera
+    secciones: list[dict] = []
+    # OJO: el gate del Catálogo es `catalogo.ver_nombres`, el mismo que usa su
+    # propia lista. `lib.permisos.puede_ver_catalogo` pregunta por una acción
+    # `catalogo.ver` que NO EXISTE en el catálogo de permisos, así que devuelve
+    # False para todo el mundo (incluido super_admin) — usarlo aquí habría
+    # escondido las dos secciones sin que nada lo dijera.
+    ve_catalogo = puede(usuario, "catalogo", "ver_nombres")
+
+    def _agregar(titulo, icono, qs, fila, url_todos):
+        filas = list(qs[: MAX_POR_SECCION + 1])
+        if not filas:
+            return
+        hay_mas = len(filas) > MAX_POR_SECCION
+        secciones.append({
+            "titulo": titulo, "icono": icono,
+            "items": [fila(o) for o in filas[:MAX_POR_SECCION]],
+            "total": len(filas[:MAX_POR_SECCION]),
+            "hay_mas": hay_mas,
+            "url_todos": f"{url_todos}?q={quote(q)}",
+        })
+
+    if puede_ver_cartera(usuario):
+        with contextlib.suppress(Exception):
+            from apps.la_cartera.models import Cliente
+            from apps.la_cartera.views import _buscar_clientes
+            _agregar(
+                "Clientes", "👤",
+                _buscar_clientes(Cliente.objects.all(), q).order_by("razon_social"),
+                lambda c: {
+                    "titulo": c.razon_social,
+                    "sub": c.razon_social_fiscal or c.nombre_contacto or c.rfc or "",
+                    "url": reverse("cartera-detalle", args=[c.pk]),
+                },
+                reverse("cartera-lista"),
+            )
+
+    if ve_catalogo:
+        with contextlib.suppress(Exception):
+            from apps.el_catalogo.models import Servicio
+            _agregar(
+                "Productos", "📦",
+                (Servicio.objects.filter(activo=True)
+                 .filter(q_texto(q, "nombre", "proveedores__razon_social",
+                                 "en_proyectos__nombre_proyecto"))
+                 .select_related("categoria").distinct().order_by("nombre")),
+                lambda s: {
+                    "titulo": s.nombre,
+                    "sub": s.categoria.nombre if s.categoria_id else "",
+                    "url": reverse("catalogo-editar", args=[s.pk]),
+                },
+                reverse("catalogo-lista"),
+            )
+        with contextlib.suppress(Exception):
+            from apps.el_catalogo.models import Proveedor
+            _agregar(
+                "Proveedores", "🏭",
+                (Proveedor.objects.filter(activo=True)
+                 .filter(q_texto(q, "razon_social", "nombre_contacto", "email_contacto",
+                                 "telefono", "subcategorias__nombre",
+                                 "subcategorias__categoria__nombre", "servicios__nombre"))
+                 .distinct().order_by("razon_social")),
+                lambda pr: {
+                    "titulo": pr.razon_social,
+                    "sub": pr.nombre_contacto or "",
+                    "url": reverse("catalogo-proveedor-detalle", args=[pr.pk]),
+                },
+                reverse("catalogo-proveedores"),
+            )
+
+    return secciones
 
 
 def _infra_gauges(user):

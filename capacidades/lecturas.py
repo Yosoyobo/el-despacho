@@ -783,6 +783,57 @@ def _h_tareas_de_proyecto(args: dict, usuario) -> dict:
     return {"proyecto": p.codigo, "tareas": filas, "total": qs.count()}
 
 
+def _h_tareas_de_producto(args: dict, usuario) -> dict:
+    """Las tareas de UNA línea de producto de un proyecto (LC 2026-08-28).
+
+    Se identifica por el proyecto + el nombre del producto tal como se ve en la
+    tarjeta (el alias si lo tiene, si no el del catálogo). Si dos líneas del
+    mismo proyecto se llaman igual **no se adivina**: se dice cuáles hay, que es
+    el mismo criterio del resto de los resolvedores del repo.
+    """
+    from apps.el_pizarron.models.tarea import Tarea
+    from apps.los_proyectos.models import Proyecto
+
+    from lib import permisos
+    from lib.nombres import normalizar
+    slug = args["proyecto_slug"].strip().lstrip("#").lower()
+    p = (
+        Proyecto.objects.filter(slug=slug).first()
+        or Proyecto.objects.filter(codigo__iexact=slug).first()
+        or Proyecto.objects.filter(slug_legacy=slug).first()
+    )
+    if p is None:
+        return {"error": "no_encontrado", "proyecto_slug": slug}
+    if not permisos.puede_ver_proyecto(usuario, p):
+        return {"error": "sin_permiso"}
+
+    lineas = list(p.productos.select_related("servicio", "variacion").all())
+    aguja = normalizar(args.get("producto") or "")
+    if aguja:
+        casan = [pp for pp in lineas if normalizar(pp.nombre_visible) == aguja]
+        if not casan:
+            casan = [pp for pp in lineas if aguja in normalizar(pp.nombre_visible)]
+        if not casan:
+            return {"error": "producto_no_encontrado", "proyecto": p.codigo,
+                    "productos": [pp.nombre_visible for pp in lineas]}
+        if len(casan) > 1:
+            return {"error": "ambiguo", "proyecto": p.codigo,
+                    "productos": [pp.nombre_visible for pp in casan]}
+        lineas = casan
+
+    solo_abiertas = args.get("solo_abiertas", True)
+    salida = []
+    for pp in lineas:
+        qs = Tarea.objects.filter(producto=pp, archivada=False).select_related("proyecto")
+        if solo_abiertas:
+            qs = qs.exclude(estado="completada")
+        salida.append({
+            "producto": pp.nombre_visible,
+            "tareas": [_fila_tarea(t) for t in qs.order_by("fecha_compromiso", "pk")[:_TOP_N]],
+        })
+    return {"proyecto": p.codigo, "productos": salida}
+
+
 def _h_contaduria_saldo_cuenta(args: dict, usuario) -> dict:
     from apps.contaduria.models import CuentaContable
     from apps.contaduria.services import saldo_cuenta
@@ -1517,6 +1568,19 @@ _LECTURAS: dict[str, Capacidad] = {
         args_schema={"proyecto_slug": {"tipo": "str", "requerido": True},
                      "solo_abiertas": {"tipo": "bool", "requerido": False}},
         gating="abierto", fn=_h_tareas_de_proyecto,
+    ),
+    "tareas_de_producto": Capacidad(
+        nombre="tareas_de_producto",
+        descripcion=(
+            "Tareas ligadas a los productos de un proyecto (LC-0001 o slug). "
+            "Arg opcional `producto`: el nombre del producto tal como se ve en el "
+            "proyecto, para acotar a esa línea. Arg opcional `solo_abiertas` "
+            "(default true)."
+        ),
+        args_schema={"proyecto_slug": {"tipo": "str", "requerido": True},
+                     "producto": {"tipo": "str", "requerido": False},
+                     "solo_abiertas": {"tipo": "bool", "requerido": False}},
+        gating="abierto", fn=_h_tareas_de_producto,
     ),
     "contaduria_saldo_cuenta": Capacidad(
         nombre="contaduria_saldo_cuenta",

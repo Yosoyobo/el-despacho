@@ -13153,3 +13153,135 @@ plantillas. Tumbó el detalle del proyecto entero y lo cazaron los tests de
   las tres plantillas del catálogo, no configurables por GUI.
 - El enlace de la tarjeta a la ficha del producto abre en otra pestaña a
   propósito; no hay «volver» porque no se sale del proyecto.
+
+---
+
+## S-Ajustes-Ago28 · Sprint 2 — 2026-08-28 (VERSION 2026.08.48)
+
+> Rama `agent/ajustes-ago28`, encima del Sprint 1. Handoff:
+> `docs/SPRINT-Ago28-2-Tareas-y-Dashboard.md`. **El único de los tres que lleva
+> migración** (`pizarron/0016`, aditiva) — por eso iba solo.
+
+### Lo entregado
+
+**1 · Las tareas quedan colgadas del producto.** `Tarea.producto` → FK a
+`proyectos.ProyectoProducto`. La decisión que importa es **`SET_NULL`, no
+`CASCADE`**: quitar una línea del proyecto no puede borrar el trabajo que alguien
+ya tiene asignado. La tarea sobrevive huérfana y sigue en el Pizarrón, en el
+Calendario y en «Mis tareas». Hay test que lo fija en los dos sentidos, y
+verificado contra el código mutado a CASCADE.
+
+**El mini-Chalán de tareas ya lee hora y lugar.** Entendía qué/quién/cuándo;
+ahora el esquema del prompt pide también `hora` («HH:MM», vacía si no la
+dijeron) y `lugar` (texto libre, tal como lo dijo el usuario). `_hora_obj`
+convierte a `datetime.time` **ahí y no al guardar**: Django aceptaría la cadena,
+pero la instancia en memoria se quedaría con texto y quien la lea justo después
+—los avisos, el mandado que se sincroniza por señal— compararía manzanas con
+peras.
+
+**Las coordenadas no se inventan, y ésa es la parte pensada.** El pin sólo se
+pone si lo dictado empata con una dirección **ya guardada**: una sede de LC con
+pin, la última visita geolocalizada al cliente del proyecto, o la de un proveedor
+de sus líneas. Con dos candidatos distintos ⇒ **ningún pin** (mismo criterio que
+el resto de los resolvedores del repo: no se adivina), y los nombres de menos de
+5 caracteres se descartan porque «sur» aparece por casualidad dentro de cualquier
+frase. Si no empata, se guarda sólo la etiqueta: el runner la lee igual y el pin
+se fija después desde el mapa del mandado. **Un pin inventado manda a alguien al
+lugar equivocado, que es mucho peor que no tener pin** — y ya hay precedente de
+eso en el planeador.
+
+**El bloque en la tarjeta**, con las tres trampas del handoff atendidas:
+
+1. Vive DENTRO del formulario del proyecto, que tiene autoguardado. El campo de
+   dictado **no tiene `name`** —si lo tuviera, viajaría en cada autoguardado— y
+   su texto se lee por id con `hx-vals='js:…'`, el patrón que ya usa el chat de
+   Mensajes. Los dos botones son `type="button"` + `hx-params="none"` + su CSRF
+   por cabecera (con `hx-params="none"` el token del formulario no viaja).
+2. Una tarjeta sin guardar no tiene pk: se dice, como ya hace la foto.
+3. Sólo se pinta donde hay autoguardado (`con_autosave`), o sea el detalle. En el
+   alta y en la pestaña de una versión no aplica.
+
+Las tareas de todas las tarjetas se leen en **UNA consulta** (`_anotar_tareas`):
+`_anotar_procesos` ya paga un viaje por línea y no había por qué sumarle otro
+(lección de S-Latencia-Ago24). Hay test de mutación que lo fija.
+
+**Fix de camino:** el preview del modal decía «sin responsable — **queda a tu
+nombre**», y desde el 7 de agosto `aplicar_tareas` dejó de caer al usuario que
+dicta. Era el único lugar de la pantalla que afirmaba lo contrario del código.
+
+**2 · El buscador del Inicio encuentra clientes, productos y proveedores.** Los
+criterios **no se reinventaron**: se reusan `la_cartera._buscar_clientes` y los
+`q_texto` de las listas del Catálogo, para que buscar desde el Dashboard
+encuentre exactamente lo mismo que buscar allá. 8 por sección + «ver todos →»
+con el término puesto. Sin el permiso del módulo, la sección **no aparece** (no
+un «no puedes»).
+
+**3 · Duplicar proyecto, alcanzable.** ⧉ en cada renglón de la lista y en cada
+tarjeta del Kanban; el modal y el endpoint ya existían. La fila de la lista pasó
+de `onclick` a `data-href` —con `onclick` en el `<tr>`, el botón habría abierto
+el proyecto **además** de su modal— y la tarjeta del Kanban de `<a>` a
+`<div data-href>`, porque un `<button>` dentro de un `<a>` es HTML inválido. Es
+el mismo cambio que se le hizo a las fichas del Catálogo en agosto. La columna de
+la tabla **se condiciona junto con el botón**: una celda sin cabecera descuadra
+la tabla (lección del Sprint 1).
+
+**MCP** (regla del repo): capacidad de lectura `tareas_de_producto` —«¿qué tareas
+tiene la playera del LC-0044?»— que no adivina entre dos líneas que se llamen
+igual, más su renglón en `CONSULTAS_CHAT`.
+
+### El bug que encontró este sprint
+
+**`lib.permisos.puede_ver_catalogo` es un helper MUERTO.** Pregunta por
+`catalogo.ver`, y esa acción **no existe** en `CATALOGO_PERMISOS` (el módulo
+tiene `ver_nombres` / `ver_precios`), así que devuelve `False` para todo el
+mundo, super_admin incluido. Lo usé al escribir el buscador y habría escondido
+las secciones de Productos y Proveedores **para todos y sin que nada lo dijera**
+— el peor modo de falla: la pantalla se ve bien y simplemente no encuentra.
+
+Lo cazó una prueba que buscaba otra cosa. El gate correcto —y el que usa la
+propia lista del Catálogo— es `puede(user, "catalogo", "ver_nombres")`. El helper
+se dejó como está (no tenía otros usuarios y tocarlo es un sweep aparte), con la
+razón escrita al lado de su único llamador nuevo.
+
+### Bug preexistente detectado y NO tocado
+
+Las vistas que crean una `Tarea` con `form.save(commit=False)` —
+`agregar_tarea_modal`, `nueva_tarea_global` y sus hermanas— **nunca llaman
+`form.save_m2m()`**, así que los «Otros responsables» que se marquen en esos
+modales **se pierden en silencio**. El principal (`asignada_a`) sí se guarda,
+porque es una columna. Es de antes de este sprint y arreglarlo cambia
+comportamiento no pedido en varias pantallas a la vez; queda reportado.
+
+### Verificación
+
+- **48 tests nuevos** (`tests/taller/test_ajustes_ago28_2.py`).
+- **Cinco mutaciones verificadas** contra el código sin arreglar: CASCADE en vez
+  de SET_NULL, una consulta por tarjeta en vez de una para todo el formset, el
+  helper muerto de permisos, el `onclick` de la fila y un `name` en el campo de
+  dictado. Cada una hace fallar exactamente a su test.
+- Suite completa con la configuración del CI (`-n auto --dist loadfile`):
+  **3690 pass, 1 skipped**. Ruff limpio. Candados de comentarios y de Novedades
+  verdes.
+- **Cero tests ajenos modificados**: este sprint no cambió ningún contrato que
+  otro test estuviera fijando.
+
+### Gotchas
+
+- `makemigrations --check` sigue reportando los espurios conocidos
+  (`Alter field id` por BigAutoField, renombres de índices). Lo que importa es
+  que `tarea.producto` **no** aparece: lo captura `0016`.
+- La `Servicio.categoria` es obligatoria: los factories de prueba tienen que
+  pasarla o el `create` truena con `NOT NULL constraint failed`.
+- El endpoint del buscador del Dashboard es `/buscar/proyectos`, no
+  `/buscar-proyectos/`.
+
+### Deuda diseñada
+
+- Las tareas ligadas **no se filtran por producto** en el Pizarrón ni en el
+  Calendario: sólo se ven desde la tarjeta y desde El Chalán.
+- El lugar sin coordenadas queda como texto; el pin se pone después desde el mapa
+  del mandado.
+- El bloque no aparece en el alta del proyecto ni en la pestaña de una versión
+  (no hay pk que ligar ni autoguardado que lo salve).
+- El Chalán **lee** las tareas de un producto pero no las crea ligadas desde el
+  chat: el ejecutor `crear_tarea` sigue colgando del proyecto, no de la línea.

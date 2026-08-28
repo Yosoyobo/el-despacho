@@ -44,10 +44,16 @@ dark:border-gray-800` con `style="border-top-color: …"`, quitar `kanban-tab` d
         `border border-l-4 border-gray-200 dark:border-gray-800` con
         `style="border-left-color: …"` y el `hover:border-brand-300
         dark:hover:border-brand-500` que en su momento se retiró.{% endcomment %}
-        <a href="{% url 'proyectos-detalle' p.pk %}"
+        {% comment %}LC 2026-08-28 (Oscar, nota 4): la ficha pasó de `<a>` a
+        `<div data-href>` para poder llevar el botón de duplicar dentro. Un
+        `<button>` dentro de un `<a>` es HTML inválido y cada navegador hace algo
+        distinto; el manejador de filas clickeables de `ui.js` abre el proyecto
+        igual (y respeta cmd/ctrl-clic), y salta los clics que caen en un botón.
+        Es el mismo cambio que se hizo en las fichas del Catálogo en agosto.{% endcomment %}
+        <div data-href="{% url 'proyectos-detalle' p.pk %}"
            data-arr-item="{{ p.pk }}"
            data-buscar="{{ p.nombre|lower }} {{ p.cliente.razon_social|lower }} {{ p.codigo|lower }} {% for pp in p.productos.all %}{{ pp.etiqueta|lower }} {{ pp.nombre_catalogo|lower }} {% if pp.proveedor %}{{ pp.proveedor.razon_social|lower }} {% endif %}{% endfor %}{% for a in p.asignaciones.all %}{{ a.usuario.nombre_completo|default:a.usuario.email|lower }} {% endfor %}{{ p.cliente.nombre_contacto|lower }} {% for c in p.cliente.contactos.all %}{{ c.nombre|lower }} {% endfor %}"
-           class="kanban-card block min-w-0 rounded-xl bg-white p-2.5 shadow-theme-sm transition hover:shadow-theme-md dark:bg-gray-900">
+           class="kanban-card block min-w-0 cursor-pointer rounded-xl bg-white p-2.5 shadow-theme-sm transition hover:shadow-theme-md dark:bg-gray-900">
             {% comment %}V6 Bloque 3: nombre prominente, CLIENTE en la posición del código (el código sigue visible en lista/detalle).{% endcomment %}
             <div class="flex items-start justify-between gap-1.5">
                 <div class="min-w-0 flex-1">
@@ -76,7 +82,15 @@ dark:border-gray-800` con `style="border-top-color: …"`, quitar `kanban-tab` d
                     <span class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 dark:bg-white/[0.05]">{{ pp.cantidad }}× {{ pp.nombre_visible }}</span>
                 {% endif %}{% endfor %}
             </div>
-        </a>
+            {% if con_duplicar %}
+            <div class="mt-1 text-right">
+                <button type="button" data-no-row-click
+                        hx-get="{% url 'proyectos-duplicar' p.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"
+                        class="rounded p-0.5 text-[11px] leading-none text-gray-300 transition hover:bg-gray-100 hover:text-brand-600 dark:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400"
+                        title="Duplicar este proyecto" aria-label="Duplicar proyecto">⧉</button>
+            </div>
+            {% endif %}
+        </div>
         {% empty %}
         <div data-arr-vacio class="kanban-empty rounded-lg border border-dashed border-gray-300 p-4 text-center text-xs text-gray-400 dark:border-gray-700">Sin proyectos.</div>
         {% endfor %}

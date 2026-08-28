@@ -427,5 +427,66 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
             {% endfor %}
         </div>
     </div>
+
+    {% comment %}── Tareas de este producto (LC 2026-08-28, Oscar, nota 6) ──
+    «En cada tarjeta de producto involucrado, hasta abajo, podamos crear rápido
+    tareas ligadas a este producto, pudiendo etiquetar gente y usando inteligencia
+    para leer instrucciones con fechas, horarios, lugares.»
+
+    Tres cuidados, todos por vivir DENTRO del formulario del proyecto (que tiene
+    autoguardado):
+
+    1. Nada de aquí lo dispara: los botones son `type="button"`, mandan
+       `hx-params="none"` (no arrastran el formset) y el campo de dictado NO
+       tiene `name` —si lo tuviera, viajaría en cada autoguardado—. El texto se
+       lee por id con `hx-vals='js:…'`, el mismo patrón del chat de Mensajes.
+    2. Una tarjeta sin guardar no tiene pk, así que todavía no se le puede colgar
+       nada: se dice, como ya hace la foto.
+    3. Sólo donde hay autoguardado (el detalle). En el alta y en la pestaña de una
+       versión no aplica.{% endcomment %}
+    {% if con_autosave %}
+    <div class="mt-2 border-t border-gray-200/70 pt-2 dark:border-gray-700/60">
+        <div class="mb-1.5 flex items-center justify-between gap-2">
+            <span class="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tareas de este producto{% if f.tareas %} ({{ f.tareas|length }}){% endif %}</span>
+        </div>
+        {% if f.instance.pk %}
+        {% if f.tareas %}
+        <ul class="mb-2 space-y-1">
+            {% for t in f.tareas %}
+            <li class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                <span class="shrink-0" aria-hidden="true">{{ t.emoji_tipo }}</span>
+                <a href="{% url 'pizarron-detalle-tarea' t.pk %}" class="min-w-0 flex-1 truncate font-medium text-gray-800 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400">{{ t.titulo }}</a>
+                <span class="shrink-0 text-gray-500 dark:text-gray-400">{{ t.asignada_a.nombre_completo|default:"sin responsable" }}</span>
+                {% if t.fecha_compromiso %}<span class="shrink-0 tabular-nums {% if t.esta_atrasada %}text-warning-600 dark:text-warning-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">{{ t.fecha_compromiso|date:"d M" }}{% if t.hora %} {{ t.hora|time:"H:i" }}{% endif %}</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="flex flex-wrap items-end gap-1.5">
+            <div class="min-w-0 flex-1">
+                {% comment %}Sin `name` a propósito: este campo no puede viajar en el
+                autoguardado del proyecto.{% endcomment %}
+                <textarea id="tareas-dictado-{{ f.instance.pk }}" rows="1" data-crece-al-enfocar
+                          class="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+                          placeholder="Dicta: «el martes a las 4 entregar en la bodega de Optimist»"></textarea>
+            </div>
+            <button type="button"
+                    hx-post="{% url 'proyectos-tareas-chalan' f.instance.proyecto_id %}"
+                    hx-target="#modal-slot" hx-swap="innerHTML" hx-params="none"
+                    hx-vals='js:{texto: document.getElementById("tareas-dictado-{{ f.instance.pk }}").value, producto: "{{ f.instance.pk }}"}'
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+                    title="El Chalán lee lo que escribas (fechas, horas, lugares y a quién) y propone las tareas. Tú confirmas cuáles crear.">🤖 Dictar tareas</button>
+            <button type="button"
+                    hx-get="{% url 'proyectos-agregar-tarea' f.instance.proyecto_id %}?producto={{ f.instance.pk }}"
+                    hx-target="#modal-slot" hx-swap="innerHTML" hx-params="none"
+                    class="inline-flex h-8 shrink-0 items-center rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+                    title="Crear una tarea a mano, ligada a este producto">+ tarea</button>
+        </div>
+        {% else %}
+        <p class="text-[11px] text-gray-400 dark:text-gray-500">Guarda el proyecto primero; luego podrás colgarle tareas a este producto.</p>
+        {% endif %}
+    </div>
+    {% endif %}
     </div>
 </div>
