@@ -463,5 +463,12 @@ def test_el_recuadro_pinta_los_gastos_sueltos():
     assert "Gastos sin proveedor" in html
     assert "proyectos-ligar-gasto-proveedor" in html
     # No debe arrastrar el form del proyecto ni disparar el autoguardado.
-    assert 'hx-params="none"' in html
+    #
+    # LC 2026-08-28: esto decía `hx-params="none"` y con eso el selector **no
+    # ligaba nada**. htmx mezcla los `hx-vals` en los parámetros ANTES de
+    # aplicar el filtro de `hx-params`, así que «none» manda un cuerpo vacío y
+    # se lleva también el `proveedor`. Se conserva la intención (que el formset
+    # del proyecto NO viaje) nombrando el parámetro que sí debe llegar.
+    assert 'hx-params="proveedor"' in html
+    assert 'hx-params="none"' not in html
     assert "event.stopPropagation()" in html

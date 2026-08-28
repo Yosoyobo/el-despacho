@@ -7,8 +7,16 @@ clase_extra (opcional — el detalle la usa para el `order-*` del orden en móvi
 
 Edición inline (ticket UX 2026-07): la pastilla de Estado es un <select> coloreado
 que cambia el estado sin salir de la página, y una "X" a la derecha archiva la
-tarea. Ambos controles NO envían el form del proyecto (hx-params="none") y no
-disparan el autoguardado (el <select> hace stopPropagation en change).
+tarea. Ninguno envía el form del proyecto ni dispara el autoguardado (el <select>
+hace stopPropagation en change).
+
+LC 2026-08-28: el <select> decía `hx-params="none"` y con eso **no cambiaba nada**
+—daba 403 «Estado inválido» en silencio, porque `hx-swap="none"` no pinta la
+respuesta—. htmx mezcla los `hx-vals` en los parámetros ANTES de filtrar con
+`hx-params`, así que «none» devuelve un cuerpo vacío y también se lleva el
+`estado` que manda el `hx-vals`. Se nombra el parámetro a conservar y ya: el
+formset del proyecto sigue sin viajar. El botón de archivar sí puede quedarse en
+«none» — no manda `hx-vals`, su pk va en la URL.
 {% endcomment %}
 <section class="{{ clase_extra }}">
     <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Tareas</h2>
@@ -42,7 +50,7 @@ disparan el autoguardado (el <select> hace stopPropagation en change).
                                 style="--ec: {{ color }}; border-color: color-mix(in srgb, {{ color }} 40%, transparent);"
                                 class="estado-chip cursor-pointer rounded-lg border px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-400"
                                 hx-post="{% url 'pizarron-cambiar-estado' t.pk %}"
-                                hx-trigger="change" hx-swap="none" hx-params="none"
+                                hx-trigger="change" hx-swap="none" hx-params="estado"
                                 hx-vals='js:{estado: event.target.value}'
                                 hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                                 hx-on:change="event.stopPropagation(); this.style.setProperty('--ec', this.selectedOptions[0].dataset.color); this.style.borderColor='color-mix(in srgb, '+this.selectedOptions[0].dataset.color+' 40%, transparent)';">

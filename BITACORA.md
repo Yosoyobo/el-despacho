@@ -13229,7 +13229,44 @@ la tabla (lección del Sprint 1).
 tiene la playera del LC-0044?»— que no adivina entre dos líneas que se llamen
 igual, más su renglón en `CONSULTAS_CHAT`.
 
-### El bug que encontró este sprint
+### El bug que estaba EN PRODUCCIÓN, y que el handoff me mandó a copiar
+
+**`hx-params="none"` se lleva también lo que manda `hx-vals`.** htmx mezcla los
+`hx-vals` en los parámetros **antes** de aplicar el filtro de `hx-params` — en
+htmx 2.0.3, `v = ln(j, qn(En(r)))` y después `w = dn(v, r)`, y con «none» esa
+`dn` devuelve un `FormData` vacío. O sea que el control postea un cuerpo vacío.
+
+Lo descubrí al escribir el botón de dictado de la tarjeta, siguiendo la
+instrucción del handoff de copiar el patrón de la tabla de tareas inline. Fui a
+comprobar en la fuente de htmx si `hx-vals` sobrevive al filtro… y no sobrevive.
+Y entonces resultó que **los dos controles que ya estaban en producción con ese
+patrón estaban rotos**:
+
+- **El selector de estado de una tarea** en la tabla del proyecto
+  (`_tareas_panel.html`, S-UX-Ticket-Jul): el `estado` llegaba vacío,
+  `EstadoTarea.objects.get(slug="")` levantaba `DoesNotExist` y la vista
+  devolvía **403 «Estado inválido»**. Con `hx-swap="none"` esa respuesta no se
+  pinta, así que el desplegable se movía y **no pasaba nada, sin error**.
+- **Ligar un gasto a un proveedor** (`_proveedores_panel.html`, S-Ajustes-Ago07),
+  exactamente igual.
+
+Los tres —el mío y los dos de producción— pasan a **nombrar lo que se conserva**
+(`hx-params="estado"`, `"proveedor"`, `"texto,producto"`): la rama de lista
+blanca de `dn` sí respeta los `hx-vals`, y el formset del proyecto sigue sin
+viajar, que era la intención original. Un control **sin** `hx-vals` puede
+quedarse en «none» sin problema (su pk va en la URL) — el de archivar tarea y el
+⧉ de duplicar línea se quedan como están.
+
+Queda un candado parametrizado sobre las tres plantillas, verificado contra el
+código sin arreglar. Y se actualizó el test de Ago07 que fijaba
+`hx-params="none"` como si fuera lo correcto: conserva su intención («que no
+viaje el formset») con la forma que sí funciona.
+
+**La lección:** un `hx-swap="none"` convierte cualquier error del servidor en
+silencio. Si un control con `hx-swap="none"` «no hace nada», lo primero es mirar
+qué contestó el servidor, no el JS.
+
+### El otro bug que encontró este sprint
 
 **`lib.permisos.puede_ver_catalogo` es un helper MUERTO.** Pregunta por
 `catalogo.ver`, y esa acción **no existe** en `CATALOGO_PERMISOS` (el módulo
@@ -13254,16 +13291,18 @@ comportamiento no pedido en varias pantallas a la vez; queda reportado.
 
 ### Verificación
 
-- **48 tests nuevos** (`tests/taller/test_ajustes_ago28_2.py`).
-- **Cinco mutaciones verificadas** contra el código sin arreglar: CASCADE en vez
+- **54 tests nuevos** (`tests/taller/test_ajustes_ago28_2.py`).
+- **Seis mutaciones verificadas** contra el código sin arreglar: CASCADE en vez
   de SET_NULL, una consulta por tarjeta en vez de una para todo el formset, el
-  helper muerto de permisos, el `onclick` de la fila y un `name` en el campo de
-  dictado. Cada una hace fallar exactamente a su test.
+  helper muerto de permisos, el `onclick` de la fila, un `name` en el campo de
+  dictado y el `hx-params="none"` de vuelta. Cada una hace fallar exactamente a
+  su test.
 - Suite completa con la configuración del CI (`-n auto --dist loadfile`):
-  **3690 pass, 1 skipped**. Ruff limpio. Candados de comentarios y de Novedades
+  **3696 pass, 1 skipped**. Ruff limpio. Candados de comentarios y de Novedades
   verdes.
-- **Cero tests ajenos modificados**: este sprint no cambió ningún contrato que
-  otro test estuviera fijando.
+- **Un test ajeno actualizado, no borrado**: el de Ago07 fijaba
+  `hx-params="none"` en el selector de gastos sin proveedor. Conserva su
+  intención con la forma que sí funciona, y con la explicación al lado.
 
 ### Gotchas
 

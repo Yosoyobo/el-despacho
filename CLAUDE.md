@@ -8171,11 +8171,25 @@ migración**, y por eso iba solo.
   (`capacidades/lecturas.py`, gating `abierto` sobre `puede_ver_proyecto`), que
   no adivina entre dos líneas que se llamen igual, + su renglón en
   `CONSULTAS_CHAT`. «¿Qué tareas tiene la playera del LC-0044?».
-- **48 tests** en `tests/taller/test_ajustes_ago28_2.py`, los críticos
+- **Segundo bug encontrado al escribirlo, y éste sí estaba EN PRODUCCIÓN:
+  `hx-params="none"` se lleva también lo que manda `hx-vals`.** htmx mezcla los
+  `hx-vals` en los parámetros **antes** de aplicar el filtro de `hx-params`
+  (htmx 2.0.3: `v = ln(j, qn(En(r)))` y después `w = dn(v, r)`; con «none», `dn`
+  devuelve un `FormData` vacío), así que el control postea un cuerpo vacío. El
+  handoff me mandó a copiar ese patrón de `_tareas_panel.html`… y ahí estaba
+  roto: **el selector de estado de una tarea daba 403 «Estado inválido» en
+  silencio** (con `hx-swap="none"` no se pinta la respuesta), y lo mismo el
+  selector de «ligar un gasto a un proveedor» de `_proveedores_panel.html`
+  (S-Ajustes-Ago07). Los tres —el mío y los dos de producción— pasan a nombrar
+  lo que se conserva (`hx-params="estado"`, `"proveedor"`,
+  `"texto,producto"`): el formset del proyecto sigue sin viajar y el `hx-vals`
+  sobrevive. Un control **sin** `hx-vals` sí puede quedarse en «none» (su pk va
+  en la URL). Queda candado parametrizado sobre las tres plantillas.
+- **54 tests** en `tests/taller/test_ajustes_ago28_2.py`, los críticos
   verificados contra el código sin arreglar (CASCADE, la consulta por tarjeta,
-  el helper muerto de permisos, el `onclick` de la fila y el `name` del campo de
-  dictado hacen fallar exactamente a su test). Suite completa con la
-  configuración del CI: **3690 pass, 1 skipped**.
+  el helper muerto de permisos, el `onclick` de la fila, el `name` del campo de
+  dictado y el `hx-params="none"` hacen fallar exactamente a su test). Suite
+  completa con la configuración del CI: **3696 pass, 1 skipped**.
 
 **Deuda diseñada**: las tareas ligadas no se filtran por producto en el Pizarrón
 ni en el Calendario (sólo se ven desde la tarjeta y desde El Chalán); el lugar

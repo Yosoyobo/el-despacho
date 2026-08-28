@@ -437,9 +437,15 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
     autoguardado):
 
     1. Nada de aquí lo dispara: los botones son `type="button"`, mandan
-       `hx-params="none"` (no arrastran el formset) y el campo de dictado NO
-       tiene `name` —si lo tuviera, viajaría en cada autoguardado—. El texto se
-       lee por id con `hx-vals='js:…'`, el mismo patrón del chat de Mensajes.
+       una LISTA BLANCA de parámetros (no arrastran el formset) y el campo de
+       dictado NO tiene `name` —si lo tuviera, viajaría en cada autoguardado—.
+       El texto se lee por id con `hx-vals='js:…'`.
+
+       **Ojo, y es contraintuitivo:** aquí NO sirve `hx-params="none"`. htmx
+       mezcla los `hx-vals` en los parámetros ANTES de aplicar el filtro de
+       `hx-params`, así que «none» devuelve un cuerpo vacío y se lleva también
+       lo que manda `hx-vals`. La forma que sí funciona es nombrar lo que se
+       quiere conservar: se queda el `hx-vals` y se va el formset entero.
     2. Una tarjeta sin guardar no tiene pk, así que todavía no se le puede colgar
        nada: se dice, como ya hace la foto.
     3. Sólo donde hay autoguardado (el detalle). En el alta y en la pestaña de una
@@ -472,7 +478,7 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
             </div>
             <button type="button"
                     hx-post="{% url 'proyectos-tareas-chalan' f.instance.proyecto_id %}"
-                    hx-target="#modal-slot" hx-swap="innerHTML" hx-params="none"
+                    hx-target="#modal-slot" hx-swap="innerHTML" hx-params="texto,producto"
                     hx-vals='js:{texto: document.getElementById("tareas-dictado-{{ f.instance.pk }}").value, producto: "{{ f.instance.pk }}"}'
                     hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                     class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"

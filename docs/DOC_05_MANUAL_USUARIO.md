@@ -49,6 +49,17 @@ proyectos, y un producto se encuentra por el nombre con el que se vendió en un
 proyecto, aunque en el catálogo se llame de otra forma. Si no tienes acceso a
 un módulo, su bloque simplemente no aparece.
 
+**Arreglado: dos controles del proyecto que no hacían nada**
+
+En la página del proyecto había dos desplegables que se movían pero no
+guardaban, y sin decir nada:
+
+- El **estado de una tarea** en la tabla de Tareas (el que se cambia sin salir
+  de la página).
+- **Ligar un gasto a un proveedor**, en el recuadro «Gastos sin proveedor».
+
+Los dos mandaban al servidor un mensaje vacío. Ya funcionan: eliges y se guarda.
+
 **Duplicar un proyecto, sin entrar a él**
 
 El botón ya existía, pero hasta el fondo de la ficha del proyecto. Ahora hay un
