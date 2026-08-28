@@ -12,6 +12,7 @@ urlpatterns = [
     path("<int:pk>/editar", views.editar, name="catalogo-editar"),
     path("<int:pk>/celda", views.servicio_celda, name="catalogo-servicio-celda"),
     path("<int:pk>/imagen", views.servicio_imagen, name="catalogo-servicio-imagen"),
+    path("<int:pk>/duplicar", views.duplicar, name="catalogo-duplicar"),
     path("<int:pk>/archivar", views.archivar, name="catalogo-archivar"),
     path("<int:pk>/eliminar", views.servicio_eliminar, name="catalogo-eliminar"),
     # Sprint Fiscal 2026-07 (#8): "Variaciones" pasó a bitácora de "Usos".

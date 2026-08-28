@@ -103,6 +103,7 @@ EventoTipo = Literal[
     "catalogo.servicio_actualizado",
     "catalogo.servicio_eliminado",
     "catalogo.servicio_quick_creado",
+    "catalogo.servicio_duplicado",
     "catalogo.unidad_creada",
     "catalogo.unidad_actualizada",
     "proveedor.creado",

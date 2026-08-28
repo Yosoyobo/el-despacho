@@ -241,7 +241,9 @@ def lista(request):
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
         cabeceras.append({"label": "Margen", "align": "right"})
-    if editar_inline or puede_editar or puede_archivar or puede_eliminar:
+    # `puede_crear` también: la fila trae el botón de duplicar, y una celda
+    # sin su cabecera descuadra la tabla entera.
+    if editar_inline or puede_editar or puede_archivar or puede_eliminar or puede_crear:
         cabeceras.append({"label": "", "align": "right"})
     # querystring_base: preserva filtros al cambiar el orden (item 6).
     from urllib.parse import urlencode
@@ -564,6 +566,8 @@ def editar(request, pk: int):
         # antes había que volver a la lista para cualquiera de las dos.
         "puede_archivar": puede(request.user, "catalogo", "archivar"),
         "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
+        # Duplicar es crear: pide el mismo permiso que dar de alta un producto.
+        "puede_crear": puede(request.user, "catalogo", "crear"),
         # Calculadora de costos (Simil Cuero Plymouth): prefill + resultado en vivo.
         **_ctx_calculadora(srv),
         # LC 2026-07-25: impresión + procesos adicionales del producto (plantilla
@@ -575,6 +579,28 @@ def editar(request, pk: int):
         "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
         **_navegacion_producto(request),
     })
+
+
+@require_http_methods(["POST"])
+def duplicar(request, pk: int):
+    """Clona el producto con todo lo suyo y abre la copia para renombrarla.
+
+    LC 2026-08-28 (Oscar): «Duplicar producto tiene que existir. Y llevarse
+    absolutamente todos los datos.» Qué viaja y qué no está en
+    `apps.el_catalogo.duplicar`.
+
+    Se pide el permiso de CREAR (que es lo que hace) y el de ver el original.
+    """
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    from .duplicar import duplicar_servicio
+    origen = get_object_or_404(Servicio, pk=pk)
+    copia = duplicar_servicio(origen, actor=request.user)
+    messages.success(
+        request,
+        f"Se duplicó «{origen.nombre}». Ponle su nombre a la copia y guárdala.",
+    )
+    return redirect(reverse("catalogo-editar", args=[copia.pk]))
 
 
 @require_http_methods(["POST"])

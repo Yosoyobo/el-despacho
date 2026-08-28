@@ -159,7 +159,7 @@ def test_el_proveedor_del_catalogo_viaja_al_proyecto():
 
 
 @pytest.fixture
-def categoria():
+def categoria(db):
     from apps.el_catalogo.models import CategoriaServicio
     return CategoriaServicio.objects.create(nombre="Textiles")
 
@@ -190,3 +190,103 @@ def test_la_ficha_guarda_de_punta_a_punta_un_gasto_con_proveedor(
     assert guardado[0]["proveedor_id"] == prov.pk, (
         "el proveedor ligado con «@» tiene que llegar a la base"
     )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Duplicar producto — «que se lleve absolutamente todos los datos» (Oscar)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _producto_completo(categoria):
+    """Un producto con TODO lleno, para que el test note cualquier olvido."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Proveedor, Servicio
+    from apps.el_catalogo.models.variacion import Variacion
+    p1 = Proveedor.objects.create(razon_social="Telas del Norte", activo=True)
+    p2 = Proveedor.objects.create(razon_social="Bordados Ana", activo=True)
+    srv = Servicio.objects.create(
+        nombre="Playera Dry Fit", categoria=categoria,
+        descripcion_default="100% poliéster, cuello redondo",
+        unidad="pz", precio_base=Decimal("220.00"), costo=Decimal("88.00"),
+        activo=True, imagen_file_id="abc123", imagen_url="https://x/abc123",
+        proveedor_principal=p1,
+        detalles_costo={"sublimacion": ["35.00"], "mano_obra": "20.00"},
+        procesos_default=[
+            {"tipo": "impresion", "proveedor_id": p1.pk, "costo": "12.50", "por_pieza": True},
+            {"tipo": "operativo", "descripcion": "Embalaje", "costo": "30.00",
+             "por_pieza": False, "proveedor_id": p2.pk},
+        ],
+    )
+    srv.proveedores.set([p1, p2])
+    Variacion.objects.create(
+        servicio=srv, nombre="Negra", costo=Decimal("90.00"),
+        impresion_activa=True, impresion_costo=Decimal("15.00"),
+        impresion_descripcion="Frente", descripcion="Talla estándar",
+        disponible=True,
+    )
+    return srv
+
+
+@pytest.fixture
+def producto_completo(categoria):
+    return _producto_completo(categoria)
+
+
+def test_duplicar_producto_se_lleva_todos_los_datos(producto_completo, usuario_factory):
+    """Campo por campo: si mañana se agrega uno y se olvida copiarlo, esto falla."""
+    from apps.el_catalogo.duplicar import duplicar_servicio
+    origen = producto_completo
+    copia = duplicar_servicio(origen, actor=usuario_factory(rol="super_admin"))
+
+    assert copia.pk != origen.pk
+    assert copia.nombre == "Playera Dry Fit (copia)"
+    for campo in ("descripcion_default", "unidad", "precio_base", "costo",
+                  "categoria_id", "activo", "imagen_file_id", "imagen_url",
+                  "proveedor_principal_id", "detalles_costo", "procesos_default"):
+        assert getattr(copia, campo) == getattr(origen, campo), f"no se copió {campo}"
+    # Los proveedores que lo surten.
+    assert set(copia.proveedores.values_list("pk", flat=True)) == \
+           set(origen.proveedores.values_list("pk", flat=True))
+    # Y sus variaciones.
+    assert copia.variaciones.count() == origen.variaciones.count() == 1
+    v = copia.variaciones.first()
+    assert v.nombre == "Negra" and v.impresion_costo == origen.variaciones.first().impresion_costo
+
+
+def test_duplicar_no_se_lleva_la_historia_del_original(producto_completo, usuario_factory):
+    """El historial de usos es lo que le pasó al original, no un dato suyo."""
+    from apps.el_catalogo.duplicar import duplicar_servicio
+    copia = duplicar_servicio(producto_completo, actor=usuario_factory(rol="super_admin"))
+    assert copia.en_proyectos.count() == 0
+
+
+def test_duplicar_desde_la_pantalla_abre_la_copia(producto_completo, client, usuario_factory):
+    from apps.el_catalogo.models import Servicio
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post(f"/catalogo/{producto_completo.pk}/duplicar")
+    assert resp.status_code == 302
+    copia = Servicio.objects.exclude(pk=producto_completo.pk).get()
+    # Abre la copia para ponerle nombre, no la lista.
+    assert resp["Location"] == f"/catalogo/{copia.pk}/editar"
+
+
+def test_duplicar_pide_permiso_de_crear(producto_completo, client, usuario_factory):
+    from apps.el_catalogo.models import Servicio
+
+    from cuentas.models.permiso_usuario import PermisoUsuario
+    u = usuario_factory(rol="miembro")
+    PermisoUsuario.objects.update_or_create(
+        usuario=u, modulo="catalogo", permiso="crear", defaults={"activo": False})
+    client.force_login(u)
+    resp = client.post(f"/catalogo/{producto_completo.pk}/duplicar")
+    assert resp.status_code == 403
+    assert Servicio.objects.count() == 1
+
+
+def test_duplicar_solo_por_post(producto_completo, client, usuario_factory):
+    """Un GET no puede crear productos (ni un rastreador ni un enlace pegado)."""
+    from apps.el_catalogo.models import Servicio
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.get(f"/catalogo/{producto_completo.pk}/duplicar")
+    assert resp.status_code == 405
+    assert Servicio.objects.count() == 1
