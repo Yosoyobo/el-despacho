@@ -9,6 +9,9 @@ lleva su propio scroll, para que quepa en un celular.{% endcomment %}
             <div>
                 <p class="font-mono text-xs uppercase tracking-wider text-brand-500 dark:text-brand-400">{{ proyecto.nombre|default:proyecto.codigo }}</p>
                 <h2 class="mt-0.5 text-base font-semibold text-gray-900 dark:text-gray-100">Nueva tarea</h2>
+                {% comment %}LC 2026-08-28: si se abrió desde una tarjeta de producto,
+                la tarea queda ligada a esa línea y aquí se dice de cuál.{% endcomment %}
+                {% if producto %}<p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">Para <span class="font-medium text-gray-700 dark:text-gray-300">{{ producto.nombre_visible }}</span></p>{% endif %}
             </div>
             <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
@@ -16,6 +19,7 @@ lleva su propio scroll, para que quepa en un celular.{% endcomment %}
         </header>
         <form hx-post="{% url 'proyectos-agregar-tarea' proyecto.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form flex min-h-0 flex-col">
             {% csrf_token %}
+            {% if producto %}<input type="hidden" name="producto" value="{{ producto.pk }}">{% endif %}
             <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
                 {% for f in form %}
                 <div>

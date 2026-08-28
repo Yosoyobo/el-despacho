@@ -11,16 +11,31 @@ Lo que importa es **qué / quién / cuándo** — el resto son defaults.
 el usuario confirma cuáles crear. Diseño defensivo, espejo de `productos_ia`:
 `interpretar_tareas` NUNCA lanza — devuelve `{ok, tareas, error}`;
 `aplicar_tareas` re-valida el permiso antes de tocar la base.
+
+LC 2026-08-28 (Oscar, nota 6): además de qué/quién/cuándo, ahora entiende la
+HORA y el LUGAR («entregar el martes a las 4 en la bodega de Optimist»), y la
+tarea puede quedar LIGADA a una línea de producto del proyecto — así la tarjeta
+lista «las tareas de este producto».
+
+**Las coordenadas no se inventan** (ver `_resolver_lugar`): el pin sólo se pone
+cuando el lugar dicho empata con una dirección YA GUARDADA (una sede de LC, o
+dónde se ha visitado al cliente o a un proveedor del proyecto). Si no empata, se
+guarda sólo la etiqueta: el runner la lee igual y el pin se fija después desde el
+mapa del mandado. Un pin inventado manda a alguien al lugar equivocado, que es
+mucho peor que no tener pin.
 """
 
 from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from datetime import date, time
 
 _MAX_TOKENS = 900
 _MAX_TAREAS = 25
+# Un nombre corto («sur», «casa») aparece por casualidad dentro de cualquier
+# frase y pondría el pin en otro lado. Con nombres cortos, mejor sin pin.
+_MIN_NOMBRE_LUGAR = 5
 
 _TIPOS = {"tarea", "entrega", "junta", "recoger"}
 _PRIORIDADES = {"baja", "media", "alta"}
@@ -48,6 +63,96 @@ def _fecha(valor, default: date) -> date:
         except ValueError:
             pass
     return default
+
+
+def _hora(valor) -> str:
+    """«16:30» del LLM → "HH:MM". Cualquier otra cosa → "" (la tarea queda sin
+    hora, que es lo correcto: nadie dijo a qué hora)."""
+    if not isinstance(valor, str):
+        return ""
+    m = re.match(r"^\s*(\d{1,2})[:.](\d{2})", valor.strip())
+    if not m:
+        return ""
+    h, mi = int(m.group(1)), int(m.group(2))
+    if not (0 <= h <= 23 and 0 <= mi <= 59):
+        return ""
+    return f"{h:02d}:{mi:02d}"
+
+
+def _hora_obj(valor):
+    """La misma hora de `_hora`, ya como `datetime.time` (o None).
+
+    Se convierte aquí y no al guardar: Django aceptaría la cadena, pero la
+    instancia en memoria se quedaría con texto y quien la lea justo después
+    (los avisos, el mandado) compararía manzanas con peras.
+    """
+    txt = _hora(valor)
+    if not txt:
+        return None
+    h, mi = txt.split(":")
+    return time(int(h), int(mi))
+
+
+def _lugares_conocidos(proyecto) -> list[tuple[str, float, float]]:
+    """Direcciones YA GUARDADAS contra las que se puede empatar un lugar dicho.
+
+    Tres fuentes, todas del propio sistema: las sedes de LC con pin, dónde se ha
+    visitado al cliente del proyecto, y dónde se ha visitado a cada proveedor de
+    sus líneas. Devuelve `(nombre, lat, lng)`.
+
+    Nunca lanza: si algo falla (una app que no está, la base sin migrar) se
+    queda sin candidatos y la tarea guarda sólo la etiqueta.
+    """
+    import contextlib
+    fuentes: list[tuple[str, float, float]] = []
+
+    with contextlib.suppress(Exception):
+        from apps.checador.models.sede import SedeLC
+        for s in SedeLC.objects.filter(activa=True, lat__isnull=False, lng__isnull=False):
+            fuentes.append((s.nombre, float(s.lat), float(s.lng)))
+
+    with contextlib.suppress(Exception):
+        from apps.checador import services as checador
+        if proyecto.cliente_id:
+            v = checador.ultima_ubicacion_de(cliente=proyecto.cliente)
+            if v is not None:
+                fuentes.append((proyecto.cliente.razon_social, float(v.lat), float(v.lng)))
+        vistos = set()
+        for pp in proyecto.productos.select_related("proveedor").all():
+            prov = pp.proveedor
+            if prov is None or prov.pk in vistos:
+                continue
+            vistos.add(prov.pk)
+            v = checador.ultima_ubicacion_de(proveedor=prov)
+            if v is not None:
+                fuentes.append((prov.razon_social, float(v.lat), float(v.lng)))
+
+    return fuentes
+
+
+def _resolver_lugar(lugar: str, proyecto) -> tuple[float | None, float | None]:
+    """Pin del lugar dicho, SÓLO si empata con una dirección ya guardada.
+
+    Empata cuando el nombre conocido aparece dentro de lo que dictó el usuario
+    («la bodega de Optimist» → el cliente «Optimist»), o al revés. Se exige que
+    la coincidencia sea INEQUÍVOCA: dos candidatos distintos ⇒ ningún pin. Un
+    pin inventado manda a alguien al lugar equivocado; una etiqueta sin pin sólo
+    obliga a picarlo después en el mapa.
+    """
+    from lib.nombres import normalizar
+    aguja = normalizar(lugar)
+    if not aguja:
+        return (None, None)
+    encontrados: list[tuple[float, float]] = []
+    for nombre, lat, lng in _lugares_conocidos(proyecto):
+        n = normalizar(nombre)
+        if len(n) < _MIN_NOMBRE_LUGAR:
+            continue
+        if n in aguja or aguja in n:
+            punto = (lat, lng)
+            if punto not in encontrados:
+                encontrados.append(punto)
+    return encontrados[0] if len(encontrados) == 1 else (None, None)
 
 
 def _personas(proyecto):
@@ -91,8 +196,14 @@ def _resolver_persona(nombre: str, candidatos: list):
     return _unico([u for txt, u in nombres if txt.split(" ")[0] == n])
 
 
-def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
-    """Interpreta `texto` a tareas del `proyecto`. Nunca lanza."""
+def interpretar_tareas(*, proyecto, texto: str, usuario, producto=None) -> dict:
+    """Interpreta `texto` a tareas del `proyecto`. Nunca lanza.
+
+    `producto` es la línea del proyecto desde cuya tarjeta se dictó, si se dictó
+    desde una. Sólo entra al prompt como contexto (el vínculo lo pone
+    `aplicar_tareas`), para que el Chalán sepa de qué producto se está hablando
+    y no haya que repetirlo en el dictado.
+    """
     texto = (texto or "").strip()
     if not texto:
         return {"ok": False, "error": "Describe primero las tareas.", "tareas": []}
@@ -110,7 +221,9 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
         "sin texto fuera:\n"
         '{"tareas": [{"titulo": "<qué hay que hacer, imperativo y corto>", '
         '"responsable": "<nombre tal como está en la lista, o vacío>", '
-        '"fecha": "YYYY-MM-DD", "tipo": "tarea|entrega|junta|recoger", '
+        '"fecha": "YYYY-MM-DD", "hora": "HH:MM o vacío", '
+        '"lugar": "<dónde, tal como lo dijo el usuario, o vacío>", '
+        '"tipo": "tarea|entrega|junta|recoger", '
         '"prioridad": "baja|media|alta", "detalle": "<texto corto|vacío>"}]}\n'
         "Reglas: una tarea por cada cosa que haya que hacer; no inventes tareas que "
         "el usuario no pidió. Usa el NOMBRE EXACTO de la lista de personas SOLO si "
@@ -120,11 +233,24 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
         "que te doy; si no se menciona fecha, usa la de hoy. `tipo`: 'entrega' si se "
         "entrega algo al cliente, 'recoger' si hay que ir a recoger o pasar por algo, "
         "'junta' si es una reunión, 'tarea' en cualquier otro caso. `prioridad` "
-        "'media' salvo que el usuario marque urgencia."
+        "'media' salvo que el usuario marque urgencia. `hora` en 24 horas SÓLO si "
+        "el usuario dijo una («a las 4 de la tarde» → 16:00); si no la dijo, "
+        "déjala VACÍA — no inventes horarios. `lugar`: dónde hay que ir o entregar, "
+        "tal como lo dijo el usuario («la bodega de Optimist»); vacío si no dijo "
+        "lugar. No inventes direcciones ni coordenadas: sólo repites lo que dijo."
     )
+    ctx_producto = ""
+    if producto is not None:
+        ctx_producto = (
+            f"PRODUCTO DE ESTE PROYECTO del que se está hablando: "
+            f"{producto.nombre_visible}"
+            f"{f' ({producto.cantidad} pz)' if producto.cantidad else ''}\n"
+            "Las tareas que se dicten son de ESE producto.\n\n"
+        )
     user = (
         f"HOY es {hoy:%Y-%m-%d} ({hoy:%A}).\n"
         f"PROYECTO: {proyecto.nombre or proyecto.codigo}\n\n"
+        f"{ctx_producto}"
         f"EQUIPO DEL PROYECTO (prefiere a estas personas):\n{lista_equipo or '(sin equipo asignado)'}\n\n"
         f"OTRAS PERSONAS DEL TALLER:\n{lista_resto or '(ninguna)'}\n\n"
         f"DICTADO DEL USUARIO:\n{texto}"
@@ -159,11 +285,18 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
         persona = _resolver_persona(item.get("responsable") or "", candidatos)
         tipo = (item.get("tipo") or "tarea").strip().lower()
         prioridad = (item.get("prioridad") or "media").strip().lower()
+        lugar = (item.get("lugar") or "").strip()[:200]
+        lat, lng = _resolver_lugar(lugar, proyecto) if lugar else (None, None)
         tareas.append({
             "titulo": titulo,
             "asignada_id": persona.pk if persona else None,
             "asignada_nombre": (persona.nombre_completo or persona.email) if persona else "",
             "fecha": _fecha(item.get("fecha"), hoy).isoformat(),
+            "hora": _hora(item.get("hora")),
+            "lugar": lugar,
+            # El pin sólo viaja si el lugar empató con una dirección guardada.
+            "lat": lat,
+            "lng": lng,
             "tipo": tipo if tipo in _TIPOS else "tarea",
             "prioridad": prioridad if prioridad in _PRIORIDADES else "media",
             "detalle": (item.get("detalle") or "").strip()[:500],
@@ -175,13 +308,17 @@ def interpretar_tareas(*, proyecto, texto: str, usuario) -> dict:
     return {"ok": True, "tareas": tareas, "error": ""}
 
 
-def aplicar_tareas(*, proyecto, tareas: list[dict], usuario) -> dict:
+def aplicar_tareas(*, proyecto, tareas: list[dict], usuario, producto=None) -> dict:
     """Crea las `Tarea` seleccionadas. Re-valida permisos (defensa en profundidad).
 
     Una tarea sin responsable resuelto se queda SIN responsable, general del
     despacho (Oscar, LC 2026-08-07: «no debe de asignar a nadie si no se lo
     digo»). Antes caía a quien la dictaba, y terminaba con tareas ajenas
     colgadas de su nombre.
+
+    `producto` (LC 2026-08-28): la línea del proyecto desde cuya tarjeta se
+    dictó. Queda ligada a cada tarea creada. Se ignora si la línea es de otro
+    proyecto — una tarea no puede colgar de un producto ajeno.
     """
     from apps.el_pizarron.models import Tarea
 
@@ -193,6 +330,8 @@ def aplicar_tareas(*, proyecto, tareas: list[dict], usuario) -> dict:
 
     creadas, omitidas, mensajes = 0, 0, []
     hoy = date.today()
+    if producto is not None and producto.proyecto_id != proyecto.pk:
+        producto = None
     for t in tareas:
         titulo = (t.get("titulo") or "").strip()[:200]
         if not titulo:
@@ -203,14 +342,23 @@ def aplicar_tareas(*, proyecto, tareas: list[dict], usuario) -> dict:
             asignada = Usuario.objects.filter(pk=aid, is_active=True).first()
         tipo = (t.get("tipo") or "tarea").strip().lower()
         prioridad = (t.get("prioridad") or "media").strip().lower()
+        hora = _hora_obj(t.get("hora"))
+        lat, lng = t.get("lat"), t.get("lng")
         tarea = Tarea.objects.create(
             proyecto=proyecto,
+            producto=producto,
             titulo=titulo,
             descripcion=(t.get("detalle") or "").strip()[:500],
             tipo=tipo if tipo in _TIPOS else "tarea",
             prioridad=prioridad if prioridad in _PRIORIDADES else "media",
             asignada_a=asignada,
             fecha_compromiso=_fecha(t.get("fecha"), hoy),
+            hora=hora,
+            destino_etiqueta=(t.get("lugar") or "").strip()[:200],
+            # Un pin a medias no se guarda: o las dos coordenadas o ninguna
+            # (misma regla que `TareaForm.clean`).
+            destino_lat=lat if lat is not None and lng is not None else None,
+            destino_lng=lng if lat is not None and lng is not None else None,
             creado_por=usuario if getattr(usuario, "is_authenticated", False) else None,
         )
         _notificar(tarea, proyecto, usuario)

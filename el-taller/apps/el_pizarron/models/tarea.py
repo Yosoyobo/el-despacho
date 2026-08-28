@@ -63,6 +63,19 @@ class Tarea(models.Model):
     destino_lat = models.FloatField(null=True, blank=True)
     destino_lng = models.FloatField(null=True, blank=True)
     destino_etiqueta = models.CharField(max_length=200, blank=True, default="")
+    # LC 2026-08-28 (Oscar, nota 6): «en cada tarjeta de producto involucrado
+    # podamos crear rápido tareas ligadas a este producto». La tarea recuerda de
+    # qué LÍNEA del proyecto salió, así la tarjeta puede listar «las tareas de
+    # este producto».
+    #
+    # `SET_NULL` y no `CASCADE`: quitar una línea del proyecto no puede borrar
+    # el trabajo que alguien ya tiene asignado. La tarea sobrevive huérfana
+    # (sin producto) y sigue en el Pizarrón, en el Calendario y en «Mis tareas».
+    producto = models.ForeignKey(
+        "proyectos.ProyectoProducto", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="tareas",
+        help_text="La línea de producto de la que salió esta tarea, si salió de una.",
+    )
     fecha_compromiso = models.DateField(null=True, blank=True)
     hora = models.TimeField(null=True, blank=True, help_text="Hora opcional del compromiso.")
     completada_en = models.DateTimeField(null=True, blank=True)

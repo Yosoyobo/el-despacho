@@ -10,9 +10,10 @@ el tablero inactivo que muestre (ejemplo) 0, 0, 1 y 0 resultados.» Por eso se
 reusa el partial canónico de columna, en modo `solo_lectura` (son resultados de
 búsqueda: no se arrastran ni cambian de estado desde aquí).{% endcomment %}
 {% if q %}
-<div class="mt-6">
+<div class="mt-6 space-y-6">
+    <div>
     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-        Fuera del tablero{% if total %} ({{ total }}){% endif %}
+        Proyectos fuera del tablero{% if total %} ({{ total }}){% endif %}
     </h3>
     {% if total %}
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -26,5 +27,40 @@ búsqueda: no se arrastran ni cambian de estado desde aquí).{% endcomment %}
     {% else %}
     <p class="text-sm text-gray-400 dark:text-gray-500">Nada más con «{{ q }}» fuera del tablero.</p>
     {% endif %}
+    </div>
+
+    {% comment %}LC 2026-08-28 (Oscar, nota 3): «en búsqueda del dashboard mostrar
+    también clientes, etc. en resultados fuera del tablero». Cada bloque trae su
+    propio título y su contador, y un enlace a su pantalla con el término puesto.
+
+    Estas secciones vienen YA FILTRADAS por el servidor, así que —igual que el
+    tablero inactivo— quedan fuera del filtro instantáneo del Kanban: viven bajo
+    `.kanban-columna-fuera`, que es justo lo que ese filtro se salta (si no, les
+    reescribiría el contador).
+
+    Una sección que el usuario no puede ver no llega desde la vista: no se pinta
+    un «no puedes».{% endcomment %}
+    {% for sec in secciones %}
+    <div class="kanban-columna-fuera">
+        <h3 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <span aria-hidden="true">{{ sec.icono }}</span> {{ sec.titulo }} ({{ sec.total }}{% if sec.hay_mas %}+{% endif %})
+        </h3>
+        <ul class="divide-y divide-gray-200 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+            {% for it in sec.items %}
+            <li>
+                <a href="{{ it.url }}" class="flex items-center justify-between gap-3 px-3 py-2 text-sm transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+                    <span class="min-w-0 flex-1 truncate font-medium text-gray-800 dark:text-gray-100">{{ it.titulo }}</span>
+                    {% if it.sub %}<span class="min-w-0 max-w-[45%] truncate text-xs text-gray-500 dark:text-gray-400">{{ it.sub }}</span>{% endif %}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if sec.hay_mas %}
+        <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            Hay más. <a href="{{ sec.url_todos }}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Verlos todos →</a>
+        </p>
+        {% endif %}
+    </div>
+    {% endfor %}
 </div>
 {% endif %}
