@@ -324,13 +324,22 @@ class ProyectoProductoForm(forms.ModelForm):
         labels = {"nota": "Descripción"}
         widgets = {
             # LC 2026-08-04 R3 (Oscar): letra chica (del tamaño del chip
-            # «@Proveedor» de abajo) y tope de ~4 renglones con scroll interno —
-            # `data-autogrow` lleva el tope en px, así una especificación larga
-            # ya no estira la tarjeta sin fin. `min-h-0` gana al `min-h-[80px]`
-            # de `.campo-form textarea` (utilities pisa components).
+            # «@Proveedor» de abajo). `min-h-0` gana al `min-h-[80px]` de
+            # `.campo-form textarea` (utilities pisa components).
+            #
+            # LC 2026-08-28 (Oscar): «siempre del mismo tamaño, y al hacerle
+            # click que se extienda a todo el contenido; al salir, que regrese».
+            # Antes crecía tecla por tecla (`data-autogrow`) y eso traía DOS
+            # problemas: el alto salía distinto cada vez —se midió mal más de una
+            # vez, ver el arreglo del 18-ago— y, sobre todo, **medir el elemento
+            # en cada tecla puede cancelar la escritura de un acento o una ñ**:
+            # esas letras se componen en dos pulsaciones y tocar el tamaño a la
+            # mitad interrumpe la composición. Ahora el alto lo fija el CSS
+            # (`rows`) y sólo se mide al entrar y al salir del campo.
             "nota": forms.Textarea(attrs={
                 "rows": 2,
-                "data-autogrow": "84",
+                "data-crece-al-enfocar": "1",
+                "data-crece-max": "260",
                 "class": "resize-none overflow-y-auto min-h-0 px-2.5 py-1.5 text-[11px] leading-snug",
                 "placeholder": "Color: Beige / Terracota\nCon bordado frontal…",
                 "title": "Especificación de este elemento. Es lo que sale en la "

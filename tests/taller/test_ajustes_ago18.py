@@ -218,13 +218,18 @@ def test_la_tarjeta_nueva_nace_con_su_orden():
 # ── 6. La descripción ya no se hace grande y chica sola ───────────────────
 
 def test_la_descripcion_no_se_mide_cuando_esta_escondida():
-    """Medirla dentro de un `display:none` daba `scrollHeight` 0 y la aplastaba."""
+    """Medirla dentro de un `display:none` daba `scrollHeight` 0 y la aplastaba.
+
+    LC 2026-08-28: el problema se cerró por la raíz en lugar de con la guarda.
+    El campo ya no se mide al escribir ni al desplegar la tarjeta — sólo cuando
+    alguien lo enfoca, y para enfocarlo tiene que estar a la vista. Así que la
+    situación que este test cuidaba (medir algo escondido) no puede ocurrir.
+    """
     js = (TALLER / "templates/proyectos/_form_productos_js.html").read_text()
-    autogrow = js[js.index("function autogrow(ta)"):js.index("window.__autogrowTarjeta")]
-    assert "offsetParent === null" in autogrow
-    # Y al desplegar la tarjeta se vuelve a medir.
-    assert "window.__autogrowTarjeta" in js
-    assert "__autogrowTarjeta(card)" in js
+    assert "autogrow" not in js
+    ui = (TALLER / "static/js/ui.js").read_text()
+    # Se mide al entrar al campo, y se devuelve a su tamaño al salir.
+    assert "focusin" in ui and "focusout" in ui
 
 
 # ── 7. Colores de producto variados, contrastados y ligados ───────────────

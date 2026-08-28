@@ -363,10 +363,21 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
     from django import forms as dj_forms
     f = ProyectoProductoForm()
     assert isinstance(f.fields["nota"].widget, dj_forms.Textarea)
-    # R3 2026-08-04 (Oscar): el autogrow trae su TOPE en px (~4 renglones) para
-    # que una especificación larga scrollee por dentro y no estire la tarjeta.
-    tope = int(f.fields["nota"].widget.attrs.get("data-autogrow"))
-    assert 60 <= tope <= 120, tope
+    # R3 2026-08-04 (Oscar): el campo trae su TOPE en px para que una
+    # especificación larga scrollee por dentro y no estire la tarjeta.
+    #
+    # LC 2026-08-28: el tope sigue, pero el mecanismo cambió — antes crecía en
+    # cada tecla (`data-autogrow`) y eso rompía la escritura de acentos y ñ;
+    # ahora se estira sólo mientras el campo está enfocado
+    # (`data-crece-al-enfocar`, ver `test_ajustes_ago28.py`).
+    #
+    # El número también cambió de significado: antes era el alto máximo QUE SE
+    # VEÍA SIEMPRE (~4 renglones), y ahora es hasta dónde se estira MIENTRAS lo
+    # editas — más generoso a propósito, porque al salir vuelve a su tamaño. El
+    # alto de reposo lo pone `rows`.
+    tope = int(f.fields["nota"].widget.attrs.get("data-crece-max"))
+    assert 200 <= tope <= 400, tope
+    assert int(f.fields["nota"].widget.attrs.get("rows")) <= 3
     assert "text-[11px]" in f.fields["nota"].widget.attrs.get("class", "")
     assert f.fields["nota"].label == "Descripción"
     # Ya no es un CharField de 200: acepta un texto largo de varias líneas.
@@ -385,10 +396,13 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
         r"md:grid-cols-\[([\d.]+fr)_(minmax\([^)]+\)|\d+px)_([\d.]+fr)\] md:items-end", tpl)
     assert fila2, "la fila 2 debe seguir siendo proveedor · costo · descripción"
     assert float(fila2.group(3)[:-2]) > float(fila2.group(1)[:-2])
+    # El que estira el campo es el componente compartido de `ui.js`; el JS del
+    # formset sólo repinta el color con lo que se escribe.
     js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(
         encoding="utf-8")
-    assert "function autogrow(ta)" in js
-    assert "textarea[data-autogrow]" in js
+    assert "textarea[data-crece-al-enfocar]" in js
+    ui = Path("el-taller/static/js/ui.js").read_text(encoding="utf-8")
+    assert "data-crece-al-enfocar" in ui
 
 
 def test_la_descripcion_de_la_tarjeta_es_la_especificacion_de_la_cotizacion(

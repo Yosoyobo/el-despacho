@@ -766,51 +766,17 @@
         renumerar(card);
         card._inited = true;
     }
-    // LC 2026-08-04 (Oscar): la Descripción del elemento «debe de crecer moviendo
-    // el título hacia arriba». La fila alinea al fondo (`md:items-end`), así que
-    // basta con que el textarea siga a su contenido: al crecer, su etiqueta sube.
-    // Tope para que una descripción larga no estire la tarjeta sin fin.
-    //
-    // LC 2026-08-04 R3 (Oscar): el tope llega en `data-autogrow` (px). Con ~84px
-    // caben unas 4 líneas de 11px y de ahí en adelante el textarea scrollea por
-    // dentro en lugar de estirar la tarjeta. Cualquier valor <= 1 (el "1" legacy)
-    // cae al tope de siempre.
-    //
-    // LC 2026-08-18 (Oscar): «el recuadro de descripción se hace grande y chico
-    // solo». La causa era medir el textarea con la TARJETA COLAPSADA: dentro de
-    // un `display:none` el `scrollHeight` es 0, así que se le fijaba una altura
-    // de 0px; al expandir la tarjeta salía aplastado y sólo recuperaba su tamaño
-    // al teclear. Lo que no se ve no se mide — y al desplegar la tarjeta se mide.
-    function autogrow(ta) {
-        if (ta.offsetParent === null && ta.scrollHeight === 0) return;
-        const tope = parseInt(ta.getAttribute('data-autogrow'), 10);
-        ta.style.height = 'auto';
-        const alto = Math.min(ta.scrollHeight, tope > 1 ? tope : 220);
-        ta.style.height = Math.max(alto, 32) + 'px';
-    }
-    // Para el momento en que la tarjeta se despliega (el handler vive en el otro
-    // bloque, con el resto del acordeón).
-    window.__autogrowTarjeta = function (card) {
-        card.querySelectorAll('textarea[data-autogrow]').forEach(autogrow);
-    };
+    // LC 2026-08-28 (Oscar): la Descripción ya NO crece tecla por tecla. Su alto
+    // de reposo lo fija el CSS y sólo se estira mientras está enfocada, con el
+    // componente `[data-crece-al-enfocar]` de `ui.js` (que además no toca el
+    // tamaño a media composición de un acento o una ñ — eso era lo que impedía
+    // escribirlos). Aquí no queda nada que inicializar.
     // S-Ajustes-Ago12-B: además del bloque vivo, las tarjetas de la pestaña de una
     // versión (`#formset-productos-version`, inyectada por HTMX). La delegación de
     // eventos de más abajo ya las cubre; esto es la inicialización de cada tarjeta.
     const ZONAS_CARDS = '#formset-productos [data-card], #formset-productos-version [data-card]';
-    function initAutogrow() {
-        document.querySelectorAll('#formset-productos textarea[data-autogrow], #formset-productos-version textarea[data-autogrow]')
-            .forEach(ta => {
-                // Sin marca cuando está escondido: se vuelve a intentar al
-                // desplegar la tarjeta, que es cuando se puede medir de verdad.
-                if (ta._agInit) return;
-                if (ta.offsetParent === null && ta.scrollHeight === 0) return;
-                ta._agInit = 1;
-                autogrow(ta);
-            });
-    }
     function initCards() {
         document.querySelectorAll(ZONAS_CARDS).forEach(c => { if (!c._inited) initCard(c); });
-        initAutogrow();
     }
     initCards();
     // Tras cada swap HTMX (autosave OOB, re-render del formset al crear producto)
@@ -854,8 +820,10 @@
         if (t.matches('input[name$="-precio_unitario"], input[name$="-costo_unitario"], .imp-costo, .proc-costo')) { recalcularEscalas(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
-        // La Descripción del elemento crece con lo que se escribe (ver `autogrow`).
-        if (t.matches('textarea[data-autogrow]')) { autogrow(t); repintarColor(card); }
+        // La Descripción alimenta el color de la tarjeta (una playera «negra»
+        // sale en negro), así que al escribirla se repinta. Ya no se mide el
+        // textarea: de eso se encarga `ui.js` al enfocarlo.
+        if (t.matches('textarea[data-crece-al-enfocar]')) repintarColor(card);
     });
     document.addEventListener('click', function (e) {
         // LC 2026-07 (Oscar): renombrar el producto SOLO para este proyecto.
@@ -1359,9 +1327,6 @@ por un endpoint aparte.{% endcomment %}
         if (tog) tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
         const chev = card.querySelector('[data-chevron]');
         if (chev) chev.classList.toggle('-rotate-90', abierto);
-        // Al desplegar, la Descripción se vuelve a medir: escondida no se puede
-        // (`scrollHeight` 0) y quedaba aplastada — LC 2026-08-18.
-        if (abierto === false && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
         // Lo que el usuario acaba de decidir es lo que hay que reponer después
         // del siguiente swap del formset.
         if (window.__anotarAcordeonProductos) window.__anotarAcordeonProductos();
@@ -1429,7 +1394,6 @@ por un endpoint aparte.{% endcomment %}
             if (tog) tog.setAttribute('aria-expanded', abierta ? 'true' : 'false');
             const chev = card.querySelector('[data-chevron]');
             if (chev) chev.classList.toggle('-rotate-90', !abierta);
-            if (abierta && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
         });
     }
     document.addEventListener('DOMContentLoaded', anotarEstadoActual);
