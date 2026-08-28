@@ -5,6 +5,65 @@
 
 ---
 
+## Novedades — Los acentos, el producto duplicado y un solo lugar para los proveedores (28 de agosto de 2026)
+
+**Ya se pueden escribir acentos y ñ en la Descripción de un producto**
+
+El recuadro de Descripción de la tarjeta de producto se peleaba con el teclado:
+las letras con acento y la ñ se escriben en dos pulsaciones, y el recuadro
+—que se iba midiendo solo en cada tecla para crecer— interrumpía justo esa
+segunda pulsación. La letra salía sin acento.
+
+Ese mismo medirse a cada rato es lo que hacía que el recuadro **cambiara de
+tamaño solo**. Ahora tiene un tamaño fijo, y sólo se estira cuando le picas para
+escribir: al salir, vuelve a como estaba.
+
+**Duplicar un producto**
+
+En la ficha de un producto y en cada renglón de la lista hay un botón
+**⧉ Duplicar**. Se lleva todo: nombre (con «copia»), categoría, descripción,
+precio, costo, la foto, los proveedores que lo surten, cuál es el principal, la
+impresión y los gastos de producción, la calculadora de insumos y sus
+variaciones. Lo único que no viaja es el historial de usos, que es lo que le
+pasó al producto original. La copia se abre lista para que le pongas su nombre.
+
+**El «@» para ligar proveedores, también en la ficha del producto**
+
+En un gasto de producción se puede escribir **@** y elegir a quién se le
+compra. Ya existía en la tarjeta del producto dentro de un proyecto, pero no en
+la ficha del catálogo. Ahora está en las dos, y el proveedor que le pongas a un
+gasto en la ficha **viaja con él** cuando ese producto entra a un proyecto —
+antes se quedaba a medio camino.
+
+**Un solo lugar para los proveedores del producto**
+
+Había tres controles para lo mismo: un desplegable que agregaba, las pastillas
+de lo elegido, y otro selector aparte para decir cuál era el principal. Ahora es
+uno solo: buscas, marcas, y **el primero que marcas queda como principal** — el
+que se pone solo en los proyectos. Se ve con una ★ en su pastilla, y si lo
+quitas, el siguiente toma su lugar.
+
+**El precio, con botones de 30 / 50 / 70 / 100%**
+
+Debajo del precio de venta hay cuatro botones que lo calculan a partir del
+costo. El porcentaje es **lo que se le suma al costo**: con un costo de $100,
+«+50%» deja el precio en $150 y «+100%» en $200.
+
+La columna que antes decía «Margen» ahora dice **«Markup»** y mide exactamente
+eso mismo, para que el botón y la columna hablen el mismo idioma: picas +50% y
+la columna dice 50%. **Ojo**: los porcentajes que ya venías viendo van a subir
+de número, porque antes se medían de otra forma (sobre el precio en vez de sobre
+el costo). No cambió ni un precio ni un costo, sólo cómo se cuenta. El margen de
+los **proyectos** no cambió: ése sigue siendo utilidad sobre lo que se cobra.
+
+**El nombre del producto, al frente**
+
+La ficha ya no se titula «Editar producto» — se titula con el nombre del
+producto, en grande, y cambia mientras lo escribes. Y desde la tarjeta de un
+producto dentro de un proyecto hay un lápiz que abre su ficha en otra pestaña.
+
+---
+
 ## Novedades — El planeador ya no puede decir una cosa y el mandado otra (25 de agosto de 2026)
 
 **La parada vuelve con quien la trae asignada**
@@ -5228,12 +5287,16 @@ La página es **editable directo** (los cambios se guardan solos; verás
   - **Proveedor** principal + costo unitario + **Descripción**.
   - **Descripción:** es la **especificación de este elemento** y es la que sale
     en el documento de la cotización, debajo del nombre del concepto (colores,
-    medidas, dónde va el bordado…). Acepta **varios renglones** y va creciendo
-    mientras escribes. Lo que pongas aquí **manda** sobre lo que traiga el
-    producto del catálogo y sobre lo que se hubiera escrito en la versión
-    anterior de la cotización; si la dejas vacía, se usa la del catálogo. El
-    campo crece hasta unos **4 renglones** y de ahí en adelante **scrollea por
-    dentro**, para que una especificación larga no estire la tarjeta.
+    medidas, dónde va el bordado…). Acepta **varios renglones**. Lo que pongas
+    aquí **manda** sobre lo que traiga el producto del catálogo y sobre lo que se
+    hubiera escrito en la versión anterior de la cotización; si la dejas vacía,
+    se usa la del catálogo.
+
+    El recuadro tiene **siempre el mismo tamaño** y **se extiende cuando le
+    picas** para escribir, hasta donde llegue el texto; al salir vuelve a como
+    estaba. (Antes crecía tecla por tecla, y eso hacía dos cosas molestas:
+    cambiaba de tamaño solo y **se comía los acentos y las ñ** — esas letras se
+    escriben en dos pulsaciones y el recuadro interrumpía la segunda.)
   - **Procesos que se le cobran al cliente** (el botón **verde «+»** del final de
     la primera fila). Es lo que le facturas **aparte** del producto: al Bordado le
     agregas «Ponchado» con su cantidad y su precio. Cada uno **sube el monto del
@@ -5615,7 +5678,7 @@ ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
 
 **La página abre en fichas**: cada producto es una tarjeta con su nombre, su
 categoría y su proveedor en una línea, sus fotos (**completas**, no recortadas al
-cuadrado), y el costo · precio · margen abajo; en la esquina, el número de veces
+cuadrado), y el costo · precio · markup abajo; en la esquina, el número de veces
 que se ha usado. Las fotos **cargan de golpe**: se guardan en el servidor ya
 achicadas cuando las subes, y tu navegador se las queda un mes, así que a la
 segunda visita aparecen al instante. Con **«☰ Ver en tabla»** pasas a la vista de renglones (que
@@ -5623,28 +5686,38 @@ además se ordena por columna), y **«✎ Edición rápida»** te deja escribir 
 en las celdas.
 
 Arriba, **«Ordenar por»** tiene pastillas para acomodar la lista por **nombre,
-usos, costo, precio o margen**. Picar la pastilla que ya está activa **invierte**
+usos, costo, precio o markup**. Picar la pastilla que ya está activa **invierte**
 el orden (la flecha ↑/↓ te dice cuál va). Funciona igual en fichas y en tabla, y
 respeta el buscador y la categoría que tengas puestos.
+
+Al abrir un producto, **su nombre es el título de la página** (y cambia mientras
+lo escribes). Desde la tarjeta de ese producto dentro de un proyecto, el lápiz
+junto a «Producto» te abre esta ficha en otra pestaña.
 
 Lo que vendes/produces. Cada producto tiene:
 
 - Nombre y descripción (todo se maneja en **piezas**).
 - **Categoría** (Diseño, Impresión, Producción, Maquila, Bordado, Otros, etc.)
-- **Costo** (lo que te cuesta) + **Precio de venta** → el margen se calcula solo
-- **Proveedores aplicables** — quién te puede surtir este producto. Se eligen con
-  un **dropdown con buscador**: escribes el nombre, lo eliges y queda como
-  **pastilla con ✕**. Puedes agregar todos los que te surtan.
-- **★ Proveedor principal** — el que surte por default. Es el que se autocompleta
-  en la tarjeta del producto dentro de un proyecto y el que aparece junto al
-  nombre en los buscadores. Cuando en un proyecto le pones **otro** proveedor a un
-  producto, ése **se liga solo** al catálogo como alternativa, pero **no le quita
-  el lugar al principal** (si el producto no tenía principal, el primero que se
-  ligue lo ocupa). El menú del ★ **sólo ofrece a los proveedores que tengas
-  marcados**: si creas uno ahí mismo, aparece al instante, y si quitas de las
-  pastillas al que era principal, el sistema **te avisa en amarillo** para que
-  elijas otro (antes se quedaba apuntando a alguien que ya no surtía el producto,
-  sin decir nada).
+- **Costo** (lo que te cuesta) + **Precio de venta**. Debajo del precio hay
+  cuatro botones —**+30% +50% +70% +100%**— que lo calculan a partir del costo:
+  el porcentaje es **lo que se le suma**, así que con costo $100, «+50%» deja el
+  precio en $150. Es la misma cuenta que muestra la columna **Markup**, para que
+  el botón y la columna digan lo mismo. (El margen de un **proyecto** es otra
+  cosa: ahí es cuánto quedó de lo que se cobró.)
+- **Proveedores aplicables** — quién te puede surtir este producto, en **un solo
+  control**: lo abres, buscas, y vas palomeando a los que te surtan. Cada uno
+  queda como pastilla con ✕.
+- **★ El principal es el primero que marcas** — sale con una ★ en su pastilla. Es
+  el que se autocompleta en la tarjeta del producto dentro de un proyecto y el
+  que aparece junto al nombre en los buscadores. Si lo quitas, el siguiente toma
+  su lugar. Cuando en un proyecto le pones **otro** proveedor a un producto, ése
+  **se liga solo** al catálogo como alternativa, pero **no le quita el lugar al
+  principal**.
+- **⧉ Duplicar** — crea una copia del producto con **todo**: precio, costo,
+  descripción, foto, proveedores, principal, impresión, gastos de producción,
+  calculadora y variaciones. No se lleva el historial de usos (eso es del
+  original). La copia se abre lista para que le pongas su nombre. También está
+  en cada renglón de la lista.
 - **Impresión y procesos adicionales** (ver abajo).
 - **Usos:** la columna "Usos" de la lista cuenta las veces que el producto se
   ha usado en proyectos; al abrir el producto ves su **bitácora de Usos** (en
@@ -5691,7 +5764,10 @@ guarda lo que ese producto **siempre** lleva:
 - **Impresión:** el proveedor que la hace, su costo y si es **por pieza** (se
   multiplica por las piezas a producir) o un costo fijo.
 - **Procesos / gastos adicionales:** los que quieras (embalaje, clavos,
-  pegamento, maniobras…), cada uno con su costo y su "por pieza".
+  pegamento, maniobras…), cada uno con su costo y su "por pieza". En la
+  descripción puedes escribir **@** para ligarle un proveedor: a quién se le
+  compra eso. Queda como pastilla y **viaja con el proceso** cuando el producto
+  entra a un proyecto, así el gasto se le adeuda a quien corresponde.
 
 Es una **plantilla**: cuando agregas ese producto a un proyecto, su tarjeta se
 **llena sola** con esos procesos y ahí los ajustas (o los borras) sin afectar al

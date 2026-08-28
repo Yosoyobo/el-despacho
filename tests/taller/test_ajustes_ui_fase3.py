@@ -174,9 +174,10 @@ def test_form_producto_tiene_buscador_y_guardar_arriba(client, usuario_factory):
     assert resp.status_code == 200
     html = resp.content.decode()
     # LC 2026-07-25: el filtro sobre checkboxes (que no servía) se reemplazó por
-    # el dropdown con buscador canónico + pastillas.
-    assert 'id="prov-picker"' in html           # buscador de proveedores
-    assert 'form="producto-form"' in html       # botón Guardar arriba
+    # un buscador. LC 2026-08-28: ese buscador y el selector del ★ se unificaron
+    # en el control de palomitas; lo que se cuida aquí es que HAYA buscador.
+    assert 'data-multi-buscable="proveedor"' in html   # buscador de proveedores
+    assert 'form="producto-form"' in html              # botón Guardar arriba
 
 
 # ── 1.4 Cotizaciones ──────────────────────────────────────────────────────

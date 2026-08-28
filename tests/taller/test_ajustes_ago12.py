@@ -542,7 +542,10 @@ def test_la_ficha_muestra_nombre_categoria_proveedor_y_numeros(client, admin_use
     assert "Bandana Roja" in html
     assert "Textiles" in html
     assert "Crea Blanks" in html
-    assert "Margen" in html
+    # LC 2026-08-28: la columna dejó de llamarse «Margen». Mide MARKUP (lo que se
+    # le suma al costo) desde que Oscar pidió que el porcentaje del botón de
+    # precio y el de la columna dijeran lo mismo.
+    assert "Markup" in html
 
 
 @pytest.mark.django_db

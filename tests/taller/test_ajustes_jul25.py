@@ -90,10 +90,16 @@ def test_ficha_producto_usa_dropdown_buscable_de_proveedor(client, usuario_facto
     resp = client.get(f"/catalogo/{srv.pk}/editar")
     assert resp.status_code == 200
     html = resp.content.decode()
-    assert 'id="prov-picker"' in html and "data-select-buscable" in html
-    assert 'id="prov-chips"' in html
-    # El filtro viejo (que no servía) ya no existe.
+    # LC 2026-08-28 (Oscar): el desplegable que agregaba, las pastillas y el
+    # selector del ★ se unificaron en UN solo control — el de palomitas con
+    # buscador—, y el primero que se marca queda como principal. Lo que este
+    # test cuida sigue siendo lo mismo: que la ficha tenga un buscador de
+    # proveedores y no la parrilla de casillas de antes.
+    assert 'data-multi-buscable="proveedor"' in html
+    assert 'data-multi-orden' in html
+    # Los controles viejos (los tres) ya no existen.
     assert 'id="prov-filtro"' not in html
+    assert 'id="prov-picker"' not in html
 
 
 # ── #3 crear producto abre su página ─────────────────────────────────────
