@@ -51,6 +51,23 @@ def _proveedores_activos():
     return list(Proveedor.objects.filter(activo=True).order_by("razon_social"))
 
 
+def _fijar_principal(srv, form) -> None:
+    """El proveedor principal es el PRIMERO que se marcó (LC 2026-08-28).
+
+    Antes se elegía en un segundo control; Oscar pidió dejar uno solo. La
+    columna del modelo sigue siendo la fuente de verdad (la lee
+    `proveedor_default` en toda la app), sólo cambió quién la decide.
+
+    Se llama SIEMPRE después de `save_m2m()`: hay que saber quiénes quedaron
+    ligados de verdad antes de coronar a ninguno.
+    """
+    ligados = list(srv.proveedores.values_list("pk", flat=True))
+    nuevo = form.principal_elegido(ligados)
+    if srv.proveedor_principal_id != nuevo:
+        srv.proveedor_principal_id = nuevo
+        srv.save(update_fields=["proveedor_principal", "actualizado_en"])
+
+
 def _ids_proveedores_del_post(post) -> list[int]:
     """Ids de proveedor que trae el POST, **en el orden en que llegaron** y
     filtrados contra los ACTIVOS (LC 2026-08-22, nota 2).
@@ -387,18 +404,7 @@ def nuevo(request):
             srv.procesos_default = procesos_default.parsear(request.POST)
             srv.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
-            # LC 2026-08-22 (nota 4): el alta deja el producto COMPLETO. Si se
-            # marcaron proveedores y nadie eligió principal, el primero que se
-            # marcó lo es. `proveedor_default` ya caía al primero ACTIVO de la
-            # M2M —que es el primero alfabético—, así que dejarlo explícito es
-            # lo que hace que el ★ coincida con lo que el usuario eligió.
-            if srv.proveedor_principal_id is None:
-                ids_prov = _ids_proveedores_del_post(request.POST)
-                ligados = set(srv.proveedores.values_list("pk", flat=True))
-                primero = next((pk for pk in ids_prov if pk in ligados), None)
-                if primero is not None:
-                    srv.proveedor_principal_id = primero
-                    srv.save(update_fields=["proveedor_principal", "actualizado_en"])
+            _fijar_principal(srv, form)
             # LC 2026-08-22 (nota 3): la calculadora también corre en el ALTA.
             # Antes sólo se guardaba al editar, así que capturar los insumos en
             # el alta no servía de nada: el primer guardado los tiraba. Va
@@ -513,6 +519,7 @@ def editar(request, pk: int):
                 obj.imagen_url = ""
             obj.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
+            _fijar_principal(srv, form)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
             # producto la usa, guardamos los insumos y el Subtotal (antes de IVA)
             # alimenta el COSTO del producto (el precio de venta lo pone el usuario).

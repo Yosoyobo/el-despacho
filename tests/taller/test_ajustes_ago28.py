@@ -375,3 +375,107 @@ def test_el_nombre_del_producto_es_el_titulo(categoria, client, usuario_factory)
     assert ">Playera Dry Fit</h1>" in html
     assert "Editar producto</h1>" not in html
     assert "<title>Playera Dry Fit — Productos</title>" in html
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Un solo selector de proveedores, y el primero manda
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _prov(razon):
+    from apps.el_catalogo.models import Proveedor
+    return Proveedor.objects.create(razon_social=razon, activo=True)
+
+
+def test_el_primero_que_se_marca_queda_como_principal(categoria, client, usuario_factory):
+    """Aunque alfabéticamente vaya después: el orden lo manda la pantalla."""
+    from apps.el_catalogo.models import Servicio
+    alfa, zeta = _prov("Alfa Textiles"), _prov("Zeta Bordados")
+    client.force_login(usuario_factory(rol="super_admin"))
+    client.post("/catalogo/nuevo", {
+        "nombre": "Sudadera", "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+        "proveedores": [str(alfa.pk), str(zeta.pk)],
+        "proveedores_orden": f"{zeta.pk},{alfa.pk}",
+    })
+    srv = Servicio.objects.get(nombre="Sudadera")
+    assert srv.proveedor_principal_id == zeta.pk
+    assert srv.proveedor_default == zeta
+
+
+def test_sin_orden_manda_como_llegaron_las_casillas(categoria, client, usuario_factory):
+    """Un POST viejo (o el alta rápida) sigue funcionando."""
+    from apps.el_catalogo.models import Servicio
+    alfa, zeta = _prov("Alfa Textiles"), _prov("Zeta Bordados")
+    client.force_login(usuario_factory(rol="super_admin"))
+    client.post("/catalogo/nuevo", {
+        "nombre": "Gorra", "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+        "proveedores": [str(zeta.pk), str(alfa.pk)],
+    })
+    assert Servicio.objects.get(nombre="Gorra").proveedor_principal_id == zeta.pk
+
+
+def test_quitar_al_principal_corona_al_siguiente(categoria, client, usuario_factory):
+    """Antes se quedaba apuntando a quien ya no surte y había que avisarlo."""
+    from apps.el_catalogo.models import Servicio
+    alfa, zeta = _prov("Alfa Textiles"), _prov("Zeta Bordados")
+    srv = Servicio.objects.create(nombre="Playera", categoria=categoria,
+                                  costo=50, precio_base=100, proveedor_principal=zeta)
+    srv.proveedores.set([alfa, zeta])
+    client.force_login(usuario_factory(rol="super_admin"))
+    client.post(f"/catalogo/{srv.pk}/editar", {
+        "nombre": "Playera", "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+        "proveedores": [str(alfa.pk)],
+        "proveedores_orden": str(alfa.pk),
+    })
+    srv.refresh_from_db()
+    assert srv.proveedor_principal_id == alfa.pk
+
+
+def test_sin_proveedores_no_hay_principal(categoria, client, usuario_factory):
+    from apps.el_catalogo.models import Servicio
+    zeta = _prov("Zeta Bordados")
+    srv = Servicio.objects.create(nombre="Termo", categoria=categoria,
+                                  costo=50, precio_base=100, proveedor_principal=zeta)
+    srv.proveedores.set([zeta])
+    client.force_login(usuario_factory(rol="super_admin"))
+    client.post(f"/catalogo/{srv.pk}/editar", {
+        "nombre": "Termo", "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+    })
+    srv.refresh_from_db()
+    assert srv.proveedor_principal_id is None
+
+
+def test_la_ficha_abre_con_el_principal_al_frente(categoria, client, usuario_factory):
+    """La ★ tiene que señalar al principal guardado, no al primero alfabético."""
+    from apps.el_catalogo.models import Servicio
+    alfa, zeta = _prov("Alfa Textiles"), _prov("Zeta Bordados")
+    srv = Servicio.objects.create(nombre="Playera", categoria=categoria,
+                                  costo=50, precio_base=100, proveedor_principal=zeta)
+    srv.proveedores.set([alfa, zeta])
+    client.force_login(usuario_factory(rol="super_admin"))
+    html = client.get(f"/catalogo/{srv.pk}/editar").content.decode()
+    assert f'value="{zeta.pk},{alfa.pk}"' in html
+
+
+def test_el_orden_no_deja_pasar_ids_inventados(categoria, client, usuario_factory):
+    """El campo viene del navegador: sólo cuentan los que quedaron ligados."""
+    from apps.el_catalogo.models import Servicio
+    alfa = _prov("Alfa Textiles")
+    client.force_login(usuario_factory(rol="super_admin"))
+    client.post("/catalogo/nuevo", {
+        "nombre": "Mochila", "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+        "proveedores": [str(alfa.pk)],
+        "proveedores_orden": f"999999,{alfa.pk}",
+    })
+    assert Servicio.objects.get(nombre="Mochila").proveedor_principal_id == alfa.pk
+
+
+def test_el_control_de_proveedores_es_uno_solo():
+    src = TPL_FICHA.read_text(encoding="utf-8")
+    assert 'id="prov-picker"' not in src, "volvió el segundo desplegable"
+    assert 'name="proveedor_principal"' not in src, "volvió el selector del ★"
+    assert src.count('data-multi-buscable="proveedor"') == 1

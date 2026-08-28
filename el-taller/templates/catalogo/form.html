@@ -162,38 +162,28 @@ producto que estás viendo queda marcada.{% endcomment %}
                 {% endif %}
             </div>
             <p id="prov-sugerir-msg" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400"></p>
-            {% comment %}LC 2026-07-25 (Oscar): el filtro sobre checkboxes se
-            reemplaza por el dropdown con buscador canónico (data-select-buscable).
-            Cada proveedor elegido queda como pastilla con ✕; los checkboxes
-            reales viven ocultos (siguen siendo lo que se postea).{% endcomment %}
-            <select id="prov-picker" data-select-buscable aria-label="Buscar y agregar proveedor"
-                    class="mt-3 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                <option value="">Buscar y agregar proveedor…</option>
+            {% comment %}LC 2026-08-28 (Oscar): «hay varios selectores de
+            proveedores… dejemos sólo uno, y al agregarlos en orden el primero
+            queda como principal». Antes eran tres controles para una sola cosa
+            (un desplegable que agregaba, las pastillas y un selector aparte para
+            el principal). Ahora es el mismo control de palomitas que usa el alta
+            rápida: se buscan, se marcan, y el PRIMERO que se marca queda como
+            principal — con su ★ en la pastilla.
+
+            El orden de marcado viaja en un campo oculto: los checkboxes se
+            envían en el orden del DOM, que es alfabético, así que el POST por sí
+            solo no puede decir quién se marcó primero.{% endcomment %}
+            {{ form.proveedores_orden }}
+            <div class="mt-3" id="proveedores-lista"
+                 data-multi-buscable="proveedor" data-multi-plural="proveedores"
+                 data-multi-orden="#id_proveedores_orden" data-multi-principal>
                 {% for choice in form.proveedores %}
-                <option value="{{ choice.data.value }}">{{ choice.choice_label }}</option>
+                <label class="flex cursor-pointer items-center gap-2 py-1 text-sm text-gray-700 dark:text-gray-200">
+                    {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                </label>
                 {% endfor %}
-            </select>
-            <div id="prov-chips" class="mt-3 flex flex-wrap gap-2"></div>
-            {% comment %}LC 2026-08-04 (Oscar): el principal explícito. Antes «el
-            primero» era el primero ALFABÉTICO de la lista, así que ligar un
-            proveedor nuevo desde un proyecto podía robarle el default al de
-            siempre. Aquí se elige a mano y nada lo mueve.{% endcomment %}
-            <div class="mt-4">
-                <label for="{{ form.proveedor_principal.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">★ {{ form.proveedor_principal.label }}</label>
-                {{ form.proveedor_principal }}
-                {% comment %}LC 2026-08-22 (nota 4): la lista del ★ la mantiene el
-                JS en sincronía con las pastillas. Si el principal deja de surtir
-                el producto, se dice aquí — antes se quedaba apuntando a alguien
-                que ya no lo surte, sin que nadie se enterara.{% endcomment %}
-                <p id="prov-principal-aviso" class="mt-1 hidden text-xs font-medium text-warning-700 dark:text-warning-400"></p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedor_principal.help_text }}</p>
-                {% if form.proveedor_principal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proveedor_principal.errors|join:" " }}</p>{% endif %}
             </div>
-            {% comment %}Los checkboxes reales (lo que se postea) viven ocultos:
-            las pastillas y el dropdown solo los prenden/apagan.{% endcomment %}
-            <div id="proveedores-lista" class="hidden"{% if modo == 'nuevo' %} data-prov-autoprincipal="1"{% endif %}>
-                {% for choice in form.proveedores %}{{ choice.tag }}{% endfor %}
-            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">El primero que marques es el principal (★): el que se pone solo en los proyectos.</p>
             {% if form.proveedores.errors %}
             <p class="mt-2 text-xs text-error-600 dark:text-error-400">{{ form.proveedores.errors|join:" " }}</p>
             {% endif %}
@@ -436,143 +426,32 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
 {% endif %}{% endif %}
 
 <script>
-// LC 2026-07-25: proveedores con dropdown-buscador + pastillas. El <select>
-// solo AGREGA; los checkboxes ocultos siguen siendo lo que se postea.
-// `window.provRefrescar()` lo reusa el quick-create de proveedor.
+// LC 2026-08-28: el control de proveedores es UNO solo — el desplegable con
+// buscador y palomitas de `form_widgets.js`, el mismo del alta rápida. Aquí sólo
+// queda el puente para lo que toca las casillas desde fuera: el alta rápida de
+// proveedor y el 🤖 Sugerir.
 (function () {
-    const picker = document.getElementById('prov-picker');
-    const chips = document.getElementById('prov-chips');
-    const store = document.getElementById('proveedores-lista');
-    if (!picker || !chips || !store) return;
-    const cbs = () => Array.from(store.querySelectorAll('input[type=checkbox]'));
-    const cbDe = (v) => cbs().find((c) => c.value === String(v));
-    function nombreDe(v) {
-        const o = Array.from(picker.options).find((x) => x.value === String(v));
-        return o ? o.textContent.trim() : ('#' + v);
-    }
-    function pintar() {
-        const marcados = cbs().filter((c) => c.checked);
-        chips.innerHTML = '';
-        if (!marcados.length) {
-            const p = document.createElement('p');
-            p.className = 'text-xs text-gray-400 dark:text-gray-500';
-            p.textContent = 'Ningún proveedor marcado todavía.';
-            chips.appendChild(p);
-        }
-        marcados.forEach(function (c) {
-            const chip = document.createElement('span');
-            chip.className = 'inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300';
-            const txt = document.createElement('span');
-            txt.className = 'truncate';
-            txt.textContent = nombreDe(c.value);
-            const x = document.createElement('button');
-            x.type = 'button';
-            x.className = 'shrink-0 text-brand-500 hover:text-error-600 dark:hover:text-error-400';
-            x.setAttribute('aria-label', 'Quitar proveedor');
-            x.setAttribute('data-prov-quitar', c.value);
-            x.textContent = '✕';
-            chip.appendChild(txt); chip.appendChild(x);
-            chips.appendChild(chip);
-        });
-        // Los ya elegidos quedan deshabilitados en el dropdown (no se repiten).
-        Array.from(picker.options).forEach(function (o) {
-            if (!o.value) return;
-            const c = cbDe(o.value);
-            o.disabled = !!(c && c.checked);
-        });
-        picker.selectedIndex = 0;
-        sincronizarPrincipal(marcados);
-        // La calculadora se revela/esconde según si quedó marcado el proveedor
-        // que la dispara (nota 3). Marcar por JS no dispara `change`.
+    const lista = document.getElementById('proveedores-lista');
+    if (!lista) return;
+    window.provRefrescar = function () {
+        if (window.multiBuscableRefrescar) window.multiBuscableRefrescar(lista);
+        // Marcar por JS no dispara `change`: a la calculadora hay que avisarle.
         if (window.calcGateRefrescar) window.calcGateRefrescar();
-    }
-
-    // LC 2026-08-22 (nota 4, bug 3b): el ★ principal se pintaba UNA sola vez con
-    // el queryset del servidor y no se enteraba de nada. Dos consecuencias
-    // reales: un proveedor creado inline no aparecía en la lista hasta recargar,
-    // y al quitar una pastilla el principal se quedaba apuntando a alguien que
-    // ya no surte el producto. Ahora la lista del select ES la de los marcados.
-    const principal = document.querySelector('[name="proveedor_principal"]');
-    const avisoPrincipal = document.getElementById('prov-principal-aviso');
-    let primeraPintada = true;
-    function avisar(txt) {
-        if (!avisoPrincipal) return;
-        avisoPrincipal.textContent = txt || '';
-        avisoPrincipal.classList.toggle('hidden', !txt);
-    }
-    function sincronizarPrincipal(marcados) {
-        if (!principal) return;
-        const previo = principal.value;
-        const previoTexto = (principal.selectedIndex >= 0
-            ? (principal.options[principal.selectedIndex].textContent || '').trim() : '')
-            .replace(' — ya no surte este producto', '');
-        const validos = marcados.map((c) => String(c.value));
-        principal.innerHTML = '';
-        const vacio = document.createElement('option');
-        vacio.value = ''; vacio.textContent = '— Sin principal —';
-        principal.appendChild(vacio);
-        marcados.forEach(function (c) {
-            const o = document.createElement('option');
-            o.value = String(c.value); o.textContent = nombreDe(c.value);
-            principal.appendChild(o);
-        });
-        if (previo && validos.indexOf(previo) !== -1) {
-            principal.value = previo;                  // sigue surtiendo: se conserva
-            avisar('');
-        } else if (previo && primeraPintada) {
-            // En la CARGA no se toca lo guardado: puede ser un proveedor
-            // archivado que sí surte (el form lo conserva como opción válida a
-            // propósito). Se deja elegido y se avisa; el usuario decide.
-            const o = document.createElement('option');
-            o.value = previo; o.textContent = (previoTexto || '#' + previo) + ' — ya no surte este producto';
-            principal.appendChild(o);
-            principal.value = previo;
-            avisar('★ ' + (previoTexto || 'El principal') + ' no está entre los proveedores marcados. Márcalo o elige otro.');
-        } else if (previo) {
-            // Lo acaba de quitar de las pastillas: se limpia (no se reasigna a
-            // otro por nuestra cuenta) y se dice.
-            principal.value = '';
-            avisar('★ Se quitó el principal: ' + (previoTexto || 'el anterior') + ' ya no surte este producto. Elige otro.');
-        } else if (validos.length && store.hasAttribute('data-prov-autoprincipal')) {
-            // Sólo en el ALTA: el primero marcado, para que lo que se ve sea lo
-            // que se guarda (el servidor hace exactamente lo mismo). En la ficha
-            // NO se inventa un principal: si no hay, «Sin principal» es la
-            // verdad, y elegirlo por su cuenta sería cambiar lo que nadie pidió.
-            principal.value = validos[0];
-            avisar('');
-        } else {
-            principal.value = '';
-            avisar('');
-        }
-        primeraPintada = false;
-    }
-    picker.addEventListener('change', function () {
-        const c = cbDe(picker.value);
-        if (c) c.checked = true;
-        pintar();
-    });
-    chips.addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-prov-quitar]');
-        if (!btn) return;
-        const c = cbDe(btn.getAttribute('data-prov-quitar'));
-        if (c) c.checked = false;
-        pintar();
-    });
-    window.provRefrescar = pintar;
-    window.provAgregarOpcion = function (id, nombre) {
-        if (!cbDe(id)) {
-            const cb = document.createElement('input');
-            cb.type = 'checkbox'; cb.name = 'proveedores'; cb.value = String(id); cb.checked = true;
-            store.appendChild(cb);
-        } else { cbDe(id).checked = true; }
-        if (!Array.from(picker.options).some((o) => o.value === String(id))) {
-            const opt = document.createElement('option');
-            opt.value = String(id); opt.textContent = nombre;
-            picker.appendChild(opt);
-        }
-        pintar();
     };
-    pintar();
+    window.provAgregarOpcion = function (id, nombre) {
+        let chk = lista.querySelector('input[type=checkbox][value="' + id + '"]');
+        if (!chk) {
+            const label = document.createElement('label');
+            label.className = 'flex cursor-pointer items-center gap-2 py-1 text-sm text-gray-700 dark:text-gray-200';
+            label.innerHTML = '<input type="checkbox" name="proveedores" value="' + id + '"><span></span>';
+            label.querySelector('span').textContent = nombre;
+            lista.appendChild(label);
+            chk = label.querySelector('input');
+        }
+        chk.checked = true;
+        window.provRefrescar();
+    };
+    window.provRefrescar();
 })();
 
 // LC 2026-07-25: impresión + procesos adicionales del producto (plantilla que

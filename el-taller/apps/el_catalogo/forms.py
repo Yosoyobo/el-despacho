@@ -1,5 +1,4 @@
 from django import forms
-from django.db.models import Q
 
 from .models import (
     CategoriaProveedor,
@@ -123,7 +122,10 @@ class ServicioForm(forms.ModelForm):
         # consolidó a 'pz' (fija por dentro, sin selector) y el estado
         # «Disponible» se jubiló (archivar vive en su propio botón). Ambos
         # campos salen del form.
-        fields = ["nombre", "descripcion_default", "costo", "precio_base", "categoria", "proveedores", "proveedor_principal"]
+        # LC 2026-08-28 (Oscar): `proveedor_principal` sale del formulario. Ya no
+        # se elige en un segundo control: es el PRIMERO que se marcó, y de eso se
+        # encarga `proveedores_orden` (abajo) + la vista al guardar.
+        fields = ["nombre", "descripcion_default", "costo", "precio_base", "categoria", "proveedores"]
         labels = {
             "nombre": "Nombre",
             "descripcion_default": "Descripción",
@@ -164,23 +166,51 @@ class ServicioForm(forms.ModelForm):
             self.fields["proveedores"].required = False
             self.fields["proveedores"].label = "Proveedores aplicables"
             self.fields["proveedores"].help_text = "Marca quién te puede surtir este producto. Opcional."
-        # LC 2026-08-04 (Oscar): el PRINCIPAL es explícito. Es el que se
-        # autocompleta en la tarjeta del proyecto y el que sale en la etiqueta
-        # del dropdown de productos; los proveedores que se ligan desde un
-        # proyecto entran como alternativas y NO se lo quitan.
-        if "proveedor_principal" in self.fields:
-            campo = self.fields["proveedor_principal"]
-            activos = Proveedor.objects.filter(activo=True).order_by("razon_social")
-            actual = getattr(self.instance, "proveedor_principal_id", None)
-            if actual:  # un principal archivado sigue siendo una opción válida
-                activos = Proveedor.objects.filter(
-                    Q(activo=True) | Q(pk=actual)
-                ).order_by("razon_social")
-            campo.queryset = activos
-            campo.required = False
-            campo.empty_label = "— Sin principal —"
-            campo.label = "Proveedor principal"
-            campo.help_text = "El que surte por default. Los demás quedan como alternativas."
+        # LC 2026-08-28 (Oscar): «hay varios selectores de proveedores. Dejemos
+        # sólo uno, y al agregarlos en orden el primero queda como principal».
+        # El orden de marcado viaja en este campo oculto (lo llena el control de
+        # palomitas) porque el orden del POST no basta: los checkboxes se envían
+        # en el orden del DOM, que es alfabético.
+        #
+        # El principal SIGUE siendo un campo del modelo —es la fuente de verdad
+        # que consulta `proveedor_default`—, sólo dejó de elegirse a mano.
+        self.fields["proveedores_orden"] = forms.CharField(
+            required=False, widget=forms.HiddenInput(attrs={"id": "id_proveedores_orden"}),
+        )
+        self.initial.setdefault("proveedores_orden", self.orden_inicial())
+
+    def orden_inicial(self) -> str:
+        """El orden con el que se abre la ficha: el principal primero.
+
+        Así la estrella señala a quien está guardado como principal en vez de al
+        primero alfabético.
+        """
+        if not self.instance.pk:
+            return ""
+        ids = [str(p) for p in self.instance.proveedores.values_list("pk", flat=True)]
+        principal = self.instance.proveedor_principal_id
+        if principal and str(principal) in ids:
+            ids.remove(str(principal))
+            ids.insert(0, str(principal))
+        return ",".join(ids)
+
+    def principal_elegido(self, ligados) -> int | None:
+        """Quién quedó como principal: el PRIMERO de los que se marcaron.
+
+        `ligados` son los pks que de verdad quedaron en la relación. Se prefiere
+        el orden que mandó la pantalla y, si no vino (un POST viejo o el alta
+        rápida), el orden en que llegaron los checkboxes.
+        """
+        ligados = set(ligados)
+        crudo = (self.data.get("proveedores_orden") or "").strip()
+        orden = [int(x) for x in crudo.split(",") if x.strip().isdigit()] if crudo else []
+        for pk in orden:
+            if pk in ligados:
+                return pk
+        for crudo_pk in self.data.getlist("proveedores") if hasattr(self.data, "getlist") else []:
+            if str(crudo_pk).strip().isdigit() and int(crudo_pk) in ligados:
+                return int(crudo_pk)
+        return None
 
     def clean_costo(self):
         v = self.cleaned_data.get("costo")
