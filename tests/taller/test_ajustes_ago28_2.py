@@ -353,8 +353,9 @@ def test_los_controles_del_bloque_no_disparan_el_autoguardado():
     src = TPL_CARD.read_text(encoding="utf-8")
     ini = src.index("Tareas de este producto")
     bloque = src[ini:]
-    # Los dos botones (dictar + alta manual) mandan hx-params="none".
-    assert bloque.count('hx-params="none"') >= 2
+    # Los dos botones (dictar + alta manual) filtran los parámetros para no
+    # arrastrar el formset del proyecto, y ninguno es de tipo submit.
+    assert bloque.count("hx-params=") >= 2
     assert bloque.count('type="button"') >= 2
 
 
@@ -537,3 +538,61 @@ def test_el_chalan_no_adivina_entre_dos_productos_iguales(entorno):
 def test_la_capacidad_esta_declarada_en_el_catalogo_visible():
     from lib.dictado_catalogo import CONSULTAS_CHAT
     assert any("tareas_de_producto" in c["nombre"] for c in CONSULTAS_CHAT)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# El candado de `hx-params="none"` + `hx-vals` — descubierto en este sprint
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# htmx mezcla los valores de `hx-vals` en los parámetros **ANTES** de aplicar el
+# filtro de `hx-params` (en htmx 2.0.3: `v = ln(j, qn(En(r)))` y después
+# `w = dn(v, r)`; con «none», `dn` devuelve un `FormData` vacío). O sea que
+# `hx-params="none"` **también se lleva lo que manda `hx-vals`**, y el control
+# acaba posteando un cuerpo vacío.
+#
+# Se descubrió al escribir el botón de dictado de la tarjeta, y resultó que dos
+# controles que YA estaban en producción tenían el mismo error: el selector de
+# estado de la tabla de Tareas (daba 403 «Estado inválido» en silencio, porque
+# `hx-swap="none"` no pinta la respuesta) y el de ligar un gasto a un proveedor.
+#
+# La forma correcta es nombrar lo que se conserva (`hx-params="estado"`): el
+# formset del proyecto sigue sin viajar y el `hx-vals` sobrevive. Un control sin
+# `hx-vals` sí puede quedarse en «none» — su pk va en la URL.
+
+def _controles_con_vals_y_params(ruta: Path):
+    """Etiquetas de esa plantilla que usan `hx-vals` y `hx-params` a la vez."""
+    import re
+    src = ruta.read_text(encoding="utf-8")
+    return [m.group(0) for m in re.finditer(r"<[a-zA-Z][^>]*>", src, re.S)
+            if "hx-vals" in m.group(0) and "hx-params" in m.group(0)]
+
+
+@pytest.mark.parametrize("ruta", [
+    TPL_CARD,
+    Path("el-taller/templates/proyectos/_tareas_panel.html"),
+    Path("el-taller/templates/proyectos/_proveedores_panel.html"),
+])
+def test_ningun_control_mezcla_hx_params_none_con_hx_vals(ruta):
+    for tag in _controles_con_vals_y_params(ruta):
+        assert 'hx-params="none"' not in tag, (
+            f"{ruta}: este control manda `hx-vals` y filtra con "
+            f'`hx-params="none"`. htmx mezcla los `hx-vals` ANTES de filtrar, '
+            f"así que el cuerpo llega VACÍO y el control no hace nada (sin "
+            f"error visible si además lleva `hx-swap=\"none\"`). Nombra los "
+            f"parámetros a conservar: hx-params=\"estado\".\n\n{tag[:300]}"
+        )
+
+
+def test_el_selector_de_estado_de_tareas_conserva_su_parametro():
+    src = Path("el-taller/templates/proyectos/_tareas_panel.html").read_text(encoding="utf-8")
+    assert 'hx-params="estado"' in src
+
+
+def test_el_selector_de_gasto_sin_proveedor_conserva_su_parametro():
+    src = Path("el-taller/templates/proyectos/_proveedores_panel.html").read_text(encoding="utf-8")
+    assert 'hx-params="proveedor"' in src
+
+
+def test_el_boton_de_dictado_conserva_texto_y_producto():
+    src = TPL_CARD.read_text(encoding="utf-8")
+    assert 'hx-params="texto,producto"' in src

@@ -97,9 +97,9 @@ es por proveedor y SOLO de este proyecto (default prendido).
     selector para colgarlos de un proveedor; al ligarlos suben a la tarjeta de
     ése y cuentan en su deuda.
 
-    El selector NO manda el form del proyecto (`hx-params="none"`) y corta el
-    `change` para no disparar el autoguardado — mismo patrón que el estado de la
-    tabla de Tareas.{% endcomment %}
+    El selector NO manda el form del proyecto (`hx-params` con lista blanca) y
+    corta el `change` para no disparar el autoguardado — mismo patrón que el
+    estado de la tabla de Tareas.{% endcomment %}
     {% if gastos_sin_proveedor %}
     <div class="mt-4 border-t border-dashed border-gray-200 pt-3 dark:border-gray-800">
         <h4 class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Gastos sin proveedor</h4>
@@ -115,7 +115,10 @@ es por proveedor y SOLO de este proyecto (default prendido).
                 <select aria-label="Ligar este gasto a un proveedor"
                         class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
                         hx-post="{% url 'proyectos-ligar-gasto-proveedor' proyecto.pk g.pk %}"
-                        hx-trigger="change" hx-swap="none" hx-params="none"
+                        {% comment %}`hx-params` nombra lo que se conserva, NO «none»:
+                        htmx mezcla los `hx-vals` antes de filtrar, así que «none» dejaba
+                        el cuerpo vacío y este selector no ligaba nada (LC 2026-08-28).{% endcomment %}
+                        hx-trigger="change" hx-swap="none" hx-params="proveedor"
                         hx-vals='js:{proveedor: event.target.value}'
                         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                         hx-on:change="event.stopPropagation();">
