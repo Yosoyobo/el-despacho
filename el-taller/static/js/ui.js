@@ -855,6 +855,10 @@
 // libs (regla #1). Delegación para tolerar la conversación inyectada por HTMX.
 // ===========================================================================
 (function () {
+  // Donde el navegador sabe hacerlo solo, este JS no se monta: dos mecanismos
+  // peleando por el mismo alto es cómo volvería el «se hace grande y chico solo».
+  var NATIVO = !!(window.CSS && CSS.supports && CSS.supports('field-sizing', 'content'));
+  if (NATIVO) return;
   function ajustar(ta) {
     if (!ta) return;
     var max = parseInt(ta.getAttribute('data-autogrow-max') || '200', 10);
@@ -866,18 +870,19 @@
     var nodo = (raiz && raiz.querySelectorAll) ? raiz : document;
     nodo.querySelectorAll('textarea[data-autogrow]').forEach(ajustar);
   }
-  // OJO — `isComposing`: los acentos y la ñ se escriben en DOS pulsaciones
-  // (´ + a). Entre una y otra el navegador está "componiendo" la letra, y
-  // medir el elemento ahí (leer `scrollHeight` obliga a recalcular el diseño)
-  // puede cancelar esa composición: el acento se pierde y sale "a" pelona.
-  // Mientras se compone no se toca el tamaño; al terminar se ajusta de una vez.
-  document.body.addEventListener('input', function (e) {
-    if (e.isComposing) return;
-    if (e.target && e.target.matches && e.target.matches('textarea[data-autogrow]')) ajustar(e.target);
-  });
-  document.body.addEventListener('compositionend', function (e) {
-    if (e.target && e.target.matches && e.target.matches('textarea[data-autogrow]')) ajustar(e.target);
-  });
+  // NADA se mide MIENTRAS SE TECLEA. Ni con guarda de `isComposing`.
+  //
+  // Los acentos y la ñ se escriben en dos pulsaciones (´ + a · Option+n + n) y
+  // entre una y otra el navegador está componiendo la letra. Leer `scrollHeight`
+  // ahí fuerza un recálculo del diseño que en Mac corta la composición: el
+  // acento se pierde. La guarda de `isComposing` se puso el 28 de agosto y NO
+  // bastó — Oscar lo siguió reportando con el arreglo ya desplegado, y su
+  // instrucción fue clara: «prefiero que sirva a la funcionalidad».
+  //
+  // Así que el camino de teclear queda LIMPIO: crecer al escribir lo hace el
+  // navegador solo con `field-sizing: content` (ver `input.css`), que es la
+  // herramienta que ya existe para esto. Aquí sólo se mide cuando NADIE está
+  // escribiendo: al cargar, al llegar por HTMX y al vaciarse tras enviar.
   document.addEventListener('DOMContentLoaded', function () { ajustarTodas(); });
   document.body.addEventListener('htmx:afterSwap', function (e) { ajustarTodas(e.target); });
   // Tras enviar, el inline hx-on vacía el textarea; re-encoge en el siguiente tick.
@@ -1322,6 +1327,7 @@ window.abrirRickroll = function () {
 //   <textarea data-crece-al-enfocar data-crece-max="260" rows="2">
 // ===========================================================================
 (function () {
+  if (window.CSS && CSS.supports && CSS.supports('field-sizing', 'content')) return;
   var SEL = 'textarea[data-crece-al-enfocar]';
   function expandir(ta) {
     var max = parseInt(ta.getAttribute('data-crece-max') || '260', 10);
@@ -1336,13 +1342,6 @@ window.abrirRickroll = function () {
   document.addEventListener('focusout', function (e) {
     if (e.target && e.target.matches && e.target.matches(SEL)) encoger(e.target);
   });
-  document.addEventListener('input', function (e) {
-    if (e.isComposing) return;                     // ver la nota de arriba
-    if (e.target && e.target.matches && e.target.matches(SEL) &&
-        document.activeElement === e.target) expandir(e.target);
-  });
-  document.addEventListener('compositionend', function (e) {
-    if (e.target && e.target.matches && e.target.matches(SEL) &&
-        document.activeElement === e.target) expandir(e.target);
-  });
+  // Al entrar y al salir, nunca mientras se teclea — ver la nota de arriba.
+  // Crecer conforme se escribe lo hace `field-sizing: content` en `input.css`.
 })();

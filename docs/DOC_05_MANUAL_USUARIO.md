@@ -5,6 +5,25 @@
 
 ---
 
+## Novedades — Los acentos y la ñ vuelven a escribirse (28 de agosto de 2026)
+
+Si estabas perdiendo los acentos y la ñ al escribir en los cuadros de texto, ya
+quedó.
+
+**Qué pasaba.** En Mac, «á» y «ñ» se teclean en **dos pulsaciones**. Los cuadros
+que crecían solos se medían a sí mismos en cada tecla, y esa medición cortaba la
+palabra a medio escribir: se perdía la letra acentuada. El arreglo de la mañana
+intentó medir «con cuidado» y no bastó.
+
+**Qué cambió.** Ahora no se mide nada mientras escribes. Crecer con el contenido
+lo hace el navegador solo. Donde tu navegador todavía no sepa hacerlo, el cuadro
+se queda de su tamaño y aparece la barrita para desplazarse — que es lo que hacía
+antes, y se escribe perfecto.
+
+Escribir gana sobre que la caja crezca. Fue tu criterio y es el correcto.
+
+---
+
 ## Novedades — Tareas colgadas del producto, y el buscador del Inicio encuentra clientes (28 de agosto de 2026)
 
 **Cada producto del proyecto puede tener sus propias tareas**
