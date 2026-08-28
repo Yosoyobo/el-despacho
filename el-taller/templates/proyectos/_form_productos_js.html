@@ -374,11 +374,22 @@
     }
     // (La línea «usa: [producto del catálogo]» se retiró — render Oscar
     // 2026-07-28, punto c: el producto ya se ve en el select de abajo.)
+    // LC 2026-08-28 (Oscar): el enlace a la ficha del producto sigue al select.
+    // Sin producto elegido no lleva a ningún lado, así que se esconde.
+    function actualizarEnlaceFicha(card) {
+        const a = card.querySelector('[data-editar-producto]');
+        const sel = card.querySelector('select[name$="-servicio"]');
+        if (!a || !sel) return;
+        const pk = sel.value;
+        a.classList.toggle('hidden', !pk);
+        if (pk) a.href = '/catalogo/' + pk + '/editar';
+    }
     function prellenarServicio(sel) {
         // Con producto elegido la tarjeta ya cuenta para el orden (antes se la
         // saltaba por estar vacía y se quedaba en 0 → se iba al tope al guardar).
         setTimeout(() => { if (window.__sincronizarOrdenProductos) window.__sincronizarOrdenProductos(); }, 0);
         const card = sel.closest('[data-card]'); if (!card) return;
+        actualizarEnlaceFicha(card);
         const datos = SERVICIOS_DATOS[sel.value];
         if (datos) {
             const precio = card.querySelector('input[name$="-precio_unitario"]');
@@ -782,6 +793,7 @@
         serializarEscalas(card);
         recalcularEscalas(card);
         renumerar(card);
+        actualizarEnlaceFicha(card);
         card._inited = true;
     }
     // LC 2026-08-28 (Oscar): la Descripción ya NO crece tecla por tecla. Su alto

@@ -179,6 +179,18 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V4a2 2 0 012-2h8l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                     </button>
                     <label class="block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Producto</label>
+                    {% comment %}LC 2026-08-28 (Oscar): camino a la ficha del
+                    producto desde aquí. Abre en otra pestaña a propósito: el
+                    proyecto se está capturando y no hay por qué salirse de él.
+                    El enlace lo mantiene al día el JS cuando se cambia de
+                    producto; sin producto elegido, no se ve.{% endcomment %}
+                    <a data-editar-producto target="_blank" rel="noopener"
+                       href="{% if f.instance.servicio_id %}{% url 'catalogo-editar' f.instance.servicio_id %}{% else %}#{% endif %}"
+                       title="Abrir la ficha de este producto en otra pestaña"
+                       aria-label="Editar el producto en el catálogo"
+                       class="shrink-0 rounded p-0.5 text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400{% if not f.instance.servicio_id %} hidden{% endif %}">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </a>
                 </div>
                 {% comment %}El alias, oculto mientras no se use. El select del catálogo SIEMPRE se postea (es el vínculo real).{% endcomment %}
                 <div data-alias-campo class="{% if not f.instance.nombre_proyecto %}hidden {% endif %}mb-1">

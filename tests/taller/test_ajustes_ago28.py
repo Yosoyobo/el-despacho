@@ -479,3 +479,26 @@ def test_el_control_de_proveedores_es_uno_solo():
     assert 'id="prov-picker"' not in src, "volvió el segundo desplegable"
     assert 'name="proveedor_principal"' not in src, "volvió el selector del ★"
     assert src.count('data-multi-buscable="proveedor"') == 1
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Camino a la ficha del producto desde su tarjeta en el proyecto
+# ═════════════════════════════════════════════════════════════════════════════
+
+def test_la_tarjeta_lleva_a_la_ficha_del_producto():
+    src = TPL_CARD.read_text(encoding="utf-8")
+    assert "data-editar-producto" in src
+    assert "catalogo-editar" in src
+    # En otra pestaña: el proyecto se está capturando y no hay por qué salirse.
+    i = src.index("data-editar-producto")
+    assert 'target="_blank"' in src[i - 200:i + 200]
+
+
+def test_el_enlace_sigue_al_producto_elegido():
+    """Si se cambia de producto sin recargar, el enlace tiene que ir al nuevo."""
+    js = TPL_JS_TARJETA.read_text(encoding="utf-8")
+    assert "function actualizarEnlaceFicha" in js
+    tramo = js[js.index("function actualizarEnlaceFicha"):]
+    assert "'/catalogo/' + pk + '/editar'" in tramo[:600]
+    # Y se llama al elegir producto y al montar cada tarjeta.
+    assert js.count("actualizarEnlaceFicha(card)") >= 2
