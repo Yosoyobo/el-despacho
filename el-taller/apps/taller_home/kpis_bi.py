@@ -184,9 +184,13 @@ def _kpi_margen_catalogo(user) -> dict:
     def calc():
         from apps.el_catalogo.models import Servicio
 
+        # Sólo los que tienen costo capturado: sin costo no hay markup que
+        # promediar, y meterlos como 0 (o como 100, que es lo que devolvían
+        # antes) desfigura el promedio. A los que faltan los cuenta el KPI
+        # «productos sin costo».
         margenes = [
-            s.margen_porcentaje for s in Servicio.objects.filter(activo=True)
-            if s.margen_porcentaje is not None
+            s.margen_porcentaje
+            for s in Servicio.objects.filter(activo=True, costo__gt=0)
         ]
         if not margenes:
             return {"valor": 0, "nota": "sin costos capturados", "link": "/catalogo/"}
@@ -647,8 +651,9 @@ def catalogo_bi(ROLES_TODOS, ROLES_ADMIN, ROLES_ADMIN_CONTADOR) -> list[tuple]:
         ("productos-sin-costo", "Productos sin costo capturado",
          "Sin costo no se puede saber cuánto dejan.",
          "catalogo", ROLES_ADMIN_CONTADOR, _kpi_productos_sin_costo),
-        ("margen-catalogo", "Margen promedio del catálogo",
-         "Margen de lista de los productos activos.",
+        # El slug se conserva: hay preferencias de tablero guardadas con él.
+        ("margen-catalogo", "Markup promedio del catálogo",
+         "Cuánto se le suma al costo, en promedio, en los productos activos.",
          "catalogo", ROLES_ADMIN_CONTADOR, _kpi_margen_catalogo),
         ("productos-usados-mes", "Productos distintos usados (mes)",
          "Qué tanto del catálogo se está moviendo.",

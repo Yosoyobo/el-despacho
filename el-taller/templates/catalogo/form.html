@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|title }} producto — Productos{% endblock %}
+{% block title %}{% if modo == 'editar' and servicio %}{{ servicio.nombre }}{% else %}Nuevo producto{% endif %} — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% comment %}Fase 3 §1.2: si venimos DESDE un proveedor, la vista pasa
@@ -19,7 +19,17 @@
         {% else %}
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Productos</p>
         {% endif %}
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar producto{% else %}Nuevo producto{% endif %}</h1>
+        {% comment %}LC 2026-08-28 (Oscar): «el nombre del producto debe de ser
+        lo más protagonista de la página». El encabezado decía «Editar producto»
+        —que es lo mismo en las 400 fichas— y el nombre estaba perdido en un
+        campo. Ahora manda el nombre, y se actualiza mientras se escribe (mismo
+        mecanismo que el título del proyecto).{% endcomment %}
+        {% if modo == 'editar' %}
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Producto</p>
+        <h1 id="titulo-producto" class="mt-0.5 text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-title-lg">{{ servicio.nombre }}</h1>
+        {% else %}
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Nuevo producto</h1>
+        {% endif %}
         {% if modo == 'editar' and servicio %}
         <a href="#usos-historial" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">🧾 {{ usos|length }} uso{{ usos|length|pluralize }} · ver historial ↓</a>
         {% endif %}
@@ -60,8 +70,32 @@ producto que estás viendo queda marcada.{% endcomment %}
                         <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">(solo lectura)</span></label>
                         <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 tabular-nums text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
                     </div>
+                    {% elif f.name == 'precio_base' %}
+                        {% comment %}LC 2026-08-28 (Oscar): botones rápidos para
+                        poner el precio a partir del costo. El porcentaje es
+                        MARKUP —lo que se le suma al costo—, el mismo que mide
+                        la columna «Markup» de la lista: picas 50% y la columna
+                        dice 50%.{% endcomment %}
+                        <div class="min-w-0">
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                            <div data-markup-rapido class="mt-2 flex flex-wrap items-center gap-1.5">
+                                <span class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Sobre el costo</span>
+                                <button type="button" data-markup="30" class="pill-markup" title="Pone el precio 30% arriba del costo">+30%</button>
+                                <button type="button" data-markup="50" class="pill-markup" title="Pone el precio 50% arriba del costo">+50%</button>
+                                <button type="button" data-markup="70" class="pill-markup" title="Pone el precio 70% arriba del costo">+70%</button>
+                                <button type="button" data-markup="100" class="pill-markup" title="Deja el precio al doble del costo">+100%</button>
+                                <span data-markup-aviso class="text-xs text-gray-400 dark:text-gray-500"></span>
+                            </div>
+                        </div>
                     {% elif f.name == 'nombre' %}
-                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                        {% comment %}El campo del nombre, en grande: es el dato
+                        que identifica al producto en todo el sistema.{% endcomment %}
+                        <div class="md:col-span-2 min-w-0" data-campo-nombre>
+                            <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}</label>
+                            {{ f }}
+                            {% if f.help_text %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
+                            {% if f.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.errors|join:" " }}</p>{% endif %}
+                        </div>
                     {% else %}
                         {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
                     {% endif %}
@@ -739,5 +773,63 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
 // La imagen del producto (pegar/subir) la maneja `static/js/imagen_pegar.js`,
 // compartido con las tarjetas del proyecto y el historial de usos.
 
+</script>
+
+{% comment %}Botones rápidos de precio (LC 2026-08-28, Oscar). El porcentaje es
+MARKUP: lo que se le suma al costo. Con costo $100, «+50%» deja el precio en
+$150 — y la columna «Markup» de la lista dirá 50%, que es justo lo que se
+picó.{% endcomment %}
+<script>
+(function () {
+    function montar() {
+        var caja = document.querySelector('[data-markup-rapido]');
+        if (!caja) return;
+        var costo = document.querySelector('[name="costo"]');
+        var precio = document.querySelector('[name="precio_base"]');
+        var aviso = caja.querySelector('[data-markup-aviso]');
+        if (!costo || !precio) return;
+        caja.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-markup]');
+            if (!b) return;
+            var c = parseFloat(String(costo.value).replace(/,/g, ''));
+            if (!c || c <= 0) {
+                if (aviso) aviso.textContent = 'Captura primero el costo.';
+                costo.focus();
+                return;
+            }
+            var pct = parseFloat(b.getAttribute('data-markup'));
+            precio.value = (c * (1 + pct / 100)).toFixed(2);
+            precio.dispatchEvent(new Event('input', { bubbles: true }));
+            precio.dispatchEvent(new Event('change', { bubbles: true }));
+            if (aviso) aviso.textContent = '';
+        });
+        // Al cambiar el costo, el aviso deja de tener sentido.
+        costo.addEventListener('input', function () { if (aviso) aviso.textContent = ''; });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', montar);
+    } else { montar(); }
+})();
+</script>
+
+{% comment %}El encabezado espeja lo que se escribe en el nombre. El campo vive
+dentro del formulario, que se renderiza más abajo, así que hay que esperar a que
+el documento termine de parsearse.{% endcomment %}
+<script>
+(function () {
+    function enlazar() {
+        var campo = document.getElementById('{{ form.nombre.id_for_label|escapejs }}');
+        var titulo = document.getElementById('titulo-producto');
+        if (!campo || !titulo) return;
+        campo.addEventListener('input', function () {
+            var nombre = campo.value.trim() || 'Producto';
+            titulo.textContent = nombre;
+            document.title = nombre + ' — Productos';
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enlazar);
+    } else { enlazar(); }
+})();
 </script>
 {% endblock %}

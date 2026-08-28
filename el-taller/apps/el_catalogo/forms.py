@@ -135,6 +135,16 @@ class ServicioForm(forms.ModelForm):
             "costo": "Lo que te cuesta producir o comprar este producto. Usado para calcular margen.",
             "precio_base": "Precio sugerido al que lo vendes. El margen se calcula automáticamente.",
         }
+        widgets = {
+            # LC 2026-08-28 (Oscar): «el nombre del producto debe de ser lo más
+            # protagonista de la página». Es el dato con el que se le nombra en
+            # todo el sistema, así que se captura en grande.
+            "nombre": forms.TextInput(attrs={
+                "class": "text-lg font-semibold",
+                "placeholder": "Ej. Playera Dry Fit",
+                "autocomplete": "off",
+            }),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

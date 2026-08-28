@@ -180,12 +180,13 @@ def lista(request):
     # es alfabético por nombre (estable). El whitelist evita order_by arbitrario.
     #
     # LC 2026-08-13 (Oscar): «agregar arriba un filtro de ordenar por nombre,
-    # núm. de usos, costo, precio y margen». El margen no es una columna de la
-    # base (es una propiedad), así que se calcula en SQL para poder ordenar:
-    # (precio − costo) / precio × 100, y precio 0 vale 0.
+    # núm. de usos, costo, precio y markup». No es una columna de la base (es
+    # una propiedad), así que se calcula en SQL para poder ordenar. Tiene que
+    # medir LO MISMO que `Servicio.margen_porcentaje`: (precio − costo) / costo
+    # × 100, y sin costo capturado vale 0.
     qs = qs.annotate(margen_calc=Case(
-        When(precio_base__gt=0,
-             then=(F("precio_base") - F("costo")) * Value(Decimal("100")) / F("precio_base")),
+        When(costo__gt=0,
+             then=(F("precio_base") - F("costo")) * Value(Decimal("100")) / F("costo")),
         default=Value(Decimal("0")),
         output_field=DecimalField(max_digits=12, decimal_places=4),
     ))
@@ -214,7 +215,7 @@ def lista(request):
         ordenamientos += [
             {"clave": "costo", "label": "Costo"},
             {"clave": "precio", "label": "Precio"},
-            {"clave": "margen", "label": "Margen"},
+            {"clave": "margen", "label": "Markup"},
         ]
     for o in ordenamientos:
         o["activo"] = _clave == o["clave"]
@@ -240,7 +241,10 @@ def lista(request):
     if ve_precios:
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
-        cabeceras.append({"label": "Margen", "align": "right"})
+        # LC 2026-08-28: la columna mide MARKUP (lo que se le suma al costo),
+        # no margen sobre el precio. Se llama distinto para que no haya dos
+        # cosas con el mismo nombre y fórmulas distintas.
+        cabeceras.append({"label": "Markup", "align": "right"})
     # `puede_crear` también: la fila trae el botón de duplicar, y una celda
     # sin su cabecera descuadra la tabla entera.
     if editar_inline or puede_editar or puede_archivar or puede_eliminar or puede_crear:

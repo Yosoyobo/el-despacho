@@ -290,3 +290,88 @@ def test_duplicar_solo_por_post(producto_completo, client, usuario_factory):
     resp = client.get(f"/catalogo/{producto_completo.pk}/duplicar")
     assert resp.status_code == 405
     assert Servicio.objects.count() == 1
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# El precio se pone con un botón, y el porcentaje significa lo mismo en toda
+# la app (decisión de Oscar: markup sobre el costo)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def test_el_markup_es_lo_que_se_le_suma_al_costo(categoria):
+    """Costo 100 y precio 200 son 100%: «el doble de lo que me cuesta».
+
+    Antes esto medía el margen sobre el precio y con esos números daba 50%.
+    """
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Servicio
+    srv = Servicio(nombre="X", categoria=categoria,
+                   costo=Decimal("100.00"), precio_base=Decimal("200.00"))
+    assert round(srv.margen_porcentaje, 1) == 100.0
+    srv.precio_base = Decimal("150.00")
+    assert round(srv.margen_porcentaje, 1) == 50.0
+    srv.precio_base = Decimal("130.00")
+    assert round(srv.margen_porcentaje, 1) == 30.0
+
+
+def test_sin_costo_no_se_puede_medir(categoria):
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Servicio
+    srv = Servicio(nombre="X", categoria=categoria,
+                   costo=Decimal("0"), precio_base=Decimal("200.00"))
+    assert srv.margen_porcentaje == 0.0
+
+
+def test_el_boton_y_la_columna_dicen_lo_mismo(categoria):
+    """El contrato que hace útil el cambio: picas +50% y la columna dice 50%."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Servicio
+    costo = Decimal("88.00")
+    for pct in (30, 50, 70, 100):
+        # Esto es exactamente lo que hace el botón en la pantalla.
+        precio = costo * (1 + Decimal(pct) / 100)
+        srv = Servicio(nombre="X", categoria=categoria, costo=costo, precio_base=precio)
+        assert round(srv.margen_porcentaje) == pct
+
+
+def test_ordenar_por_markup_mide_lo_mismo_que_la_columna(categoria, client, usuario_factory):
+    """La lista ordena en SQL; si las dos fórmulas se separan, el orden miente."""
+    from decimal import Decimal
+
+    from apps.el_catalogo.models import Servicio
+    barato = Servicio.objects.create(nombre="Poco markup", categoria=categoria,
+                                     costo=Decimal("100"), precio_base=Decimal("130"))
+    caro = Servicio.objects.create(nombre="Mucho markup", categoria=categoria,
+                                   costo=Decimal("100"), precio_base=Decimal("300"))
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.get("/catalogo/?orden=-margen")
+    filas = list(resp.context["servicios"])
+    assert [f.pk for f in filas][:2] == [caro.pk, barato.pk]
+    # Y el número que se pinta es el mismo que el que ordenó.
+    assert round(filas[0].margen_porcentaje) == 200
+    assert round(filas[0].margen_calc) == 200
+
+
+def test_los_botones_de_precio_estan_en_la_ficha(categoria, client, usuario_factory):
+    from apps.el_catalogo.models import Servicio
+    srv = Servicio.objects.create(nombre="Gorra", categoria=categoria,
+                                  costo=100, precio_base=200)
+    client.force_login(usuario_factory(rol="super_admin"))
+    html = client.get(f"/catalogo/{srv.pk}/editar").content.decode()
+    assert 'data-markup-rapido' in html
+    for pct in ("30", "50", "70", "100"):
+        assert f'data-markup="{pct}"' in html
+
+
+def test_el_nombre_del_producto_es_el_titulo(categoria, client, usuario_factory):
+    from apps.el_catalogo.models import Servicio
+    srv = Servicio.objects.create(nombre="Playera Dry Fit", categoria=categoria,
+                                  costo=100, precio_base=200)
+    client.force_login(usuario_factory(rol="super_admin"))
+    html = client.get(f"/catalogo/{srv.pk}/editar").content.decode()
+    assert 'id="titulo-producto"' in html
+    assert ">Playera Dry Fit</h1>" in html
+    assert "Editar producto</h1>" not in html
+    assert "<title>Playera Dry Fit — Productos</title>" in html
