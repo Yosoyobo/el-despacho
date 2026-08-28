@@ -129,6 +129,13 @@
     @apply border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300;
   }
 
+  /* Pastilla chica para los botones rápidos de precio de la ficha del producto
+     (LC 2026-08-28). Misma familia que `.pill-filtro`, más compacta: son cuatro
+     y viven pegados debajo del campo. */
+  .pill-markup {
+    @apply inline-flex cursor-pointer items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-300;
+  }
+
   /* Pastilla-filtro teñida con el color del ESTADO (LC 2026-07-25, Cotizaciones).
      Mismo tamaño que `.pill-filtro`, pero el color sale de `--ec` (el HEX que
      el super_admin configuró en Gerencia) en vez de brand. */

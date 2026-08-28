@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ modo|title }} producto — Productos{% endblock %}
+{% block title %}{% if modo == 'editar' and servicio %}{{ servicio.nombre }}{% else %}Nuevo producto{% endif %} — Productos{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
 {% comment %}Fase 3 §1.2: si venimos DESDE un proveedor, la vista pasa
@@ -19,7 +19,17 @@
         {% else %}
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Productos</p>
         {% endif %}
-        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{% if modo == 'editar' %}Editar producto{% else %}Nuevo producto{% endif %}</h1>
+        {% comment %}LC 2026-08-28 (Oscar): «el nombre del producto debe de ser
+        lo más protagonista de la página». El encabezado decía «Editar producto»
+        —que es lo mismo en las 400 fichas— y el nombre estaba perdido en un
+        campo. Ahora manda el nombre, y se actualiza mientras se escribe (mismo
+        mecanismo que el título del proyecto).{% endcomment %}
+        {% if modo == 'editar' %}
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Producto</p>
+        <h1 id="titulo-producto" class="mt-0.5 text-title-md font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-title-lg">{{ servicio.nombre }}</h1>
+        {% else %}
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Nuevo producto</h1>
+        {% endif %}
         {% if modo == 'editar' and servicio %}
         <a href="#usos-historial" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">🧾 {{ usos|length }} uso{{ usos|length|pluralize }} · ver historial ↓</a>
         {% endif %}
@@ -60,8 +70,32 @@ producto que estás viendo queda marcada.{% endcomment %}
                         <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }} <span class="text-xs font-normal text-gray-400">(solo lectura)</span></label>
                         <input type="number" step="0.01" value="{{ f.value|default_if_none:'' }}" readonly disabled class="w-full cursor-not-allowed rounded-lg border-gray-300 bg-gray-50 tabular-nums text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400">
                     </div>
+                    {% elif f.name == 'precio_base' %}
+                        {% comment %}LC 2026-08-28 (Oscar): botones rápidos para
+                        poner el precio a partir del costo. El porcentaje es
+                        MARKUP —lo que se le suma al costo—, el mismo que mide
+                        la columna «Markup» de la lista: picas 50% y la columna
+                        dice 50%.{% endcomment %}
+                        <div class="min-w-0">
+                            {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
+                            <div data-markup-rapido class="mt-2 flex flex-wrap items-center gap-1.5">
+                                <span class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Sobre el costo</span>
+                                <button type="button" data-markup="30" class="pill-markup" title="Pone el precio 30% arriba del costo">+30%</button>
+                                <button type="button" data-markup="50" class="pill-markup" title="Pone el precio 50% arriba del costo">+50%</button>
+                                <button type="button" data-markup="70" class="pill-markup" title="Pone el precio 70% arriba del costo">+70%</button>
+                                <button type="button" data-markup="100" class="pill-markup" title="Deja el precio al doble del costo">+100%</button>
+                                <span data-markup-aviso class="text-xs text-gray-400 dark:text-gray-500"></span>
+                            </div>
+                        </div>
                     {% elif f.name == 'nombre' %}
-                        {% include "_componentes_tailadmin/_form_campo.html" with campo=f ancho_completo=True %}
+                        {% comment %}El campo del nombre, en grande: es el dato
+                        que identifica al producto en todo el sistema.{% endcomment %}
+                        <div class="md:col-span-2 min-w-0" data-campo-nombre>
+                            <label for="{{ f.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ f.label }}</label>
+                            {{ f }}
+                            {% if f.help_text %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ f.help_text }}</p>{% endif %}
+                            {% if f.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.errors|join:" " }}</p>{% endif %}
+                        </div>
                     {% else %}
                         {% include "_componentes_tailadmin/_form_campo.html" with campo=f %}
                     {% endif %}
@@ -128,38 +162,28 @@ producto que estás viendo queda marcada.{% endcomment %}
                 {% endif %}
             </div>
             <p id="prov-sugerir-msg" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400"></p>
-            {% comment %}LC 2026-07-25 (Oscar): el filtro sobre checkboxes se
-            reemplaza por el dropdown con buscador canónico (data-select-buscable).
-            Cada proveedor elegido queda como pastilla con ✕; los checkboxes
-            reales viven ocultos (siguen siendo lo que se postea).{% endcomment %}
-            <select id="prov-picker" data-select-buscable aria-label="Buscar y agregar proveedor"
-                    class="mt-3 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-                <option value="">Buscar y agregar proveedor…</option>
+            {% comment %}LC 2026-08-28 (Oscar): «hay varios selectores de
+            proveedores… dejemos sólo uno, y al agregarlos en orden el primero
+            queda como principal». Antes eran tres controles para una sola cosa
+            (un desplegable que agregaba, las pastillas y un selector aparte para
+            el principal). Ahora es el mismo control de palomitas que usa el alta
+            rápida: se buscan, se marcan, y el PRIMERO que se marca queda como
+            principal — con su ★ en la pastilla.
+
+            El orden de marcado viaja en un campo oculto: los checkboxes se
+            envían en el orden del DOM, que es alfabético, así que el POST por sí
+            solo no puede decir quién se marcó primero.{% endcomment %}
+            {{ form.proveedores_orden }}
+            <div class="mt-3" id="proveedores-lista"
+                 data-multi-buscable="proveedor" data-multi-plural="proveedores"
+                 data-multi-orden="#id_proveedores_orden" data-multi-principal>
                 {% for choice in form.proveedores %}
-                <option value="{{ choice.data.value }}">{{ choice.choice_label }}</option>
+                <label class="flex cursor-pointer items-center gap-2 py-1 text-sm text-gray-700 dark:text-gray-200">
+                    {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                </label>
                 {% endfor %}
-            </select>
-            <div id="prov-chips" class="mt-3 flex flex-wrap gap-2"></div>
-            {% comment %}LC 2026-08-04 (Oscar): el principal explícito. Antes «el
-            primero» era el primero ALFABÉTICO de la lista, así que ligar un
-            proveedor nuevo desde un proyecto podía robarle el default al de
-            siempre. Aquí se elige a mano y nada lo mueve.{% endcomment %}
-            <div class="mt-4">
-                <label for="{{ form.proveedor_principal.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">★ {{ form.proveedor_principal.label }}</label>
-                {{ form.proveedor_principal }}
-                {% comment %}LC 2026-08-22 (nota 4): la lista del ★ la mantiene el
-                JS en sincronía con las pastillas. Si el principal deja de surtir
-                el producto, se dice aquí — antes se quedaba apuntando a alguien
-                que ya no lo surte, sin que nadie se enterara.{% endcomment %}
-                <p id="prov-principal-aviso" class="mt-1 hidden text-xs font-medium text-warning-700 dark:text-warning-400"></p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedor_principal.help_text }}</p>
-                {% if form.proveedor_principal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proveedor_principal.errors|join:" " }}</p>{% endif %}
             </div>
-            {% comment %}Los checkboxes reales (lo que se postea) viven ocultos:
-            las pastillas y el dropdown solo los prenden/apagan.{% endcomment %}
-            <div id="proveedores-lista" class="hidden"{% if modo == 'nuevo' %} data-prov-autoprincipal="1"{% endif %}>
-                {% for choice in form.proveedores %}{{ choice.tag }}{% endfor %}
-            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">El primero que marques es el principal (★): el que se pone solo en los proyectos.</p>
             {% if form.proveedores.errors %}
             <p class="mt-2 text-xs text-error-600 dark:text-error-400">{{ form.proveedores.errors|join:" " }}</p>
             {% endif %}
@@ -235,11 +259,22 @@ producto que estás viendo queda marcada.{% endcomment %}
         <div data-procs-lista class="mt-3 space-y-2"></div>
         <p data-procs-vacio class="mt-3 text-xs text-gray-400 dark:text-gray-500">Sin procesos adicionales. Usa «+ Proceso» para agregar gastos como clavos, pegamento o embalaje.</p>
 
+        {% comment %}LC 2026-08-28 (Oscar): el «@» para ligar un proveedor al gasto
+        —que ya existía en la tarjeta del proyecto— también aquí. El
+        autocompletado es el componente compartido `arroba_proveedor.js`; la
+        fila sólo declara los atributos.{% endcomment %}
         <template data-procs-tpl>
-            <div class="grid grid-cols-[auto_1fr_130px_auto_auto] items-center gap-2" data-procs-fila>
+            <div class="grid grid-cols-[auto_1fr_130px_auto_auto] items-center gap-2" data-procs-fila data-arroba-fila>
                 <span class="text-xs font-medium text-gray-400" data-procs-num></span>
-                <input type="text" placeholder="Ej. Clavos, pegamento, embalaje…" autocomplete="off" data-procs-desc
+                <div class="min-w-0">
+                <input type="text" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off" data-procs-desc
+                       data-arroba-proveedor data-arroba-url="{% url 'catalogo-proveedor-buscar' %}"
                        class="block w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <span data-proc-prov-chip class="mt-1 hidden inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+                    <span aria-hidden="true">@</span><span data-proc-prov-nombre></span>
+                    <button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button>
+                </span>
+                </div>
                 <input type="number" step="0.01" min="0" placeholder="0.00" data-procs-costo
                        class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums dark:border-gray-700 dark:bg-gray-900">
                 <label class="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir.">
@@ -350,10 +385,19 @@ antes había que volver a la lista para cualquiera de las dos. Van FUERA del
 formulario de arriba (un <form> no se anida) y con el mismo candado que en la
 lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
 {% endcomment %}
-{% if modo == 'editar' and servicio %}{% if puede_archivar or puede_eliminar %}
+{% if modo == 'editar' and servicio %}{% if puede_archivar or puede_eliminar or puede_crear %}
 <section class="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Acciones</h3>
     <div class="mt-3 flex flex-wrap items-center gap-3">
+        {% comment %}LC 2026-08-28 (Oscar): duplicar el producto con TODO lo suyo
+        (proveedores, principal, procesos, calculadora, foto y variaciones) y
+        abrir la copia para ponerle nombre. El historial de usos no viaja: es lo
+        que le pasó al original.{% endcomment %}
+        {% if puede_crear %}
+        <form method="post" action="{% url 'catalogo-duplicar' servicio.pk %}" data-sin-avisar-cambios class="inline">{% csrf_token %}
+            <button type="submit" class="btn-secundario" title="Crea una copia con todos los datos de este producto">⧉ Duplicar producto</button>
+        </form>
+        {% endif %}
         {% if puede_archivar %}
         <form method="post" action="{% url 'catalogo-archivar' servicio.pk %}" data-sin-avisar-cambios class="inline">{% csrf_token %}
             <input type="hidden" name="volver" value="{{ request.get_full_path }}">
@@ -382,143 +426,32 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
 {% endif %}{% endif %}
 
 <script>
-// LC 2026-07-25: proveedores con dropdown-buscador + pastillas. El <select>
-// solo AGREGA; los checkboxes ocultos siguen siendo lo que se postea.
-// `window.provRefrescar()` lo reusa el quick-create de proveedor.
+// LC 2026-08-28: el control de proveedores es UNO solo — el desplegable con
+// buscador y palomitas de `form_widgets.js`, el mismo del alta rápida. Aquí sólo
+// queda el puente para lo que toca las casillas desde fuera: el alta rápida de
+// proveedor y el 🤖 Sugerir.
 (function () {
-    const picker = document.getElementById('prov-picker');
-    const chips = document.getElementById('prov-chips');
-    const store = document.getElementById('proveedores-lista');
-    if (!picker || !chips || !store) return;
-    const cbs = () => Array.from(store.querySelectorAll('input[type=checkbox]'));
-    const cbDe = (v) => cbs().find((c) => c.value === String(v));
-    function nombreDe(v) {
-        const o = Array.from(picker.options).find((x) => x.value === String(v));
-        return o ? o.textContent.trim() : ('#' + v);
-    }
-    function pintar() {
-        const marcados = cbs().filter((c) => c.checked);
-        chips.innerHTML = '';
-        if (!marcados.length) {
-            const p = document.createElement('p');
-            p.className = 'text-xs text-gray-400 dark:text-gray-500';
-            p.textContent = 'Ningún proveedor marcado todavía.';
-            chips.appendChild(p);
-        }
-        marcados.forEach(function (c) {
-            const chip = document.createElement('span');
-            chip.className = 'inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300';
-            const txt = document.createElement('span');
-            txt.className = 'truncate';
-            txt.textContent = nombreDe(c.value);
-            const x = document.createElement('button');
-            x.type = 'button';
-            x.className = 'shrink-0 text-brand-500 hover:text-error-600 dark:hover:text-error-400';
-            x.setAttribute('aria-label', 'Quitar proveedor');
-            x.setAttribute('data-prov-quitar', c.value);
-            x.textContent = '✕';
-            chip.appendChild(txt); chip.appendChild(x);
-            chips.appendChild(chip);
-        });
-        // Los ya elegidos quedan deshabilitados en el dropdown (no se repiten).
-        Array.from(picker.options).forEach(function (o) {
-            if (!o.value) return;
-            const c = cbDe(o.value);
-            o.disabled = !!(c && c.checked);
-        });
-        picker.selectedIndex = 0;
-        sincronizarPrincipal(marcados);
-        // La calculadora se revela/esconde según si quedó marcado el proveedor
-        // que la dispara (nota 3). Marcar por JS no dispara `change`.
+    const lista = document.getElementById('proveedores-lista');
+    if (!lista) return;
+    window.provRefrescar = function () {
+        if (window.multiBuscableRefrescar) window.multiBuscableRefrescar(lista);
+        // Marcar por JS no dispara `change`: a la calculadora hay que avisarle.
         if (window.calcGateRefrescar) window.calcGateRefrescar();
-    }
-
-    // LC 2026-08-22 (nota 4, bug 3b): el ★ principal se pintaba UNA sola vez con
-    // el queryset del servidor y no se enteraba de nada. Dos consecuencias
-    // reales: un proveedor creado inline no aparecía en la lista hasta recargar,
-    // y al quitar una pastilla el principal se quedaba apuntando a alguien que
-    // ya no surte el producto. Ahora la lista del select ES la de los marcados.
-    const principal = document.querySelector('[name="proveedor_principal"]');
-    const avisoPrincipal = document.getElementById('prov-principal-aviso');
-    let primeraPintada = true;
-    function avisar(txt) {
-        if (!avisoPrincipal) return;
-        avisoPrincipal.textContent = txt || '';
-        avisoPrincipal.classList.toggle('hidden', !txt);
-    }
-    function sincronizarPrincipal(marcados) {
-        if (!principal) return;
-        const previo = principal.value;
-        const previoTexto = (principal.selectedIndex >= 0
-            ? (principal.options[principal.selectedIndex].textContent || '').trim() : '')
-            .replace(' — ya no surte este producto', '');
-        const validos = marcados.map((c) => String(c.value));
-        principal.innerHTML = '';
-        const vacio = document.createElement('option');
-        vacio.value = ''; vacio.textContent = '— Sin principal —';
-        principal.appendChild(vacio);
-        marcados.forEach(function (c) {
-            const o = document.createElement('option');
-            o.value = String(c.value); o.textContent = nombreDe(c.value);
-            principal.appendChild(o);
-        });
-        if (previo && validos.indexOf(previo) !== -1) {
-            principal.value = previo;                  // sigue surtiendo: se conserva
-            avisar('');
-        } else if (previo && primeraPintada) {
-            // En la CARGA no se toca lo guardado: puede ser un proveedor
-            // archivado que sí surte (el form lo conserva como opción válida a
-            // propósito). Se deja elegido y se avisa; el usuario decide.
-            const o = document.createElement('option');
-            o.value = previo; o.textContent = (previoTexto || '#' + previo) + ' — ya no surte este producto';
-            principal.appendChild(o);
-            principal.value = previo;
-            avisar('★ ' + (previoTexto || 'El principal') + ' no está entre los proveedores marcados. Márcalo o elige otro.');
-        } else if (previo) {
-            // Lo acaba de quitar de las pastillas: se limpia (no se reasigna a
-            // otro por nuestra cuenta) y se dice.
-            principal.value = '';
-            avisar('★ Se quitó el principal: ' + (previoTexto || 'el anterior') + ' ya no surte este producto. Elige otro.');
-        } else if (validos.length && store.hasAttribute('data-prov-autoprincipal')) {
-            // Sólo en el ALTA: el primero marcado, para que lo que se ve sea lo
-            // que se guarda (el servidor hace exactamente lo mismo). En la ficha
-            // NO se inventa un principal: si no hay, «Sin principal» es la
-            // verdad, y elegirlo por su cuenta sería cambiar lo que nadie pidió.
-            principal.value = validos[0];
-            avisar('');
-        } else {
-            principal.value = '';
-            avisar('');
-        }
-        primeraPintada = false;
-    }
-    picker.addEventListener('change', function () {
-        const c = cbDe(picker.value);
-        if (c) c.checked = true;
-        pintar();
-    });
-    chips.addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-prov-quitar]');
-        if (!btn) return;
-        const c = cbDe(btn.getAttribute('data-prov-quitar'));
-        if (c) c.checked = false;
-        pintar();
-    });
-    window.provRefrescar = pintar;
-    window.provAgregarOpcion = function (id, nombre) {
-        if (!cbDe(id)) {
-            const cb = document.createElement('input');
-            cb.type = 'checkbox'; cb.name = 'proveedores'; cb.value = String(id); cb.checked = true;
-            store.appendChild(cb);
-        } else { cbDe(id).checked = true; }
-        if (!Array.from(picker.options).some((o) => o.value === String(id))) {
-            const opt = document.createElement('option');
-            opt.value = String(id); opt.textContent = nombre;
-            picker.appendChild(opt);
-        }
-        pintar();
     };
-    pintar();
+    window.provAgregarOpcion = function (id, nombre) {
+        let chk = lista.querySelector('input[type=checkbox][value="' + id + '"]');
+        if (!chk) {
+            const label = document.createElement('label');
+            label.className = 'flex cursor-pointer items-center gap-2 py-1 text-sm text-gray-700 dark:text-gray-200';
+            label.innerHTML = '<input type="checkbox" name="proveedores" value="' + id + '"><span></span>';
+            label.querySelector('span').textContent = nombre;
+            lista.appendChild(label);
+            chk = label.querySelector('input');
+        }
+        chk.checked = true;
+        window.provRefrescar();
+    };
+    window.provRefrescar();
 })();
 
 // LC 2026-07-25: impresión + procesos adicionales del producto (plantilla que
@@ -556,10 +489,12 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             const d = (f.querySelector('[data-procs-desc]').value || '').trim();
             const c = num(f.querySelector('[data-procs-costo]').value);
             if (!d && !c) return;
+            // El proveedor que se ligó con «@» (lo escribe arroba_proveedor.js).
+            const prov = parseInt(f.getAttribute('data-proc-prov'), 10);
             arr.push({
                 tipo: 'operativo', descripcion: d, costo: c.toFixed(2),
                 por_pieza: !!f.querySelector('[data-procs-pp]').checked,
-                proveedor_id: null,
+                proveedor_id: isNaN(prov) ? null : prov,
             });
         });
         hidden.value = JSON.stringify(arr);
@@ -568,6 +503,13 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             totalEl.textContent = t ? money(t) : '—';
         }
     }
+    // El nombre del proveedor sale del select de impresión, que ya trae a todos
+    // los activos — así el chip se puede pintar sin pedirle nada al servidor.
+    function nombreProveedor(id) {
+        if (!impProv) return '#' + id;
+        const o = Array.from(impProv.options).find((x) => x.value === String(id));
+        return o ? o.textContent.trim() : ('#' + id);
+    }
     function agregarFila(datos) {
         const fila = tpl.content.firstElementChild.cloneNode(true);
         if (datos) {
@@ -575,6 +517,13 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             const c = num(datos.costo);
             fila.querySelector('[data-procs-costo]').value = c ? c.toFixed(2) : '';
             fila.querySelector('[data-procs-pp]').checked = !!datos.por_pieza;
+            if (datos.proveedor_id) {
+                fila.setAttribute('data-proc-prov', String(datos.proveedor_id));
+                const chip = fila.querySelector('[data-proc-prov-chip]');
+                const nom = fila.querySelector('[data-proc-prov-nombre]');
+                if (nom) nom.textContent = nombreProveedor(datos.proveedor_id);
+                if (chip) chip.classList.remove('hidden');
+            }
         }
         lista.appendChild(fila);
         renumerar();
@@ -602,6 +551,7 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
     });
     box.addEventListener('input', serializar);
     box.addEventListener('change', serializar);
+    box.addEventListener('arroba:proveedor', serializar);
 })();
 
 (function() {
@@ -702,5 +652,63 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
 // La imagen del producto (pegar/subir) la maneja `static/js/imagen_pegar.js`,
 // compartido con las tarjetas del proyecto y el historial de usos.
 
+</script>
+
+{% comment %}Botones rápidos de precio (LC 2026-08-28, Oscar). El porcentaje es
+MARKUP: lo que se le suma al costo. Con costo $100, «+50%» deja el precio en
+$150 — y la columna «Markup» de la lista dirá 50%, que es justo lo que se
+picó.{% endcomment %}
+<script>
+(function () {
+    function montar() {
+        var caja = document.querySelector('[data-markup-rapido]');
+        if (!caja) return;
+        var costo = document.querySelector('[name="costo"]');
+        var precio = document.querySelector('[name="precio_base"]');
+        var aviso = caja.querySelector('[data-markup-aviso]');
+        if (!costo || !precio) return;
+        caja.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-markup]');
+            if (!b) return;
+            var c = parseFloat(String(costo.value).replace(/,/g, ''));
+            if (!c || c <= 0) {
+                if (aviso) aviso.textContent = 'Captura primero el costo.';
+                costo.focus();
+                return;
+            }
+            var pct = parseFloat(b.getAttribute('data-markup'));
+            precio.value = (c * (1 + pct / 100)).toFixed(2);
+            precio.dispatchEvent(new Event('input', { bubbles: true }));
+            precio.dispatchEvent(new Event('change', { bubbles: true }));
+            if (aviso) aviso.textContent = '';
+        });
+        // Al cambiar el costo, el aviso deja de tener sentido.
+        costo.addEventListener('input', function () { if (aviso) aviso.textContent = ''; });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', montar);
+    } else { montar(); }
+})();
+</script>
+
+{% comment %}El encabezado espeja lo que se escribe en el nombre. El campo vive
+dentro del formulario, que se renderiza más abajo, así que hay que esperar a que
+el documento termine de parsearse.{% endcomment %}
+<script>
+(function () {
+    function enlazar() {
+        var campo = document.getElementById('{{ form.nombre.id_for_label|escapejs }}');
+        var titulo = document.getElementById('titulo-producto');
+        if (!campo || !titulo) return;
+        campo.addEventListener('input', function () {
+            var nombre = campo.value.trim() || 'Producto';
+            titulo.textContent = nombre;
+            document.title = nombre + ' — Productos';
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enlazar);
+    } else { enlazar(); }
+})();
 </script>
 {% endblock %}

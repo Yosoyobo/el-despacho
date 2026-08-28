@@ -8027,6 +8027,94 @@ hay filtro por etiqueta ni por fecha; ligar desde la ficha sólo ofrece clientes
 (proyecto y proveedor siguen siendo cosa del recuadro de cada ficha); y borrar
 un documento del archivo sigue haciéndose en Paperless.
 
+### S-Ajustes-Ago28 · Sprint 1 ✅ — El producto: escribir sin pelearse, duplicar, y un solo control de proveedores (2026-08-28, VERSION 2026.08.47)
+
+Primero de los **3 sprints** en que se dividieron las notas de Oscar del 28 de
+agosto (el reparto y el análisis de las pestañas, en
+`docs/PESTANAS-CAMINOS.md`). Todo lo de este sprint gira alrededor del PRODUCTO:
+su ficha y su tarjeta dentro de un proyecto. Sin migraciones.
+
+- **Los acentos y el tamaño del recuadro eran el MISMO bug.** La Descripción de
+  la tarjeta se medía a sí misma en cada tecla para crecer, y de ahí salían los
+  dos síntomas que Oscar reportó por separado: «se hace grande y chico solo» (el
+  alto dependía de cuándo se alcanzó a medir — ya se parchó el 18-ago y volvió) y
+  «no puedo poner acentos ni ñs» (esas letras se **componen en dos pulsaciones**,
+  y recalcular el diseño a media composición la cancela). La cura es una:
+  componente nuevo **`[data-crece-al-enfocar]`** en `ui.js` (dual-copy) — el alto
+  de reposo lo fija el CSS y sólo se mide al entrar y salir del campo. Además,
+  **los dos manejadores de `input` sobre textareas de `ui.js`** (chat de El
+  Chalán y Mensajes) ahora salen si `e.isComposing`: el mismo bug estaba latente
+  ahí. Se retiró el auto-grow de la tarjeta con su andamiaje.
+  **Regla que queda: ningún handler de `input` puede tocar el layout mientras se
+  compone una letra.**
+- **El `@proveedor` "que no funcionaba" NO existía en esa pantalla.** Vivía
+  metido dentro de la plantilla de la tarjeta del proyecto; la ficha del producto
+  nunca lo tuvo, aunque el backend YA guardaba `proveedor_id` en los procesos
+  operativos (desde Jul25) y la ficha mandaba `proveedor_id: null` fijo. Se
+  extrajo a **`static/js/arroba_proveedor.js`** (contrato `data-arroba-fila` /
+  `-proveedor` / `-url`, avisa con el evento `arroba:proveedor`) y lo usan las
+  dos pantallas. **Hueco cerrado de paso**: el proveedor de un gasto capturado en
+  la ficha **no viajaba** al proyecto al elegir ese producto — el vínculo se
+  guardaba y nadie lo usaba.
+- **Duplicar producto** (`el_catalogo/duplicar.py`): no existía en ninguna forma.
+  Se lleva todo lo que define al producto —incluidas las **variaciones**, la
+  calculadora y los procesos— menos el historial de usos, que es del original. La
+  foto se comparte **por referencia** al archivo (igual que al duplicar un
+  proyecto). Botón en la ficha y en cada renglón; pide permiso de `crear` y abre
+  la copia. **La columna de acciones de la tabla se condicionó igual**, o una
+  celda sin cabecera descuadra la tabla.
+- **Markup en vez de margen, sólo en el CATÁLOGO** (decisión de Oscar tras ver
+  las dos opciones con números): `Servicio.margen_porcentaje` pasa a
+  `(precio − costo) / costo × 100`. Alcance: la propiedad, **el ordenamiento en
+  SQL de la lista** (tenía su propia copia de la fórmula — si se separan, el
+  orden miente) y el KPI del catálogo, que además deja de promediar los productos
+  sin costo (metían un 100% inventado). La columna se renombró a **«Markup»** y
+  los umbrales de color se recalibraron (100% de markup = el margen sano del 50%
+  de El Análisis). **El margen del PROYECTO no se tocó** — utilidad ÷ ingresos es
+  otra cosa; sus tests siguen verdes sin cambios, que es la prueba de que la
+  separación quedó limpia. Botones **+30/+50/+70/+100%** bajo el precio.
+- **Un solo control de proveedores.** Eran TRES (un desplegable que agregaba, las
+  pastillas, y un selector aparte para el ★). Ahora es el de palomitas que ya
+  usaba el alta rápida, y **el primero que se marca queda como principal**. El
+  detalle que lo hace posible: los checkboxes se envían en el orden del DOM, que
+  es alfabético, así que el POST por sí solo no puede decir cuál se marcó primero
+  (misma trampa por la que existe `proveedor_principal` desde Ago04-R3) — el
+  orden viaja en un hidden y el servidor corona al primero **que de verdad quedó
+  ligado**. El campo del modelo se conserva como fuente de verdad; sólo dejó de
+  elegirse a mano. `data-multi-buscable` gana el orden como **opt-in**, así que
+  las otras pantallas no cambian.
+- **El nombre del producto es el título** de su ficha (y sigue al campo mientras
+  se escribe, patrón del título del proyecto) + **lápiz en la tarjeta** del
+  proyecto que abre la ficha en otra pestaña.
+- **32 tests nuevos** (`tests/taller/test_ajustes_ago28.py`), los críticos
+  verificados contra el código sin arreglar. Se actualizaron **6 tests ajenos**
+  que fijaban contratos que este sprint cambió a propósito: el auto-grow
+  (`ago04_r2`, `ago18`), el `proveedor_principal` del POST y la sincronía de su
+  desplegable (`catalogo_alta_proveedor`), el `#prov-picker` (`jul25`,
+  `ui_fase3`) y la etiqueta «Margen» de las fichas (`ago12`).
+- Suite completa como el CI (`-n auto --dist loadfile`): **3642 pass, 1 skipped**.
+
+**Gotcha del sprint**: al meter `{% url %}` dentro de una cadena JS en una
+plantilla, **no escapar las comillas** — Django resuelve la etiqueta antes de que
+el JS exista, y las barras invertidas quedan literales y rompen el parser de
+plantillas (tumbó el detalle del proyecto entero; lo cazaron los tests).
+
+**Pendiente de confirmar con Oscar**: si su teclado es ISO español, la ñ es una
+tecla directa y no una composición — el arreglo cubriría los acentos pero no
+explicaría la ñ, y habría que seguir buscando. Con teclado US/Internacional
+(donde la ñ es Option+n) el diagnóstico está completo.
+
+**Los otros dos sprints del reparto** (pendientes): **Sprint 2** — tareas
+ligadas al producto con dictado (lleva migración: FK de `Tarea` a la línea de
+producto; el mini-Chalán de tareas necesita entender **hora** y **lugar**, hoy
+sólo qué/quién/cuándo) + la búsqueda del Dashboard con clientes, productos y
+proveedores + duplicar proyecto alcanzable desde la lista y el Kanban.
+**Sprint 3** — vista previa de la cotización antes de generar la versión
+siguiente, con «Generar» y «Enviar» (genera **y** abre el correo). Ese preview
+tiene que armarse con el MISMO código que genera la versión de verdad, dentro de
+una operación que se deshace: `construir_html_pdf` necesita una cotización
+persistida, así que fabricar una imitación mentiría.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

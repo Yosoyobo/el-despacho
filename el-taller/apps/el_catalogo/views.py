@@ -51,6 +51,23 @@ def _proveedores_activos():
     return list(Proveedor.objects.filter(activo=True).order_by("razon_social"))
 
 
+def _fijar_principal(srv, form) -> None:
+    """El proveedor principal es el PRIMERO que se marcó (LC 2026-08-28).
+
+    Antes se elegía en un segundo control; Oscar pidió dejar uno solo. La
+    columna del modelo sigue siendo la fuente de verdad (la lee
+    `proveedor_default` en toda la app), sólo cambió quién la decide.
+
+    Se llama SIEMPRE después de `save_m2m()`: hay que saber quiénes quedaron
+    ligados de verdad antes de coronar a ninguno.
+    """
+    ligados = list(srv.proveedores.values_list("pk", flat=True))
+    nuevo = form.principal_elegido(ligados)
+    if srv.proveedor_principal_id != nuevo:
+        srv.proveedor_principal_id = nuevo
+        srv.save(update_fields=["proveedor_principal", "actualizado_en"])
+
+
 def _ids_proveedores_del_post(post) -> list[int]:
     """Ids de proveedor que trae el POST, **en el orden en que llegaron** y
     filtrados contra los ACTIVOS (LC 2026-08-22, nota 2).
@@ -180,12 +197,13 @@ def lista(request):
     # es alfabético por nombre (estable). El whitelist evita order_by arbitrario.
     #
     # LC 2026-08-13 (Oscar): «agregar arriba un filtro de ordenar por nombre,
-    # núm. de usos, costo, precio y margen». El margen no es una columna de la
-    # base (es una propiedad), así que se calcula en SQL para poder ordenar:
-    # (precio − costo) / precio × 100, y precio 0 vale 0.
+    # núm. de usos, costo, precio y markup». No es una columna de la base (es
+    # una propiedad), así que se calcula en SQL para poder ordenar. Tiene que
+    # medir LO MISMO que `Servicio.margen_porcentaje`: (precio − costo) / costo
+    # × 100, y sin costo capturado vale 0.
     qs = qs.annotate(margen_calc=Case(
-        When(precio_base__gt=0,
-             then=(F("precio_base") - F("costo")) * Value(Decimal("100")) / F("precio_base")),
+        When(costo__gt=0,
+             then=(F("precio_base") - F("costo")) * Value(Decimal("100")) / F("costo")),
         default=Value(Decimal("0")),
         output_field=DecimalField(max_digits=12, decimal_places=4),
     ))
@@ -214,7 +232,7 @@ def lista(request):
         ordenamientos += [
             {"clave": "costo", "label": "Costo"},
             {"clave": "precio", "label": "Precio"},
-            {"clave": "margen", "label": "Margen"},
+            {"clave": "margen", "label": "Markup"},
         ]
     for o in ordenamientos:
         o["activo"] = _clave == o["clave"]
@@ -240,8 +258,13 @@ def lista(request):
     if ve_precios:
         cabeceras.append({"label": "Costo", "align": "right"})
         cabeceras.append({"label": "Precio", "align": "right"})
-        cabeceras.append({"label": "Margen", "align": "right"})
-    if editar_inline or puede_editar or puede_archivar or puede_eliminar:
+        # LC 2026-08-28: la columna mide MARKUP (lo que se le suma al costo),
+        # no margen sobre el precio. Se llama distinto para que no haya dos
+        # cosas con el mismo nombre y fórmulas distintas.
+        cabeceras.append({"label": "Markup", "align": "right"})
+    # `puede_crear` también: la fila trae el botón de duplicar, y una celda
+    # sin su cabecera descuadra la tabla entera.
+    if editar_inline or puede_editar or puede_archivar or puede_eliminar or puede_crear:
         cabeceras.append({"label": "", "align": "right"})
     # querystring_base: preserva filtros al cambiar el orden (item 6).
     from urllib.parse import urlencode
@@ -381,18 +404,7 @@ def nuevo(request):
             srv.procesos_default = procesos_default.parsear(request.POST)
             srv.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
-            # LC 2026-08-22 (nota 4): el alta deja el producto COMPLETO. Si se
-            # marcaron proveedores y nadie eligió principal, el primero que se
-            # marcó lo es. `proveedor_default` ya caía al primero ACTIVO de la
-            # M2M —que es el primero alfabético—, así que dejarlo explícito es
-            # lo que hace que el ★ coincida con lo que el usuario eligió.
-            if srv.proveedor_principal_id is None:
-                ids_prov = _ids_proveedores_del_post(request.POST)
-                ligados = set(srv.proveedores.values_list("pk", flat=True))
-                primero = next((pk for pk in ids_prov if pk in ligados), None)
-                if primero is not None:
-                    srv.proveedor_principal_id = primero
-                    srv.save(update_fields=["proveedor_principal", "actualizado_en"])
+            _fijar_principal(srv, form)
             # LC 2026-08-22 (nota 3): la calculadora también corre en el ALTA.
             # Antes sólo se guardaba al editar, así que capturar los insumos en
             # el alta no servía de nada: el primer guardado los tiraba. Va
@@ -507,6 +519,7 @@ def editar(request, pk: int):
                 obj.imagen_url = ""
             obj.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
+            _fijar_principal(srv, form)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
             # producto la usa, guardamos los insumos y el Subtotal (antes de IVA)
             # alimenta el COSTO del producto (el precio de venta lo pone el usuario).
@@ -564,6 +577,8 @@ def editar(request, pk: int):
         # antes había que volver a la lista para cualquiera de las dos.
         "puede_archivar": puede(request.user, "catalogo", "archivar"),
         "puede_eliminar": puede(request.user, "catalogo", "eliminar"),
+        # Duplicar es crear: pide el mismo permiso que dar de alta un producto.
+        "puede_crear": puede(request.user, "catalogo", "crear"),
         # Calculadora de costos (Simil Cuero Plymouth): prefill + resultado en vivo.
         **_ctx_calculadora(srv),
         # LC 2026-07-25: impresión + procesos adicionales del producto (plantilla
@@ -575,6 +590,28 @@ def editar(request, pk: int):
         "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
         **_navegacion_producto(request),
     })
+
+
+@require_http_methods(["POST"])
+def duplicar(request, pk: int):
+    """Clona el producto con todo lo suyo y abre la copia para renombrarla.
+
+    LC 2026-08-28 (Oscar): «Duplicar producto tiene que existir. Y llevarse
+    absolutamente todos los datos.» Qué viaja y qué no está en
+    `apps.el_catalogo.duplicar`.
+
+    Se pide el permiso de CREAR (que es lo que hace) y el de ver el original.
+    """
+    if (r := _gate(request, "crear")) is not None:
+        return r
+    from .duplicar import duplicar_servicio
+    origen = get_object_or_404(Servicio, pk=pk)
+    copia = duplicar_servicio(origen, actor=request.user)
+    messages.success(
+        request,
+        f"Se duplicó «{origen.nombre}». Ponle su nombre a la copia y guárdala.",
+    )
+    return redirect(reverse("catalogo-editar", args=[copia.pk]))
 
 
 @require_http_methods(["POST"])

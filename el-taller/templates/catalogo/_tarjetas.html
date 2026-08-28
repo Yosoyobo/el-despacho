@@ -60,8 +60,8 @@ no son decenas de llamadas a Google Drive.{% endcomment %}
                 <p class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ s.precio_base|dinero }}</p>
             </div>
             <div>
-                <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">Margen</p>
-                <p class="text-sm font-semibold tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:0 }}%</p>
+                <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">Markup</p>
+                <p class="text-sm font-semibold tabular-nums {% if s.margen_porcentaje >= 100 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 50 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:0 }}%</p>
             </div>
         </div>
         {% endif %}

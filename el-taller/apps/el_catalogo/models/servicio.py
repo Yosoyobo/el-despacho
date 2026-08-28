@@ -126,10 +126,22 @@ class Servicio(models.Model):
 
     @property
     def margen_porcentaje(self) -> float:
-        """Margen calculado (precio_base - costo) / precio_base × 100.
+        """Markup: lo que se le suma al costo, en porcentaje.
 
-        Si precio_base es 0, devuelve 0. Si costo es 0, devuelve 100.
+        `(precio_base − costo) / costo × 100`. Con costo $100 y precio $200 son
+        100%: «el doble de lo que me cuesta».
+
+        LC 2026-08-28 (decisión de Oscar): antes esto era el MARGEN sobre el
+        precio —«de cada peso que cobro, cuánto es ganancia»—, que con esos
+        mismos números daba 50%. Se cambió para que el sistema hable el idioma
+        del taller y para que los botones rápidos de precio (30/50/70/100%)
+        digan lo mismo que la columna: picas 50% y la columna dice 50%.
+
+        **Ojo**: el margen del PROYECTO (utilidad ÷ ingresos) es otra cosa y no
+        cambió — ahí manda el lenguaje del contador.
+
+        Sin costo capturado no se puede medir y devuelve 0.
         """
-        if not self.precio_base or self.precio_base <= 0:
+        if not self.costo or self.costo <= 0:
             return 0.0
-        return float((self.precio_base - self.costo) / self.precio_base * 100)
+        return float((self.precio_base - self.costo) / self.costo * 100)

@@ -28,11 +28,16 @@ esta lista, para que archivar o eliminar te regrese a donde estabas.{% endcommen
     {% if ve_precios %}
     <td class="px-5 py-3 text-right tabular-nums text-gray-500 dark:text-gray-400">$ {{ s.costo|floatformat:2 }}</td>
     <td class="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">$ {{ s.precio_base|floatformat:2 }}</td>
-    <td class="px-5 py-3 text-right tabular-nums {% if s.margen_porcentaje >= 50 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 20 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</td>
+    <td class="px-5 py-3 text-right tabular-nums {% if s.margen_porcentaje >= 100 %}text-success-600 dark:text-success-400{% elif s.margen_porcentaje >= 50 %}text-warning-600 dark:text-warning-400{% else %}text-error-600 dark:text-error-400{% endif %}">{{ s.margen_porcentaje|floatformat:1 }}%</td>
     {% endif %}
-    {% if puede_editar or puede_archivar or puede_eliminar %}
+    {% if puede_editar or puede_archivar or puede_eliminar or puede_crear %}
     <td class="px-5 py-3 text-right">
         <div class="inline-flex items-center gap-2">
+            {% if puede_crear %}
+            <form method="post" action="{% url 'catalogo-duplicar' s.pk %}" class="inline">{% csrf_token %}
+                <button type="submit" class="text-sm font-medium text-gray-600 hover:underline dark:text-gray-300" title="Duplicar con todos sus datos">⧉ Duplicar</button>
+            </form>
+            {% endif %}
             {% if puede_archivar %}
             <form method="post" action="{% url 'catalogo-archivar' s.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="volver" value="{{ request.get_full_path }}">
                 <button type="submit" class="text-sm font-medium text-warning-700 hover:underline dark:text-warning-400">{% if s.activo %}Archivar{% else %}Reactivar{% endif %}</button>

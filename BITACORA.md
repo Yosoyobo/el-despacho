@@ -13054,3 +13054,102 @@ el código en La Sede es cómo se ve el aviso en la pantalla real.
   y conviene verla antes de aplicarla.
 - **Pendiente de Oscar:** decidir qué pasa con «Entrega de playeras» (reactivar
   el reparto o cerrar la tarea). El botón ya está; la decisión es suya.
+
+---
+
+## S-Ajustes-Ago28 · Sprint 1 — 2026-08-28 (VERSION 2026.08.47)
+
+> Rama `agent/ajustes-ago28`, desde `origin/main`. Primero de los **3 sprints**
+> en que se organizaron las notas de Oscar de ese día. Sin migraciones.
+
+### El reparto en 3 sprints (y por qué)
+
+Oscar mandó 10 notas + una nota extra a media sesión («no puedo poner acentos ni
+ñs en los recuadros de descripción») y pidió **menos de 5 sprints**. Quedaron 3,
+agrupados por **zona de código** —para que cada uno sea un deploy y una reversión
+limpia— y ordenados por lo que estorba a diario:
+
+1. **El producto** (este): la Descripción que se peleaba con el teclado, el `@`
+   de proveedores, duplicar producto, markup, un solo control de proveedores, el
+   nombre protagonista y el camino a la ficha desde la tarjeta.
+2. **Tareas ligadas al producto** (lleva migración) + búsqueda del Dashboard con
+   clientes/productos/proveedores + duplicar proyecto alcanzable.
+3. **Vista previa de la cotización** antes de generar la versión.
+
+Las **pestañas** que Oscar quiere «hasta arriba de El Despacho» no se tocaron por
+decisión suya; el reconocimiento y los tres caminos quedaron en
+`docs/PESTANAS-CAMINOS.md`.
+
+### El hallazgo que ordenó el sprint
+
+**Dos reportes distintos de Oscar eran el mismo bug.** El recuadro de Descripción
+de la tarjeta de producto se medía a sí mismo en cada tecla para crecer:
+
+- de ahí «aleatoriamente se hace más grande y más chico» (el alto acababa
+  dependiendo de cuándo se alcanzó a medir — ya se había parchado el 18-ago con
+  la guarda de «no medir si está escondido», y volvió por otro lado), y
+- de ahí «no estoy pudiendo poner acentos ni ñs»: esas letras se **componen en
+  dos pulsaciones**, y leer `scrollHeight` obliga a recalcular el diseño, lo que
+  puede cancelar la composición a la mitad.
+
+Se cerró por la raíz con lo que Oscar ya había pedido: alto fijo, y estirarse
+sólo mientras el campo está enfocado. La guarda de composición se puso además en
+los dos manejadores de texto de `ui.js` (chat de El Chalán y Mensajes), donde el
+mismo bug estaba **latente** y nadie lo había reportado.
+
+**Pendiente de confirmar**: con teclado ISO español la ñ es una tecla directa, no
+una composición. Si Oscar usa ese layout, el arreglo cubre los acentos pero la ñ
+tendría otra causa y habría que seguir buscando. Con US/Internacional (ñ =
+Option+n) el diagnóstico está completo.
+
+### Lo demás, con su porqué
+
+- **El `@proveedor` no estaba roto: no existía ahí.** Vivía dentro de la
+  plantilla de la tarjeta del proyecto. El backend ya guardaba el proveedor del
+  gasto desde julio, y la ficha mandaba `proveedor_id: null` fijo. Se extrajo a
+  un componente compartido en vez de copiarlo (copiarlo es lo que hace que una
+  pantalla se quede atrás). **Hueco cerrado de paso**: ese proveedor no viajaba
+  del catálogo al proyecto, así que el vínculo se guardaba y nadie lo usaba.
+- **Duplicar producto** no existía. Se lleva todo —variaciones incluidas— menos
+  el historial de usos. La foto se comparte por referencia, como al duplicar un
+  proyecto.
+- **Markup**: Oscar eligió, con los números a la vista, que el porcentaje sea
+  «lo que se le suma al costo» y que la columna mida lo mismo. El cambio alcanza
+  tres sitios (la propiedad, el ordenamiento en SQL que tenía su propia copia de
+  la fórmula, y el KPI del catálogo). **El margen del proyecto no se tocó**: sus
+  tests siguen verdes sin cambios, y ésa es la prueba de que la separación quedó
+  limpia.
+- **Un solo control de proveedores**, con el primero como principal. El orden de
+  marcado tiene que viajar aparte porque los checkboxes se envían en orden
+  alfabético — la misma trampa por la que existe `proveedor_principal`.
+
+### Verificación
+
+- 32 tests nuevos; los críticos **verificados contra el código sin arreglar**
+  (con el mecanismo viejo caen 3; quitando dos copias del duplicado, 1; sin el
+  `@` en la ficha, 1).
+- **6 tests ajenos actualizados** —no borrados— porque fijaban contratos que este
+  sprint cambió a propósito, cada uno con la explicación del cambio.
+- Suite completa con la configuración del CI (`-n auto --dist loadfile`):
+  **3642 pass, 1 skipped**. Ruff limpio.
+
+**Ojo con la suite en paralelo**: correrla con `-n auto` **sin** `--dist
+loadfile` da 2 fallos falsos en `test_portavoz_worker` (comparten claves de
+Redis). Es la razón por la que el CI reparte por archivo.
+
+### Gotcha
+
+Al meter `{% url %}` dentro de una cadena de JavaScript en una plantilla, **no
+hay que escapar las comillas**: Django resuelve la etiqueta antes de que el JS
+exista, y las barras invertidas quedan literales y rompen el parser de
+plantillas. Tumbó el detalle del proyecto entero y lo cazaron los tests de
+`test_proyectos.py`.
+
+### Deuda diseñada
+
+- El modal de alta rápida de producto sigue sin capturar procesos (se hacen al
+  abrir la ficha) — pero ya comparte el control de proveedores con orden.
+- Los umbrales de color del markup (verde ≥100, amarillo ≥50) son constantes en
+  las tres plantillas del catálogo, no configurables por GUI.
+- El enlace de la tarjeta a la ficha del producto abre en otra pestaña a
+  propósito; no hay «volver» porque no se sale del proyecto.

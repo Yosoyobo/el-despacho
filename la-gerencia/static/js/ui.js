@@ -866,7 +866,16 @@
     var nodo = (raiz && raiz.querySelectorAll) ? raiz : document;
     nodo.querySelectorAll('textarea[data-autogrow]').forEach(ajustar);
   }
+  // OJO — `isComposing`: los acentos y la ñ se escriben en DOS pulsaciones
+  // (´ + a). Entre una y otra el navegador está "componiendo" la letra, y
+  // medir el elemento ahí (leer `scrollHeight` obliga a recalcular el diseño)
+  // puede cancelar esa composición: el acento se pierde y sale "a" pelona.
+  // Mientras se compone no se toca el tamaño; al terminar se ajusta de una vez.
   document.body.addEventListener('input', function (e) {
+    if (e.isComposing) return;
+    if (e.target && e.target.matches && e.target.matches('textarea[data-autogrow]')) ajustar(e.target);
+  });
+  document.body.addEventListener('compositionend', function (e) {
     if (e.target && e.target.matches && e.target.matches('textarea[data-autogrow]')) ajustar(e.target);
   });
   document.addEventListener('DOMContentLoaded', function () { ajustarTodas(); });
@@ -1295,4 +1304,45 @@ window.abrirRickroll = function () {
   /* Una sección puede llegar por swap (el tablero de resultados del Dashboard,
      un panel que se repinta): necesita su flecha y su estado. */
   document.body.addEventListener('htmx:afterSettle', escanear);
+})();
+
+// ===========================================================================
+// Cuadros de texto que crecen AL ENFOCAR, no al teclear.
+// LC 2026-08-28 (Oscar): «que siempre esté del mismo tamaño, y cuando se le
+// haga click para editar, que se extienda al tamaño del contenedor completo
+// para todo el contenido; al salir, que regrese a su tamaño original».
+//
+// Es lo contrario del auto-grow de arriba, y a propósito: aquel mide en cada
+// tecla, y eso trae dos males —el alto acaba dependiendo de cuándo se midió
+// (de ahí el «se hace grande y chico solo») y puede cortar la escritura de un
+// acento o una ñ, que se componen en dos pulsaciones—. Aquí el alto de reposo
+// lo fija el CSS (`rows`) y sólo se mide al entrar, al salir, y al escribir
+// **cuando ya se está adentro** (nunca a media composición).
+//
+//   <textarea data-crece-al-enfocar data-crece-max="260" rows="2">
+// ===========================================================================
+(function () {
+  var SEL = 'textarea[data-crece-al-enfocar]';
+  function expandir(ta) {
+    var max = parseInt(ta.getAttribute('data-crece-max') || '260', 10);
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, max) + 'px';
+  }
+  function encoger(ta) { ta.style.height = ''; }   // vuelve al alto del CSS
+
+  document.addEventListener('focusin', function (e) {
+    if (e.target && e.target.matches && e.target.matches(SEL)) expandir(e.target);
+  });
+  document.addEventListener('focusout', function (e) {
+    if (e.target && e.target.matches && e.target.matches(SEL)) encoger(e.target);
+  });
+  document.addEventListener('input', function (e) {
+    if (e.isComposing) return;                     // ver la nota de arriba
+    if (e.target && e.target.matches && e.target.matches(SEL) &&
+        document.activeElement === e.target) expandir(e.target);
+  });
+  document.addEventListener('compositionend', function (e) {
+    if (e.target && e.target.matches && e.target.matches(SEL) &&
+        document.activeElement === e.target) expandir(e.target);
+  });
 })();

@@ -374,11 +374,22 @@
     }
     // (La línea «usa: [producto del catálogo]» se retiró — render Oscar
     // 2026-07-28, punto c: el producto ya se ve en el select de abajo.)
+    // LC 2026-08-28 (Oscar): el enlace a la ficha del producto sigue al select.
+    // Sin producto elegido no lleva a ningún lado, así que se esconde.
+    function actualizarEnlaceFicha(card) {
+        const a = card.querySelector('[data-editar-producto]');
+        const sel = card.querySelector('select[name$="-servicio"]');
+        if (!a || !sel) return;
+        const pk = sel.value;
+        a.classList.toggle('hidden', !pk);
+        if (pk) a.href = '/catalogo/' + pk + '/editar';
+    }
     function prellenarServicio(sel) {
         // Con producto elegido la tarjeta ya cuenta para el orden (antes se la
         // saltaba por estar vacía y se quedaba en 0 → se iba al tope al guardar).
         setTimeout(() => { if (window.__sincronizarOrdenProductos) window.__sincronizarOrdenProductos(); }, 0);
         const card = sel.closest('[data-card]'); if (!card) return;
+        actualizarEnlaceFicha(card);
         const datos = SERVICIOS_DATOS[sel.value];
         if (datos) {
             const precio = card.querySelector('input[name$="-precio_unitario"]');
@@ -410,6 +421,12 @@
     // LC 2026-07-25: el producto del catálogo puede traer su impresión y sus
     // procesos adicionales como plantilla. Se copian SOLO si la tarjeta está
     // "en blanco" (sin impresión ni procesos), para no pisar lo capturado.
+    function nombreProveedorTarjeta(card, id) {
+        const sel = card.querySelector('.imp-proveedor');
+        if (!sel) return '#' + id;
+        const o = Array.from(sel.options).find((x) => x.value === String(id));
+        return o ? o.textContent.trim() : ('#' + id);
+    }
     function aplicarProcesosDefault(card, procesos) {
         if (!procesos || !procesos.length) return;
         const impProv = card.querySelector('.imp-proveedor');
@@ -433,6 +450,17 @@
                 if (c) c.value = num(p.costo) ? num(p.costo).toFixed(2) : '';
                 const pp = fila.querySelector('.proc-por-pieza');
                 if (pp) pp.checked = !!p.por_pieza;
+                // LC 2026-08-28: el proveedor ligado con «@» en la ficha del
+                // producto viaja con el proceso. Sin esto, la ficha guardaba un
+                // vínculo que el proyecto nunca llegaba a usar (y de ahí sale la
+                // deuda con ese proveedor).
+                if (p.proveedor_id) {
+                    fila.setAttribute('data-proc-prov', String(p.proveedor_id));
+                    const chip = fila.querySelector('[data-proc-prov-chip]');
+                    const nom = fila.querySelector('[data-proc-prov-nombre]');
+                    if (nom) nom.textContent = nombreProveedorTarjeta(card, p.proveedor_id);
+                    if (chip) chip.classList.remove('hidden');
+                }
             }
         });
         serializar(card);
@@ -743,8 +771,9 @@
         const lista = card.querySelector('.proceso-lista');
         const fila = document.createElement('div');
         fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2';
+        fila.setAttribute('data-arroba-fila', '');
         fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
-            '<div class="min-w-0"><input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off">' +
+            '<div class="min-w-0"><input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off" data-arroba-proveedor data-arroba-url="{% url 'catalogo-proveedor-buscar' %}">' +
             '<span data-proc-prov-chip class="mt-1 hidden inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"><span aria-hidden="true">@</span><span data-proc-prov-nombre></span><button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button></span></div>' +
             '<div class="min-w-0"><input type="text" inputmode="text" autocomplete="off" class="proc-costo w-full" placeholder="0.00 o 35+15" title="Acepta una cuenta: escribe 35+15+15 y se suma solo."><span data-proc-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span></div>' +
             '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" checked>por pieza</label>' +
@@ -764,53 +793,20 @@
         serializarEscalas(card);
         recalcularEscalas(card);
         renumerar(card);
+        actualizarEnlaceFicha(card);
         card._inited = true;
     }
-    // LC 2026-08-04 (Oscar): la Descripción del elemento «debe de crecer moviendo
-    // el título hacia arriba». La fila alinea al fondo (`md:items-end`), así que
-    // basta con que el textarea siga a su contenido: al crecer, su etiqueta sube.
-    // Tope para que una descripción larga no estire la tarjeta sin fin.
-    //
-    // LC 2026-08-04 R3 (Oscar): el tope llega en `data-autogrow` (px). Con ~84px
-    // caben unas 4 líneas de 11px y de ahí en adelante el textarea scrollea por
-    // dentro en lugar de estirar la tarjeta. Cualquier valor <= 1 (el "1" legacy)
-    // cae al tope de siempre.
-    //
-    // LC 2026-08-18 (Oscar): «el recuadro de descripción se hace grande y chico
-    // solo». La causa era medir el textarea con la TARJETA COLAPSADA: dentro de
-    // un `display:none` el `scrollHeight` es 0, así que se le fijaba una altura
-    // de 0px; al expandir la tarjeta salía aplastado y sólo recuperaba su tamaño
-    // al teclear. Lo que no se ve no se mide — y al desplegar la tarjeta se mide.
-    function autogrow(ta) {
-        if (ta.offsetParent === null && ta.scrollHeight === 0) return;
-        const tope = parseInt(ta.getAttribute('data-autogrow'), 10);
-        ta.style.height = 'auto';
-        const alto = Math.min(ta.scrollHeight, tope > 1 ? tope : 220);
-        ta.style.height = Math.max(alto, 32) + 'px';
-    }
-    // Para el momento en que la tarjeta se despliega (el handler vive en el otro
-    // bloque, con el resto del acordeón).
-    window.__autogrowTarjeta = function (card) {
-        card.querySelectorAll('textarea[data-autogrow]').forEach(autogrow);
-    };
+    // LC 2026-08-28 (Oscar): la Descripción ya NO crece tecla por tecla. Su alto
+    // de reposo lo fija el CSS y sólo se estira mientras está enfocada, con el
+    // componente `[data-crece-al-enfocar]` de `ui.js` (que además no toca el
+    // tamaño a media composición de un acento o una ñ — eso era lo que impedía
+    // escribirlos). Aquí no queda nada que inicializar.
     // S-Ajustes-Ago12-B: además del bloque vivo, las tarjetas de la pestaña de una
     // versión (`#formset-productos-version`, inyectada por HTMX). La delegación de
     // eventos de más abajo ya las cubre; esto es la inicialización de cada tarjeta.
     const ZONAS_CARDS = '#formset-productos [data-card], #formset-productos-version [data-card]';
-    function initAutogrow() {
-        document.querySelectorAll('#formset-productos textarea[data-autogrow], #formset-productos-version textarea[data-autogrow]')
-            .forEach(ta => {
-                // Sin marca cuando está escondido: se vuelve a intentar al
-                // desplegar la tarjeta, que es cuando se puede medir de verdad.
-                if (ta._agInit) return;
-                if (ta.offsetParent === null && ta.scrollHeight === 0) return;
-                ta._agInit = 1;
-                autogrow(ta);
-            });
-    }
     function initCards() {
         document.querySelectorAll(ZONAS_CARDS).forEach(c => { if (!c._inited) initCard(c); });
-        initAutogrow();
     }
     initCards();
     // Tras cada swap HTMX (autosave OOB, re-render del formset al crear producto)
@@ -854,8 +850,10 @@
         if (t.matches('input[name$="-precio_unitario"], input[name$="-costo_unitario"], .imp-costo, .proc-costo')) { recalcularEscalas(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
-        // La Descripción del elemento crece con lo que se escribe (ver `autogrow`).
-        if (t.matches('textarea[data-autogrow]')) { autogrow(t); repintarColor(card); }
+        // La Descripción alimenta el color de la tarjeta (una playera «negra»
+        // sale en negro), así que al escribirla se repinta. Ya no se mide el
+        // textarea: de eso se encarga `ui.js` al enfocarlo.
+        if (t.matches('textarea[data-crece-al-enfocar]')) repintarColor(card);
     });
     document.addEventListener('click', function (e) {
         // LC 2026-07 (Oscar): renombrar el producto SOLO para este proyecto.
@@ -1178,94 +1176,17 @@
         });
     }
 
-    // ── @proveedor en gastos operativos (ticket UX 2026-07) ─────────────────
-    // Al teclear "@" en la descripción de un gasto operativo se abre un
-    // autocompletar de proveedores; al elegir uno se liga a ese gasto
-    // (data-proc-prov) y su costo suma a la deuda del proveedor. Popup único.
-    (function () {
-        let pop = null, activeInput = null, items = [], hi = 0, tmr = null;
-        function cerrar() { if (pop) { pop.remove(); pop = null; } activeInput = null; items = []; }
-        function posicionar(input) {
-            const r = input.getBoundingClientRect();
-            pop.style.left = r.left + 'px';
-            pop.style.top = (r.bottom + 4) + 'px';
-            pop.style.width = Math.max(200, r.width) + 'px';
-        }
-        function render() {
-            if (!pop) return;
-            if (!items.length) { pop.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">Sin proveedores…</div>'; return; }
-            pop.innerHTML = items.map((it, i) =>
-                '<button type="button" data-i="' + i + '" class="block w-full truncate px-3 py-1.5 text-left text-sm ' +
-                (i === hi ? 'bg-brand-50 dark:bg-brand-500/10 ' : '') +
-                'text-gray-700 hover:bg-brand-50 dark:text-gray-200 dark:hover:bg-brand-500/10">@ ' +
-                String(it.nombre).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</button>'
-            ).join('');
-        }
-        function ligar(fila, id, nombre) {
-            if (!fila) return;
-            fila.setAttribute('data-proc-prov', id == null ? '' : String(id));
-            const chip = fila.querySelector('[data-proc-prov-chip]');
-            const nom = fila.querySelector('[data-proc-prov-nombre]');
-            if (nom) nom.textContent = nombre || '';
-            if (chip) chip.classList.toggle('hidden', id == null);
-        }
-        function elegir(i) {
-            const it = items[i];
-            if (!it || !activeInput) return;
-            const fila = activeInput.closest('.proceso-fila');
-            const card = activeInput.closest('[data-card]');
-            activeInput.value = activeInput.value.replace(/@[^@]*$/, '').trim();  // quita "@query"
-            ligar(fila, it.id, it.nombre);
-            cerrar();
-            if (card) { serializar(card); recalcular(card); }
-            autosave();
-        }
-        function query(input) { const m = /@([^@]*)$/.exec(input.value); return m ? m[1] : null; }
-        async function buscar(q, input) {
-            try {
-                const r = await fetch('{% url "catalogo-proveedor-buscar" %}?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
-                if (!r.ok || activeInput !== input) return;
-                const d = await r.json();
-                if (activeInput !== input) return;
-                items = d.resultados || []; hi = 0;
-                if (!pop) { pop = document.createElement('div'); pop.className = 'fixed z-[60] max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-800'; document.body.appendChild(pop); }
-                posicionar(input); render();
-            } catch (e) { /* silent */ }
-        }
-        document.addEventListener('input', function (e) {
-            const input = e.target;
-            if (!(input.classList && input.classList.contains('proc-desc'))) return;
-            const q = query(input);
-            if (q === null) { cerrar(); return; }
-            activeInput = input;
-            clearTimeout(tmr);
-            tmr = setTimeout(() => buscar(q, input), 180);
-        });
-        document.addEventListener('keydown', function (e) {
-            if (!pop || !activeInput) return;
-            if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); render(); e.preventDefault(); }
-            else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); render(); e.preventDefault(); }
-            else if (e.key === 'Enter') { if (items.length) { elegir(hi); e.preventDefault(); } }
-            else if (e.key === 'Escape') { cerrar(); }
-        });
-        document.addEventListener('click', function (e) {
-            if (pop && pop.contains(e.target)) {
-                const b = e.target.closest('[data-i]');
-                if (b) elegir(parseInt(b.getAttribute('data-i'), 10));
-                return;
-            }
-            const clr = e.target.closest && e.target.closest('[data-proc-prov-clear]');
-            if (clr) {
-                const fila = clr.closest('.proceso-fila');
-                const card = clr.closest('[data-card]');
-                ligar(fila, null, '');
-                if (card) { serializar(card); recalcular(card); }
-                autosave(); e.preventDefault(); return;
-            }
-            if (pop && e.target !== activeInput) cerrar();
-        });
-        window.addEventListener('scroll', cerrar, true);
-    })();
+    // ── @proveedor en gastos operativos ──────────────────────────────────────
+    // El autocompletado vive en `static/js/arroba_proveedor.js` desde el
+    // 2026-08-28: la ficha del producto necesitaba lo mismo y copiarlo habría
+    // dejado dos versiones que divergen (Oscar: «que funcione en todos lados»).
+    // Aquí sólo se atiende el aviso para volver a serializar la tarjeta.
+    document.addEventListener('arroba:proveedor', function (e) {
+        const card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        serializar(card); recalcular(card);
+        autosave();
+    });
 
     // Indicador permanente: marca "● Nuevos cambios" al editar; el OOB del
     // autoguardado lo regresa a "✓ Guardado" / "✕ No se pudo guardar".
@@ -1359,9 +1280,6 @@ por un endpoint aparte.{% endcomment %}
         if (tog) tog.setAttribute('aria-expanded', abierto ? 'false' : 'true');
         const chev = card.querySelector('[data-chevron]');
         if (chev) chev.classList.toggle('-rotate-90', abierto);
-        // Al desplegar, la Descripción se vuelve a medir: escondida no se puede
-        // (`scrollHeight` 0) y quedaba aplastada — LC 2026-08-18.
-        if (abierto === false && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
         // Lo que el usuario acaba de decidir es lo que hay que reponer después
         // del siguiente swap del formset.
         if (window.__anotarAcordeonProductos) window.__anotarAcordeonProductos();
@@ -1429,7 +1347,6 @@ por un endpoint aparte.{% endcomment %}
             if (tog) tog.setAttribute('aria-expanded', abierta ? 'true' : 'false');
             const chev = card.querySelector('[data-chevron]');
             if (chev) chev.classList.toggle('-rotate-90', !abierta);
-            if (abierta && window.__autogrowTarjeta) window.__autogrowTarjeta(card);
         });
     }
     document.addEventListener('DOMContentLoaded', anotarEstadoActual);

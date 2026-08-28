@@ -89,7 +89,12 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                     Las casillas siguen aquí —escondidas— para que el POST no cambie
                     y el alta rápida / 🤖 Sugerir las sigan tocando igual; el botón y
                     el panel filtrable los pone `form_widgets.js`.{% endcomment %}
-                    <div class="mt-3" id="proveedores-lista" data-multi-buscable="proveedor" data-multi-plural="proveedores">
+                    {% comment %}LC 2026-08-28: el alta rápida usa el MISMO control
+                    que la ficha, con la misma regla — el primero que se marca es el
+                    principal (★). El orden viaja en el campo oculto del form.{% endcomment %}
+                    {{ form.proveedores_orden }}
+                    <div class="mt-3" id="proveedores-lista" data-multi-buscable="proveedor" data-multi-plural="proveedores"
+                         data-multi-orden="#id_proveedores_orden" data-multi-principal>
                         {% for choice in form.proveedores %}
                         <label class="flex min-w-0 items-center gap-2">
                             {{ choice.tag }}

@@ -319,6 +319,60 @@
     return casillas(root).filter(function (c) { return c.checked; });
   }
 
+  // ── Orden de marcado (opt-in con `data-multi-orden`) ──────────────────────
+  // LC 2026-08-28 (Oscar): «al agregarlos en orden, el primero queda como
+  // principal». El orden del DOM no sirve para eso —las casillas vienen
+  // alfabéticas—, así que se lleva aparte: se apunta el id cuando se marca y se
+  // borra cuando se desmarca. El resultado se escribe en un campo oculto para
+  // que el servidor sepa quién quedó primero.
+  function ordenDe(root) {
+    if (!root._multiOrden) root._multiOrden = [];
+    return root._multiOrden;
+  }
+
+  function apuntarOrden(root, chk) {
+    var o = ordenDe(root);
+    var i = o.indexOf(chk.value);
+    if (chk.checked) { if (i === -1) o.push(chk.value); }
+    else if (i !== -1) { o.splice(i, 1); }
+  }
+
+  function elegidasOrdenadas(root) {
+    var marcadas = elegidas(root);
+    if (!root.hasAttribute('data-multi-orden')) return marcadas;
+    var o = ordenDe(root);
+    return marcadas.slice().sort(function (a, b) {
+      var ia = o.indexOf(a.value), ib = o.indexOf(b.value);
+      if (ia === -1) ia = Number.MAX_SAFE_INTEGER;   // las que no se apuntaron,
+      if (ib === -1) ib = Number.MAX_SAFE_INTEGER;   // al final
+      return ia - ib;
+    });
+  }
+
+  function volcarOrden(root) {
+    var sel = root.getAttribute('data-multi-orden');
+    if (!sel) return;
+    var destino = document.querySelector(sel);
+    if (!destino) return;
+    destino.value = elegidasOrdenadas(root).map(function (c) { return c.value; }).join(',');
+  }
+
+  // Al montar: se siembra con lo que ya venía marcado. Si el campo oculto trae
+  // un orden del servidor, ése manda (así el ★ señala al principal guardado).
+  function sembrarOrden(root) {
+    var o = ordenDe(root);
+    if (o.length) return;
+    var sel = root.getAttribute('data-multi-orden');
+    var previo = sel ? (document.querySelector(sel) || {}).value : '';
+    (previo ? String(previo).split(',') : []).forEach(function (v) {
+      v = v.trim();
+      if (v && o.indexOf(v) === -1) o.push(v);
+    });
+    elegidas(root).forEach(function (c) {
+      if (o.indexOf(c.value) === -1) o.push(c.value);
+    });
+  }
+
   function cerrar() {
     if (!abierto) return;
     var a = abierto; abierto = null;
@@ -331,7 +385,7 @@
   function pintarResumen(root) {
     var caja = root.multiCaja;
     if (!caja) return;
-    var marcadas = elegidas(root);
+    var marcadas = elegidasOrdenadas(root);
     var uno = root.getAttribute('data-multi-buscable') || 'elemento';
     var varios = root.getAttribute('data-multi-plural') || (uno + 's');
     var resumen = caja.querySelector('[data-multi-resumen]');
@@ -342,22 +396,31 @@
       ? 'text-gray-800 dark:text-gray-100'
       : 'text-gray-400 dark:text-gray-500');
 
+    var conPrincipal = root.hasAttribute('data-multi-principal');
     var chips = caja.querySelector('[data-multi-chips]');
     chips.innerHTML = '';
-    marcadas.forEach(function (chk) {
+    marcadas.forEach(function (chk, i) {
       var chip = document.createElement('span');
-      chip.className = 'inline-flex max-w-full items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300';
+      var principal = conPrincipal && i === 0;
+      chip.className = 'inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ' +
+        (principal
+          ? 'bg-brand-500 text-white dark:bg-brand-500 dark:text-white'
+          : 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300');
+      if (principal) chip.title = 'El principal: el que se pone solo en los proyectos';
       var txt = document.createElement('span');
       txt.className = 'truncate';
-      txt.textContent = etiqueta(chk);
+      txt.textContent = (principal ? '★ ' : '') + etiqueta(chk);
       chip.appendChild(txt);
       var x = document.createElement('button');
       x.type = 'button';
-      x.className = 'shrink-0 text-brand-500 hover:text-error-600 dark:hover:text-error-400';
+      x.className = 'shrink-0 ' + (principal
+        ? 'text-white/80 hover:text-white'
+        : 'text-brand-500 hover:text-error-600 dark:hover:text-error-400');
       x.setAttribute('aria-label', 'Quitar ' + etiqueta(chk));
       x.textContent = '×';
       x.addEventListener('click', function () {
         chk.checked = false;
+        apuntarOrden(root, chk);
         chk.dispatchEvent(new Event('change', { bubbles: true }));
         pintarResumen(root);
         if (abierto && abierto.root === root) abierto.repintar();
@@ -366,6 +429,7 @@
       chips.appendChild(chip);
     });
     chips.classList.toggle('hidden', !marcadas.length);
+    volcarOrden(root);
   }
 
   function abrir(root) {
@@ -416,6 +480,7 @@
         li.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           chk.checked = !chk.checked;
+          apuntarOrden(root, chk);
           chk.dispatchEvent(new Event('change', { bubbles: true }));
           pintarResumen(root);
           pintar();
@@ -458,6 +523,7 @@
     if (root.dataset.multiListo === '1') { pintarResumen(root); return; }
     if (!casillas(root).length) return;   // sin opciones, el mensaje se queda
     root.dataset.multiListo = '1';
+    sembrarOrden(root);
 
     var caja = document.createElement('div');
     caja.setAttribute('data-multi-caja', '');
@@ -481,6 +547,15 @@
   window.multiBuscableRefrescar = function (root) {
     if (!root) return;
     if (root.dataset.multiListo !== '1') { montar(root); return; }
+    // Alguien tocó las casillas desde fuera (el alta rápida de proveedor, el
+    // 🤖 Sugerir): el orden se pone al día con lo que quedó marcado. Lo nuevo
+    // va al final, que es lo que significa «se agregó después».
+    var o = ordenDe(root);
+    var marcadas = elegidas(root).map(function (c) { return c.value; });
+    for (var i = o.length - 1; i >= 0; i--) {
+      if (marcadas.indexOf(o[i]) === -1) o.splice(i, 1);
+    }
+    marcadas.forEach(function (v) { if (o.indexOf(v) === -1) o.push(v); });
     pintarResumen(root);
     if (abierto && abierto.root === root) abierto.repintar();
   };

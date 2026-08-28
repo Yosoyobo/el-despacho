@@ -225,11 +225,16 @@ def test_alta_respeta_el_principal_que_se_eligio(client, usuario_factory):
     cat = _cat()
     p1, p2 = _prov("Alfa Textiles"), _prov("Zeta Bordados")
     client.force_login(usuario_factory(rol="super_admin"))
+    # LC 2026-08-28 (Oscar): ya no hay un segundo control para elegir principal
+    # — «dejemos sólo uno, y al agregarlos en orden el primero queda como
+    # principal». Ese orden viaja en `proveedores_orden`, porque los checkboxes
+    # se envían en el orden del DOM (alfabético) y así no se sabría cuál se
+    # marcó primero. Aquí se marcó Zeta primero, aunque Alfa vaya antes.
     client.post(reverse("catalogo-nuevo"), {
         "nombre": "Con principal", "descripcion_default": "",
         "costo": "0", "precio_base": "10", "categoria": str(cat.pk),
         "proveedores": [str(p1.pk), str(p2.pk)],
-        "proveedor_principal": str(p2.pk),
+        "proveedores_orden": f"{p2.pk},{p1.pk}",
     })
     assert Servicio.objects.get(nombre="Con principal").proveedor_principal_id == p2.pk
 
@@ -249,20 +254,27 @@ def test_3a_la_tarjeta_pisa_el_proveedor_al_cambiar_de_producto():
     assert "if (precio && !precio.value) precio.value = datos.precio;" in js
 
 
-def test_3b_el_dropdown_de_principal_se_sincroniza():
-    """`pintar()` mantiene el ★ al día y `provAgregarOpcion` le suma la opción
-    nueva (un proveedor creado inline no salía hasta recargar)."""
+def test_3b_el_principal_sale_del_orden_en_que_se_marcan():
+    """El ★ ya no es un segundo desplegable: es la primera pastilla.
+
+    LC 2026-08-28 (Oscar): «hay varios selectores de proveedores… dejemos sólo
+    uno, y al agregarlos en orden el primero queda como principal». Este test
+    reemplaza al que fijaba la sincronía de aquel desplegable: lo que hay que
+    cuidar ahora es que el control sea UNO y que el orden llegue al servidor.
+    """
     html = (_raiz() / RUTA_FICHA).read_text()
-    # La sincronía se dispara desde pintar(), que es lo que corre en cada cambio
-    # y también lo que llama provAgregarOpcion.
-    assert "sincronizarPrincipal(marcados);" in html
-    assert "function sincronizarPrincipal" in html
-    assert 'document.querySelector(\'[name="proveedor_principal"]\')' in html
-    # provAgregarOpcion termina en pintar() → la opción nueva llega al ★.
+    # Un solo control: el de palomitas, con orden y con estrella.
+    assert 'data-multi-buscable="proveedor"' in html
+    assert 'data-multi-orden="#id_proveedores_orden"' in html
+    assert "data-multi-principal" in html
+    # Y ya no existen ni el desplegable-que-agregaba ni el selector del ★.
+    assert 'id="prov-picker"' not in html
+    assert 'name="proveedor_principal"' not in html
+    # Un proveedor creado inline se marca y el control se entera (antes no salía
+    # hasta recargar).
     i = html.index("window.provAgregarOpcion")
-    assert "pintar();" in html[i:i + 700]
-    # Y hay aviso cuando el principal deja de surtir (antes era silencioso).
-    assert 'id="prov-principal-aviso"' in html
+    assert "provRefrescar();" in html[i:i + 900]
+    assert "multiBuscableRefrescar" in html
 
 
 # ── Nota 10 · archivar y eliminar en la ficha ──────────────────────────────
