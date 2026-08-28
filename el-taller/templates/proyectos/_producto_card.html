@@ -324,10 +324,11 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
             </div>
             <div class="proceso-lista mt-2 space-y-2">
                 {% for p in f.procs_operativos %}
-                <div class="proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2" data-proc-prov="{{ p.proveedor_id|default:'' }}">
+                <div class="proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2" data-arroba-fila data-proc-prov="{{ p.proveedor_id|default:'' }}">
                     <span class="proceso-num text-xs font-medium text-gray-400">{{ forloop.counter }}</span>
                     <div class="min-w-0">
-                        <input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" value="{{ p.descripcion }}" autocomplete="off">
+                        <input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" value="{{ p.descripcion }}" autocomplete="off"
+                               data-arroba-proveedor data-arroba-url="{% url 'catalogo-proveedor-buscar' %}">
                         <span data-proc-prov-chip class="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300 {% if not p.proveedor_id %}hidden{% endif %}">
                             <span aria-hidden="true">@</span><span data-proc-prov-nombre>{% if p.proveedor_id %}{{ p.proveedor.razon_social }}{% endif %}</span>
                             <button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button>

@@ -97,3 +97,96 @@ def test_el_componente_de_crecer_al_enfocar_existe_y_regresa_al_salir():
 def test_ui_js_sigue_en_dos_copias_identicas():
     """Regla §18: `ui.js` vive en El Taller y en La Gerencia, y no divergen."""
     assert JS_UI_TALLER.read_text(encoding="utf-8") == JS_UI_GERENCIA.read_text(encoding="utf-8")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# El «@» para ligar un proveedor a un gasto — en TODAS partes
+#
+# Oscar: «el uso del @ para etiquetar proveedores en procesos adicionales,
+# dentro de la página de editar un producto, no está funcionando. Asegurar que
+# funcione en todos lados.»
+#
+# No estaba roto: existía sólo en la tarjeta del proyecto. Ahora es un
+# componente compartido y lo usan las dos pantallas.
+# ═════════════════════════════════════════════════════════════════════════════
+
+JS_ARROBA = Path("el-taller/static/js/arroba_proveedor.js")
+TPL_CARD = Path("el-taller/templates/proyectos/_producto_card.html")
+TPL_FICHA = Path("el-taller/templates/catalogo/form.html")
+TPL_BASE_TALLER = Path("el-taller/templates/base.html")
+
+
+def test_el_componente_existe_y_se_carga():
+    assert JS_ARROBA.exists()
+    assert "arroba_proveedor.js" in TPL_BASE_TALLER.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("tpl", [TPL_CARD, TPL_FICHA])
+def test_las_dos_pantallas_con_gastos_declaran_el_arroba(tpl):
+    """La tarjeta del proyecto y la ficha del producto, las dos."""
+    src = tpl.read_text(encoding="utf-8")
+    assert "data-arroba-fila" in src
+    assert "data-arroba-proveedor" in src
+    assert "catalogo-proveedor-buscar" in src, "falta la dirección del buscador"
+    assert "data-proc-prov-chip" in src, "sin chip no se ve a quién quedó ligado"
+
+
+def test_no_quedan_copias_del_autocompletado():
+    """Copiarlo en cada pantalla es lo que hace que una se quede atrás."""
+    js_tarjeta = TPL_JS_TARJETA.read_text(encoding="utf-8")
+    assert "function ligar(fila" not in js_tarjeta
+    # La tarjeta sólo atiende el aviso del componente para volver a guardar.
+    assert "arroba:proveedor" in js_tarjeta
+
+
+def test_la_ficha_guarda_el_proveedor_del_gasto():
+    """Antes mandaba `proveedor_id: null` fijo: el vínculo no llegaba nunca."""
+    src = TPL_FICHA.read_text(encoding="utf-8")
+    assert "proveedor_id: null," not in src
+    assert "data-proc-prov" in src
+
+
+def test_el_proveedor_del_catalogo_viaja_al_proyecto():
+    """El gasto que trae proveedor desde la ficha llega ligado a la tarjeta.
+
+    Sin esto, la ficha guardaba un vínculo que el proyecto nunca usaba — y de
+    ahí sale la deuda con ese proveedor.
+    """
+    js = TPL_JS_TARJETA.read_text(encoding="utf-8")
+    aplicar = js[js.index("function aplicarProcesosDefault"):js.index("function aplicarCatFiltro")]
+    assert "p.proveedor_id" in aplicar
+    assert "data-proc-prov" in aplicar
+
+
+@pytest.fixture
+def categoria():
+    from apps.el_catalogo.models import CategoriaServicio
+    return CategoriaServicio.objects.create(nombre="Textiles")
+
+
+def test_la_ficha_guarda_de_punta_a_punta_un_gasto_con_proveedor(
+    client, usuario_factory, categoria
+):
+    """De la pantalla a la base: el proceso operativo conserva su proveedor."""
+    import json
+
+    from apps.el_catalogo.models import Proveedor, Servicio
+    prov = Proveedor.objects.create(razon_social="Fletes del Centro", activo=True)
+    srv = Servicio.objects.create(
+        nombre="Gorra", categoria=categoria, precio_base=200, costo=80, activo=True,
+    )
+    client.force_login(usuario_factory(rol="super_admin"))
+    resp = client.post(f"/catalogo/{srv.pk}/editar", {
+        "nombre": "Gorra", "precio_base": "200.00", "costo": "80.00",
+        "categoria": categoria.pk,
+        "procesos_default_json": json.dumps([
+            {"tipo": "operativo", "descripcion": "Flete a Tizayuca",
+             "costo": "300.00", "por_pieza": False, "proveedor_id": prov.pk},
+        ]),
+    })
+    assert resp.status_code == 302
+    guardado = Servicio.objects.get(pk=srv.pk).procesos_default
+    assert len(guardado) == 1
+    assert guardado[0]["proveedor_id"] == prov.pk, (
+        "el proveedor ligado con «@» tiene que llegar a la base"
+    )

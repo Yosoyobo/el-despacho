@@ -410,6 +410,12 @@
     // LC 2026-07-25: el producto del catálogo puede traer su impresión y sus
     // procesos adicionales como plantilla. Se copian SOLO si la tarjeta está
     // "en blanco" (sin impresión ni procesos), para no pisar lo capturado.
+    function nombreProveedorTarjeta(card, id) {
+        const sel = card.querySelector('.imp-proveedor');
+        if (!sel) return '#' + id;
+        const o = Array.from(sel.options).find((x) => x.value === String(id));
+        return o ? o.textContent.trim() : ('#' + id);
+    }
     function aplicarProcesosDefault(card, procesos) {
         if (!procesos || !procesos.length) return;
         const impProv = card.querySelector('.imp-proveedor');
@@ -433,6 +439,17 @@
                 if (c) c.value = num(p.costo) ? num(p.costo).toFixed(2) : '';
                 const pp = fila.querySelector('.proc-por-pieza');
                 if (pp) pp.checked = !!p.por_pieza;
+                // LC 2026-08-28: el proveedor ligado con «@» en la ficha del
+                // producto viaja con el proceso. Sin esto, la ficha guardaba un
+                // vínculo que el proyecto nunca llegaba a usar (y de ahí sale la
+                // deuda con ese proveedor).
+                if (p.proveedor_id) {
+                    fila.setAttribute('data-proc-prov', String(p.proveedor_id));
+                    const chip = fila.querySelector('[data-proc-prov-chip]');
+                    const nom = fila.querySelector('[data-proc-prov-nombre]');
+                    if (nom) nom.textContent = nombreProveedorTarjeta(card, p.proveedor_id);
+                    if (chip) chip.classList.remove('hidden');
+                }
             }
         });
         serializar(card);
@@ -743,8 +760,9 @@
         const lista = card.querySelector('.proceso-lista');
         const fila = document.createElement('div');
         fila.className = 'proceso-fila grid grid-cols-[auto_1fr_120px_auto_auto] items-center gap-2';
+        fila.setAttribute('data-arroba-fila', '');
         fila.innerHTML = '<span class="proceso-num text-xs font-medium text-gray-400"></span>' +
-            '<div class="min-w-0"><input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off">' +
+            '<div class="min-w-0"><input type="text" class="proc-desc w-full" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off" data-arroba-proveedor data-arroba-url="{% url 'catalogo-proveedor-buscar' %}">' +
             '<span data-proc-prov-chip class="mt-1 hidden inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"><span aria-hidden="true">@</span><span data-proc-prov-nombre></span><button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button></span></div>' +
             '<div class="min-w-0"><input type="text" inputmode="text" autocomplete="off" class="proc-costo w-full" placeholder="0.00 o 35+15" title="Acepta una cuenta: escribe 35+15+15 y se suma solo."><span data-proc-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span></div>' +
             '<label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir (cantidad + merma)."><input type="checkbox" class="proc-por-pieza h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" checked>por pieza</label>' +
@@ -1146,94 +1164,17 @@
         });
     }
 
-    // ── @proveedor en gastos operativos (ticket UX 2026-07) ─────────────────
-    // Al teclear "@" en la descripción de un gasto operativo se abre un
-    // autocompletar de proveedores; al elegir uno se liga a ese gasto
-    // (data-proc-prov) y su costo suma a la deuda del proveedor. Popup único.
-    (function () {
-        let pop = null, activeInput = null, items = [], hi = 0, tmr = null;
-        function cerrar() { if (pop) { pop.remove(); pop = null; } activeInput = null; items = []; }
-        function posicionar(input) {
-            const r = input.getBoundingClientRect();
-            pop.style.left = r.left + 'px';
-            pop.style.top = (r.bottom + 4) + 'px';
-            pop.style.width = Math.max(200, r.width) + 'px';
-        }
-        function render() {
-            if (!pop) return;
-            if (!items.length) { pop.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">Sin proveedores…</div>'; return; }
-            pop.innerHTML = items.map((it, i) =>
-                '<button type="button" data-i="' + i + '" class="block w-full truncate px-3 py-1.5 text-left text-sm ' +
-                (i === hi ? 'bg-brand-50 dark:bg-brand-500/10 ' : '') +
-                'text-gray-700 hover:bg-brand-50 dark:text-gray-200 dark:hover:bg-brand-500/10">@ ' +
-                String(it.nombre).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</button>'
-            ).join('');
-        }
-        function ligar(fila, id, nombre) {
-            if (!fila) return;
-            fila.setAttribute('data-proc-prov', id == null ? '' : String(id));
-            const chip = fila.querySelector('[data-proc-prov-chip]');
-            const nom = fila.querySelector('[data-proc-prov-nombre]');
-            if (nom) nom.textContent = nombre || '';
-            if (chip) chip.classList.toggle('hidden', id == null);
-        }
-        function elegir(i) {
-            const it = items[i];
-            if (!it || !activeInput) return;
-            const fila = activeInput.closest('.proceso-fila');
-            const card = activeInput.closest('[data-card]');
-            activeInput.value = activeInput.value.replace(/@[^@]*$/, '').trim();  // quita "@query"
-            ligar(fila, it.id, it.nombre);
-            cerrar();
-            if (card) { serializar(card); recalcular(card); }
-            autosave();
-        }
-        function query(input) { const m = /@([^@]*)$/.exec(input.value); return m ? m[1] : null; }
-        async function buscar(q, input) {
-            try {
-                const r = await fetch('{% url "catalogo-proveedor-buscar" %}?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
-                if (!r.ok || activeInput !== input) return;
-                const d = await r.json();
-                if (activeInput !== input) return;
-                items = d.resultados || []; hi = 0;
-                if (!pop) { pop = document.createElement('div'); pop.className = 'fixed z-[60] max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-800'; document.body.appendChild(pop); }
-                posicionar(input); render();
-            } catch (e) { /* silent */ }
-        }
-        document.addEventListener('input', function (e) {
-            const input = e.target;
-            if (!(input.classList && input.classList.contains('proc-desc'))) return;
-            const q = query(input);
-            if (q === null) { cerrar(); return; }
-            activeInput = input;
-            clearTimeout(tmr);
-            tmr = setTimeout(() => buscar(q, input), 180);
-        });
-        document.addEventListener('keydown', function (e) {
-            if (!pop || !activeInput) return;
-            if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); render(); e.preventDefault(); }
-            else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); render(); e.preventDefault(); }
-            else if (e.key === 'Enter') { if (items.length) { elegir(hi); e.preventDefault(); } }
-            else if (e.key === 'Escape') { cerrar(); }
-        });
-        document.addEventListener('click', function (e) {
-            if (pop && pop.contains(e.target)) {
-                const b = e.target.closest('[data-i]');
-                if (b) elegir(parseInt(b.getAttribute('data-i'), 10));
-                return;
-            }
-            const clr = e.target.closest && e.target.closest('[data-proc-prov-clear]');
-            if (clr) {
-                const fila = clr.closest('.proceso-fila');
-                const card = clr.closest('[data-card]');
-                ligar(fila, null, '');
-                if (card) { serializar(card); recalcular(card); }
-                autosave(); e.preventDefault(); return;
-            }
-            if (pop && e.target !== activeInput) cerrar();
-        });
-        window.addEventListener('scroll', cerrar, true);
-    })();
+    // ── @proveedor en gastos operativos ──────────────────────────────────────
+    // El autocompletado vive en `static/js/arroba_proveedor.js` desde el
+    // 2026-08-28: la ficha del producto necesitaba lo mismo y copiarlo habría
+    // dejado dos versiones que divergen (Oscar: «que funcione en todos lados»).
+    // Aquí sólo se atiende el aviso para volver a serializar la tarjeta.
+    document.addEventListener('arroba:proveedor', function (e) {
+        const card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        serializar(card); recalcular(card);
+        autosave();
+    });
 
     // Indicador permanente: marca "● Nuevos cambios" al editar; el OOB del
     // autoguardado lo regresa a "✓ Guardado" / "✕ No se pudo guardar".

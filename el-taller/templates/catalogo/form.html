@@ -235,11 +235,22 @@ producto que estás viendo queda marcada.{% endcomment %}
         <div data-procs-lista class="mt-3 space-y-2"></div>
         <p data-procs-vacio class="mt-3 text-xs text-gray-400 dark:text-gray-500">Sin procesos adicionales. Usa «+ Proceso» para agregar gastos como clavos, pegamento o embalaje.</p>
 
+        {% comment %}LC 2026-08-28 (Oscar): el «@» para ligar un proveedor al gasto
+        —que ya existía en la tarjeta del proyecto— también aquí. El
+        autocompletado es el componente compartido `arroba_proveedor.js`; la
+        fila sólo declara los atributos.{% endcomment %}
         <template data-procs-tpl>
-            <div class="grid grid-cols-[auto_1fr_130px_auto_auto] items-center gap-2" data-procs-fila>
+            <div class="grid grid-cols-[auto_1fr_130px_auto_auto] items-center gap-2" data-procs-fila data-arroba-fila>
                 <span class="text-xs font-medium text-gray-400" data-procs-num></span>
-                <input type="text" placeholder="Ej. Clavos, pegamento, embalaje…" autocomplete="off" data-procs-desc
+                <div class="min-w-0">
+                <input type="text" placeholder="Ej. Clavos, pegamento… (@ liga un proveedor)" autocomplete="off" data-procs-desc
+                       data-arroba-proveedor data-arroba-url="{% url 'catalogo-proveedor-buscar' %}"
                        class="block w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <span data-proc-prov-chip class="mt-1 hidden inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+                    <span aria-hidden="true">@</span><span data-proc-prov-nombre></span>
+                    <button type="button" data-proc-prov-clear class="text-brand-500 hover:text-error-600" aria-label="Quitar proveedor">×</button>
+                </span>
+                </div>
                 <input type="number" step="0.01" min="0" placeholder="0.00" data-procs-costo
                        class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums dark:border-gray-700 dark:bg-gray-900">
                 <label class="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir.">
@@ -556,10 +567,12 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             const d = (f.querySelector('[data-procs-desc]').value || '').trim();
             const c = num(f.querySelector('[data-procs-costo]').value);
             if (!d && !c) return;
+            // El proveedor que se ligó con «@» (lo escribe arroba_proveedor.js).
+            const prov = parseInt(f.getAttribute('data-proc-prov'), 10);
             arr.push({
                 tipo: 'operativo', descripcion: d, costo: c.toFixed(2),
                 por_pieza: !!f.querySelector('[data-procs-pp]').checked,
-                proveedor_id: null,
+                proveedor_id: isNaN(prov) ? null : prov,
             });
         });
         hidden.value = JSON.stringify(arr);
@@ -568,6 +581,13 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             totalEl.textContent = t ? money(t) : '—';
         }
     }
+    // El nombre del proveedor sale del select de impresión, que ya trae a todos
+    // los activos — así el chip se puede pintar sin pedirle nada al servidor.
+    function nombreProveedor(id) {
+        if (!impProv) return '#' + id;
+        const o = Array.from(impProv.options).find((x) => x.value === String(id));
+        return o ? o.textContent.trim() : ('#' + id);
+    }
     function agregarFila(datos) {
         const fila = tpl.content.firstElementChild.cloneNode(true);
         if (datos) {
@@ -575,6 +595,13 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             const c = num(datos.costo);
             fila.querySelector('[data-procs-costo]').value = c ? c.toFixed(2) : '';
             fila.querySelector('[data-procs-pp]').checked = !!datos.por_pieza;
+            if (datos.proveedor_id) {
+                fila.setAttribute('data-proc-prov', String(datos.proveedor_id));
+                const chip = fila.querySelector('[data-proc-prov-chip]');
+                const nom = fila.querySelector('[data-proc-prov-nombre]');
+                if (nom) nom.textContent = nombreProveedor(datos.proveedor_id);
+                if (chip) chip.classList.remove('hidden');
+            }
         }
         lista.appendChild(fila);
         renumerar();
@@ -602,6 +629,7 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
     });
     box.addEventListener('input', serializar);
     box.addEventListener('change', serializar);
+    box.addEventListener('arroba:proveedor', serializar);
 })();
 
 (function() {
