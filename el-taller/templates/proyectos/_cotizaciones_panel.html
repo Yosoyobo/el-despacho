@@ -96,6 +96,18 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
                 class="btn-secundario opacity-50">Enviar por correo</button>
         {% endif %}
     </div>
+    {% comment %}LC 2026-08-29 (Oscar): «agregar uno de vista previa antes de
+    generar la v siguiente». Enseña el documento de la versión que se generaría
+    sin crearla —una versión de más cambia el número que ve el cliente y
+    reinicia el semáforo—; desde ahí se genera o se genera y se envía.
+
+    Es un enlace normal, no htmx: el documento es una página completa que no
+    extiende `base.html`, así que no hay dónde inyectarla.{% endcomment %}
+    <a href="{% url 'proyectos-previsualizar-cotizacion' proyecto.pk %}"
+       title="Mira cómo quedaría la v{{ cot_next_version }} antes de generarla"
+       class="mt-2 block w-full rounded-lg border border-dashed border-gray-300 px-2.5 py-1.5 text-center text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.04]">
+        👁 Vista previa de la v{{ cot_next_version }}
+    </a>
     {% if cot_latest_pk %}
     <form method="post" action="{% url 'cotizaciones:enviada-manual' cot_latest_pk %}" class="mt-2">
         {% csrf_token %}

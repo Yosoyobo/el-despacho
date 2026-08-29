@@ -47,6 +47,7 @@ urlpatterns = [
     # Revisión buzón R2: mini-Chalán del quick-create aplica los productos confirmados.
     path("<int:pk>/productos-ia-aplicar", views.proyecto_productos_ia_aplicar, name="proyectos-productos-ia-aplicar"),
     # Recuadro «Cotizaciones» del proyecto (versionado, render Oscar 2026-06-27).
+    path("<int:pk>/cotizacion/vista-previa", views.previsualizar_cotizacion, name="proyectos-previsualizar-cotizacion"),
     path("<int:pk>/cotizacion/generar", views.generar_cotizacion, name="proyectos-generar-cotizacion"),
     path("<int:pk>/cotizacion/estado", views.cotizacion_estado, name="proyectos-cotizacion-estado"),
     # Escalas de volumen (LC 2026-08-17): el modal que pide dejar UNA sola

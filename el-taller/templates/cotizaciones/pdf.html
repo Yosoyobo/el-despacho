@@ -102,12 +102,26 @@ márgenes/paddings del documento bajan a la par, ver los bloques de abajo.{% end
 <body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt; line-height: 1.02;">
 {% if preview %}
 <div class="lc-barra">
-  <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
+  <span>{% if aviso %}{{ aviso }}{% else %}Vista previa · <strong>{{ nombre_archivo }}</strong>{% endif %}</span>
   <span>
     {% if url_descargar %}
     <a class="lc-btn" id="lc-bajar" href="{{ url_descargar }}" download="{{ nombre_archivo }}.pdf"
        data-nombre="{{ nombre_archivo }}.pdf">&#11015; Bajar PDF</a>
     {% endif %}
+    {% comment %}Acciones extra de la barra (LC 2026-08-29). Van como formularios
+    clásicos y no con htmx: este documento NO extiende `base.html`, así que aquí
+    no hay htmx cargado ni `#modal-slot` donde inyectar nada. El token se pasa por
+    contexto porque `render_to_string` va sin request y el tag `{% templatetag openblock %} csrf_token {% templatetag closeblock %}`
+    no tendría de dónde sacarlo.{% endcomment %}
+    {% for a in acciones %}
+    <form method="post" action="{{ a.url }}" style="display: inline;">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+      {% for campo, valor in a.hidden.items %}
+      <input type="hidden" name="{{ campo }}" value="{{ valor }}">
+      {% endfor %}
+      <button type="submit" class="{{ a.clase|default:'lc-btn-sec' }}">{{ a.label }}</button>
+    </form>
+    {% endfor %}
     <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
   </span>
 </div>
