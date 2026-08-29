@@ -71,6 +71,35 @@ def test_no_se_declaran_capacidades_fantasma():
 # ── Que se puedan llamar DE VERDAD, no sólo que existan ────────────────────
 
 
+def test_toda_capacidad_registrada_tiene_la_firma_del_registro():
+    """El registro despacha SIEMPRE `cap.fn(args, usuario)` — posicional.
+
+    Una capacidad escrita `(usuario, **kw)` no falla al registrarse ni en un
+    test que la llame directo: falla EN PRODUCCIÓN, donde el primer argumento
+    le llega como si fuera el usuario. Pasó DOS veces el mismo día (2026-08-24):
+    mis tres herramientas del servidor, y las tres de n8n de otra sesión — que
+    vivieron rotas cuatro días porque su test las llamaba con su propia
+    convención. La introspección de firma caza la clase entera del bug, sin
+    red y sin base: el primer parámetro posicional de todo `fn` se llama `args`.
+    """
+    import inspect
+
+    import capacidades.lecturas  # noqa: F401 — importar es lo que registra
+    from capacidades.registro import CAPACIDADES
+
+    mal = []
+    for nombre, cap in CAPACIDADES.items():
+        params = [p for p in inspect.signature(cap.fn).parameters.values()
+                  if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+        if len(params) < 2 or params[0].name != "args":
+            mal.append(f"{nombre} → fn({', '.join(p.name for p in params)}…)")
+    assert not mal, (
+        "Capacidades con la firma invertida — en producción reciben los args "
+        "como usuario y el usuario como args:\n  " + "\n  ".join(mal)
+    )
+
+
+
 def test_las_capacidades_nuevas_se_invocan_como_las_llama_el_registro(monkeypatch,
                                                                       usuario_factory):
     """El registro llama `fn(args, usuario)`. Una capacidad escrita con otra
