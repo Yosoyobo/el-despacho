@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades — Mira la cotización antes de generarla (29 de agosto de 2026)
+
+**En el recuadro de Cotizaciones hay un botón nuevo: 👁 Vista previa.**
+
+Hasta ahora, para ver cómo iba a quedar una cotización había que generarla. Y
+generar no es gratis: sube el número que ve el cliente (de v2 pasa a v3), regresa
+el semáforo de estatus al principio y guarda una foto de los productos del
+proyecto. Si sólo querías echarle un ojo, te quedabas con una versión de más.
+
+Ahora picas **Vista previa** y ves el documento completo, tal como saldría, sin
+que se genere nada. Desde esa misma pantalla hay dos botones:
+
+- **Generar** — crea la versión y te regresa al proyecto.
+- **Generar y enviar** — crea la versión y te abre de una vez el correo al
+  cliente, con el PDF adjunto.
+
+**No es un dibujo aproximado: es el documento de verdad.** El sistema lo arma
+igual que si lo estuviera generando y luego lo deshace, así que lo que ves en la
+vista previa es exactamente lo que va a salir — los mismos montos, los mismos
+impuestos, las mismas fotos. Nada queda guardado: ni la cotización, ni el número
+de versión, ni el folio. Puedes abrirla las veces que quieras.
+
+En la vista previa no aparece «Bajar PDF», y es a propósito: ese archivo lo
+prepara Google a partir de una cotización ya guardada, y aquí todavía no hay
+ninguna. En cuanto generes, el botón está donde siempre.
+
+---
+
 ## Novedades — Los acentos y la ñ vuelven a escribirse (28 de agosto de 2026)
 
 Si estabas perdiendo los acentos y la ñ al escribir en los cuadros de texto, ya
@@ -6186,6 +6214,37 @@ Abre en **tabla** (el botón «▦ Tarjetas» cambia a la vista de tarjetas):
   **✓** y una **✕**. El ✓ le cambia el estado ahí mismo (se ve al instante en la
   barra de arriba); la ✕ lo deja para después y no vuelve a preguntar por esa
   versión —si generas una nueva, te lo vuelve a ofrecer.
+
+### Vista previa antes de generar
+
+En el recuadro **Cotizaciones** del proyecto, debajo de los botones, está
+**👁 Vista previa de la vN**. Te enseña el documento completo de la versión que
+generarías, **sin generarla**.
+
+Sirve porque generar no es gratis: sube el número que ve el cliente, regresa el
+semáforo de estatus al primer paso y guarda una foto de los productos del
+proyecto. Si sólo querías revisar cómo quedó la redacción o si un precio va bien,
+antes te quedabas con una versión de más.
+
+Lo que ves **es el documento de verdad**, no un dibujo aproximado: el sistema lo
+arma igual que al generarlo y luego lo deshace. Mismos montos, mismos impuestos,
+mismas fotos, mismos cortes de página. Y no queda nada guardado —ni la
+cotización, ni el número de versión, ni el folio `COT-`—, así que puedes abrirla
+las veces que quieras.
+
+Arriba de la hoja hay dos botones:
+
+- **Generar** — crea la versión y te regresa al proyecto.
+- **Generar y enviar** — crea la versión y te abre el correo al cliente con el
+  PDF adjunto. Primero queda guardada la versión y después se abre el correo: si
+  el envío falla, la cotización ya existe y la mandas desde el recuadro.
+
+En la vista previa **no** aparece «Bajar PDF». Ese archivo lo prepara Google a
+partir de una cotización guardada, y en la vista previa todavía no hay ninguna;
+en cuanto generes, el botón vuelve a estar donde siempre.
+
+Para abrirla necesitas permiso de **crear** cotizaciones: es la antesala de
+generar, no una pantalla de consulta.
 
 ### El semáforo de estatus
 

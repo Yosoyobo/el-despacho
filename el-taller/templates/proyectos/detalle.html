@@ -91,6 +91,14 @@ se recarga, así que el «¿por qué se canceló?» se pide con `?motivo=1`.{% e
      hx-target="#modal-slot" hx-swap="innerHTML"></div>
 {% endif %}
 
+{% comment %}LC 2026-08-29: «Generar y enviar» de la vista previa confirma la
+versión y manda aquí — el modal de envío es HTMX y vive en esta página, así que
+se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
+{% if enviar_cot_pk %}
+<div hx-get="{% url 'cotizaciones:enviar' enviar_cot_pk %}" hx-trigger="load"
+     hx-target="#modal-slot" hx-swap="innerHTML"></div>
+{% endif %}
+
 {# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
 
 {% if puede_editar %}

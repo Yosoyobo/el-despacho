@@ -703,6 +703,9 @@ def detalle(request, pk):
         "back_label": "Proyectos",
         # Recuadro «Cotizaciones» (versionado, render Oscar 2026-06-27).
         **_ctx_cotizaciones(proyecto, request.user),
+        # «Generar y enviar» de la vista previa vuelve aquí con `?enviar_cot=`
+        # para que se abra el modal de envío (LC 2026-08-29).
+        "enviar_cot_pk": _cot_a_enviar(request, proyecto),
         # Recuadro «Facturas ligadas» (LC #9).
         **_ctx_facturas(proyecto, request.user),
     })
@@ -2004,11 +2007,118 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
     }
 
 
+def _cot_a_enviar(request, proyecto):
+    """La cotización cuyo modal de envío hay que abrir al cargar, o None.
+
+    Sale de `?enviar_cot=`, que es lo que manda «Generar y enviar» de la vista
+    previa. Se valida en la vista y no en la plantilla por dos razones: un valor
+    que no sea número reventaría el `{% url %}` y con él la página entera, y una
+    pk cualquiera abriría el envío de una cotización de otro proyecto. Aquí sólo
+    pasa lo que es de ESTE proyecto y para quien puede enviar.
+    """
+    from lib.permisos import puede_enviar_cotizaciones
+
+    crudo = (request.GET.get("enviar_cot") or "").strip()
+    if not crudo.isdigit() or not puede_enviar_cotizaciones(request.user):
+        return None
+    from apps.cotizaciones.models import Cotizacion
+    return (Cotizacion.objects
+            .filter(pk=int(crudo), proyecto=proyecto)
+            .values_list("pk", flat=True)
+            .first())
+
+
+@login_required
+def previsualizar_cotizacion(request, pk):
+    """Enseña el documento de la versión que se generaría, SIN generarla.
+
+    «Generar vN» hace dos cosas a la vez —congela la versión y la crea— y una
+    versión de más no es gratis: cambia el número que ve el cliente, reinicia el
+    semáforo de estatus al primer paso y se lleva una foto de los productos del
+    proyecto que después alimenta las pestañas v1/v2/… del recuadro.
+
+    Así que esto **genera de verdad y deshace**: lo que ves es lo que se va a
+    generar, porque es lo que se generó. Armar un HTML parecido con los datos
+    del proyecto sería peor que no tener la pantalla — se vería bien y mentiría
+    justo en lo que importa (el redondeo de los impuestos, qué líneas se
+    agrupan, qué foto sale, cómo cae la paginación).
+
+    Lo que hace que deshacer sea seguro, y está cubierto por tests:
+
+    - El número de versión y el correlativo `COT-YYYY-NNNN` salen de leer el
+      máximo dentro de la transacción, así que el rollback los devuelve.
+    - La foto de los productos (`services_version.fotografiar`) corre dentro del
+      mismo `atomic`, así que se revierte con todo lo demás.
+    - El aviso del Portavoz encola en Redis, que NO es transaccional. Por eso
+      `generar_desde_proyecto` lo registra con `on_commit`: Django lo descarta
+      con el rollback, sin que esta vista tenga que pedir nada.
+    - Nada de esto toca la red. Desde S-Medios-V1 el documento lee las fotos del
+      disco, así que la transacción es corta — importa porque mientras dura
+      retiene el `select_for_update` del correlativo, y un «Generar» de otra
+      persona esperaría.
+
+    Es GET porque de puertas afuera no muta nada, y así se abre con un enlace.
+    """
+    from django.middleware.csrf import get_token
+
+    from lib.permisos import puede_crear_cotizaciones
+    proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
+    if not puede_ver_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin acceso a este proyecto.")
+    # La antesala de generar pide el permiso de CREAR, no el de ver: quien no
+    # puede generar no tiene por qué ensayarlo.
+    if not puede_crear_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para crear cotizaciones.")
+
+    from apps.cotizaciones import services as cot_services
+
+    from lib.permisos import puede_enviar_cotizaciones
+
+    url_generar = reverse("proyectos-generar-cotizacion", args=[proyecto.pk])
+    acciones = [{
+        "url": url_generar,
+        "label": "Generar",
+        "clase": "lc-btn",
+        "hidden": {},
+    }]
+    if puede_enviar_cotizaciones(request.user):
+        acciones.append({
+            "url": url_generar,
+            "label": "Generar y enviar",
+            "clase": "lc-btn",
+            # Genera (confirma) y de ahí abre el correo. El orden importa: si el
+            # correo falla, la versión existe y se reintenta desde el recuadro.
+            "hidden": {"y_enviar": "1"},
+        })
+
+    with transaction.atomic():
+        cot = cot_services.generar_desde_proyecto(proyecto, request.user)
+        html = cot_services.construir_html_pdf(
+            cot,
+            preview=True,
+            acciones=acciones,
+            csrf_token=get_token(request),
+            # El PDF real lo arma Google desde una cotización guardada, y ésta
+            # se va a deshacer: el botón daría 404.
+            descargable=False,
+            aviso=f"Vista previa de {cot.version_label} · todavía no se genera",
+        )
+        transaction.set_rollback(True)
+    return HttpResponse(html)
+
+
 @login_required
 @require_POST
 def generar_cotizacion(request, pk):
     """Genera la siguiente versión de cotización del proyecto desde los
-    Productos involucrados actuales (snapshot). Devuelve el recuadro re-render."""
+    Productos involucrados actuales (snapshot). Devuelve el recuadro re-render.
+
+    Con `y_enviar` (lo manda la vista previa) termina abriendo el envío por
+    correo. Se hace en dos pasos a propósito —generar confirma, y de ahí se
+    redirige— en vez de un endpoint que haga las dos cosas en una transacción:
+    mezclar el congelado de la versión con una llamada de red es justo el estado
+    intermedio que no queremos. Si el correo falla, la versión ya existe.
+    """
     from lib.permisos import puede_crear_cotizaciones
     proyecto = get_object_or_404(Proyecto.objects.select_related("cliente"), pk=pk)
     if not puede_ver_proyecto(request.user, proyecto):
@@ -2018,6 +2128,16 @@ def generar_cotizacion(request, pk):
     from apps.cotizaciones import services as cot_services
     cot = cot_services.generar_desde_proyecto(proyecto, request.user)
     messages.success(request, f"Cotización {cot.version_label} generada ({cot.codigo}).")
+    if request.POST.get("y_enviar"):
+        from lib.permisos import puede_enviar_cotizaciones
+        if puede_enviar_cotizaciones(request.user):
+            # El modal de envío es HTMX y vive en el detalle del proyecto, así
+            # que se pide al recargar — el mismo camino del `?motivo=1` de la
+            # cancelación (LC 2026-08-07).
+            destino = f"{_redir_detalle(proyecto)}?enviar_cot={cot.pk}"
+            if _es_htmx(request):
+                return HttpResponse(status=204, headers={"HX-Redirect": destino})
+            return redirect(destino)
     if _es_htmx(request):
         ctx = _ctx_cotizaciones(proyecto, request.user)
         html = render_to_string("proyectos/_cotizaciones_panel.html", ctx, request=request)

@@ -43,7 +43,15 @@ def emitir_eliminada(cot: Cotizacion, actor):
     _emitir("cotizacion.eliminada", cot, actor, {"titulo": cot.titulo})
 
 
-def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
+def construir_html_pdf(
+    cot: Cotizacion,
+    *,
+    preview: bool = False,
+    acciones: list[dict] | None = None,
+    csrf_token: str = "",
+    descargable: bool = True,
+    aviso: str = "",
+) -> str:
     """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
 
     Las imágenes van con **URL absoluta, pública y firmada**: el PDF lo genera
@@ -55,6 +63,23 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
     márgenes, fondo gris y barra con «Bajar PDF»). El documento que se le manda
     a Google va siempre sin envoltorio — así el preview se puede maquillar sin
     tocar el PDF.
+
+    Los cuatro parámetros de la barra existen para que la **vista previa de la
+    versión siguiente** (LC 2026-08-29) pueda ofrecer «Generar» y «Generar y
+    enviar» sin que haya una segunda copia de esta plantilla: dos copias no
+    divergen el primer día, divergen en tres meses, y para entonces la vista
+    previa miente. Todos traen default, así que la pantalla de siempre
+    (`views.pdf_ver`) no cambia en nada:
+
+    - `acciones`: botones extra, cada uno `{url, label, clase?, hidden?}`. Se
+      pintan como formularios clásicos porque este documento **no extiende
+      `base.html`**: aquí no hay htmx cargado ni `#modal-slot`.
+    - `csrf_token`: el token para esos formularios. `render_to_string` va sin
+      request, así que el tag `{% csrf_token %}` no tendría de dónde sacarlo.
+    - `descargable`: «Bajar PDF» apunta al PDF real, que Google arma a partir de
+      una cotización guardada. En la vista previa esa cotización se deshace al
+      terminar, así que el botón daría 404 — se apaga.
+    - `aviso`: reemplaza el rótulo de la barra para decir qué se está mirando.
     """
     from django.template.loader import render_to_string
 
@@ -125,7 +150,10 @@ def construir_html_pdf(cot: Cotizacion, *, preview: bool = False) -> str:
         "apretado": plan_notas["apretado"],
         "brs_notas": plan_notas["brs"],
         "preview": preview,
-        "url_descargar": _url_descargar(cot) if preview else "",
+        "url_descargar": _url_descargar(cot) if (preview and descargable) else "",
+        "acciones": acciones or [],
+        "csrf_token": csrf_token,
+        "aviso": aviso,
         "nombre_archivo": cot.nombre_pdf,
         # Sólo lo pinta la vista previa: en el PDF el pie lo pone la API de Docs.
         "pie_documento": PIE_DOCUMENTO,
@@ -856,6 +884,15 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
     versión más reciente, la única editable); generar una versión nueva la pone
     en 'generada' y el pizza-tracker vuelve al inicio. Las versiones anteriores
     conservan, en solo lectura, el último estado que tuvieron.
+
+    **El aviso sale con `on_commit`, y eso es a propósito** (LC 2026-08-29). La
+    vista previa de la versión siguiente llama a este service dentro de una
+    transacción que después deshace: lo que ves es lo que se va a generar,
+    porque es lo que se generó. El rollback devuelve las filas, pero no podría
+    devolver un evento ya encolado en Redis —que no es transaccional—, así que
+    se anunciaría una cotización que no existe. Registrarlo con `on_commit`
+    deja que Django lo descarte solo, sin que quien llame tenga que acordarse de
+    apagarlo. En producción el momento es el mismo: dispara al confirmar.
     """
     from decimal import Decimal
 
@@ -976,10 +1013,15 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
         if proyecto.regimen_fiscal == "iva" and not proyecto.iva_exento:
             for tasa in TasaImpositiva.objects.filter(aplicable_default=True, activa=True):
                 CotizacionImpuesto.objects.create(cotizacion=cot, tasa=tasa)
-    _emitir("cotizacion.generada", cot, actor, {
-        "proyecto_id": proyecto.pk, "version": cot.version,
-        "total": float(cot.calcular_totales()["total"]),
-    })
+        # El payload se arma AQUÍ, con las líneas ya escritas: describe lo que se
+        # generó, no lo que hubiera al momento de confirmar. Y si la transacción
+        # se deshace (vista previa), el callback se descarta con ella.
+        _payload = {
+            "proyecto_id": proyecto.pk, "version": cot.version,
+            "total": float(cot.calcular_totales()["total"]),
+        }
+        transaction.on_commit(
+            lambda: _emitir("cotizacion.generada", cot, actor, _payload))
     return cot
 
 

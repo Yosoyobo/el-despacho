@@ -8205,6 +8205,103 @@ las vistas que crean una `Tarea` con `form.save(commit=False)` —
 `form.save_m2m()`**, así que los «Otros responsables» que se marquen en esos
 modales se pierden en silencio. El principal (`asignada_a`) sí se guarda.
 
+### S-Ajustes-Ago28 · Sprint 3 ✅ — Vista previa de la cotización: generar de verdad y deshacer (2026-08-29, VERSION 2026.08.50)
+
+Tercero y último del reparto del 28 de agosto (handoff
+`docs/SPRINT-Ago28-3-Cotizacion-Vista-Previa.md`), ejecutado con la
+**refactorización de estabilidad** que Oscar eligió sobre el plan literal. Sin
+migraciones. Ojo: el Sprint 3 **no** son las pestañas — eso es
+`PESTANAS-CAMINOS.md`, reconocimiento sin ejecución.
+
+- **El problema y por qué el preview no puede ser una imitación.** «Generar vN»
+  congela y crea a la vez, y una versión de más no es gratis: cambia el número
+  que ve el cliente, reinicia el semáforo al primer paso y se lleva una foto de
+  los productos (`ProyectoProductoVersion`) que alimenta las pestañas del
+  recuadro. Armar un HTML parecido con los datos del proyecto se vería bien y
+  mentiría en lo que importa (redondeo de impuestos, qué líneas se agrupan, qué
+  foto sale, cómo cae la paginación). Y **no se puede «sólo renderizar sin
+  guardar»**: `construir_html_pdf` parte de `cot.items` y `calcular_totales()`
+  recorre `self.items` — necesita una cotización con pk. Así que el preview
+  **genera de verdad y deshace**: lo que ves es lo que se va a generar, porque es
+  lo que se generó.
+- **El evento se doma por ESTRUCTURA, no por parámetro** (la diferencia central
+  con el plan del handoff). El handoff proponía `generar_desde_proyecto(...,
+  notificar=False)`; se descartó porque el siguiente caller puede olvidar el
+  flag y **el olvido falla en silencio** (se anuncia a n8n una cotización que no
+  existe, y no hay forma de retirar el aviso). En su lugar, el `_emitir` se
+  registra con **`transaction.on_commit` DENTRO del `atomic`**, con el payload
+  precalculado: el rollback lo descarta solo, la firma del service **no cambia**,
+  y **cualquier efecto futuro que se sume por `on_commit` queda a salvo del
+  preview sin que nadie se acuerde de esta pantalla**. En producción el momento
+  de emisión es idéntico (dispara al confirmar). Precio conocido: Bug E §14 — el
+  test que afirma el evento usa `django_capture_on_commit_callbacks`. Beneficio
+  colateral: en tests el evento ya no toca Redis, así que este service sale del
+  folclore de «los fallos locales de Redis» (deuda de S-CI-Rapido).
+- **Vista `previsualizar_cotizacion`** (`/proyectos/<pk>/cotizacion/vista-previa`,
+  GET — de puertas afuera no muta nada, así se abre con un enlace). Gated por
+  `puede_ver_proyecto` **+ `puede_crear_cotizaciones`**: la antesala de generar
+  pide el permiso de crear, no el de ver.
+- **La barra se parametriza, la plantilla NO se bifurca.** `construir_html_pdf`
+  gana cuatro parámetros con default (`acciones`, `csrf_token`, `descargable`,
+  `aviso`) que dejan `pdf_ver` byte por byte igual (hay test). Los botones son
+  **formularios clásicos**, no htmx: el documento es una página completa que
+  **no extiende `base.html`**, así que ahí no hay htmx cargado ni `#modal-slot`
+  — y el token va por contexto porque `render_to_string` corre sin request.
+- **«Bajar PDF» se apaga en el preview** (`descargable=False`): ese PDF lo arma
+  Google desde una cotización guardada, y ésta se deshace ⇒ daría 404.
+- **«Generar y enviar» sin endpoint compuesto**: `generar_cotizacion` acepta
+  `y_enviar` y, tras confirmar, redirige a `?enviar_cot=<pk>`, que abre el modal
+  de envío al cargar el detalle (mismo camino que el `?motivo=1` de la
+  cancelación). **El orden es la garantía**: primero commit de la versión,
+  después la red. Si el correo falla, la versión existe y se reintenta.
+- **Fragilidad cerrada al revisar el diff** (no reportada): `?enviar_cot` iba
+  crudo a `{% url %}`, así que `?enviar_cot=abc` levantaba `NoReverseMatch` y
+  **tumbaba el detalle entero** —desde la barra de direcciones, que cualquiera
+  escribe—, y una pk ajena abría el envío de otra cotización. Helper
+  `_cot_a_enviar(request, proyecto)` valida dígitos + pertenencia al proyecto +
+  permiso de enviar. Verificado con mutación: con el valor crudo, 2 tests caen.
+- **Medido, no supuesto** (lo que el handoff no menciona): el preview retiene el
+  `select_for_update` del correlativo `COT-` mientras dura su transacción, así
+  que un preview lento **bloquearía un «Generar» real** de otra persona. Medido
+  con 12 líneas: **47 ms y 80 consultas**. Es un instante — la deuda de «cachear
+  si se siente lento» queda cerrada con cifra en vez de suposición.
+- **20 tests** en `tests/taller/test_cotizacion_vista_previa.py`, en tres grupos:
+  el invariante del rollback (**cuatro** tablas, no sólo `Cotizacion`; el evento;
+  un candado de que **no se toca la red** dentro de la transacción), la
+  equivalencia y la pantalla. **Cinco mutaciones verificadas**: evento fuera del
+  atomic → cae el candado del evento; sin `set_rollback` → caen los tres del
+  invariante; preview que difiere en un detalle → cae la equivalencia; sin gate
+  de permiso → cae el 403; `descargable=True` → cae el de la barra.
+- **El candado de equivalencia compara el CUERPO COMPLETO carácter por carácter**
+  (no un puñado de cifras), con el desglose prendido para cubrir el cálculo
+  fiscal. Es la única defensa real contra que alguien, en tres meses, arme el
+  preview «por otro camino que hace lo mismo». Se descubrió midiendo: la única
+  diferencia entre preview y documento real es la barra — de `<div
+  class="lc-hoja">` para abajo son idénticos. Más un candado que falla si aparece
+  una segunda copia de `pdf.html`.
+- **Verde falso cazado por la prueba de mutación**: el test de permisos usaba un
+  «miembro», que no pasa `puede_ver_proyecto` — el 403 venía del gate de
+  proyecto, así que **seguía pasando con el gate de cotizaciones quitado**. Se
+  corrigió a un diseñador **asignado al proyecto**, que sí llega al segundo gate.
+- Suite completa como el CI: **3718 pass, 1 skipped**. Ruff limpio; candados de
+  comentarios (las dos apps) y de Novedades verdes.
+- **MCP**: la vista previa es una **pantalla**, no una capacidad — no suma nada
+  que El Chalán pueda pedir. Se declara explícito en vez de dejarlo implícito
+  (regla §10 item 6).
+
+**Gotchas del sprint**: el modelo de asignación es `ProyectoAsignacion` con campo
+`rol_en_proyecto` (no `AsignacionProyecto`/`rol`). Los totales del documento
+viven bajo el interruptor `Cotizacion.incluir_desglose`, **apagado por default**
+— un documento sin totales no es un bug, es el interruptor.
+
+**Deuda diseñada**: el preview arma la versión completa en cada apertura (medido
+en 47 ms; si algún día se sintiera lento, la salida es cachear contra la última
+modificación del proyecto). La paginación sigue siendo una **estimación** nuestra
+—la hoja la corta Google—, así que un corte de página puede quedar distinto en el
+PDF final; es la misma limitación que ya tiene «Ver». Y el preview no se ofrece
+desde la lista de Cotizaciones, sólo desde el recuadro del proyecto, que es donde
+se genera.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,
