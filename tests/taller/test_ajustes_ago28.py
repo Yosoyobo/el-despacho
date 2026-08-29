@@ -27,6 +27,8 @@ pytestmark = [pytest.mark.taller]
 
 JS_UI_TALLER = Path("el-taller/static/js/ui.js")
 JS_UI_GERENCIA = Path("la-gerencia/static/js/ui.js")
+CSS_TALLER = Path("el-taller/static/css/input.css")
+CSS_GERENCIA = Path("la-gerencia/static/css/input.css")
 TPL_JS_TARJETA = Path("el-taller/templates/proyectos/_form_productos_js.html")
 FORMS_PROYECTOS = Path("el-taller/apps/los_proyectos/forms.py")
 
@@ -63,27 +65,56 @@ def test_al_escribir_la_descripcion_se_sigue_repintando_el_color():
     assert "repintarColor" in src
 
 
-# ── La guarda de composición (acentos y ñ) ───────────────────────────────────
+# ── El camino de teclear, limpio (acentos y ñ) ───────────────────────────────
+#
+# Este candado se ENDURECIÓ el 2026-08-28 por la tarde. La versión de la mañana
+# exigía una guarda de `isComposing` en cada manejador de `input`; se desplegó
+# (2026.08.47) y Oscar SIGUIÓ perdiendo los acentos y la ñ en Mac. O sea: la
+# guarda no bastaba. Su instrucción fue «prefiero que sirva a la funcionalidad»,
+# así que ahora la regla no es «mide con cuidado» sino **no midas**: ningún
+# manejador de `input` toca el tamaño de un textarea, con guarda o sin ella.
+# Crecer con el contenido lo hace el navegador (`field-sizing`, ver input.css).
+
 
 @pytest.mark.parametrize("ruta", [JS_UI_TALLER, JS_UI_GERENCIA])
-def test_ningun_manejador_de_texto_toca_el_tamano_a_media_composicion(ruta):
-    """Todo handler de `input` que mida un textarea sale si se está componiendo.
+def test_nada_mide_un_textarea_mientras_se_teclea(ruta):
+    """Ni un solo manejador de `input` toca el alto de un textarea.
 
-    Sin esta guarda, escribir «café» o «año» pierde la letra acentuada: el
-    navegador está a media composición y recalcular el diseño la cancela.
+    Medir un elemento obliga al navegador a recalcular el diseño, y en Mac eso
+    corta la composición de «á» o «ñ» —dos pulsaciones— aunque se pregunte por
+    `isComposing` primero. La única garantía que aguantó es no medir.
     """
     src = ruta.read_text(encoding="utf-8")
-    # Cada bloque que reacciona a `input` sobre un textarea tiene que preguntar
-    # por `isComposing` antes de tocar el alto.
-    bloques = [b for b in src.split("addEventListener('input'") if "textarea" in b[:400]]
-    assert bloques, "no encontré los manejadores de texto en ui.js"
-    for b in bloques:
-        assert "isComposing" in b[:400], (
-            "Un manejador de texto dejó de respetar la composición: los acentos "
-            "y la ñ se escriben en dos pulsaciones y se perderían."
+    for bloque in src.split("addEventListener('input'")[1:]:
+        cabeza = bloque[:400]
+        if "textarea" not in cabeza:
+            continue
+        assert "scrollHeight" not in cabeza and "style.height" not in cabeza, (
+            "Un manejador de `input` volvió a medir un textarea. Eso se come los "
+            "acentos y la ñ en Mac. El alto lo pone el navegador con "
+            "`field-sizing: content` (input.css); el JS sólo mide al enfocar, "
+            "al cargar y al llegar por HTMX."
         )
-    # Y al terminar de componer sí se ajusta, para que el alto quede al día.
-    assert "compositionend" in src
+    # Lo mismo para `compositionend`: ajustar justo al cerrar la composición fue
+    # parte del arreglo que no funcionó.
+    for bloque in src.split("addEventListener('compositionend'")[1:]:
+        assert "scrollHeight" not in bloque[:400] and "style.height" not in bloque[:400], (
+            "Medir al terminar de componer también estorba: no lo hagas."
+        )
+
+
+@pytest.mark.parametrize("ruta", [CSS_TALLER, CSS_GERENCIA])
+def test_el_navegador_es_quien_hace_crecer_el_campo(ruta):
+    """Quitar el JS sin poner el reemplazo dejaría cajas que no crecen nunca."""
+    css = ruta.read_text(encoding="utf-8")
+    assert "field-sizing: content" in css
+    assert "@supports (field-sizing: content)" in css, (
+        "Va detrás de @supports: los navegadores que no lo tienen conservan el "
+        "alto de `rows` en vez de quedarse sin regla."
+    )
+    assert "data-autogrow" in css and "data-crece-al-enfocar" in css, (
+        "Los dos mecanismos que perdieron su JS necesitan la regla."
+    )
 
 
 def test_el_componente_de_crecer_al_enfocar_existe_y_regresa_al_salir():

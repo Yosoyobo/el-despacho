@@ -317,3 +317,24 @@
 @media (prefers-reduced-motion: reduce) {
   .respira { animation: none; }
 }
+
+/* LC 2026-08-28 (Oscar): «Mac, es una composición; prefiero que sirva a la
+   funcionalidad». Un cuadro de texto que se mide a sí mismo en cada tecla corta
+   la escritura de un acento o una ñ —que en Mac se teclean en dos pulsaciones—
+   y eso pesa más que crecer solo. El JS salió del camino de teclear (`ui.js`).
+
+   Crecer con el contenido lo hace el navegador solo, sin una línea de JS, desde
+   que existe `field-sizing`. Es la herramienta que ya está en el cajón: no
+   interrumpe nada porque no hay nada que interrumpir. Donde no exista, el campo
+   se queda del alto que le da `rows` y scrollea — que es lo que hacía antes de
+   que alguien le pusiera JS encima. */
+@supports (field-sizing: content) {
+  textarea[data-autogrow],
+  textarea[data-crece-al-enfocar] {
+    field-sizing: content;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  /* El de la tarjeta de producto es más bajo: cabe en su renglón. */
+  textarea[data-crece-al-enfocar] { max-height: 260px; }
+}
