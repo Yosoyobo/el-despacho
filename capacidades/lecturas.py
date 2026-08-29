@@ -1136,25 +1136,27 @@ def _h_listar_flujos(usuario, **kw):
     }
 
 
-def _h_detalle_flujo(usuario, flujo_id: str = "", **kw):
+def _h_detalle_flujo(args: dict, usuario) -> dict:  # noqa: ARG001
     from lib import n8n
 
     if not n8n.esta_configurado():
         return _n8n_apagado()
-    d = n8n.detalle_flujo(str(flujo_id).strip())
+    flujo_id = str(args.get("flujo_id") or "").strip()
+    d = n8n.detalle_flujo(flujo_id)
     return d or {"error": f"No se encontró el flujo «{flujo_id}»."}
 
 
-def _h_ejecuciones_flujo(usuario, flujo_id: str = "", limite: int = 10, **kw):
+def _h_ejecuciones_flujo(args: dict, usuario) -> dict:  # noqa: ARG001
     from lib import n8n
 
     if not n8n.esta_configurado():
         return _n8n_apagado()
     try:
-        limite = max(1, min(int(limite), n8n.TOPE))
+        limite = max(1, min(int(args.get("limite") or 10), n8n.TOPE))
     except (TypeError, ValueError):
         limite = 10
-    corridas = n8n.ejecuciones(str(flujo_id).strip() or None, limite)
+    flujo_id = str(args.get("flujo_id") or "").strip()
+    corridas = n8n.ejecuciones(flujo_id or None, limite)
     if corridas is None:
         return {"disponible": False, "nota": "n8n no contestó."}
     return {"disponible": True, "corridas": corridas}
