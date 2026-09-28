@@ -291,7 +291,18 @@ def vivo_contenedores(request):
         filas = contenedores.estadisticas()
     except Exception as exc:  # noqa: BLE001
         error = str(exc)[:200]
-    return render(request, "site/vivo/_contenedores.html", {"filas": filas, "error": error})
+    # Un contenedor que NO existe no sale en `docker stats`: por eso el panel
+    # nunca dijo nada cuando n8n y Paperless desaparecieron tras el reinicio del
+    # 2026-09-18. Los servicios esperados se sondean aparte y los que no
+    # contestan se pintan arriba, en rojo.
+    try:
+        from lib.site import servicios as _servicios
+
+        faltantes = _servicios.caidos()
+    except Exception:  # noqa: BLE001
+        faltantes = []
+    return render(request, "site/vivo/_contenedores.html",
+                  {"filas": filas, "error": error, "faltantes": faltantes})
 
 
 def _trabajo_del_despacho() -> dict:

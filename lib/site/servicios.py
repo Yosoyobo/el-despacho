@@ -146,10 +146,51 @@ def estado() -> list[dict[str, Any]]:
     return salida
 
 
+#: Cuánto se recuerda el sondeo cuando lo piden pantallas que refrescan solas
+#: (la pared pide su panel cada 3 s: cuatro sondas de 2 s cada una no caben).
+TTL_CACHE_SEG = 30
+
+
+def estado_cacheado() -> list[dict[str, Any]]:
+    """`estado()` recordado `TTL_CACHE_SEG` en el caché de Django. Nunca lanza.
+
+    Lo usan El Vigía y `/salud`: son los que convierten «un servicio no
+    responde» en una alarma que alguien ve. Antes del 2026-09-28 sólo lo miraba
+    la pantalla de Servicios, que nadie abría — y n8n y Paperless pasaron 10 días
+    sin existir tras un reinicio del NUC.
+    """
+    try:
+        from django.core.cache import cache
+
+        guardado = cache.get("site:servicios:estado")
+        if guardado is not None:
+            return guardado
+        lista = estado()
+        cache.set("site:servicios:estado", lista, TTL_CACHE_SEG)
+        return lista
+    except Exception:  # noqa: BLE001 — sin caché, se sondea directo
+        return estado()
+
+
+def esperados() -> bool:
+    """¿Esta máquina debería tener los servicios? Sólo el NUC lo declara
+    (`SITE_SERVICIOS_ESPERADOS=1` en `docker-compose.nuc.yml`)."""
+    return os.environ.get("SITE_SERVICIOS_ESPERADOS", "") == "1"
+
+
+def caidos(lista: list[dict] | None = None) -> list[dict[str, Any]]:
+    """Las piezas esperadas que no contestan, con nombre y oficio. Donde no se
+    esperan (HAL, CI), la lista es vacía: no hay nada que extrañar."""
+    if lista is None and not esperados():
+        return []
+    lista = lista if lista is not None else estado_cacheado()
+    return [p for p in lista if not p.get("vivo")]
+
+
 def resumen(lista: list[dict] | None = None) -> dict:
     lista = lista if lista is not None else estado()
     vivos = sum(1 for p in lista if p["vivo"])
     return {"vivos": vivos, "total": len(lista), "todos": vivos == len(lista)}
 
 
-__all__ = ["PIEZAS", "estado", "resumen"]
+__all__ = ["PIEZAS", "caidos", "esperados", "estado", "estado_cacheado", "resumen"]

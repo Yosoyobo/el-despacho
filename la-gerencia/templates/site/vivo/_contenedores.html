@@ -14,6 +14,16 @@ lejos, y una barra sí.
     <h2 class="text-sm font-semibold uppercase tracking-wider vg-2">Las piezas</h2>
   </div>
 
+  {% if faltantes %}
+    <div class="shrink-0 space-y-1 border-b vg-borde px-4 py-2" data-servicios-caidos>
+      {% for p in faltantes %}
+        <p class="text-xs text-error-400" title="Se sondea cada 30 s; si sigue así, revisa que el contenedor exista">
+          <span class="font-semibold">{{ p.nombre }}</span> no responde · {{ p.oficio }}
+        </p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if error %}
     <p class="px-4 py-3 text-xs text-error-400">No se pudo medir: {{ error }}</p>
   {% elif not filas %}

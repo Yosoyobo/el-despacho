@@ -19,6 +19,7 @@ encola como siempre — ante la duda, no se tira nada.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
 import json
@@ -80,10 +81,8 @@ def olvidar_destino() -> None:
 
 def reiniciar_pausa() -> None:
     """Borra el contador de la pausa (al configurar un destino). Nunca lanza."""
-    try:
+    with contextlib.suppress(Exception):
         _client().delete(SIN_DESTINO, SIN_DESTINO_DESDE)
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def en_pausa() -> dict:

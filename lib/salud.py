@@ -173,6 +173,29 @@ def _m_integraciones(de_la_casa: bool) -> dict[str, Any]:
     return {"modulo": "integraciones", "estado": "degradado", "detalle": det}
 
 
+def _m_servicios(de_la_casa: bool) -> dict[str, Any] | None:
+    """Gotenberg, OSRM, n8n y Paperless: los servicios que corren junto a El
+    Despacho en el NUC. Uno caído no tumba el despacho (`degradado`), pero SE
+    DICE: el 2026-09-18 el NUC se reinició, n8n y Paperless no volvieron y nadie
+    se enteró en 10 días. `None` donde no se esperan (HAL, CI).
+
+    En abierto va el conteo; los nombres, con la credencial del Celador.
+    """
+    from lib.site import servicios
+
+    if not servicios.esperados():
+        return None
+    lista = servicios.estado_cacheado()
+    malos = servicios.caidos(lista)
+    if not malos:
+        return {"modulo": "servicios", "estado": "ok", "detalle": f"{len(lista)} servicios responden"}
+    n = len(malos)
+    det = f"{n} servicio no responde" if n == 1 else f"{n} servicios no responden"
+    if de_la_casa:
+        det += ": " + ", ".join(p["nombre"] for p in malos)
+    return {"modulo": "servicios", "estado": "degradado", "detalle": det}
+
+
 def _a_datetime(valor: Any) -> datetime | None:
     """Normaliza lo que devuelva el cursor crudo: Postgres da `datetime`, SQLite
     da texto ISO. `None` si no se pudo interpretar."""
@@ -271,14 +294,17 @@ def modulos(de_la_casa: bool = False) -> list[dict[str, Any]]:
         _m_ia,
         _m_memoria,
         lambda: _m_integraciones(de_la_casa),
+        lambda: _m_servicios(de_la_casa),
         lambda: _m_respaldo(de_la_casa),
     )
     salida: list[dict[str, Any]] = []
     for medir in medidas:
         try:
-            salida.append(medir())
+            m = medir()
         except Exception:  # noqa: BLE001 — un módulo que no se puede medir lo dice
             continue
+        if m is not None:  # None = no aplica en esta máquina
+            salida.append(m)
     return salida
 
 
