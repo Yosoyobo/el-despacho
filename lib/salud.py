@@ -99,6 +99,15 @@ def _m_cola() -> dict[str, Any]:
     det = f"{pend} pendientes"
     if dlq:
         det += f" · {dlq} descartados"
+    try:
+        from lib.portavoz import en_pausa
+
+        pausa = en_pausa()
+    except Exception:  # noqa: BLE001
+        pausa = {}
+    if pausa.get("pausado"):
+        # Pausa deliberada (sin destino configurado): se informa, no alarma.
+        det += f" · en pausa sin destino ({int(pausa.get('no_enviados') or 0)} sin enviar)"
     if dlq or pend >= UMBRAL_COLA_PENDIENTES:
         return {"modulo": "cola", "estado": "degradado", "detalle": det}
     return {"modulo": "cola", "estado": "ok", "detalle": det}
