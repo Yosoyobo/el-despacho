@@ -13,6 +13,8 @@ urlpatterns = [
     path("<int:pk>/celda", views.servicio_celda, name="catalogo-servicio-celda"),
     path("<int:pk>/imagen", views.servicio_imagen, name="catalogo-servicio-imagen"),
     path("<int:pk>/duplicar", views.duplicar, name="catalogo-duplicar"),
+    # LC 2026-09-28: el proveedor ★ nuevo, ¿también en estos proyectos?
+    path("<int:pk>/propagar-proveedor", views.propagar_proveedor, name="catalogo-propagar-proveedor"),
     path("<int:pk>/archivar", views.archivar, name="catalogo-archivar"),
     path("<int:pk>/eliminar", views.servicio_eliminar, name="catalogo-eliminar"),
     # Sprint Fiscal 2026-07 (#8): "Variaciones" pasó a bitácora de "Usos".

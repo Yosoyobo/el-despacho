@@ -498,6 +498,10 @@ def editar(request, pk: int):
     # traían copiado del catálogo y cuáles se negociaron aparte (Bug D §14 —
     # `form.is_valid()` ya habría escrito el nuevo sobre `srv`).
     srv_costo_previo = srv.costo
+    # LC 2026-09-28: el proveedor ★ que tenía ANTES de guardar, por la misma
+    # razón (Bug D). Se toma el efectivo —`proveedor_default`— porque es el que
+    # se autocompletó en las líneas de proyecto cuando no había principal fijo.
+    principal_previo = _principal_efectivo_id(srv)
     if request.method == "POST":
         form = ServicioForm(request.POST, instance=srv)
         if form.is_valid():
@@ -520,6 +524,11 @@ def editar(request, pk: int):
             obj.save()
             form.save_m2m()  # persiste proveedores marcados (antes se perdían)
             _fijar_principal(srv, form)
+            # LC 2026-09-28 (Oscar): «preguntar al guardar». Si el ★ cambió y hay
+            # proyectos donde el cambio aplica, la ficha abre (tras el redirect)
+            # el modal «¿También en estos proyectos?». Se anota en la sesión y no
+            # en la URL: recargar la ficha no vuelve a preguntar.
+            _anotar_pregunta_proveedor(request, srv, principal_previo)
             # Calculadora de costos (proveedores como Simil Cuero Plymouth): si el
             # producto la usa, guardamos los insumos y el Subtotal (antes de IVA)
             # alimenta el COSTO del producto (el precio de venta lo pone el usuario).
@@ -560,6 +569,11 @@ def editar(request, pk: int):
             return redirect(f"{destino}?{cola}" if cola else destino)
     else:
         form = ServicioForm(instance=srv)
+    # La pregunta del proveedor ★ se hace UNA vez: se saca de la sesión al leerla.
+    propagar_url = ""
+    anterior = request.session.pop(_llave_pregunta_proveedor(srv.pk), None)
+    if anterior and request.method == "GET":
+        propagar_url = f"{reverse('catalogo-propagar-proveedor', args=[srv.pk])}?anterior={int(anterior)}"
     # Sprint 2 UX (item 7): el detalle y la edición se unifican en este panel;
     # abajo mostramos el historial de usos (solo lectura).
     usos = (
@@ -588,7 +602,93 @@ def editar(request, pk: int):
         "procesos_costo_extra": procesos_default.costo_extra(srv),
         # LC 2026-08-22 (nota 11): navegación entre categorías desde la ficha.
         "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
+        # LC 2026-09-28: el modal «¿También en estos proyectos?» (se abre solo).
+        "propagar_proveedor_url": propagar_url,
         **_navegacion_producto(request),
+    })
+
+
+# ── Proveedor ★: «¿También en estos proyectos?» (LC 2026-09-28) ──────────────
+
+def _principal_efectivo_id(srv) -> int | None:
+    """El proveedor que hoy se autocompleta en las líneas de este producto."""
+    try:
+        prov = srv.proveedor_default
+    except Exception:  # noqa: BLE001
+        return None
+    return prov.pk if prov is not None else None
+
+
+def _llave_pregunta_proveedor(pk: int) -> str:
+    return f"catalogo_propagar_proveedor_{pk}"
+
+
+def _anotar_pregunta_proveedor(request, srv, anterior_id) -> None:
+    """Si el ★ cambió y hay líneas donde el cambio aplica, deja la pregunta para
+    el siguiente GET de la ficha. Nunca lanza: es un extra del guardado."""
+    try:
+        from lib.permisos import puede_editar_proyecto
+
+        from .propagacion import lineas_para_proveedor
+
+        nuevo = srv.proveedor_principal_id
+        if not nuevo or not anterior_id or int(nuevo) == int(anterior_id):
+            return
+        # Cambiar el proveedor de una línea es editar ese proyecto.
+        if not puede_editar_proyecto(request.user, None):
+            return
+        if lineas_para_proveedor(srv, anterior_id):
+            request.session[_llave_pregunta_proveedor(srv.pk)] = int(anterior_id)
+    except Exception:  # noqa: BLE001
+        return
+
+
+@require_http_methods(["GET", "POST"])
+def propagar_proveedor(request, pk: int):
+    """Modal Wave 5: el ★ nuevo, ¿también en estos proyectos?
+
+    GET  → la lista de líneas donde aplica, **todas marcadas** y desmarcables.
+    POST → aplica el proveedor nuevo sólo a las marcadas (cada una se vuelve a
+           validar) y recarga la ficha con el resultado.
+
+    El proveedor NUEVO sale del catálogo (el principal de hoy), nunca del
+    navegador. El anterior sí viaja, pero la regla de elegibilidad lo exige en
+    la línea, así que no abre nada que el usuario no pudiera editar a mano.
+    """
+    if (r := _gate(request, "editar")) is not None:
+        return r
+    from lib.permisos import puede_editar_proyecto
+
+    from .propagacion import lineas_para_proveedor
+    from .propagacion import propagar_proveedor as aplicar
+
+    if not puede_editar_proyecto(request.user, None):
+        return HttpResponseForbidden("Sin permiso para editar proyectos.")
+    srv = get_object_or_404(Servicio.objects.select_related("proveedor_principal"), pk=pk)
+    crudo = (request.POST.get("anterior") or request.GET.get("anterior") or "").strip()
+    anterior_id = int(crudo) if crudo.isdigit() else None
+    nuevo = srv.proveedor_principal
+    destino = reverse("catalogo-editar", args=[srv.pk])
+
+    if request.method == "POST":
+        cambiadas = 0
+        if nuevo is not None:
+            cambiadas = aplicar(srv, anterior_id, nuevo.pk,
+                                request.POST.getlist("lineas"), request.user)
+        if cambiadas:
+            messages.success(
+                request,
+                f"El proveedor «{nuevo.razon_social}» quedó también en {cambiadas} "
+                f"línea{'s' if cambiadas != 1 else ''} de proyectos.",
+            )
+        else:
+            messages.info(request, "No se cambió ningún proyecto.")
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+
+    anterior = Proveedor.objects.filter(pk=anterior_id).first() if anterior_id else None
+    lineas = lineas_para_proveedor(srv, anterior_id) if (nuevo and anterior_id) else []
+    return render(request, "catalogo/_modal_propagar_proveedor.html", {
+        "servicio": srv, "anterior": anterior, "nuevo": nuevo, "lineas": lineas,
     })
 
 

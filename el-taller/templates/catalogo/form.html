@@ -38,6 +38,14 @@
     <button type="submit" form="producto-form" class="btn-primario">Guardar producto</button>
 </header>
 
+{% comment %}LC 2026-09-28 (Oscar): el proveedor ★ cambió al guardar y hay
+proyectos abiertos donde aplica → el modal «¿También en estos proyectos?» se
+abre solo. La vista sólo pasa la URL una vez (sale de la sesión), así que
+recargar la ficha no vuelve a preguntar.{% endcomment %}
+{% if propagar_proveedor_url %}
+<div hx-get="{{ propagar_proveedor_url }}" hx-trigger="load" hx-target="#modal-slot" hx-swap="innerHTML" data-propagar-proveedor></div>
+{% endif %}
+
 {% comment %}`data-avisar-cambios` (ui.js): si tocas algo y te sales sin guardar,
 el navegador pregunta. Cubre también el borrado diferido de la foto.{% endcomment %}
 {% comment %}LC 2026-08-22 (nota 11): saltar de una categoría a otra sin
