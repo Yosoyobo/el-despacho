@@ -415,9 +415,12 @@ def ligar_proyecto(request, proyecto_pk):
             ctx = {"proyecto": proyecto, "facturas": _facturas_ligables(proyecto),
                    "error": "Elige una factura de la lista."}
             return _modal(request, "facturacion/_modal_ligar.html", ctx)
-        fac.proyecto = proyecto
-        fac.save(update_fields=["proyecto", "actualizado_en"])
-        services.emitir_actualizada(fac, request.user)
+        try:
+            services.ligar_a_proyecto(fac, proyecto, request.user)
+        except ValueError as exc:
+            ctx = {"proyecto": proyecto, "facturas": _facturas_ligables(proyecto),
+                   "error": str(exc)}
+            return _modal(request, "facturacion/_modal_ligar.html", ctx)
         messages.success(request, f"Factura {fac.folio_display} ligada al proyecto {proyecto.codigo}.")
         return _hx_redirect(destino) if es_htmx else redirect(destino)
     if not es_htmx:
@@ -840,7 +843,10 @@ def api_cotizacion_datos(request, pk):
                 "precio_unitario": str(it.precio_unitario),
                 "descuento_porcentaje": str(it.descuento_porcentaje or 0),
             }
-            for it in cot.items.all().order_by("orden", "pk")
+            # Sin las líneas INFORMATIVAS (escalas de volumen): el botón
+            # «Sustituir» las volcaría a la factura y cobraría las
+            # alternativas — la misma regla que `crear_desde_cotizacion`.
+            for it in cot.items.filter(informativo=False).order_by("orden", "pk")
         ],
         "impuestos": list(cot.impuestos.values_list("tasa_id", flat=True)),
     })

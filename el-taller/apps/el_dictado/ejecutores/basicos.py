@@ -200,6 +200,15 @@ def _resolver_proyecto(slug: str, contexto: dict | None = None):
     proyecto = Proyecto.objects.filter(slug=slug.lower()).first()
     if proyecto:
         return proyecto
+    # El código que se ve en pantalla (LC-0044) o el slug viejo basado en él:
+    # desde S-LC-Feedback-V5 el slug sale del NOMBRE, pero la gente dicta el
+    # código («liga la F-106 al LC-0044»).
+    proyecto = (
+        Proyecto.objects.filter(codigo__iexact=slug).first()
+        or Proyecto.objects.filter(slug_legacy=slug.lower()).first()
+    )
+    if proyecto:
+        return proyecto
     # Capa 2: fuzzy contra recién creados
     fuzzy = _fuzzy_recientes(slug, contexto, "proyecto", Proyecto)
     if fuzzy:

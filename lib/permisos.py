@@ -201,6 +201,14 @@ def puede_eliminar_catalogo(user) -> bool:
     return puede(user, "catalogo", "eliminar")
 
 
+def puede_editar_proveedores(user) -> bool:
+    """Editar la ficha de un proveedor. La pantalla (alta, edición y ficha en
+    línea) la gatea con `catalogo.gestionar_categorias`, no con `editar`, así
+    que El Chalán pide lo mismo: lo que no se puede con clicks no se puede
+    dictando (sprint de pendientes 2026-09-28)."""
+    return puede(user, "catalogo", "gestionar_categorias")
+
+
 def puede_ver_tarea(user, tarea) -> bool:
     """Tareas: heredan la visibilidad del proyecto."""
     return puede_ver_proyecto(user, tarea.proyecto)

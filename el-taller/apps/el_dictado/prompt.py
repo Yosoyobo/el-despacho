@@ -50,8 +50,9 @@ ingresos/egresos.
 
 ENTIDADES PROHIBIDAS: Ajustes/credenciales, tasas, centros de costo,
 permisos, eliminaciones. NO emitas acciones sobre ellas. Sobre el Catálogo
-puedes CREAR y EDITAR productos (`crear_servicio/crear_variacion/
-crear_proveedor/actualizar_servicio`); NUNCA borres ni archives servicios.
+puedes CREAR y EDITAR productos, variaciones y proveedores (`crear_servicio/
+crear_variacion/crear_proveedor/actualizar_servicio/actualizar_variacion/
+actualizar_proveedor`); NUNCA borres ni archives servicios.
 
 TIPOS DE ACCIÓN VÁLIDOS:
 - crear_proyecto, actualizar_proyecto, asignar_usuario_proyecto
@@ -88,6 +89,11 @@ TIPOS DE ACCIÓN VÁLIDOS:
 - archivar_cliente, archivar_tarea, cambiar_estado_mandado
 - duplicar_cotizacion, generar_factura_anticipo
   (archivar_* es soft-delete REVERSIBLE: `restaurar: true` lo revierte; NUNCA borra)
+- crear_factura_desde_cotizacion, cancelar_factura, duplicar_factura, ligar_factura_proyecto
+  (Facturación: facturar una cotización, cancelar, duplicar o ligar a un proyecto.
+  Una factura con cobros NO se cancela: primero se anulan sus ingresos)
+- anular_cotizacion, anular_asiento (anular del ciclo comercial-contable)
+- actualizar_proveedor, actualizar_variacion (editar el Catálogo; sólo los campos que cambian)
 - enviar_correo (correo vía El Cartero; payload: tipo_plantilla = el slug de
   CUALQUIER plantilla activa —«generico» para texto libre—, más cliente_slug
   (usa su correo registrado) O email (una dirección dictada), asunto?, mensaje?.
@@ -208,6 +214,14 @@ PAYLOADS:
 - cambiar_estado_mandado: {tarea_id, estado: 'en_camino'|'entregado'|'cancelado', motivo? (al cancelar)}
 - duplicar_cotizacion: {codigo}
 - generar_factura_anticipo: {codigo}  (cotización aprobada con anticipo configurado)
+- crear_factura_desde_cotizacion: {codigo}  (codigo = el de la COTIZACIÓN, COT-AAAA-NNNN; crea la factura en borrador con sus líneas, NO es CFDI)
+- cancelar_factura: {codigo, motivo}  (codigo = FAC-… o el folio F-###. Si la factura tiene cobros NO se cancela: propón primero anular_ingreso de cada cobro)
+- duplicar_factura: {codigo}
+- ligar_factura_proyecto: {codigo, proyecto_slug}  (codigo = FAC-… o folio F-###; proyecto_slug acepta el código LC-NNNN o @accion_N)
+- anular_cotizacion: {codigo, motivo}
+- anular_asiento: {codigo, motivo}  (AST-AAAA-NNNN. Sólo movimientos capturados a mano; uno automático se corrige desde su ingreso/egreso/factura, no aquí. Anular NO crea reverso)
+- actualizar_proveedor: {proveedor (su nombre actual o @accion_N), razon_social_nueva? (sólo si lo renombran), nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, direccion_fiscal?, notas?}  (sólo los campos que cambian)
+- actualizar_variacion: {variacion_id | (servicio + variacion), nombre_nuevo?, costo?, impresion_activa?, impresion_costo?, impresion_descripcion?, descripcion?, disponible?}
 - checador_iniciar_jornada: {}   (checa tu entrada del día)
 - checador_cerrar_jornada: {}    (checa tu salida del día)
 - checador_registrar_tiempo_proyecto: {proyecto_slug, hora_inicio: 'HH:MM', hora_fin: 'HH:MM', fecha?, nota?}

@@ -387,6 +387,73 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo (cotización aprobada con anticipo configurado)",
         "gating": "facturacion_crear",
     },
+    # ── Sprint de pendientes 2026-09-28: los 8 comandos de la rama de julio
+    # (Olas 2 y 3 CUI, nunca mergeados), rehechos sobre el código de hoy.
+    # Facturación: facturar una cotización, cancelar, duplicar y ligar.
+    {
+        "tipo": "crear_factura_desde_cotizacion",
+        "titulo": "Facturar una cotización",
+        "ejemplo": "Genera la factura de la cotización COT-2026-0005.",
+        "payload": "codigo (de la cotización; copia sus líneas en una factura borrador, NO es CFDI)",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "cancelar_factura",
+        "titulo": "Cancelar factura",
+        "ejemplo": "Cancela la factura F-106: se capturó dos veces.",
+        "payload": ("codigo (FAC-… o folio F-###), motivo. Una factura con cobros NO "
+                    "se cancela por aquí: primero se anulan sus ingresos"),
+        "gating": "facturacion_cancelar",
+    },
+    {
+        "tipo": "duplicar_factura",
+        "titulo": "Duplicar factura",
+        "ejemplo": "Duplica la factura F-106.",
+        "payload": "codigo (FAC-… o folio F-###)",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "ligar_factura_proyecto",
+        "titulo": "Ligar una factura a un proyecto",
+        "ejemplo": "Liga la factura F-106 al proyecto LC-0044.",
+        "payload": "codigo (FAC-… o folio F-###), proyecto_slug (slug, código LC-NNNN o @accion_N)",
+        "gating": "facturacion_crear",
+    },
+    # Anular del ciclo comercial-contable (los crear_* ya existen).
+    {
+        "tipo": "anular_cotizacion",
+        "titulo": "Anular cotización",
+        "ejemplo": "Anula la cotización COT-2026-0005: el cliente ya no la quiere.",
+        "payload": "codigo (COT-AAAA-NNNN), motivo",
+        "gating": "cotizaciones_anular",
+    },
+    {
+        "tipo": "anular_asiento",
+        "titulo": "Anular movimiento contable",
+        "ejemplo": "Anula el movimiento AST-2026-0012: se capturó dos veces.",
+        "payload": ("codigo (AST-AAAA-NNNN), motivo. Sólo movimientos capturados a "
+                    "mano; los automáticos se corrigen desde su documento de origen"),
+        "gating": "contaduria_anular",
+    },
+    # Editar el Catálogo (contrapartes de crear_proveedor / crear_variacion).
+    {
+        "tipo": "actualizar_proveedor",
+        "titulo": "Editar proveedor",
+        "ejemplo": "Cambia el teléfono de Telas del Norte a 555-9090.",
+        "payload": ("proveedor (su nombre actual), y sólo lo que cambia: "
+                    "razon_social_nueva? (si lo renombran), nombre_contacto?, email_contacto?, "
+                    "telefono?, rfc?, direccion?, direccion_fiscal?, notas?"),
+        "gating": "catalogo_proveedores",
+    },
+    {
+        "tipo": "actualizar_variacion",
+        "titulo": "Editar variación de un producto",
+        "ejemplo": 'Sube el costo de la variación "Talla M" de la Playera a 90.',
+        "payload": ("variacion_id | (servicio + variacion), y sólo lo que cambia: "
+                    "nombre_nuevo?, costo?, impresion_activa?, impresion_costo?, "
+                    "impresion_descripcion?, descripcion?, disponible?"),
+        "gating": "catalogo_editar",
+    },
     {
         "tipo": "crear_automatizacion",
         "titulo": "Crear una automatización nueva",
@@ -451,12 +518,18 @@ def _gating_checks():
         "catalogo": permisos.puede_crear_catalogo,
         # LC #153: editar productos del Catálogo (además de crear).
         "catalogo_editar": permisos.puede_editar_catalogo,
+        # La ficha del proveedor se edita con `catalogo.gestionar_categorias`
+        # en pantalla; dictando se pide lo mismo.
+        "catalogo_proveedores": permisos.puede_editar_proveedores,
         "finanzas": permisos.puede_ver_finanzas,
         "facturacion_emitir": permisos.puede_emitir_facturacion,
         # LC 2026-07-25: editar/sobreescribir facturas en borrador.
         "facturacion_editar": permisos.puede_editar_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
         "facturacion_crear": permisos.puede_crear_facturacion,
+        "facturacion_cancelar": permisos.puede_cancelar_facturacion,
+        "cotizaciones_anular": permisos.puede_anular_cotizaciones,
+        "contaduria_anular": permisos.puede_anular_contaduria,
         "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
         "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
         "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,
@@ -497,7 +570,8 @@ COMANDOS_PROHIBIDOS: list[dict] = [
     },
     {
         "tipo": "modificar_catalogo",
-        "razon": "Servicios y variaciones se administran manualmente en El Catálogo.",
+        "razon": ("El Chalán crea productos, variaciones y proveedores y edita campos "
+                  "puntuales; borrar, archivar o reorganizar el Catálogo se hace en su pantalla."),
     },
     {
         "tipo": "modificar_tasas",

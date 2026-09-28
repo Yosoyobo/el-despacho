@@ -46,6 +46,7 @@ from . import (  # noqa: F401, E402 — registra ejecutores al importar
     cui_v1,
     edicion_financiera,
     herramientas,
+    olas_sep28,
     plantillas,
 )
 

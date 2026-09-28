@@ -71,6 +71,12 @@ _ETIQUETAS: dict[str, str] = {
     "costo_unitario": "Costo unitario",
     "concepto": "Concepto",
     "folio": "Folio",
+    # Sprint de pendientes 2026-09-28: los comandos que actúan sobre un
+    # documento ya hecho lo nombran por su código (COT-…, F-…, AST-…).
+    "codigo": "Documento",
+    "variacion": "Variación",
+    "nombre_nuevo": "Nombre nuevo",
+    "costo": "Costo",
     "monto": "Monto",
     "monto_total": "Total a pagar",
     "monto_base": "Subtotal",
@@ -95,7 +101,8 @@ _ORDEN = (
     "usuario_slug", "asignado_slug", "destinatarios_slugs", "rol_en_proyecto",
     "cantidad", "merma", "tipo", "estado", "estado_pago", "prioridad", "lugar",
     "fecha_compromiso", "fecha", "hora", "fecha_emision", "fecha_vencimiento",
-    "folio", "precio_unitario", "costo_unitario", "monto", "monto_base",
+    "codigo", "folio", "variacion", "nombre_nuevo", "precio_unitario", "costo_unitario",
+    "costo", "monto", "monto_base",
     "monto_total", "monto_estimado", "monto_cotizado", "centro_de_costo_slug",
     "metodo", "pagado_por_slug", "rfc", "nombre_contacto", "email_contacto",
     "telefono", "direccion", "descripcion", "cuerpo", "nota", "notas", "motivo",
@@ -183,7 +190,8 @@ def campos_accion(tipo: str, payload: dict | None) -> list[dict]:
 # primero que traiga algo.
 _IDENTIFICADORES = (
     "titulo", "nombre", "concepto", "asunto", "razon_social", "razon_social_fiscal",
-    "servicio", "producto", "descripcion", "folio", "monto_total", "monto",
+    "servicio", "producto", "codigo", "descripcion", "folio", "proveedor",
+    "monto_total", "monto",
     "proyecto_slug", "cliente_slug", "usuario_slug",
 )
 

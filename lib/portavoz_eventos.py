@@ -120,6 +120,7 @@ EventoTipo = Literal[
     "catalogo.servicio_imagen",
     "catalogo.costo_propagado",
     "catalogo.variacion_creada",
+    "catalogo.variacion_actualizada",
     "mandado.estado_cambiado",
     "mandado.destino_fijado",
     "sidebar.orden_actualizado",
