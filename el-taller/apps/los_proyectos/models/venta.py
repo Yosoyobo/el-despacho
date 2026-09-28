@@ -22,6 +22,8 @@ from decimal import Decimal
 
 from django.db import models
 
+from ..memo_productos import QuerySetDelDinero
+
 CERO = Decimal("0.00")
 
 
@@ -44,6 +46,11 @@ class ProyectoProductoVenta(models.Model):
     precio_expr = models.CharField(max_length=120, blank=True, default="")
 
     creado_en = models.DateTimeField(auto_now_add=True)
+
+    # Invalida el memo del dinero del proyecto también en `update()` /
+    # `bulk_update()` / `bulk_create()`, que no disparan signals
+    # (ver `apps.los_proyectos.memo_productos`).
+    objects = QuerySetDelDinero.as_manager()
 
     class Meta:
         db_table = "proyectos_producto_venta"

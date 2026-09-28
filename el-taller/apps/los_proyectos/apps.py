@@ -52,3 +52,10 @@ class LosProyectosConfig(AppConfig):
 
         post_save.connect(vincular_proveedor_al_catalogo, sender=ProyectoProducto,
                           dispatch_uid="proyectos_vincula_proveedor", weak=False)
+
+        # S-Deuda-Sep28: el memo de las líneas de producto por instancia de
+        # Proyecto se descarta cuando cambia cualquier cosa de la que sale su
+        # dinero. Ver `memo_productos`.
+        from apps.los_proyectos import memo_productos
+
+        memo_productos.conectar_signals()

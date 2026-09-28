@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.db import models
 
 from .. import colores
+from ..memo_productos import QuerySetDelDinero
 
 CERO = Decimal("0.00")
 
@@ -123,6 +124,11 @@ class ProyectoProducto(models.Model):
     )
 
     creado_en = models.DateTimeField(auto_now_add=True)
+
+    # Invalida el memo del dinero del proyecto también en `update()` /
+    # `bulk_update()` / `bulk_create()`, que no disparan signals
+    # (ver `apps.los_proyectos.memo_productos`).
+    objects = QuerySetDelDinero.as_manager()
 
     class Meta:
         db_table = "proyectos_producto"

@@ -194,17 +194,47 @@ class Proyecto(models.Model):
         return f"{float(self.iva_tasa_efectiva * 100):g}%"
 
     def _productos_calc(self):
+        """Las líneas de producto con todo lo que su dinero necesita, precargado.
+
+        Memoizado en la instancia (S-Deuda-Sep28): cada propiedad de dinero la
+        pedía otra vez y el detalle de un proyecto la recargaba 18 veces por
+        petición. Las reglas de invalidación viven en `memo_productos` — léelas
+        antes de tocar esto. Se devuelve una COPIA de la lista para que quien
+        la reordene o la recorte no descomponga el memo de los demás.
+        """
+        from apps.los_proyectos import memo_productos
+
+        memo = self.__dict__.get(memo_productos.ATRIBUTO)
+        # La versión se lee ANTES de consultar: si otra escritura la sube a
+        # media lectura, el memo nace ya viejo y la siguiente llamada relee.
+        vigente = memo_productos.version()
+        if memo is not None and memo[0] == vigente:
+            return list(memo[1])
         # `escalas` va en el prefetch por la misma razón que `procesos` y
         # `ventas`: sin él, cada `precio_efectivo` / `costo_efectivo` /
         # `cantidad_efectiva` de cada línea vuelve a preguntar por sus escalas.
         # Medido en producción (2026-08-24), el detalle de un proyecto gastaba
         # **59 consultas** en la tabla de escalas por esta sola omisión.
-        return list(
+        lineas = list(
             self.productos
             .select_related("servicio", "variacion", "proveedor")
             .prefetch_related("procesos__proveedor", "ventas", "escalas")
             .all()
         )
+        self.__dict__[memo_productos.ATRIBUTO] = (vigente, lineas)
+        return list(lineas)
+
+    def olvidar_productos(self) -> None:
+        """Descarta el memo de las líneas de ESTA instancia (ver `memo_productos`)."""
+        from apps.los_proyectos import memo_productos
+
+        memo_productos.olvidar(self)
+
+    def refresh_from_db(self, *args, **kwargs):
+        # Recargar el proyecto recarga también sus líneas: quien llama esto
+        # acaba de escribir y quiere ver la base, no el memo.
+        self.olvidar_productos()
+        return super().refresh_from_db(*args, **kwargs)
 
     def _productos_incluidos(self):
         """C7: solo las líneas marcadas para entrar en los cálculos de dinero."""
@@ -394,7 +424,11 @@ class Proyecto(models.Model):
 
     def recalcular_monto_estimado(self, guardar=True):
         """C4/C7: el monto estimado se deriva de los productos INCLUIDOS.
-        Si no hay productos, se respeta el valor que ya tuviera."""
+        Si no hay productos, se respeta el valor que ya tuviera.
+
+        Escribe dinero en la base, así que lee FRESCO: nunca del memo (una
+        escritura con `update()` a media petición no sube la versión)."""
+        self.olvidar_productos()
         productos = self._productos_incluidos()
         if not self._productos_calc():
             return
