@@ -324,3 +324,124 @@ def test_la_migracion_arregla_solo_las_que_pintaba_la_descripcion(cliente, categ
     migracion._recolorear(registro, None)
     b.refresh_from_db()
     assert b.color == primera                            # idempotente
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 3. HEIC → JPEG
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture
+def almacen_tmp(settings, tmp_path):
+    from lib import almacen
+    settings.MEDIOS_DIR = str(tmp_path / "medios")
+    almacen.olvidar_meta()
+    yield almacen
+    almacen.olvidar_meta()
+
+
+def _heic(ancho=320, alto=200, color=(200, 30, 30)) -> bytes:
+    """Un HEIC DE VERDAD, codificado con pillow-heif (no un JPEG renombrado)."""
+    import io
+
+    import pillow_heif
+    from PIL import Image
+
+    pillow_heif.register_heif_opener()
+    buf = io.BytesIO()
+    Image.new("RGB", (ancho, alto), color).save(buf, format="HEIF", quality=80)
+    datos = buf.getvalue()
+    assert datos[4:12] == b"ftypheic"
+    return datos
+
+
+def test_la_dependencia_esta_fijada_y_se_puede_decodificar():
+    reqs = Path("requirements.txt").read_text(encoding="utf-8")
+    assert "pillow-heif==" in reqs
+    from lib import almacen
+    assert almacen.hay_decodificador_heic() is True
+
+
+def test_un_heic_se_guarda_ya_como_jpeg_con_sus_derivados(almacen_tmp):
+    almacen = almacen_tmp
+    datos = almacen.guardar_bytes(_heic(), mime="image/heic", nombre="IMG_0042.HEIC")
+    clave = datos["id"]
+
+    guardado = almacen.meta(clave)
+    assert guardado["mime"] == "image/jpeg"
+    assert guardado["nombre"] == "IMG_0042.jpg"
+    assert guardado["convertido_de"] == "image/heic"
+    assert (guardado["ancho"], guardado["alto"]) == (320, 200)
+    original = (almacen._dir_orig(clave) / "archivo").read_bytes()
+    assert original[:2] == b"\xff\xd8"                     # bytes de JPEG
+    assert guardado["bytes"] == len(original)
+    assert guardado["variantes"] == {"w400": "w400.jpg", "w1000": "w1000.jpg"}
+    assert almacen.url(clave).startswith("/medios/")        # se pinta por El Mostrador
+    contenido, mime, _nombre = almacen.leer(clave)           # y el original también es JPEG
+    assert mime == "image/jpeg" and contenido[:2] == b"\xff\xd8"
+
+
+@pytest.mark.parametrize(("mime", "nombre"), [
+    ("", "foto.heic"),                       # Chrome en Windows: tipo vacío
+    ("application/octet-stream", "foto"),    # ni tipo ni extensión: la marca del archivo
+])
+def test_se_reconoce_aunque_el_navegador_no_diga_que_es_heic(almacen_tmp, mime, nombre):
+    datos = almacen_tmp.guardar_bytes(_heic(), mime=mime, nombre=nombre)
+    guardado = almacen_tmp.meta(datos["id"])
+    assert guardado["mime"] == "image/jpeg"
+    assert guardado["variantes"], "sin derivado, el navegador no la pinta"
+
+
+def test_la_misma_foto_heic_dos_veces_sigue_siendo_un_archivo(almacen_tmp):
+    a = almacen_tmp.guardar_bytes(_heic(), mime="image/heic", nombre="a.heic")
+    b = almacen_tmp.guardar_bytes(_heic(), mime="image/heic", nombre="b.heic")
+    assert a["id"] == b["id"] and b.get("duplicado") is True
+
+
+def test_un_jpeg_no_se_toca(almacen_tmp):
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (100, 80), "blue").save(buf, format="JPEG", quality=70)
+    jpeg = buf.getvalue()
+    datos = almacen_tmp.guardar_bytes(jpeg, mime="image/jpeg", nombre="x.jpg")
+    guardado = almacen_tmp.meta(datos["id"])
+    assert "convertido_de" not in guardado
+    assert (almacen_tmp._dir_orig(datos["id"]) / "archivo").read_bytes() == jpeg
+
+
+def test_la_subida_devuelve_y_espeja_el_jpeg(almacen_tmp, monkeypatch):
+    """`lib.adjuntos.subir` es por donde pasan TODAS las subidas: el dato que le
+    devuelve a la vista y la copia de Drive tienen que decir JPEG."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from lib import adjuntos
+
+    visto = {}
+
+    def _espejo(archivo, subcarpeta, *, nombre, mime, ruta_local):
+        visto.update(nombre=nombre, mime=mime, ruta_local=ruta_local)
+        return None, "sin Drive en pruebas"
+
+    monkeypatch.setattr(adjuntos, "_espejar_en_drive", _espejo)
+    archivo = SimpleUploadedFile("IMG_1.heic", _heic(), content_type="image/heic")
+    res = adjuntos.subir(archivo, subcarpeta="Pruebas")
+    assert res.ok
+    assert res.data["mimeType"] == "image/jpeg" and res.data["name"] == "IMG_1.jpg"
+    assert (visto["nombre"], visto["mime"]) == ("IMG_1.jpg", "image/jpeg")
+    assert Path(visto["ruta_local"]).read_bytes()[:2] == b"\xff\xd8"
+
+
+def test_a_un_chalan_con_vision_le_llega_jpeg():
+    """Las APIs de visión no aceptan HEIC: el único punto por donde pasan las
+    imágenes rumbo a un Chalán lo convierte."""
+    import base64
+
+    from lib.analistas.multimodal import normalizar_imagenes
+
+    b64 = base64.b64encode(_heic()).decode()
+    [img] = normalizar_imagenes([{"base64": b64, "media_type": "image/heic"}])
+    assert img["media_type"] == "image/jpeg"
+    assert base64.b64decode(img["base64"])[:2] == b"\xff\xd8"

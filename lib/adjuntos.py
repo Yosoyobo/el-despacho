@@ -107,13 +107,21 @@ def subir(archivo, subcarpeta: str | None = None, *, espejo: bool = True) -> Res
     error_drive = ""
     if espejo:
         ruta_local = ""
+        nombre_espejo, mime_espejo = nombre, mime
         if guardado:
             from lib import almacen
 
             ruta = almacen._dir_orig(guardado["id"]) / "archivo"
             ruta_local = str(ruta) if ruta.is_file() else ""
+            if ruta_local:
+                # Se sube lo que quedó en disco, así que va con SU nombre y tipo:
+                # un HEIC de iPhone ya se guardó como JPEG (LC 2026-09-28) y la
+                # copia de Drive no puede decir «.heic» sobre bytes de JPEG.
+                nombre_espejo = guardado.get("nombre") or nombre
+                mime_espejo = guardado.get("mime") or mime
         meta_drive, error_drive = _espejar_en_drive(
-            archivo, subcarpeta, nombre=nombre, mime=mime, ruta_local=ruta_local,
+            archivo, subcarpeta, nombre=nombre_espejo, mime=mime_espejo,
+            ruta_local=ruta_local,
         )
 
     if guardado is None:
