@@ -171,7 +171,16 @@ def puede_eliminar_cotizaciones(user) -> bool:
 
 
 def puede_ver_catalogo(user) -> bool:
-    return puede(user, "catalogo", "ver")
+    """Ver el Catálogo (productos y proveedores): la acción es `ver_nombres`.
+
+    Hasta S-Deuda-Sep28 preguntaba por `catalogo.ver`, una acción que NO existe
+    en `CATALOGO_PERMISOS` (las del módulo son `ver_nombres` / `ver_precios`),
+    así que devolvía False para todo el mundo, super_admin incluido. Nadie la
+    usaba y por eso no se notó; quien la hubiera usado habría escondido el
+    Catálogo sin que nada lo dijera. `test_deuda_sep28` revisa que cada
+    `puede(…, "modulo", "accion")` literal de este archivo exista en el catálogo.
+    """
+    return puede(user, "catalogo", "ver_nombres")
 
 
 def puede_crear_catalogo(user) -> bool:

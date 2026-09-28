@@ -215,6 +215,11 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
     "facturacion": list(TODO_FACTURACION),
     "chalan": list(TODO_CHALAN),
+    # El Análisis nació (S-Chalan-Analisis) en `DEFAULTS_POR_ROL` pero no aquí,
+    # así que no aparecía en `/directorio/<id>/permisos/` y NO se podía delegar
+    # a nadie más que al super_admin — lo contrario de lo acordado. Cazado en
+    # S-Deuda-Sep28 por el candado que cruza los dos diccionarios.
+    "analisis": list(TODO_ANALISIS),
     "checador": list(TODO_CHECADOR),
     "comunicacion": list(TODO_COMUNICACION),
     # runner: ya no es default de ningún rol; se concede vía el rol "Runner"
