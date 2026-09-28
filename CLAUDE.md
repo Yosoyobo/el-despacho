@@ -8302,6 +8302,29 @@ PDF final; es la misma limitación que ya tiene «Ver». Y el preview no se ofre
 desde la lista de Cotizaciones, sólo desde el recuadro del proyecto, que es donde
 se genera.
 
+### S-n8n-MCP · Fase 0-1 ✅ — n8n 2.40.7 en el NUC, https por el tailnet y al respaldo (2026-09-28, sin bump de VERSION)
+
+Spec acordada en 5 rondas con Oscar: `docs/SPRINT-n8n-MCP.md` (7 fases). Esta entrega es la 0-1.
+- **Ensayo antes de tocar prod**: copia consistente de la base (backup API de SQLite) → n8n 2.40.7 en HAL:
+  migró sin errores, la llave de API vieja sirve, publicar SÍ registra webhooks (el bug de la 2.0 ya no),
+  despublicar da de baja en <1 s, borrar tras despublicar choca 409/500 un segundo (reintento), la API
+  entrega archivados. MCP nativo probado de punta a punta en un n8n de laboratorio: 35 tools, bearer.
+- **Compose**: `n8nio/n8n:2.40.7`, puerto a **127.0.0.1** (el bind a la IP del tailnet lo dejó 10 días
+  caído tras el reinicio del 18-sep), `N8N_PROTOCOL=https` + `N8N_EDITOR_BASE_URL`/`N8N_WEBHOOK_URL` al
+  nombre `ts.net`, `N8N_PROXY_HOPS=1`, fuera `N8N_SECURE_COOKIE=false`, `mem_limit 2g` (810 MB en reposo).
+- **`tailscale serve`** lo publica (`infra/scripts/n8n_https_tailnet.sh`, sudo, una vez, fuera del deploy).
+- **`lib/n8n.py`**: publish/unpublish (cae a activate/deactivate), borrar = archivar + DELETE con reintento,
+  lista sin archivados, `webhook`/`emailReadImap` cuentan como disparador (salían «manual»).
+- **Respaldo**: `archivo.sh` copia `data/n8n/database.sqlite` con la API de SQLite (WAL) + integridad,
+  **sin `config`** (la llave va aparte, en `.env`), serie `n8n-*.tar.gz` con rotación local y en HAL.
+- **Copia legible**: `infra/n8n/exportar_flujos.py` (stdlib) → `infra/n8n/flujos/<nombre>-<id>.json`.
+- 22 tests (`tests/test_n8n_2x.py`), 12 verificados contra el código viejo.
+- **Reparto con la sesión `eldespacho-a2`**: Portavoz/cola, arranque del NUC y alarmas son suyos
+  (rama `agent/pendientes-sep`); la fase 4 va encima.
+
+**Hallazgo grave, fuera del sprint:** `data/credenciales` está vacía desde mayo y el `.env` del NUC
+(con `BOVEDA_MASTER_KEY`) no entra a ningún respaldo — sin él, el dump de Postgres no descifra La Bóveda.
+
 ### S5 — La Recepción
 
 Portal de clientes B2B: status de proyectos, cotizaciones pendientes de aprobar,

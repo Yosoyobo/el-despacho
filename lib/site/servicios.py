@@ -79,7 +79,7 @@ PIEZAS: tuple[dict[str, Any], ...] = (
             "Se entra sólo desde la red privada porque guarda contraseñas."
         ),
         "sonda": lambda: _http("http://n8n:5678/healthz"),
-        "entrada": "http://100.121.244.5:5678",
+        "entrada": "https://nuc-learning-center.tailedd04d.ts.net",
         "ajustes": None,
         "acceso": (
             "La primera vez pide crear una cuenta de dueño: el correo y la "
