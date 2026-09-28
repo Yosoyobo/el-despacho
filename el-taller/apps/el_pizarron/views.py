@@ -434,6 +434,9 @@ def nueva_tarea_global(request):
             tarea = form.save(commit=False)
             tarea.creado_por = request.user
             tarea.save()
+            # La M2M («Otros responsables») sólo se guarda aquí: sin esta línea
+            # se perdían en silencio.
+            form.save_m2m()
             from apps.el_pizarron import runners
             runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(
@@ -501,6 +504,7 @@ def nueva_tarea(request, proyecto_id):
             tarea.proyecto = proyecto
             tarea.creado_por = request.user
             tarea.save()
+            form.save_m2m()  # los «Otros responsables» (M2M) se guardan aquí
             from apps.el_pizarron import runners
             runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(

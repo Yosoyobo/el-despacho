@@ -106,9 +106,26 @@ class TareaForm(forms.ModelForm):
         return self.cleaned_data.get("tipo") or "tarea"
 
     def save(self, commit=True):
+        """Guarda la tarea y deja al principal dentro de `responsables`.
+
+        Con `commit=False` Django NO guarda la M2M: la guarda `form.save_m2m()`,
+        que la vista tiene que llamar después de `tarea.save()`. Sin esa llamada
+        los «Otros responsables» se perdían en silencio (bug en producción,
+        cazado 2026-08-28 y cerrado 2026-09-28). Por eso aquí `save_m2m` se
+        envuelve: quien la llame también sincroniza al principal, igual que el
+        camino con `commit=True`.
+        """
         tarea = super().save(commit=commit)
         if commit:
             tarea.sincronizar_responsable_principal()
+        else:
+            guardar_m2m = self.save_m2m
+
+            def _save_m2m_y_principal():
+                guardar_m2m()
+                tarea.sincronizar_responsable_principal()
+
+            self.save_m2m = _save_m2m_y_principal
         return tarea
 
     class Meta:
@@ -196,6 +213,14 @@ class TareaRapidaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["estado"] = forms.ChoiceField(choices=_choices_estado_tarea(), label="Estado")
+
+    def save(self, commit=True):
+        # Si la edición rápida cambia al principal, el nuevo entra también a
+        # `responsables` (misma regla que `TareaForm`).
+        tarea = super().save(commit=commit)
+        if commit:
+            tarea.sincronizar_responsable_principal()
+        return tarea
 
 
 class ComentarioForm(forms.ModelForm):

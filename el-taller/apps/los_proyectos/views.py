@@ -1453,6 +1453,9 @@ def agregar_tarea_modal(request, pk):
             tarea.producto = producto
             tarea.creado_por = request.user
             tarea.save()
+            # La M2M («Otros responsables») sólo se guarda aquí: sin esta línea
+            # se perdían en silencio (bug cerrado 2026-09-28).
+            form.save_m2m()
             from apps.el_pizarron import runners
             runners.aplicar_desde_form(tarea, form.cleaned_data, actor=request.user)
             emitir(EventoPortavoz(
