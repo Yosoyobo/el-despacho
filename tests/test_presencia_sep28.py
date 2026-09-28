@@ -402,6 +402,38 @@ class TestDePuntaAPunta:
         assert u.actividad_accion == "ver"
         assert "iPhone" in u.actividad_agente
 
+    def test_el_tope_se_respeta_de_punta_a_punta(self, client, usuario_factory):
+        """El tope no sólo vive en `toca_escribir`: la petición real lo usa. Dos
+        vueltas a la misma pantalla dentro del minuto escriben UNA vez."""
+        u = usuario_factory(rol="super_admin")
+        client.force_login(u)
+        _poner_actividad(u, hace_s=10, url_name="directorio-lista", ruta="/directorio/",
+                         app="taller", accion="ver")
+        antes = _recargar(u).actividad_en
+        assert client.get("/directorio/").status_code == 200
+        assert _recargar(u).actividad_en == antes
+        # Pasado el minuto, la misma pantalla sí se vuelve a anotar.
+        _poner_actividad(u, hace_s=70, url_name="directorio-lista", ruta="/directorio/",
+                         app="taller", accion="ver")
+        antes = _recargar(u).actividad_en
+        assert client.get("/directorio/").status_code == 200
+        assert _recargar(u).actividad_en > antes
+
+    def test_sin_escribir_no_agrega_consultas(self, client, usuario_factory):
+        """Decidir el tope no cuesta una consulta: se lee de los campos que el
+        usuario ya trae cargados."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        u = usuario_factory(rol="super_admin")
+        client.force_login(u)
+        _poner_actividad(u, hace_s=5, url_name="directorio-lista", ruta="/directorio/",
+                         app="taller", accion="ver")
+        with CaptureQueriesContext(connection) as ctx:
+            client.get("/directorio/")
+        assert not [q for q in ctx.captured_queries
+                    if "actividad_" in q["sql"] and q["sql"].lstrip().upper().startswith("UPDATE")]
+
     def test_el_recuadro_del_dashboard_no_cuenta(self, client, usuario_factory):
         u = usuario_factory(rol="super_admin")
         client.force_login(u)
