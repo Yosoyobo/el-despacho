@@ -21,12 +21,27 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "mimo-v2.5-pro"
 API_URL = "https://api.xiaomimimo.com/v1/chat/completions"
 
-# MiMo (Xiaomi) salió del programa gratuito. Tarifa por token (USD/token).
-# NOTA: placeholder marcado — confirmar con Xiaomi la tarifa oficial. El conteo
-# de tokens y llamadas (AnalistaLog) es exacto sin importar el precio; solo el
-# costo estimado depende de estos valores. Ajustar cuando se publique la tarifa.
-PRECIO_IN = 0.30 / 1_000_000   # placeholder — confirmar con Xiaomi
-PRECIO_OUT = 0.60 / 1_000_000  # placeholder — confirmar con Xiaomi
+# MiMo (Xiaomi) salió del programa gratuito. Tarifa oficial por modelo, USD por
+# MILLÓN de tokens (entrada, salida): la que cobra Xiaomi en su API directa,
+# publicada por proveedor en https://openrouter.ai/api/v1/models/xiaomi/<modelo>/endpoints
+# (la página de precios de Xiaomi se arma con JavaScript y no se deja leer).
+# Consultada el 2026-09-28. Prefijo más largo: «mimo-v2.5-pro» gana a «mimo-v2.5».
+TARIFAS: dict[str, tuple[float, float]] = {
+    "mimo-v2.5-pro": (0.435, 0.87),
+    "mimo-v2.5": (0.14, 0.28),
+}
+
+
+def tarifa(modelo: str) -> tuple[float, float]:
+    """USD por TOKEN (entrada, salida). Sin tarifa conocida se cobra como el
+    default: mejor una estimación cercana que un cero."""
+    m = (modelo or "").lower()
+    clave = max((k for k in TARIFAS if m.startswith(k)), key=len, default=MODELO_DEFAULT)
+    ent, sal = TARIFAS[clave]
+    return ent / 1_000_000, sal / 1_000_000
+
+
+PRECIO_IN, PRECIO_OUT = tarifa(MODELO_DEFAULT)
 MODELOS_CURADOS = ("mimo-v2.5-pro", "mimo-v2.5")
 
 
@@ -87,7 +102,8 @@ class MimoAdapter(Adapter):
         usage = data.get("usage") or {}
         pt = int(usage.get("prompt_tokens") or 0)
         ct = int(usage.get("completion_tokens") or 0)
-        costo = pt * PRECIO_IN + ct * PRECIO_OUT
+        precio_in, precio_out = tarifa(data.get("model") or self.modelo)
+        costo = pt * precio_in + ct * precio_out
         return Resultado(
             texto=texto, provider=self.nombre, modelo=data.get("model") or self.modelo,
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
@@ -125,9 +141,11 @@ class MimoAdapter(Adapter):
         if resp.status_code >= 400:
             raise ErrorPermanente(f"mimo: {resp.status_code} {resp.text[:200]}")
 
+        data = resp.json()
+        precio_in, precio_out = tarifa(data.get("model") or self.modelo)
         return parsear_openai(
-            resp.json(), provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
-            precio_in=PRECIO_IN, precio_out=PRECIO_OUT,
+            data, provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
+            precio_in=precio_in, precio_out=precio_out,
         )
 
     def listar_modelos(self) -> list[str]:
