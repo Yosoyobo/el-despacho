@@ -1366,3 +1366,42 @@ por un endpoint aparte.{% endcomment %}
     // orden lo manda SOLO el arrastre. Apagar una línea la atenúa en su lugar.
 })();
 </script>
+<script>
+{% comment %}LC 2026-09-28 (Oscar): «@persona crea una tarea ligada al producto»,
+directo y sin IA. El campo de dictado de cada tarjeta ya monta la lista de
+personas al teclear @ (`referencias.js`, por `data-referencias`); aquí sólo vive
+el Enter que CREA la tarea.
+
+- Con la lista de personas abierta, Enter ELIGE a la persona: `referencias.js`
+  lo atrapa en fase de captura y detiene el evento, así que este listener ni se
+  entera. Éste sólo corre con la lista cerrada.
+- Sólo crea si el texto trae una @mención; sin ella, Enter hace lo de siempre
+  (el dictado a El Chalán sigue siendo el botón de al lado).
+- Mayúsculas+Enter es salto de línea, y nunca a media composición de una letra
+  (una ñ o un acento se escriben en dos pulsaciones: regla de 2026-08-28).
+- Delegado en `document`: la tarjeta se repinta por HTMX y un listener pegado al
+  campo se perdería con ella.{% endcomment %}
+(function () {
+    var RE_MENCION = /(^|[^\w@])@[A-Za-z0-9_]/;
+    var pendiente = '';
+    document.addEventListener('keydown', function (e) {
+        var campo = e.target;
+        if (!campo || !campo.matches || !campo.matches('textarea[data-tarea-rapida-campo]')) return;
+        if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+        if (!RE_MENCION.test(campo.value || '')) return;
+        var pk = campo.getAttribute('data-tarea-rapida-campo');
+        var boton = document.querySelector('[data-tarea-rapida="' + pk + '"]');
+        if (!boton) return;
+        e.preventDefault();
+        pendiente = pk;
+        boton.click();
+    });
+    // Tras el repintado, el cursor vuelve al campo para seguir apuntando.
+    document.body.addEventListener('htmx:afterSettle', function () {
+        if (!pendiente) return;
+        var campo = document.getElementById('tareas-dictado-' + pendiente);
+        pendiente = '';
+        if (campo) campo.focus();
+    });
+})();
+</script>

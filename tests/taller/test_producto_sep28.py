@@ -445,3 +445,188 @@ def test_a_un_chalan_con_vision_le_llega_jpeg():
     [img] = normalizar_imagenes([{"base64": b64, "media_type": "image/heic"}])
     assert img["media_type"] == "image/jpeg"
     assert base64.b64decode(img["base64"])[:2] == b"\xff\xd8"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 4. @persona crea una tarea ligada al producto (directo, sin IA)
+# ═════════════════════════════════════════════════════════════════════════════
+
+TPL_TAREAS = Path("el-taller/templates/proyectos/_producto_tareas.html")
+LUNES = dt.date(2026, 9, 28)   # un lunes, para que los días de la semana se lean
+
+
+@pytest.mark.parametrize(("texto", "fecha", "resto"), [
+    ("revisar el bordado el viernes", dt.date(2026, 10, 2), "revisar el bordado"),
+    ("manda el arte mañana", dt.date(2026, 9, 29), "manda el arte"),
+    ("para pasado mañana entregar", dt.date(2026, 9, 30), "entregar"),
+    ("el próximo miércoles junta", dt.date(2026, 9, 30), "junta"),
+    ("el lunes cotizar", dt.date(2026, 10, 5), "cotizar"),      # dicho en lunes: el que entra
+    ("hoy mismo", LUNES, "mismo"),
+    ("revisar 15/10", dt.date(2026, 10, 15), "revisar"),
+    ("revisar 15/10/27", dt.date(2027, 10, 15), "revisar"),
+    ("antes del 3/1 entregar", dt.date(2027, 1, 3), "entregar"),  # ya pasó: el año que entra
+    ("el 5 de octubre junta", dt.date(2026, 10, 5), "junta"),
+    ("15-10-2026 x", dt.date(2026, 10, 15), "x"),
+])
+def test_la_fecha_escrita_se_reconoce_y_se_quita_del_titulo(texto, fecha, resto):
+    from lib.fecha import fecha_en_texto
+    assert fecha_en_texto(texto, LUNES) == (fecha, resto)
+
+
+@pytest.mark.parametrize("texto", [
+    "por la mañana llamar",   # la hora del día, no el día de mañana
+    "31/02 revisar",          # no es fecha real
+    "LC-0044 revisar",        # un código no es fecha
+    "10-20 piezas",           # un rango tampoco
+    "sin fecha",
+])
+def test_lo_que_no_es_fecha_se_queda_en_el_titulo(texto):
+    from lib.fecha import fecha_en_texto
+    fecha, resto = fecha_en_texto(texto, LUNES)
+    assert fecha is None and resto == texto
+
+
+@pytest.fixture
+def equipo(usuario_factory):
+    from cuentas.models.usuario import Usuario
+
+    def _u(email, nombre):
+        u = usuario_factory(rol="super_admin", email=email)
+        Usuario.objects.filter(pk=u.pk).update(nombre_completo=nombre)
+        u.refresh_from_db()
+        return u
+
+    return {
+        "jorge": _u("jorgeberebichez@gmail.com", "Jorge Berebichez"),
+        "karla_a": _u("karla.a@lc.mx", "Karla Alvarez"),
+        "karla_m": _u("karla.m@lc.mx", "Karla Mendoza"),
+    }
+
+
+def test_la_mencion_se_resuelve_sin_adivinar(equipo):
+    from apps.los_proyectos.tarea_rapida import resolver_mencion
+
+    assert resolver_mencion("jorgeberebichez") == (equipo["jorge"], "")
+    assert resolver_mencion("jorge")[0] == equipo["jorge"]            # nombre de pila único
+    persona, error = resolver_mencion("karla")                        # dos Karlas
+    assert persona is None and "2 personas" in error
+    persona, error = resolver_mencion("nadie")
+    assert persona is None and "No encontré" in error
+
+
+@pytest.fixture
+def linea_viva(cliente, categoria):
+    from apps.el_catalogo.models import Servicio
+    from django.utils import timezone
+
+    entrega = timezone.make_aware(dt.datetime(2026, 10, 20, 12, 0))
+    proyecto = _proyecto(cliente, "Gorras Kari", fecha_compromiso=entrega)
+    srv = Servicio.objects.create(nombre="Gorra", categoria=categoria, precio_base=100)
+    return _linea(proyecto, srv)
+
+
+def _url(linea):
+    return f"/proyectos/{linea.proyecto_id}/producto/{linea.pk}/tarea-rapida"
+
+
+def test_arroba_mas_texto_crea_la_tarea_ligada_al_producto(client, equipo, linea_viva, monkeypatch):
+    from apps.el_pizarron.models import Tarea
+
+    monkeypatch.setattr("lib.fecha.ahora_mx", lambda: dt.datetime(2026, 9, 28, 10, 0))
+    client.force_login(equipo["jorge"])
+    resp = client.post(_url(linea_viva), {"texto": "@jorge revisar el bordado el viernes"},
+                       HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    tarea = Tarea.objects.get(producto=linea_viva)
+    assert tarea.titulo == "Revisar el bordado"
+    assert tarea.asignada_a == equipo["jorge"]
+    assert tarea.fecha_compromiso == dt.date(2026, 10, 2)
+    assert tarea.proyecto_id == linea_viva.proyecto_id
+    html = resp.content.decode()
+    assert f'id="tareas-producto-{linea_viva.pk}"' in html       # el bloque repintado…
+    assert "Revisar el bordado" in html                          # …con la tarea nueva
+    assert "></textarea>" in html                                # …y el campo limpio
+
+
+def test_sin_fecha_toma_la_entrega_del_proyecto(client, equipo, linea_viva):
+    from apps.el_pizarron.models import Tarea
+
+    client.force_login(equipo["jorge"])
+    resp = client.post(_url(linea_viva), {"texto": "@jorge mandar el arte"})
+    tarea = Tarea.objects.get(producto=linea_viva)
+    assert tarea.fecha_compromiso == dt.date(2026, 10, 20)
+    assert "la entrega del proyecto" in resp.content.decode()
+
+
+def test_dos_menciones_la_segunda_queda_de_corresponsable(client, equipo, linea_viva):
+    from apps.el_pizarron.models import Tarea
+
+    client.force_login(equipo["jorge"])
+    client.post(_url(linea_viva), {"texto": "@jorge @karla.m cotizar el bordado"})
+    tarea = Tarea.objects.get(producto=linea_viva)
+    assert tarea.asignada_a == equipo["jorge"]
+    assert list(tarea.responsables.all()) == [equipo["karla_m"]]
+    assert tarea.titulo == "Cotizar el bordado"
+
+
+@pytest.mark.parametrize(("texto", "pista"), [
+    ("@karla revisar", "2 personas"),       # dos con ese nombre: no se adivina
+    ("@nadie revisar", "No encontré"),
+    ("revisar el bordado", "Escribe @"),    # sin mención no hay a quién
+    ("@jorge", "¿Qué hay que hacer?"),      # sin tarea no hay qué
+])
+def test_lo_dudoso_no_crea_nada_y_conserva_lo_escrito(client, equipo, linea_viva, texto, pista):
+    from apps.el_pizarron.models import Tarea
+
+    client.force_login(equipo["jorge"])
+    html = client.post(_url(linea_viva), {"texto": texto}).content.decode()
+    assert not Tarea.objects.filter(producto=linea_viva).exists()
+    assert pista in html
+    assert f">{texto}</textarea>" in html
+
+
+def test_sin_permiso_de_editar_el_proyecto_no_se_crea(client, usuario_factory, linea_viva):
+    from apps.el_pizarron.models import Tarea
+
+    client.force_login(usuario_factory(rol="disenador"))
+    resp = client.post(_url(linea_viva), {"texto": "@jorge revisar"})
+    assert resp.status_code == 403
+    assert not Tarea.objects.exists()
+
+
+def test_la_linea_tiene_que_ser_de_ese_proyecto(client, equipo, linea_viva, cliente):
+    otro = _proyecto(cliente, "Ajeno")
+    client.force_login(equipo["jorge"])
+    resp = client.post(f"/proyectos/{otro.pk}/producto/{linea_viva.pk}/tarea-rapida",
+                       {"texto": "@jorge revisar"})
+    assert resp.status_code == 404
+
+
+def test_el_campo_no_viaja_en_el_autoguardado_y_la_lista_blanca_conserva_el_texto():
+    """Las dos trampas documentadas del bloque: el campo sin `name` y
+    `hx-params="none"`, que se llevaría el `hx-vals` y mandaría el cuerpo vacío."""
+    import re
+
+    src = TPL_TAREAS.read_text(encoding="utf-8")
+    campo = re.search(r"<textarea[^>]*data-tarea-rapida-campo[^>]*>", src, re.S).group(0)
+    assert " name=" not in campo
+    assert "data-referencias" in campo                   # la lista de personas al teclear @
+    boton = re.search(r"<button[^>]*data-tarea-rapida=[^>]*>", src, re.S).group(0)
+    assert 'hx-params="texto"' in boton
+    assert "hx-vals='js:{texto:" in boton
+    assert 'type="button"' in boton
+
+
+def test_el_enter_solo_crea_con_mencion_y_nunca_a_media_letra():
+    js = TPL_JS_TARJETA.read_text(encoding="utf-8")
+    ini = js.index("textarea[data-tarea-rapida-campo]")
+    bloque = js[ini - 400:ini + 900]
+    assert "e.isComposing" in bloque and "e.shiftKey" in bloque
+    assert "RE_MENCION.test" in bloque
+
+
+def test_la_tarjeta_del_detalle_trae_el_bloque(client, equipo, linea_viva):
+    client.force_login(equipo["jorge"])
+    html = client.get(f"/proyectos/{linea_viva.proyecto_id}/").content.decode()
+    assert f'data-tarea-rapida-campo="{linea_viva.pk}"' in html
+    assert f"/producto/{linea_viva.pk}/tarea-rapida" in html
