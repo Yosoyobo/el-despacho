@@ -8,7 +8,7 @@
 # servidor: mudanza.sh reinstala este bloque en el crontab del usuario
 # `despacho` en CADA deploy (idempotente — reemplaza solo lo que hay entre los
 # marcadores >>> / <<<). Si cambias un horario o agregas un job, edítalo AQUÍ
-# y vuelve a desplegar; el cambio llega solo. Espejo de CLAUDE.md §10.
+# y vuelve a desplegar; el cambio llega solo. Referenciado desde CLAUDE.md §10 item 7.
 #
 # Zona horaria: el host del Droplet suele estar en UTC; cron de Debian/Ubuntu
 # soporta CRON_TZ, así que fijamos los horarios a hora de México. Todos los
