@@ -5,11 +5,18 @@ o allá? Los necesito 100% variados y contrastados, y sólidamente ligados a cad
 uno de sus productos. Si en el nombre o descripción se menciona un color, usar
 ese.»
 
+LC 2026-09-28 (Oscar): **«sólo alias y catálogo»** — la descripción dejó de
+decidir. Una especificación («impresión sobre la playera roja de siempre…») es
+texto libre que menciona colores que el producto no es, y dos líneas con la
+misma nota salían iguales. `color_del_texto` sigue aceptando los textos que le
+pasen; quien decide qué textos cuentan son los consumidores (el modelo y su
+espejo en JS), y hoy pasan sólo el alias y el nombre del catálogo.
+
 Tres reglas, en este orden:
 
-1. **Si el nombre o la descripción dicen un color, ése es el color.** «Playera
-   dry fit negra» sale en negro y «Bandana roja» en rojo, sin que nadie lo
-   configure. Como se deriva del texto, renombrar la línea cambia su color al
+1. **Si el alias o el nombre del catálogo dicen un color, ése es el color.**
+   «Playera dry fit negra» sale en negro y «Bandana roja» en rojo, sin que nadie
+   lo configure. Como se deriva del texto, renombrar la línea cambia su color al
    instante.
 2. **Si no, se toma el siguiente color LIBRE de la lista**, en orden, y se
    **guarda** en la línea (`ProyectoProducto.color`). Guardarlo es lo que lo
@@ -24,7 +31,7 @@ Tres reglas, en este orden:
 Dos desempates, y los dos importan:
 
 - **Entre TEXTOS manda el orden en que se pasan**: primero el alias del
-  proyecto, luego el nombre del catálogo y al final la descripción. Antes los
+  proyecto y luego el nombre del catálogo. Antes los
   tres iban concatenados, así que una línea llamada «Números Azules» sobre un
   producto de catálogo «Playera Roja» salía ROJA: se buscaba color por color en
   el orden de esta lista, y el rojo está antes que el azul.
@@ -81,7 +88,7 @@ PALETA = (
 COLOR_DEFAULT = PALETA[0]
 
 # ── Colores nombrados ────────────────────────────────────────────────────────
-# Se leen del nombre visible y de la descripción de la línea. Las combinaciones
+# Se leen del alias y del nombre del catálogo de la línea. Las combinaciones
 # de dos palabras conviven con la palabra suelta: a igual posición en el texto
 # gana la más larga, así «azul marino» no se resuelve como «azul» a secas (ver
 # `_color_en`). El orden de esta lista ya NO decide nada — decide el texto.
@@ -156,8 +163,8 @@ def color_del_texto(*textos) -> str:
 
     Los textos se revisan **en el orden en que se pasan** y se devuelve el
     primero que dé color: quien llama decide la prioridad. Los consumidores del
-    repo pasan alias → nombre del catálogo → descripción, que es la regla que
-    pidió Oscar (2026-08-18 R2).
+    repo pasan alias → nombre del catálogo (2026-08-18 R2), y desde 2026-09-28
+    ya no la descripción.
     """
     for texto in textos:
         hexa = _color_en(texto)

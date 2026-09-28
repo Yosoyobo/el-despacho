@@ -108,8 +108,8 @@ class ProyectoProducto(models.Model):
     # sólidamente ligados a cada uno de sus productos». El color se reparte UNA
     # vez —el primero libre de `colores.PALETA`, en orden— y se guarda aquí, que
     # es lo que lo vuelve inamovible: arrastrar, apagar o borrar otra línea ya no
-    # lo mueve. Si el nombre o la descripción mencionan un color, ése manda sobre
-    # éste (ver `color_efectivo`).
+    # lo mueve. Si el alias o el nombre del catálogo mencionan un color, ése manda
+    # sobre éste (ver `color_efectivo`). La descripción ya no decide (2026-09-28).
     color = models.CharField(max_length=7, blank=True, default="")
 
     # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
@@ -161,13 +161,13 @@ class ProyectoProducto(models.Model):
                 hermanas = (
                     ProyectoProducto.objects.filter(proyecto_id=self.proyecto_id)
                     .exclude(pk=self.pk)
-                    .values_list("color", "nombre_proyecto", "nota", "servicio__nombre")
+                    .values_list("color", "nombre_proyecto", "servicio__nombre")
                 )
-                # Mismo orden de prioridad que `color_efectivo`: alias, luego el
-                # nombre del catálogo y al final la descripción.
+                # Mismo orden de prioridad que `color_efectivo`: alias y luego el
+                # nombre del catálogo. La descripción ya no decide (2026-09-28).
                 usados = [
-                    colores.color_del_texto(alias, catalogo, nota) or color
-                    for color, alias, nota, catalogo in hermanas
+                    colores.color_del_texto(alias, catalogo) or color
+                    for color, alias, catalogo in hermanas
                 ]
                 self.color = colores.elegir_color_libre(usados)
         super().save(*args, **kwargs)
@@ -190,17 +190,21 @@ class ProyectoProducto(models.Model):
         una línea vieja que todavía no tiene, uno derivado de su nombre para que
         nunca aparezca sin identidad.
 
-        LC 2026-08-18 R2 (Oscar): los tres textos van por SEPARADO y en orden de
-        prioridad — **el alias manda sobre el nombre del catálogo**, y éste sobre
-        la descripción. Concatenados, «Números Azules» sobre un catálogo «Playera
-        Roja» salía roja.
+        LC 2026-08-18 R2 (Oscar): los textos van por SEPARADO y en orden de
+        prioridad — **el alias manda sobre el nombre del catálogo**. Concatenados,
+        «Números Azules» sobre un catálogo «Playera Roja» salía roja.
+
+        LC 2026-09-28 (Oscar): «sólo alias y catálogo» — **la descripción deja de
+        decidir**. Una especificación larga («impresión sobre la playera roja de
+        siempre, tinta negra…») pintaba la tarjeta de un color que el producto no
+        es, y dos productos con la misma nota salían del mismo color.
         """
         # Perezoso a propósito: `nombre_catalogo` toca el FK al servicio, y si
         # el alias ya dijo el color no hace falta ir por él (una consulta por
         # tarjeta en el detalle del proyecto).
         return (
             colores.color_del_texto(self.nombre_proyecto)
-            or colores.color_del_texto(self.nombre_catalogo, self.nota)
+            or colores.color_del_texto(self.nombre_catalogo)
             or self.color_asignado
         )
 

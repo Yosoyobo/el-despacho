@@ -227,3 +227,100 @@ def test_el_evento_esta_tipado():
 
     from lib.portavoz_eventos import EventoTipo
     assert "catalogo.proveedor_propagado" in get_args(EventoTipo)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 2. Color de la tarjeta: sólo alias y catálogo
+# ═════════════════════════════════════════════════════════════════════════════
+
+from pathlib import Path  # noqa: E402
+
+TPL_JS_TARJETA = Path("el-taller/templates/proyectos/_form_productos_js.html")
+
+
+def test_la_descripcion_ya_no_pinta_la_tarjeta(cliente, categoria):
+    """Oscar: «sólo alias y catálogo». Una especificación que menciona «roja» no
+    pinta de rojo un producto que no lo es."""
+    from apps.el_catalogo.models import Servicio
+
+    srv = Servicio.objects.create(nombre="Playera", categoria=categoria, precio_base=100)
+    linea = _linea(_proyecto(cliente), srv, nota="Impresión sobre la playera roja de siempre")
+    assert linea.color_efectivo == linea.color_asignado
+    assert linea.color_efectivo != "#e11d48"
+
+
+def test_el_alias_y_el_catalogo_siguen_mandando(cliente, categoria):
+    from apps.el_catalogo.models import Servicio
+
+    srv = Servicio.objects.create(nombre="Playera negra", categoria=categoria, precio_base=100)
+    linea = _linea(_proyecto(cliente), srv, nota="Color: verde")
+    assert linea.color_efectivo == "#1f2937"          # el catálogo dice negra
+    linea.nombre_proyecto = "Números Azules"
+    assert linea.color_efectivo == "#465fff"          # y el alias manda sobre él
+
+
+def test_la_descripcion_de_una_hermana_no_ocupa_su_color(cliente, categoria):
+    """Al repartir, una hermana cuya DESCRIPCIÓN dice «azul» ya no se lleva el
+    azul: lo que ocupa es el color que de verdad se ve."""
+    from apps.el_catalogo.models import Servicio
+
+    proyecto = _proyecto(cliente)
+    srv = Servicio.objects.create(nombre="Gorra", categoria=categoria, precio_base=100)
+    primera = _linea(proyecto, srv, nota="Bordado azul marino")
+    otra = Servicio.objects.create(nombre="Tote", categoria=categoria, precio_base=100)
+    segunda = _linea(proyecto, otra)
+    assert primera.color == "#465fff"                  # le tocó el primero libre
+    assert segunda.color != primera.color              # y el siguiente no lo repite
+
+
+def test_la_version_congelada_tambien_ignora_la_descripcion():
+    from apps.los_proyectos.models.producto_version import ProyectoProductoVersion
+
+    # Sin producto ligado el nombre del catálogo es «Producto» (sin color), así
+    # que sólo la descripción podría pintarla — y ya no cuenta.
+    snap = ProyectoProductoVersion(nombre_proyecto="", nota="Tinta roja", color="#059669")
+    assert snap.color_efectivo == "#059669"
+
+
+def test_el_js_espejo_no_lee_la_descripcion():
+    src = TPL_JS_TARJETA.read_text(encoding="utf-8")
+    ini = src.index("function colorDeLaTarjeta")
+    cuerpo = src[ini:src.index("function repintarColor")]
+    assert "-nota" not in cuerpo
+    assert "nombreCatalogo(card)" in cuerpo and "data-alias-input" in cuerpo
+
+
+def test_la_migracion_arregla_solo_las_que_pintaba_la_descripcion(cliente, categoria):
+    """0038: la línea que se pintaba por su descripción recibe un color libre;
+    las demás no se mueven. Y correrla dos veces deja lo mismo."""
+    import importlib
+
+    from apps.el_catalogo.models import Servicio
+    from apps.los_proyectos.models import ProyectoProducto
+    from django.apps import apps as registro
+
+    migracion = importlib.import_module(
+        "apps.los_proyectos.migrations.0038_recolorear_sin_descripcion")
+
+    proyecto = _proyecto(cliente, "Viejito")
+    s1 = Servicio.objects.create(nombre="Uno", categoria=categoria, precio_base=100)
+    s2 = Servicio.objects.create(nombre="Dos", categoria=categoria, precio_base=100)
+    s3 = Servicio.objects.create(nombre="Tres", categoria=categoria, precio_base=100)
+    a = _linea(proyecto, s1, orden=0)
+    b = _linea(proyecto, s2, orden=1, nota="Estampado rojo")
+    c = _linea(proyecto, s3, orden=2)
+    # Como la dejaba el reparto viejo: la de la descripción, con el color de A.
+    ProyectoProducto.objects.filter(pk=b.pk).update(color=a.color)
+    antes_a, antes_c = a.color, c.color
+
+    migracion._recolorear(registro, None)
+    a.refresh_from_db()
+    b.refresh_from_db()
+    c.refresh_from_db()
+    assert (a.color, c.color) == (antes_a, antes_c)     # las demás, quietas
+    assert b.color not in {a.color, c.color}             # la arreglada, sin choque
+
+    primera = b.color
+    migracion._recolorear(registro, None)
+    b.refresh_from_db()
+    assert b.color == primera                            # idempotente
