@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers tareas_extras %}
+{% load forms_helpers tareas_extras presencia %}
 {% block title %}{{ empleado.nombre_completo }} — Equipo{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Equipo" "/directorio/" empleado.nombre_completo as breadcrumb_items %}
@@ -15,6 +15,8 @@
                 {% else %}
                 <div class="inline-flex h-20 w-20 items-center justify-center rounded-full bg-brand-100 text-2xl font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ empleado.nombre_completo|slice:":1"|upper }}</div>
                 {% endif %}
+                {% actividad_de empleado as act %}
+                {% include "_componentes_tailadmin/_presencia.html" with act=act modo="punto" clase_extra="absolute left-0 top-0" %}
                 {% if es_self %}
                 <button type="button" hx-get="{% url 'perfil-avatar' %}" hx-target="#modal-slot" hx-swap="innerHTML"
                         title="Cambiar mi foto"
@@ -33,6 +35,7 @@
                     {% for r in roles %}<span class="badge badge-brand">{{ r }}</span>{% empty %}<span class="badge badge-gray">Sin rol</span>{% endfor %}
                     {% if not empleado.is_active %}<span class="badge badge-error">Inactivo</span>{% endif %}
                 </div>
+                {% if act %}<div class="mt-2 min-w-0">{% include "_componentes_tailadmin/_presencia.html" with act=act modo="linea" %}</div>{% endif %}
             </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">

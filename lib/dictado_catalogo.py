@@ -538,6 +538,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "tareas_de_producto", "que": "Las tareas de un producto DENTRO de un proyecto (las que se crean desde su tarjeta). Pregunta: «¿qué falta de las playeras del LC-0044?»."},
+    {"nombre": "quien_esta_en_linea", "que": "Quién del equipo está conectado ahora (en línea = últimos 5 min, ausente = 5-30), en qué pantalla anda cada uno y desde qué aparato, y cuándo fue la última vez de los que se fueron. Pregunta: «¿quién está en línea?», «¿qué está haciendo Jorge?»."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
     {"nombre": "listar_plantillas_correo", "que": "Qué plantillas de correo hay listas para mandar y de qué dirección sale cada una. Requiere permiso de Comunicación. Pregunta: «¿qué correos puedo mandar?»."},
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},

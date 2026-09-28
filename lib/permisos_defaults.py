@@ -89,6 +89,20 @@ TODO_INTERFONO = ["configurar"]
 # MCP local: habilita el acceso al servidor; cada herramienta exige además
 # el permiso de lectura del módulo de negocio que consulta.
 TODO_MCP = ["usar"]
+# Sprint de pendientes 2026-09-28 (Oscar): ver quién está en línea y qué está
+# haciendo — El Directorio, El Site / El Vigía, Equipo y el Dashboard. «Quién
+# ve: todos», así que NACE ACTIVO para cualquier rol y cualquier usuario
+# (incluido `miembro`, que no tiene defaults). Sigue siendo granular (§4 #20):
+# el super_admin lo revoca por usuario desde /directorio/<id>/permisos/.
+TODO_EQUIPO = ["ver_actividad"]
+
+# Permisos que nacen activos para TODO usuario sin importar su rol primario.
+# `defaults_de()` los suma encima de los del rol, y el signal que siembra a los
+# usuarios nuevos pasa por ahí — así un `miembro` recién dado de alta también
+# los trae, aunque su rol no tenga fila en DEFAULTS_POR_ROL.
+PERMISOS_UNIVERSALES: dict[str, list[str]] = {
+    "equipo": list(TODO_EQUIPO),
+}
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -124,6 +138,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogos": list(TODO_CATALOGOS),
         "interfono": list(TODO_INTERFONO),
         "mcp": list(TODO_MCP),
+        "equipo": list(TODO_EQUIPO),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -155,6 +170,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "chalanes": ["ver"],
         "site": list(TODO_SITE),
         "interfono": list(TODO_INTERFONO),
+        "equipo": list(TODO_EQUIPO),
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -175,6 +191,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
         # no aprueba correcciones ni configura horarios.
         "checador": ["checar", "ver_equipo", "exportar"],
+        "equipo": list(TODO_EQUIPO),
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
@@ -188,6 +205,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "chalan": list(TODO_CHALAN),
         # Diseñador solo checa su propia jornada/visitas/tiempo.
         "checador": ["checar"],
+        "equipo": list(TODO_EQUIPO),
     },
 }
 
@@ -239,12 +257,24 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "catalogos": list(TODO_CATALOGOS),
     "interfono": list(TODO_INTERFONO),
     "mcp": list(TODO_MCP),
+    # Ver quién está en línea y su última actividad (nace activo para todos).
+    "equipo": list(TODO_EQUIPO),
 }
 
 
 def defaults_de(rol: str) -> dict[str, list[str]]:
-    """Devuelve dict {modulo: [permisos]} para un rol. Vacío si rol desconocido."""
-    return DEFAULTS_POR_ROL.get(rol, {})
+    """Devuelve dict {modulo: [permisos]} para un rol, más los universales.
+
+    Un rol desconocido (o `miembro`, que no tiene defaults a propósito) recibe
+    sólo `PERMISOS_UNIVERSALES`: lo que TODO usuario trae desde que nace.
+    """
+    base = {m: list(a) for m, a in DEFAULTS_POR_ROL.get(rol, {}).items()}
+    for modulo, acciones in PERMISOS_UNIVERSALES.items():
+        actuales = base.setdefault(modulo, [])
+        for accion in acciones:
+            if accion not in actuales:
+                actuales.append(accion)
+    return base
 
 
 def catalogo_permisos() -> dict[str, list[str]]:

@@ -76,6 +76,9 @@ def lista(request):
             {"label": "Nombre"},
             {"label": "Email"},
             {"label": "Rol"},
+            # Sprint de pendientes 2026-09-28: quién está en línea y dónde anda.
+            # La celda sale vacía si quien mira no tiene (equipo, ver_actividad).
+            {"label": "Última actividad"},
             {"label": "Proveedor IA"},
             {"label": "Gasto IA 30d", "align": "right"},
             {"label": "Estado"},

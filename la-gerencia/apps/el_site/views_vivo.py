@@ -305,6 +305,59 @@ def vivo_contenedores(request):
                   {"filas": filas, "error": error, "faltantes": faltantes})
 
 
+@require_safe
+def vivo_equipo(request):
+    """El equipo ahora: quién está en línea, en qué app y en qué pantalla.
+
+    Sprint de pendientes 2026-09-28 — Oscar pidió verlo en las DOS pantallas (§4
+    #22), así que es un panel compartido como los demás: mismo endpoint, mismo
+    partial, misma hoja. En la pared refresca cada 15 s; en El Site, cada minuto.
+
+    Dos puertas, como todo El Vigía, más una tercera propia: desde La Gerencia hace
+    falta además `(equipo, ver_actividad)`.
+    Sin él se contesta 200 con un aviso, no 403: HTMX no pinta un 4xx y el panel
+    se quedaría en «cargando…» para siempre.
+
+    En la pared no hay quien mire (no hay sesión), así que los nombres de lo que
+    cada quien trae abierto salen completos: es una pantalla en la oficina que ya
+    enseña quién pide qué en el flujo de peticiones. En El Site se filtran por lo
+    que la persona que mira podría abrir (`lib.presencia._objeto`).
+
+    Pedir este panel NO cuenta como actividad: vive bajo `/site/vivo`, que
+    `lib.presencia` trata como sondeo.
+    """
+    if (r := _puerta(request)) is not None:
+        return r
+    es_pared = _es_local(request)
+    ctx: dict = {"personas": [], "conteo": {}, "es_pared": es_pared}
+    viewer = None
+    if not es_pared:
+        viewer = request.user
+        # El mismo criterio que El Directorio, Equipo y el Dashboard: sin un
+        # failsafe de rol aquí, porque si no un permiso revocado se vería en una
+        # pantalla y no en las otras.
+        from lib.permisos import puede_ver_actividad_equipo
+
+        if not puede_ver_actividad_equipo(viewer):
+            ctx["sin_permiso"] = True
+            return render(request, "site/vivo/_equipo.html", ctx)
+    try:
+        from lib import presencia
+
+        personas = presencia.equipo_ahora(viewer=viewer)
+        ctx["personas"] = personas
+        conteo = presencia.conteo(personas)
+        # «Fuera» se suma aquí y no con `|add:` en la plantilla: un argumento de
+        # filtro no se silencia si falta, y una llave ausente tumbaría el panel.
+        conteo["fuera"] = conteo.get("desconectado", 0) + conteo.get("nunca", 0)
+        ctx["conteo"] = conteo
+        ctx["conectados"] = [p for p in personas if p["estado"] in ("en_linea", "ausente")]
+        ctx["desconectados"] = [p for p in personas if p["estado"] in ("desconectado", "nunca")]
+    except Exception as exc:  # noqa: BLE001 — un panel no tumba la pared
+        ctx["error"] = str(exc)[:200]
+    return render(request, "site/vivo/_equipo.html", ctx)
+
+
 def _trabajo_del_despacho() -> dict:
     """Lo que el despacho tiene entre manos AHORA. Nunca lanza.
 
@@ -799,4 +852,4 @@ def _avisar_limpieza(request, resultado: dict) -> None:
 
 
 __all__ = ["vivo", "vivo_fierro", "vivo_peticiones", "vivo_contenedores", "vivo_negocio",
-           "vivo_limpieza"]
+           "vivo_limpieza", "vivo_equipo"]

@@ -46,6 +46,8 @@ ACCION_VISIBLE_POR_MODULO = {
     # S-LC-Proyecto-V2: El Runner — elegibilidad como repartidor.
     "runner": "recibir",
     "rutas": "ver",
+    # Sprint de pendientes 2026-09-28: quién está en línea y su última actividad.
+    "equipo": "ver_actividad",
     # los demás usan "ver"
 }
 
@@ -53,7 +55,7 @@ MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "chalan", "analisis", "checador", "comunicacion", "runner",
-    "rutas", "papeleo",
+    "rutas", "papeleo", "equipo",
     "directorio", "ajustes", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",

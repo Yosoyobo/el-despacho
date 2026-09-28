@@ -344,6 +344,14 @@ def puede_ver_papeleo(user) -> bool:
     return puede(user, "papeleo", "ver")
 
 
+def puede_ver_actividad_equipo(user) -> bool:
+    """Ver quién está en línea y en qué pantalla anda cada quien (El Directorio,
+    El Site / El Vigía, Equipo y el Dashboard). Nace activo para todos — decisión
+    de Oscar, 2026-09-28: «quién ve: todos» — pero sigue siendo granular: se
+    revoca por usuario desde El Directorio (§4 #20)."""
+    return puede(user, "equipo", "ver_actividad")
+
+
 def puede_ligar_papeleo(user) -> bool:
     """Decir de qué cliente, proyecto o proveedor es un documento."""
     return puede(user, "papeleo", "ligar")

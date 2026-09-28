@@ -107,6 +107,25 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     actualizado_en = models.DateTimeField(auto_now=True)
     ultimo_acceso_en = models.DateTimeField(blank=True, null=True)
 
+    # Sprint de pendientes 2026-09-28: la última actividad del usuario, para
+    # saber quién está en línea y en qué pantalla anda. La escribe
+    # `cuentas.middleware.PresenciaMiddleware` con tope (lib/presencia.py), no
+    # en cada petición, y NO la mueve el sondeo automático (banner de deploy,
+    # paneles de El Vigía, bandejas que se refrescan solas). Vive en la base y no
+    # sólo en Redis para que sobreviva a un reinicio.
+    #
+    # Se guarda lo CRUDO (ruta, nombre de la URL, sus argumentos) y el texto
+    # legible —«editando LC-0044 · Gorras Cruz Azul»— se arma al MOSTRAR, así la
+    # escritura no consulta nada y un proyecto renombrado se lee con su nombre de
+    # hoy.
+    actividad_en = models.DateTimeField(blank=True, null=True, db_index=True)
+    actividad_app = models.CharField(max_length=12, blank=True, default="")
+    actividad_ruta = models.CharField(max_length=300, blank=True, default="")
+    actividad_url_name = models.CharField(max_length=120, blank=True, default="")
+    actividad_kwargs = models.JSONField(blank=True, default=dict)
+    actividad_accion = models.CharField(max_length=10, blank=True, default="")
+    actividad_agente = models.CharField(max_length=300, blank=True, default="")
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["nombre_completo"]
 

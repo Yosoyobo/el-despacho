@@ -77,6 +77,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # S-LC-Feedback-V8: impersonación de super_admin (después de Auth).
     "apps.taller_home.middleware.ImpersonacionMiddleware",
+    # Sprint de pendientes 2026-09-28: última actividad (quién está en línea).
+    # Después de la impersonación para leer al super_admin real.
+    "cuentas.middleware.PresenciaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
