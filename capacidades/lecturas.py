@@ -1120,7 +1120,7 @@ def _n8n_apagado() -> dict:
     }
 
 
-def _h_listar_flujos(usuario, **kw):
+def _h_listar_flujos(args: dict, usuario) -> dict:  # noqa: ARG001
     from lib import n8n
 
     if not n8n.esta_configurado():
