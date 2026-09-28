@@ -117,8 +117,17 @@ self.addEventListener('fetch', function(event) {
     // Navegación: network-first; offline → caché de la ruta, si no la página
     // dedicada '/offline/', y como último recurso el shell '/'.
     if (req.mode === 'navigate') {
+        // Una pestaña de El Taller es un <iframe>. Al volver a pedir la página el
+        // SW pierde `Sec-Fetch-Dest: iframe` (el servidor la ve como «empty») y la
+        // pestaña saldría con su propio menú adentro; se repone con una cabecera
+        // propia. `redirect: 'manual'` para que una redirección cambie la URL del
+        // marco y no sólo su contenido.
+        const enMarco = req.destination === 'iframe' || req.destination === 'frame';
+        const pedido = enMarco
+            ? fetch(req.url, {headers: {'X-Despacho-Marco': '1'}, credentials: 'same-origin', redirect: 'manual'})
+            : fetch(req);
         event.respondWith(
-            fetch(req).catch(function() {
+            pedido.catch(function() {
                 return caches.match(req).then(function(r) {
                     if (r) return r;
                     return caches.match(DESPACHO_OFFLINE).then(function(o) { return o || caches.match('/'); });

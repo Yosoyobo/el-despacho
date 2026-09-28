@@ -109,6 +109,7 @@ TEMPLATES = [
                 "cuentas.context_processors.permisos_modulos",
                 "apps.recados.context_processors.recados_no_leidos",
                 "apps.taller_home.context_processors.sidebar_grupos",
+                "apps.taller_home.context_processors.pestanas",
                 "lib.version.contexto_version",
                 "cuentas.context_processors.formato_hora",
             ],

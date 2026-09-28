@@ -7,12 +7,15 @@ from . import (
     views_impersonar,
     views_kpi_custom,
     views_resumen,
+    views_pestanas,
     views_sidebar,
 )
 
 urlpatterns = [
     path("", views.home, name="taller-home"),
     path("ping", views.ping, name="taller-ping"),
+    # S-Pendientes-Sep28: el contenedor de las pestañas (sólo escritorio).
+    path("pestanas/", views_pestanas.pestanas, name="taller-pestanas"),
     # LC 2026-08-12: el buscador del tablero del Dashboard alcanza también los
     # proyectos entregados/cerrados/cancelados, que no están en sus 4 columnas.
     path("buscar/proyectos", views.buscar_proyectos, name="taller-buscar-proyectos"),
