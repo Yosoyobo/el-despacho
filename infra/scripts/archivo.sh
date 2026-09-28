@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # El Archivo — backup completo: dump de Postgres + tarball de /data/credenciales
-# + los medios de El Almacén (data/media/orig, como árbol rsync).
+# + la base de n8n (sus flujos) + los medios de El Almacén (data/media/orig, como
+# árbol rsync).
 # Tras generar el backup local, replica a HAL vía rsync sobre Tailscale.
 # Rota en HAL para conservar los 30 más recientes.
 #
@@ -57,6 +58,49 @@ fi
 echo "==> [Archivo] credenciales → $CRED_FILE"
 tar -czf "$CRED_FILE" -C ./data credenciales 2>/dev/null || true
 
+# ── n8n (sprint n8n-MCP, 2026-09-28) ─────────────────────────────────────────
+# Hasta aquí, los flujos de n8n no estaban en NINGÚN respaldo: perder el disco
+# del NUC se llevaba las automatizaciones y sus credenciales de Google.
+#
+# Dos cuidados:
+#  1. Desde la 2.x la base va en modo WAL: copiar `database.sqlite` con `cp`
+#     mientras n8n escribe da una copia rota. Se usa la API de copia de SQLite
+#     (consistente aunque n8n esté corriendo) y se comprueba la integridad.
+#  2. NO se respalda `config`: ahí vive la llave de cifrado de las credenciales
+#     de n8n. Va separada de los datos igual que la de La Bóveda — la llave
+#     está en el `.env` (`N8N_ENCRYPTION_KEY`). Los flujos se recuperan con la
+#     base sola; lo único que pediría la llave son las credenciales, y ésas se
+#     vuelven a conectar con un clic.
+N8N_DIR="${N8N_DIR:-./data/n8n}"
+N8N_FILE="$OUT_DIR/n8n-$STAMP.tar.gz"
+if [ -f "$N8N_DIR/database.sqlite" ]; then
+    echo "==> [Archivo] n8n → $N8N_FILE"
+    _n8n_tmp="$(mktemp -d)"
+    if python3 - "$N8N_DIR/database.sqlite" "$_n8n_tmp/database.sqlite" <<'PY'
+import sqlite3
+import sys
+
+origen = sqlite3.connect(sys.argv[1], timeout=30)
+destino = sqlite3.connect(sys.argv[2])
+origen.backup(destino)
+destino.close()
+origen.close()
+ok = sqlite3.connect(sys.argv[2]).execute("pragma integrity_check").fetchone()[0]
+if ok != "ok":
+    sys.exit(f"integridad: {ok}")
+PY
+    then
+        tar -czf "$N8N_FILE" -C "$_n8n_tmp" database.sqlite 2>/dev/null \
+            || echo "==> [Archivo] n8n: no pude empaquetar la copia (no bloquea)" >&2
+    else
+        echo "==> [Archivo] n8n: la copia de la base falló (no bloquea el resto)" >&2
+        rm -f "$N8N_FILE"
+    fi
+    rm -rf "$_n8n_tmp"
+else
+    echo "==> [Archivo] $N8N_DIR/database.sqlite no existe; n8n no se respalda."
+fi
+
 echo "==> [Archivo] listo:"
 ls -lh "$OUT_DIR"/*-$STAMP* 2>/dev/null || true
 
@@ -72,6 +116,7 @@ echo "==> [Archivo] rotando local (conservar $LOCAL_RETENER por serie)"
     cd "$OUT_DIR" 2>/dev/null || exit 0
     ls -1t db-*.sql.gz          2>/dev/null | tail -n +$(( LOCAL_RETENER + 1 )) | xargs -r rm -f -- || true
     ls -1t credenciales-*.tar.gz 2>/dev/null | tail -n +$(( LOCAL_RETENER + 1 )) | xargs -r rm -f -- || true
+    ls -1t n8n-*.tar.gz          2>/dev/null | tail -n +$(( LOCAL_RETENER + 1 )) | xargs -r rm -f -- || true
 ) || echo "==> [Archivo] rotación local falló (no bloquea)"
 
 # ── rsync a HAL ──────────────────────────────────────────────────────────────
@@ -112,6 +157,7 @@ if [ -f "$HAL_KEY" ]; then
         echo "==> [Archivo] rsync→HAL OK (reconciliado): $OUT_DIR/"
         _registrar "$DB_FILE" ok "HAL"
         _registrar "$CRED_FILE" ok "HAL"
+        [ -f "$N8N_FILE" ] && _registrar "$(basename "$N8N_FILE")" ok "HAL"
     else
         echo "==> [Archivo] rsync→HAL FAIL (reconciliación)" >&2
         _registrar "$DB_FILE" error "HAL"
@@ -123,7 +169,7 @@ if [ -f "$HAL_KEY" ]; then
     ssh -i "$HAL_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
         "${HAL_USER}@${HAL_HOST}" "
         cd ~/${HAL_DEST} 2>/dev/null || exit 0
-        for serie in 'db-*.sql.gz' 'credenciales-*.tar.gz'; do
+        for serie in 'db-*.sql.gz' 'credenciales-*.tar.gz' 'n8n-*.tar.gz'; do
             ls -1t \$serie 2>/dev/null | tail -n +\$(( ${HAL_RETENER} + 1 )) | xargs -r rm -f -- || true
         done
     " || echo "==> [Archivo] rotación en HAL falló (no bloquea)"

@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,16 @@ def disponible() -> bool:
 # ── Leer ───────────────────────────────────────────────────────────────────
 
 
+#: Disparadores cuyo tipo no trae la palabra «trigger». Sin esto un flujo que
+#: espera un webhook se reportaba como «manual» — o sea, como si nada lo
+#: arrancara, que es justo lo contrario.
+_DISPARADORES_SIN_NOMBRE = {"n8n-nodes-base.webhook", "n8n-nodes-base.emailReadImap"}
+
+
+def _es_disparador(tipo: str) -> bool:
+    return "trigger" in tipo.lower() or tipo in _DISPARADORES_SIN_NOMBRE
+
+
 def _resumir(w: dict) -> dict:
     """Un flujo, en lo que de verdad importa saber de él."""
     nodos = w.get("nodes") or []
@@ -103,8 +114,7 @@ def _resumir(w: dict) -> dict:
         # arranca solo no es lo mismo que uno que espera a que lo llamen.
         "disparador": next(
             (n.get("name") or n.get("type", "").rsplit(".", 1)[-1]
-             for n in nodos
-             if "trigger" in (n.get("type") or "").lower()),
+             for n in nodos if _es_disparador(n.get("type") or "")),
             "manual",
         ),
         "actualizado": (w.get("updatedAt") or "")[:10],
@@ -115,7 +125,10 @@ def listar_flujos() -> list[dict] | None:
     datos = _pedir(f"/workflows?limit={TOPE}")
     if datos is None:
         return None
-    return [_resumir(w) for w in (datos.get("data") or [])]
+    # En la 2.x «borrar» empieza por archivar, y la API sigue entregando los
+    # archivados. Enseñárselos al Chalán o a la pantalla sería listar flujos que
+    # ya no existen para nadie.
+    return [_resumir(w) for w in (datos.get("data") or []) if not w.get("isArchived")]
 
 
 def detalle_flujo(flujo_id: str) -> dict | None:
@@ -149,16 +162,49 @@ def ejecuciones(flujo_id: str | None = None, limite: int = 10) -> list[dict] | N
 # ── Escribir — sólo desde un ejecutor, tras confirmación humana ────────────
 
 
+# En la 2.x «prender» se llama PUBLICAR y «apagar», DESPUBLICAR. Las rutas
+# viejas (`/activate`, `/deactivate`) siguen vivas pero marcadas obsoletas, así
+# que se piden las nuevas y sólo si no contestan se cae a las viejas.
+#
+# Ensayado contra la 2.40.7 (2026-09-28): publicar SÍ registra el webhook (el
+# bug de la 2.0 en que había que picar «Publicar» a mano ya está corregido), y
+# despublicar lo da de baja en menos de un segundo — apagar apaga de verdad.
+
+
 def activar(flujo_id: str) -> bool:
+    """Publica el flujo: desde este momento corre solo."""
+    if _pedir(f"/workflows/{flujo_id}/publish", metodo="POST", cuerpo={}) is not None:
+        return True
     return _pedir(f"/workflows/{flujo_id}/activate", metodo="POST") is not None
 
 
 def desactivar(flujo_id: str) -> bool:
+    """Despublica el flujo. Sigue existiendo como borrador; ya no corre."""
+    if _pedir(f"/workflows/{flujo_id}/unpublish", metodo="POST", cuerpo={}) is not None:
+        return True
     return _pedir(f"/workflows/{flujo_id}/deactivate", metodo="POST") is not None
 
 
 def borrar(flujo_id: str) -> bool:
-    return _pedir(f"/workflows/{flujo_id}", metodo="DELETE") is not None
+    """Quita el flujo: primero se archiva y luego se borra.
+
+    En la 2.x el borrado pasa por el archivo. Archivar es idempotente, así que
+    si alguien ya lo había archivado desde la pantalla de n8n esto no falla.
+    Si el borrado final no contesta, el flujo queda archivado — que para quien
+    usa El Despacho ya es lo mismo: no aparece y no corre.
+    """
+    if _pedir(f"/workflows/{flujo_id}/archive", metodo="POST", cuerpo={}) is None:
+        return False
+    # n8n termina de dar de baja un flujo recién despublicado en segundo plano;
+    # si el borrado llega antes contesta 409 y, un segundo después, 200
+    # (medido en el ensayo). Tres intentos cortos cubren esa carrera sin dejar
+    # a nadie esperando.
+    for intento in range(3):
+        if _pedir(f"/workflows/{flujo_id}", metodo="DELETE") is not None:
+            return True
+        if intento < 2:
+            time.sleep(1)
+    return False
 
 
 def crear(nombre: str, nodos: list[dict], conexiones: dict | None = None) -> dict | None:

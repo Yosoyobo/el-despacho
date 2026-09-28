@@ -13458,3 +13458,8 @@ pueda pedir. Se declara explícito (regla §10 item 6) en vez de dejarlo implíc
   limitación que ya tiene «Ver».
 - El preview no se ofrece desde la lista de Cotizaciones, sólo desde el recuadro
   del proyecto, que es donde se genera.
+
+
+## 2026-09-28 — S-n8n-MCP · Fase 0-1
+
+n8n 1.70.1 → 2.40.7 (ensayado sobre copia de la base), puerto a 127.0.0.1 + `tailscale serve`, n8n al respaldo (API de SQLite, sin la llave), exportador de flujos al repo, `lib/n8n.py` al modelo publicar/archivar. Spec de 5 rondas en `docs/SPRINT-n8n-MCP.md`. Paso manual: `sudo bash infra/scripts/n8n_https_tailnet.sh` en el NUC. Deuda: `.env` sin respaldo.

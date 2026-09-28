@@ -1651,7 +1651,9 @@ def automatizaciones_panel(request):
         "flujos": flujos or [],
         "corridas": corridas or [],
         "recetas": n8n_plantillas.catalogo(),
-        "url_n8n": os.environ.get("N8N_URL_PUBLICA", "http://100.121.244.5:5678"),
+        # Desde la 2.x n8n se abre por https con el nombre del tailnet (lo
+        # publica `tailscale serve`); la IP con el puerto 5678 ya no existe.
+        "url_n8n": os.environ.get("N8N_URL_PUBLICA", "https://nuc-learning-center.tailedd04d.ts.net"),
     })
 
 

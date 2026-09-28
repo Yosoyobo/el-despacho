@@ -24,12 +24,15 @@ puede además inventar un grafo libre —Oscar quiso probarlo— pero eso pasa p
    resumen lo dice en vez de reportar éxito.
 
 Con eso, el peor caso de un flujo inventado es un borrador apagado y roto que
-alguien borra en dos clics. Verificado contra n8n **1.70.1** (el del NUC).
+alguien borra en dos clics. Verificado contra n8n **1.70.1** y, de nuevo, contra la
+**2.40.7** (2026-09-28): las once versiones de nodo siguen siendo válidas. La 2.x
+trae versiones más nuevas de varios, pero las viejas no se retiraron.
 """
 
 from __future__ import annotations
 
-#: Nodos que sabemos que existen en n8n base, con la versión que trae el 1.70.
+#: Nodos que sabemos que existen en n8n base, con una versión que existe en la
+#: 1.70.1 Y en la 2.40.7 (se comprobó contra el catálogo de nodos de cada una).
 #: No es exhaustivo: es la lista de lo que este repo usa y puede prometer. Un
 #: tipo fuera de aquí no se rechaza —n8n puede tenerlo— pero se avisa.
 TIPOS_CONOCIDOS: dict[str, tuple[float, str]] = {

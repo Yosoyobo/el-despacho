@@ -122,34 +122,66 @@ services:
   # Guarda credenciales del negocio, así que NO sale del tailnet. Y usa su propia
   # base SQLite: meterlo en la Postgres del negocio mezclaría sus tablas con las
   # de la operación sin ganar nada.
+  #
+  # ── 2.x con MCP nativo (sprint n8n-MCP, 2026-09-28) ──
+  # Desde la 2.13/2.14 n8n trae su propio servidor MCP (`/mcp-server/http`), que
+  # construye, valida, prueba y publica flujos conversando. Por eso se pasó de
+  # la 1.70.1 a la 2.40.7: se ensayó antes sobre una copia de la base (69
+  # migraciones de la 1.x + las de la 2.x, sin un error) y la llave de la API
+  # vieja siguió sirviendo.
+  #
+  # ── Por qué el puerto quedó en 127.0.0.1 y no en la IP del tailnet ──
+  # Tras el reinicio del 2026-09-18, Docker arrancó antes que Tailscale: n8n no
+  # pudo atarse a 100.121.244.5 («cannot assign requested address») y el
+  # `docker system prune` de La Optimización borró el contenedor fallido. Estuvo
+  # DIEZ DÍAS sin existir y nada avisó. Atado a 127.0.0.1 ya no depende de que
+  # Tailscale haya levantado; lo publica al tailnet `tailscale serve` (config del
+  # host, fuera de este archivo: `infra/scripts/n8n_https_tailnet.sh`), con
+  # certificado real y SIN salir a internet.
+  #
+  # El Taller y La Gerencia le hablan por la red de Docker (http://n8n:5678),
+  # así que para ellos nada cambió.
   n8n:
-    image: n8nio/n8n:1.70.1
+    image: n8nio/n8n:2.40.7
     container_name: despacho-n8n
     restart: always
     ports:
       - target: 5678
         published: 5678
-        host_ip: "100.121.244.5"
+        host_ip: "127.0.0.1"
         protocol: tcp
     environment:
       GENERIC_TIMEZONE: "America/Mexico_City"
       TZ: "America/Mexico_City"
-      N8N_HOST: "100.121.244.5"
+      # La dirección con la que n8n se nombra a sí mismo: los enlaces del
+      # editor, las URLs de webhook que muestra y — lo que obliga a esto — la
+      # dirección de regreso de OAuth, que Google sólo acepta en https.
+      N8N_HOST: "nuc-learning-center.tailedd04d.ts.net"
       N8N_PORT: "5678"
-      N8N_PROTOCOL: "http"
+      N8N_PROTOCOL: "https"
+      N8N_EDITOR_BASE_URL: "https://nuc-learning-center.tailedd04d.ts.net"
+      # (En la 2.x `WEBHOOK_URL` quedó obsoleta: ésta cubre los webhooks de
+      # prueba y los de producción.)
+      N8N_WEBHOOK_URL: "https://nuc-learning-center.tailedd04d.ts.net/"
+      # `tailscale serve` es un salto de proxy: sin esto n8n toma la IP del
+      # proxy como la del cliente y su límite de peticiones se vuelve uno solo
+      # para todo el mundo.
+      N8N_PROXY_HOPS: "1"
       # Sin esto n8n avisa en cada arranque que las credenciales quedan sin
       # cifrar en su base.
       N8N_ENCRYPTION_KEY: "${N8N_ENCRYPTION_KEY:?falta N8N_ENCRYPTION_KEY en el .env}"
-      # n8n exige cookie segura por default, y sólo la manda por HTTPS. Aquí se
-      # entra por http://100.121.244.5:5678, así que sin esto la pantalla se
-      # queda en «your n8n server is configured to use a secure cookie» y no
-      # deja pasar.
+      # (Se retiró `N8N_SECURE_COOKIE=false`: ya se entra por https, así que la
+      # cookie segura, que es el default, vuelve a funcionar.)
       #
-      # Apagarlo es aceptable EN ESTE CASO y sólo en éste: el puerto está atado
-      # a la interfaz de Tailscale, y el tailnet ya cifra de punta a punta con
-      # WireGuard. La cookie viaja protegida por la red, no por TLS. El día que
-      # n8n se publique en un dominio con certificado, esto se quita.
-      N8N_SECURE_COOKIE: "false"
+      # Su archivo de configuración guarda la llave de cifrado; con esto n8n lo
+      # deja en 0600 en vez de avisar en cada arranque que está en 0644.
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      # Ningún paquete de la comunidad sin verificar: un nodo de terceros corre
+      # con acceso a las credenciales de todos los flujos.
+      N8N_UNVERIFIED_PACKAGES_ENABLED: "false"
+      # En la 3.x `binaryData` se renombra a `storage`. Con cero archivos, hoy
+      # la mudanza no cuesta nada; mañana sería una migración.
+      N8N_MIGRATE_FS_STORAGE_PATH: "true"
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
     # n8n corre como el usuario `node` (1000). Docker crea el volumen como root
@@ -159,7 +191,10 @@ services:
     user: "1000:1000"
     volumes:
       - ./data/n8n:/home/node/.n8n
-    mem_limit: 1g
+    # Medido en el ensayo: la 2.40.7 ocupa ~810 MB en reposo (trae un proceso
+    # aparte para los nodos de código). Con el tope viejo de 1 GB, el primer
+    # flujo pesado lo mataría.
+    mem_limit: 2g
 
   # ── Paperless-ngx ───────────────────────────────────────────────────────────
   # Archivo con OCR: contratos, remisiones, comprobantes. Se escanea o se
