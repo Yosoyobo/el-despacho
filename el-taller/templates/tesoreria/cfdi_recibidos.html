@@ -187,7 +187,7 @@ Chalán y el modal de «Nuevo egreso».
             </section>
             {% endif %}
 
-            {% if puede_egresos %}
+            {% if t.puede_ignorar %}
             <form method="post" action="{% url 'tesoreria:cfdi-accion' c.pk %}" class="flex flex-wrap items-center gap-2">
                 {% csrf_token %}
                 <input type="hidden" name="accion" value="ignorar">
