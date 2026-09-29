@@ -5,6 +5,31 @@
 
 ---
 
+## Novedades — Varias pantallas en pestañas, aviso si alguien más editó lo mismo, y la app para Android (28 de septiembre de 2026)
+
+**Pestañas dentro de El Taller (en la computadora).** Puedes tener hasta seis
+pantallas abiertas a la vez sin abrir más ventanas del navegador: Ctrl+clic (o
+Cmd+clic en Mac) en cualquier enlace, clic derecho → «Abrir en pestaña», o el
+botón «+». Si la pantalla ya está abierta, te lleva a su pestaña. Las pestañas se
+recuerdan en este navegador. En el celular no cambia nada.
+
+**Si alguien más editó lo mismo, ya no se pierde su trabajo.** Cuando tú y otra
+persona (o tú en otra pestaña) editan el mismo proyecto, cotización, factura,
+cliente, producto o proveedor, y el otro guarda primero, el sistema ya no pisa lo
+suyo: se detiene, te dice quién lo cambió y a qué hora, y te deja elegir entre
+«Ver su versión», «Guardar la mía de todos modos» o «Copiar lo mío y recargar».
+La barra de guardado muestra «⚠ Choque» y el autoguardado del proyecto se pausa
+hasta que decidas.
+
+**Ya hay app de El Taller para Android.** Pídele a Oscar el archivo de la app,
+ábrelo en tu teléfono y acepta «instalar apps desconocidas». Se abre a pantalla
+completa como cualquier app, con avisos y ubicación para El Checador, y se
+actualiza sola con cada mejora del sistema.
+
+**Los avisos de mantenimiento salen siempre.** Cada vez que se actualiza el
+sistema aparece arriba el aviso ámbar de «se está trabajando», y se quita solo
+al terminar.
+
 ## Novedades — Las listas caben en el celular, las facturas de proveedores se vuelven gasto y ves quién está conectado (28 de septiembre de 2026)
 
 **En el celular, las listas se leen como tarjetas.** Proyectos, clientes,
@@ -5202,6 +5227,22 @@ rápida) también aparece el «✓ Guardado» al terminar cada guardado.
 Y si intentas salirte con algo pendiente, el navegador te pregunta antes de
 perderlo.
 
+**Si alguien más guardó primero («⚠ Choque»).** En proyectos, cotizaciones,
+facturas, clientes, productos y proveedores, el sistema recuerda cómo estaba la
+ficha cuando la abriste. Si al guardar resulta que otra persona —o tú mismo en
+otra pestaña— ya la cambió, **no guarda**: te dice quién y a qué hora, y te da
+tres salidas:
+
+- **Ver su versión** — recarga la ficha con lo que guardó el otro.
+- **Guardar la mía de todos modos** — tu versión reemplaza la suya.
+- **Copiar lo mío y recargar** — copia lo que escribiste (campo por campo) para
+  que lo pegues donde quieras, y recarga.
+
+En el detalle del proyecto el autoguardado se pausa hasta que elijas. Tus propios
+guardados seguidos nunca chocan entre sí. Las celdas de edición rápida (una sola
+cosa a la vez) no preguntan. Si guardas un choque con archivos adjuntos, vuelve a
+elegir los archivos.
+
 ### Dos formas de entrar
 
 1. **Correo y contraseña.** Si fallas 5 veces seguidas en 15 minutos, el sistema bloquea tu IP un rato.
@@ -5236,6 +5277,20 @@ Toda la operación del negocio vive en **El Taller**. La Gerencia es para config
 el nombre de cada dato arriba y los botones al alcance; los encabezados que
 ordenan la lista aparecen como botoncitos arriba. La ficha del cliente y la del
 producto abren con sus secciones de consulta plegadas.
+
+**Pestañas (sólo en la computadora).** Puedes tener hasta **6 pantallas** abiertas
+dentro de El Taller:
+
+- **Ctrl+clic** (Cmd+clic en Mac) en un enlace la abre en pestaña nueva.
+- **Clic derecho → «Abrir en pestaña»**, o el botón **«+»** de la barra de
+  pestañas.
+- Si esa pantalla ya está abierta, te lleva a su pestaña en vez de repetirla.
+- Con más de seis, la que llevas más tiempo sin usar se descarga (sigue en la
+  barra y se vuelve a cargar al picarla).
+- Se recuerdan **en este navegador**; en otra computadora empiezas de cero.
+- El menú de la izquierda navega dentro de la pestaña activa, y la dirección se
+  puede copiar y compartir. Cerrar la última pestaña te regresa a la página
+  normal. En el celular no hay pestañas.
 
 ### Lo que ves en el menú de El Taller
 
@@ -7102,7 +7157,15 @@ Si instalaste El Despacho como app (PWA), la pantalla principal **abre aunque es
 
 ### ¿Hay app móvil?
 
-Es PWA: desde el navegador del celular puedes "Añadir a pantalla de inicio" y se comporta como app nativa, con ícono propio. iOS y Android soportados.
+**En Android, sí: la app «El Taller».** Pídele a Oscar el archivo de la app,
+ábrelo en el teléfono y acepta «instalar apps desconocidas» cuando lo pida
+(necesitas Chrome instalado y al día). Al abrirla entra a pantalla completa;
+acepta los permisos de **notificaciones** (avisos del Interfón) y **ubicación**
+(El Checador). Comparte la sesión con Chrome y se actualiza sola con cada mejora
+del sistema: no hay que reinstalarla.
+
+**En iPhone**, desde Safari: Compartir → «Añadir a pantalla de inicio». Se
+comporta como app, con ícono propio y avisos (iOS 16.4 o más nuevo).
 
 ### ¿Cómo se hace un backup?
 
