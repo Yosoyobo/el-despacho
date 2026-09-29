@@ -8,12 +8,19 @@ Va DENTRO del <form> que edita el registro. Lleva:
   en 1 y reenvía.
 - El aviso, si el último intento chocó.
 
+Casi todos los formularios que lo incluyen son una retícula (`grid xl:grid-cols-3`)
+y el contenedor es su hijo directo: si se viera, se comería la primera celda y
+recorrería todo el formulario (pasó en el detalle del proyecto, 2026-09-28). Por
+eso va `contents`: el contenedor no genera caja y en la retícula sólo cuentan
+sus hijos —los campos ocultos no se pintan y el aviso es `fixed`, fuera del
+flujo—. `hidden` no sirve: escondería también el aviso.
+
 `oob=True` lo pinta para el autoguardado (reemplaza el contenedor entero:
 tras un guardado propio el testigo se refresca y el aviso desaparece).
 Recibe `edicion` = dict de `lib.edicion.contexto`.
 {% endcomment %}
 {% if edicion %}
-<div id="{{ edicion.id }}" data-edicion{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="{{ edicion.id }}" data-edicion class="contents"{% if oob %} hx-swap-oob="true"{% endif %}>
     <input type="hidden" name="_edicion_testigo" value="{{ edicion.testigo }}">
     <input type="hidden" name="_edicion_forzar" value="">
     {% if edicion.choque %}{% include "edicion/_aviso_choque.html" with choque=edicion.choque url_ver=edicion.url archivos=edicion.archivos %}{% endif %}
