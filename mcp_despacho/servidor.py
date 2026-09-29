@@ -138,6 +138,16 @@ def nomina_quincena(fecha: str = "") -> dict[str, Any]:
 
 
 @mcp.tool()
+def formato_documentos() -> dict[str, Any]:
+    """Cómo están configurados los documentos PDF: quién los arma, la hoja, la
+    marca, los datos del despacho (bancarios enmascarados) y, por tipo de
+    documento, qué partes van apagadas y qué rótulos cambiaron. Requiere permiso
+    de documentos. Cambiar el formato no se hace por aquí: es la pantalla
+    Ajustes → Documentos de La Gerencia."""
+    return herramientas.formato_documentos()
+
+
+@mcp.tool()
 def mi_recibo(fecha: str = "") -> dict[str, Any]:
     """Tu recibo de nómina de una quincena ya cerrada: sueldo, conceptos, neto
     y si ya se depositó. Sólo el de quien opera esta conexión."""

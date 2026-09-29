@@ -13589,3 +13589,15 @@ vigencia de la CSF en La Gerencia, El Chalán lee la CSF y propone RFC/razón
 social/régimen/CP (candado contra el texto del PDF) y revisa la vigencia. Permiso
 `recepcion.documentos`. Decisiones: revivir enlaces viejos, el comprobante sólo avisa,
 checklist configurable. Worktree propio (había otra sesión en el árbol principal).
+
+## 2026-09-29 — S-Imprenta · Deploy 1 (VERSION 2026.09.15)
+
+La Imprenta: los PDF se personalizan desde Gerencia → Ajustes → Documentos. Marca
+(logotipo propio, letra, colores, tamaños), tablas, datos del despacho y firma, y
+por tipo de documento qué partes lleva, sus rótulos, título, textos y hoja propia.
+Vista previa en vivo sin guardar, PDF de prueba del motor real e historial con
+«volver a esta versión» y aviso si alguien guardó encima. Todo nace igual al
+documento de siempre; con Google (respaldo) sale el formato de siempre con el
+contenido elegido. Permiso nuevo `documentos` (4 acciones). El Chalán:
+`formato_documentos`. Se arregló que el interlineado elegido no se aplicaba.
+Trabajo en worktree propio (otra sesión en el árbol principal). Primer deploy de 4.

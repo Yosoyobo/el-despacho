@@ -33,6 +33,7 @@ COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY interfono/ /app/interfono/
 COPY portal/ /app/portal/
+COPY imprenta/ /app/imprenta/
 # El Chalán: lee la Constancia de Situación Fiscal que sube el cliente.
 COPY chalanes/ /app/chalanes/
 # Los MODELOS de El Taller que el portal lee (sin sus pantallas). Es el mismo

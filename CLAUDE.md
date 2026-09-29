@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.14` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.15` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.15 | S-Imprenta · 1 | La Imprenta: marca, tablas, datos del despacho y bloques/rótulos por tipo con vista previa en vivo, PDF de prueba e historial; permiso `documentos` |
 | 2026.09.14 | S-Portal-Llave-Documentos | La llave del portal no caduca (pide el correo; copiar/cambiar en la ficha); el cliente sube documentos; El Chalán lee la CSF y revisa su vigencia |
 | 2026.09.13 | S-KPIs-Guardar | Guardar metas de KPI y aprobar KPIs de equipo ya no dan 500 (la imagen de Gerencia no traía `taller_home`); 3 campos fantasma del DSL de KPIs custom |
 | 2026.09.12 | S-Historial-Actividad | Historial de actividad de un año (pantallas y acciones; `equipo.ver_historial` sólo dueños); Peticiones en vivo con nombre + IP vía `X-Despacho-Quien` en el log |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
 | 2026.09.07 | S-Fin-Sep29 · cabos | Grupos de recados por rol cuentan el rol asignado |
 | 2026.09.06 | S-Fin-Sep29 | Las 3 puertas por rol primario a permiso (decisión de Oscar); KPIs/avisos por permiso; comentarios por rol asignado; pin en el alta |
-| 2026.09.05 | S-Deuda-Sep28 | Ninguna puerta por rol literal («como hoy», `cuentas/0047`); pantalla de corte con roadmap automático; testigo en versiones de cotización; 8 limpiezas |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -452,6 +452,8 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Un campo nuevo en el log de gunicorn va ANTES de `%(D)s` y su regex se prueba antes que las viejas (`lib/site/actividad.py`): los parseos anclan la duración al final y casan los últimos campos entrecomillados.
 - Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
 - Crear en bloque (importar, sembrar) sin `lib.carga_masiva.carga_masiva()` dispara los correos automáticos a clientes (pago, bienvenida) y difiere los asientos a `on_commit`.
+- Plantillas de PDF viven en `imprenta/templates/` (las ven Taller y Gerencia): estilos por
+  `e.*` de `imprenta.config`, nunca CSS escrito a mano — si no, La Gerencia no lo puede cambiar.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
   al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).
 

@@ -29,6 +29,7 @@ COPY referencias/ /app/referencias/
 COPY chalanes/ /app/chalanes/
 COPY campanas/ /app/campanas/
 COPY papeleo/ /app/papeleo/
+COPY imprenta/ /app/imprenta/
 COPY portal/ /app/portal/
 COPY mcp_despacho/ /app/mcp_despacho/
 COPY capacidades/ /app/capacidades/

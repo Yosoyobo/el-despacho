@@ -1,22 +1,6 @@
-{% extends "base.html" %}
-{% load forms_helpers l10n %}
-{% block title %}Documentos — Ajustes{% endblock %}
-
-{% comment %}
-Cómo se arman los PDF que ve el cliente: márgenes, pie, hoja y quién los arma.
-
-Estaban como constantes en el código y sólo se movían con un despliegue. El
-selector de motor es además la salida de emergencia: si un formato se rompe
-frente a un cliente, se vuelve a Google con un clic.
-{% endcomment %}
-
-{% block contenido %}
-{% breadcrumb_items "Ajustes" "/ajustes/" "Documentos" as breadcrumb_items %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Documentos" subtitulo="Cómo se arman las cotizaciones y facturas en PDF" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
-
-<form method="post" class="campo-form max-w-3xl space-y-6">
-    {% csrf_token %}
-
+{% load l10n %}{% comment %}La hoja general (antes, toda la pantalla de Documentos). Los
+campos van SIN prefijo, como siempre. Aplica a todos los documentos; cada tipo puede
+pedir otra hoja en su pestaña.{% endcomment %}
     {# ── Quién arma el documento ──────────────────────────────────────── #}
     <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">Quién arma el PDF</h2>
@@ -163,16 +147,3 @@ frente a un cliente, se vuelve a Google con un clic.
             </div>
         </div>
     </section>
-
-    <div class="flex items-center gap-3">
-        <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
-            Guardar
-        </button>
-        {% if cfg.actualizado_por %}
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-            Última edición: {{ cfg.actualizado_por.nombre|default:cfg.actualizado_por.email }} · {{ cfg.actualizado_en|date:"d/m/Y H:i" }}
-        </span>
-        {% endif %}
-    </div>
-</form>
-{% endblock %}

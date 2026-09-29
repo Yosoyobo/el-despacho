@@ -71,6 +71,10 @@ INSTALLED_APPS = [
     "apps.estados_tarea.apps.EstadosTareaConfig",
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Imprenta (2026-09-29): los ajustes de los PDF, su historial y las
+    # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
+    # que configura y previsualiza).
+    "imprenta.apps.ImprentaConfig",
     # La Recepción (S5): los accesos de clientes (app raíz) y el portal mismo.
     "portal.apps.PortalConfig",
     "apps.portal_cliente.apps.PortalClienteConfig",

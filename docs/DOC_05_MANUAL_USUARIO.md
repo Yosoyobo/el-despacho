@@ -5,6 +5,40 @@
 
 ---
 
+## Novedades — Los documentos en PDF ya se personalizan desde La Gerencia (29 de septiembre de 2026)
+
+**En Gerencia → Ajustes → Documentos cambias cómo se ve la cotización**: tu
+propio logotipo (y su tamaño y lugar), la letra, los colores, el tamaño del
+texto, cómo se ven las tablas y qué partes lleva el documento. Todo queda igual
+que hoy hasta que alguien lo cambie.
+
+**La vista previa se redibuja mientras cambias algo, sin guardar.** A la derecha
+ves una cotización real con tus cambios; el botón **«PDF de prueba»** la arma
+como saldría de verdad, para ver los cortes de página.
+
+**Cada documento tiene su pestaña**: qué partes lleva (fecha, fotos,
+especificaciones, tablita de montos, desglose, notas), cómo se llama cada
+columna, un título propio, un texto de entrada y otro de cierre, y hasta una hoja
+o márgenes distintos a los de los demás.
+
+**Los datos del despacho viven en un solo lugar**: nombre, razón social, RFC,
+dirección, teléfono, correo, sitio web y los datos para depósito. Cada documento
+elige cuáles enseña.
+
+**Todo cambio queda en el Historial**, con quién lo hizo, cuándo y qué cambió en
+palabras. «Volver a esta versión» deja todo como estaba, y si alguien guardó
+mientras tú editabas, el sistema te pregunta antes de pisarlo.
+
+**El interlineado que se elige ahora sí se aplica.** Antes la pantalla lo
+guardaba pero el documento seguía con el de fábrica.
+
+Si por algo el documento lo tiene que armar Google (cuando el motor propio no
+contesta), sale con el formato de siempre, pero con tus textos, rótulos y datos.
+
+Con El Chalán: «¿cómo están configuradas las cotizaciones en PDF?». Cambiar el
+formato no se hace por chat: se hace en la pantalla, que tiene vista previa e
+historial.
+
 ## Novedades — El enlace del portal ya no caduca y los clientes suben sus documentos (29 de septiembre de 2026)
 
 **El enlace del portal ya no se vence.** Antes, el botón que le llegaba al cliente
@@ -6906,6 +6940,10 @@ pensado para actualizar la especificación.
 
 ### El documento (PDF) y sus dos interruptores
 
+> Lo que sigue es el formato **de fábrica**. El logotipo, la letra, los colores,
+> las tablas, los nombres de las columnas y qué partes lleva se cambian en
+> **Gerencia → Ajustes → Documentos** (ver *Ajustes → Documentos*).
+
 El PDF lleva el formato de Learning Center: fecha, logotipo y cliente arriba; el
 nombre del proyecto centrado; cada producto **numerado** con sus
 especificaciones, **su foto** (la del uso si le pegaste una en la tarjeta del
@@ -7370,6 +7408,50 @@ que llegas por donde te acomode.
 ahora se reparten en Los Chalanes, Google, las herramientas del servidor, el
 papeleo y lo fiscal, los avisos y monitoreo, y los cobros en línea. Cada grupo
 dice cuántas tiene puestas, para ver qué falta sin abrirlo.
+
+### Documentos (cómo se ven los PDF)
+
+En **Gerencia → Ajustes → Documentos** se decide cómo salen las cotizaciones (y,
+conforme lleguen, los demás documentos). La pantalla tiene pestañas:
+
+| Pestaña | Qué cambias |
+|---|---|
+| **Hoja y motor** | Quién arma el PDF (déjalo en automático), el tamaño de la hoja, los márgenes, el interlineado, el pie y el encabezado de cada hoja y la marca de «BORRADOR» de lo que aún no se manda. |
+| **Marca y tablas** | Tu logotipo (PNG, JPG o WebP; si no subes uno sale el de Learning Center), su alto y si va a la izquierda, al centro o a la derecha; la letra del documento y la de los títulos; el color del texto, del título y el total; los tamaños de letra; y las tablas: color y grosor de las líneas, fondo y letra del encabezado, renglones alternados y el aire de cada celda. |
+| **Datos y firma** | Nombre, razón social, RFC, dirección, teléfono, correo, sitio web, banco, titular, cuenta, CLABE e instrucciones de pago; y la firma (imagen, nombre y cargo). |
+| **Cotización** | Qué partes lleva, cómo se llama cada columna y rótulo, el título (acepta `{folio}`, `{cliente}`, `{proyecto}` y `{fecha}`), qué datos del despacho enseña, un texto de entrada y uno de cierre, y una hoja propia si la necesita (vacío = la de la hoja general). |
+| **Historial** | Cada guardado, con quién, cuándo y qué cambió. «Volver a esta versión» deja todo como estaba en ese momento. |
+
+**Todo nace igual que el documento de siempre**: si nadie toca nada, la
+cotización sale exactamente como salía.
+
+**La vista previa** de la derecha usa una cotización real (la eliges de la lista)
+y se redibuja mientras cambias, **sin guardar**. Es una hoja continua; los cortes
+de página exactos se ven con **«PDF de prueba»**, que lo arma el motor de verdad
+con lo que tienes en pantalla. Una imagen nueva (logotipo o firma) se ve después
+de guardarla.
+
+**Las letras** (Inter, Montserrat, Lato, Poppins, Lora, además de Arial y
+Georgia) son libres y viajan con el documento, así que se ven igual en cualquier
+computadora.
+
+**Si otra persona guardó mientras editabas**, al guardar te avisa quién fue y qué
+reescribirías; puedes recargar para ver lo suyo o guardar lo tuyo de todos modos.
+
+**Si el PDF lo acaba armando Google** (el motor propio no contesta), sale con el
+formato de siempre —Google no respeta letras ni colores— pero con tus textos,
+rótulos y datos.
+
+**Permisos.** La pantalla tiene su propio permiso, **Documentos**, con cuatro
+partes que se dan por separado desde El Directorio: *ver*, *cambiar el estilo*,
+*cambiar las notas* y *cambiar los datos del despacho* (la CLABE no la tiene que
+tocar quien cambia un color). Volver a una versión del historial pide las tres de
+cambio.
+
+**Con El Chalán:** «¿cómo están configuradas las cotizaciones en PDF?» o «¿qué
+letra usan los documentos?» — te dice la hoja, la marca, qué partes van apagadas
+y el último cambio (los números de cuenta, enmascarados). Cambiar el formato no se
+hace por chat.
 
 ### Automatizaciones (las tareas que corren solas)
 

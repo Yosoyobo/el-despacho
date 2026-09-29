@@ -98,6 +98,7 @@ producción manda lo que diga esa pantalla.
 | `papeleo` | todo | — | — | — |
 | `gerencia` | todo | todo | — | — |
 | `ajustes` | todo | — | — | — |
+| `documentos` | todo | — | — | — |
 | `directorio` | todo | ver, gestionar | — | — |
 | `chalanes` | todo | ver | — | — |
 | `site` | todo | todo | — | — |

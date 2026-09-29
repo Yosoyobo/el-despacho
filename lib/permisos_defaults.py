@@ -108,6 +108,16 @@ TODO_PAPELEO = ["ver", "ligar", "subir"]
 # rol. `dueno` mantiene lo que ya alcanzaba (directorio básico, site, interfón,
 # lectura de Chalanes); las acciones que eran solo-super_admin se quedan así.
 TODO_AJUSTES = ["acceder"]
+# La Imprenta (2026-09-29): cómo se arman los documentos PDF. Se separa en
+# cuatro porque no es la misma responsabilidad cambiar un color que las
+# condiciones que acepta el cliente o la CLABE a la que deposita:
+#   ver           → abrir la pantalla y la vista previa
+#   editar_estilo → hoja, motor, marca, tablas, bloques, rótulos, textos
+#   editar_notas  → las notas de los documentos (lo que el cliente acepta)
+#   editar_datos  → datos del despacho, bancarios y firma
+# «Como hoy»: nace para quien hoy entra a Ajustes (la pantalla de Documentos
+# vivía ahí) — lo siembra `imprenta/0002_seed_permisos_documentos`.
+TODO_DOCUMENTOS = ["ver", "editar_estilo", "editar_notas", "editar_datos"]
 # `ver` lista · `gestionar` alta/edición básica (lo que el dueño ya tenía) ·
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
@@ -193,6 +203,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
         "ajustes": list(TODO_AJUSTES),
+        "documentos": list(TODO_DOCUMENTOS),
         "directorio": list(TODO_DIRECTORIO),
         "chalanes": list(TODO_CHALANES),
         "site": list(TODO_SITE),
@@ -332,6 +343,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),
+    # La Imprenta: los documentos PDF (estilo, notas, datos del despacho).
+    "documentos": list(TODO_DOCUMENTOS),
     "directorio": list(TODO_DIRECTORIO),
     "chalanes": list(TODO_CHALANES),
     "site": list(TODO_SITE),
