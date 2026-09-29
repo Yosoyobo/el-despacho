@@ -33,6 +33,7 @@ COPY cuentas/ /app/cuentas/
 COPY ajustes/ /app/ajustes/
 COPY interfono/ /app/interfono/
 COPY portal/ /app/portal/
+COPY imprenta/ /app/imprenta/
 # Los MODELOS de El Taller que el portal lee (sin sus pantallas). Es el mismo
 # grafo de llaves foráneas que instala La Gerencia: facturas → cotizaciones →
 # catálogo, proyectos ↔ pizarrón ↔ checador, tesorería → contaduría.

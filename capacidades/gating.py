@@ -46,5 +46,7 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "caja": permisos.puede_ver_caja,
         # La Nómina: los montos de todos (`nomina.ver`). `mi_recibo` es abierto.
         "nomina": permisos.puede_ver_nomina,
+        # La Imprenta: cómo están configurados los PDF (`documentos.ver`).
+        "documentos": permisos.puede_ver_documentos,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

@@ -224,6 +224,15 @@ def nomina_quincena(fecha: str = "") -> dict[str, Any]:
     return _h_nomina_quincena({"fecha": _texto(fecha, 10)}, usuario)
 
 
+def formato_documentos() -> dict[str, Any]:
+    """La Imprenta: cómo están configurados los PDF (documentos.ver)."""
+    from capacidades.lecturas_imprenta import _h_formato_documentos
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "documentos", "ver")
+    return _h_formato_documentos({}, usuario)
+
+
 def mi_recibo(fecha: str = "") -> dict[str, Any]:
     """El recibo de nómina de quien opera la conexión (sólo quincenas cerradas)."""
     from capacidades.lecturas_nomina import _h_mi_recibo

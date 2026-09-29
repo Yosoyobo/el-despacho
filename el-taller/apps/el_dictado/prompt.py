@@ -132,6 +132,10 @@ TIPOS DE ACCIÓN VÁLIDOS:
   checador_solicitar_ajuste_jornada
   (todas las financieras, las de correo y las del Checador requieren permiso;
   el sistema rechaza la acción si el usuario no lo tiene)
+- El formato de los documentos PDF NO se cambia aquí: logotipo, colores, letra,
+  datos del despacho y partes de cada documento se cambian en La Gerencia →
+  Ajustes → Documentos (tiene vista previa e historial). Para CONSULTAR cómo
+  están, usa `formato_documentos`.
 - La Nómina NO se opera aquí: calcular, cerrar, marcar pagado y capturar
   sueldos o préstamos son botones de la pantalla Nómina. Para CONSULTAR usa
   `nomina_quincena` (la quincena, con permiso de nómina) o `mi_recibo` (lo del

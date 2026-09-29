@@ -15,6 +15,7 @@ from __future__ import annotations
 from . import (
     lecturas,  # noqa: F401,E402 — registra capacidades de lectura
     lecturas_caja,  # noqa: F401,E402 — La Caja: links y pagos en línea
+    lecturas_imprenta,  # noqa: F401,E402 — La Imprenta: el formato de los PDF
     lecturas_nomina,  # noqa: F401,E402 — La Nómina: la quincena y mi recibo
     propuestas,  # noqa: F401,E402 — registra capacidades de escritura (propuesta)
 )

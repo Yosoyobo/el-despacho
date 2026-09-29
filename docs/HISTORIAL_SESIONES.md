@@ -10816,3 +10816,73 @@ ningún permiso efectivo (foto de producción y 5 primarios × todas las combina
 **Deuda**: un usuario con primario super_admin SIN el rol asignado (estado previo a
 S-Roles-V2, no existe en producción) pierde el super_admin al guardar el panel
 (`sincronizar_rol_primario`), con o sin este arreglo.
+
+### S-Imprenta · Deploy 1 ✅ — VERSION 2026.09.12 (2026-09-29)
+
+Oscar: «quiero poder editar, modificar y personalizar aún más la generación de
+PDFs». Plan aprobado en 4 deploys seguidos (cotización+factura+documentos nuevos,
+todo lo posible, ajustes + vista previa en vivo, una plantilla por tipo, Chromium
+manda y Google sale «básico», notas globales + extra por cotización). Deploy 1 =
+cimientos + cotización.
+
+**La Imprenta** — app raíz nueva `imprenta/` (Taller imprime, Gerencia configura y
+migra; COPY en los 3 Dockerfiles, instalada en Taller y Gerencia):
+- `imprenta/esquema.py`: el contrato. Cada ajuste es un `Campo` (tipo, default,
+  límites, `opcional` = vacío hereda, `visual`). Secciones globales `marca`,
+  `tablas`, `despacho`, `firma` + la hoja general `HOJA` (que sigue viviendo en
+  `ajustes.ConfiguracionDocumento`). Cada tipo declara `DefinicionTipo`
+  (bloques, columnas/rótulos, título, datos del despacho, hoja propia). **Los
+  defaults son el documento de siempre.**
+- `AjusteImprenta` (una fila por ámbito, JSON) + `VersionImprenta` (foto de TODO +
+  resumen en palabras + `restaurada_de`). `imprenta/servicios.py`: `guardar()`
+  fotografía el «Estado inicial» antes del primer cambio; `restaurar()`; el testigo
+  de edición pisada sale del historial (`revisar_choque(base, cambios)`: campo por
+  campo, lo que había al abrir / lo de hoy / lo que se manda).
+- `imprenta/config.py`: `resolver(tipo, borrador=, basico=, destino=)` → `Config`
+  con `Estilo` (`e.td`, `e.th`, `e.cuerpo`, `e.titulo`…: con defaults son
+  IDÉNTICOS al CSS que la plantilla traía escrito). `basico=True` descarta lo
+  `visual` (Google), conserva el contenido. `pagina(cfg)`: hoja general + lo del
+  tipo (vacío hereda, cero es cero) + `fuentes`.
+- `imprenta/tipos.py`: registro `TIPOS` (definición + `Adaptador` con
+  `ejemplos/html/pagina`, imports perezosos). Hoy: `cotizacion`.
+- Fuentes OFL vendoreadas en `imprenta/static/imprenta/fuentes/` (Inter,
+  Montserrat, Lato, Poppins, Lora; 6.9 MB): para el motor viajan PEGADAS a la
+  petición de Gotenberg (`lib.gotenberg._archivos_fuente`, `@font-face` por nombre
+  de archivo); en pantalla por `/static/`. Familias sin espacios (`LCLato`) para
+  no meter comillas en `style=`.
+- `lib/gotenberg.py`: `pagina["fuentes"]`, `pagina["pdfa"]` (PDF/A-2b),
+  `marca_color` validado (#rrggbb o el rojo de siempre). `lib/documentos.py`:
+  `generar_pdf(html_google=)` — texto o función; se dibuja sólo si va por Google.
+- Plantilla de la cotización MOVIDA a `imprenta/templates/cotizaciones/pdf.html`
+  (mismo nombre de plantilla) y parametrizada: `c`, `e`, `b` (bloques), `r`
+  (rótulos), `_logo.html` (ancho por proporción del logotipo), `_datos_despacho.html`,
+  filtro `rayado`. La hoja de la vista previa sale de la misma `pagina`
+  (`hoja_css`), ya no de números escritos. `construir_html_pdf(config=, sin_barra=)`.
+- Estimador de notas: `_alto_util_de(cfg)` mueve sólo la DIFERENCIA contra la hoja
+  de fábrica (carta/márgenes de siempre = mismo número); bloques apagados y texto
+  de cierre entran al cálculo.
+
+**La pantalla** (`la-gerencia/apps/los_ajustes/views_imprenta.py`, plantilla
+`ajustes/imprenta/panel.html`): pestañas Hoja y motor (los nombres de campo de
+siempre, sin prefijo) · Marca y tablas · Datos y firma · Cotización · Historial.
+Vista previa en vivo (`POST documentos/vista/`, iframe `srcdoc` con `sandbox`,
+sólo ejemplos de la lista) y «PDF de prueba» (`documentos/vista/pdf/`, sólo
+Gotenberg; 503 si no contesta). Logotipo y firma a El Almacén (PNG/JPG/WebP ≤5 MB).
+Arreglo de paso: **el interlineado de la hoja general no se aplicaba** (la
+plantilla traía 1.02 escrito); ahora sí.
+
+**Permisos**: módulo nuevo `documentos` (`ver`, `editar_estilo`, `editar_notas`,
+`editar_datos`), sembrado «como hoy» por `imprenta/0002` a quien tenía
+`ajustes.acceder`. Renglón «Documentos» del menú con su propio permiso. Restaurar
+exige las tres de edición.
+
+**El Chalán / MCP**: `formato_documentos` (gating `documentos`; CLABE/cuenta
+enmascaradas) en `capacidades/lecturas_imprenta.py` + `mcp_despacho`. Cambiar el
+formato NO va por chat (catálogo + prompt lo dicen).
+
+**Deuda diseñada** (para los deploys 2–4 del mismo sprint): notas editables,
+firma/aceptación, folio/vigencia/QR, marcas por estado, patrón del nombre de
+archivo, factura en La Imprenta; recibo de pago, estado de cuenta, remisión,
+reembolso, orden de trabajo, recibo de nómina; orden de compra y portada. La vista
+previa es hoja continua (los cortes exactos, en el PDF de prueba); una imagen nueva
+se ve al guardarla.

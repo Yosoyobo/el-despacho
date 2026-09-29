@@ -152,7 +152,7 @@ def test_compartir_pdf_solo_en_tactil():
     candado el botón dejaba de descargar en la computadora (Oscar: «en desktop
     este botón debería de bajar el archivo»)."""
     from pathlib import Path
-    tpl = Path("el-taller/templates/cotizaciones/pdf.html").read_text(encoding="utf-8")
+    tpl = Path("imprenta/templates/cotizaciones/pdf.html").read_text(encoding="utf-8")
     assert "matchMedia('(pointer: coarse)')" in tpl
     assert "if (!tactil) return;" in tpl
     # La descarga real la sigue dando el `attachment` de la vista.
@@ -180,15 +180,21 @@ def test_la_descarga_va_como_attachment(client, usuario_factory, monkeypatch,
 # ── 2 · Interlineado del documento más apretado ───────────────────────────────
 
 
+@pytest.mark.django_db
 def test_documento_con_interlineado_apretado():
+    """Desde La Imprenta el interlineado y el aire de las celdas salen de La
+    Gerencia; DE FÁBRICA son los apretados de agosto (se revisa el estilo que
+    recibe la plantilla, no el fuente, donde ya no están escritos)."""
     from pathlib import Path
-    tpl = Path("el-taller/templates/cotizaciones/pdf.html").read_text(encoding="utf-8")
-    assert "line-height: 1.02;" in tpl          # cuerpo (era 1.15)
-    assert "line-height: 1.15;" not in tpl
+
+    from imprenta.config import resolver
+    e = resolver("cotizacion").e
+    assert "line-height: 1.02;" in e.cuerpo     # cuerpo (era 1.15)
     # Celdas de las tablas de conceptos: 2pt → 1pt (la fila «Total», que va
     # destacada, se queda con 2pt a propósito).
-    assert "#cccccc; padding:2pt 5pt" not in tpl
-    assert "#cccccc; padding:1pt 5pt" in tpl
+    assert e.td == "border:1px solid #cccccc; padding:1pt 5pt;"
+    tpl = Path("imprenta/templates/cotizaciones/pdf.html").read_text(encoding="utf-8")
+    assert "line-height: 1.15;" not in tpl
     assert "margin-bottom:24pt" not in tpl      # encabezado y totales
     assert "margin-bottom:18pt" not in tpl      # tablas de conceptos
 

@@ -13556,3 +13556,15 @@ La Caja y el Portal salen de la deuda por decisión de Oscar.
 
 La grilla de permisos de El Directorio ya reconoce el rol asignado: cada casilla dice
 de dónde viene y «Guardar permisos» ya no quita en silencio lo que da un rol asignado.
+
+## 2026-09-29 — S-Imprenta · Deploy 1 (VERSION 2026.09.12)
+
+La Imprenta: los PDF se personalizan desde Gerencia → Ajustes → Documentos. Marca
+(logotipo propio, letra, colores, tamaños), tablas, datos del despacho y firma, y
+por tipo de documento qué partes lleva, sus rótulos, título, textos y hoja propia.
+Vista previa en vivo sin guardar, PDF de prueba del motor real e historial con
+«volver a esta versión» y aviso si alguien guardó encima. Todo nace igual al
+documento de siempre; con Google (respaldo) sale el formato de siempre con el
+contenido elegido. Permiso nuevo `documentos` (4 acciones). El Chalán:
+`formato_documentos`. Se arregló que el interlineado elegido no se aplicaba.
+Trabajo en worktree propio (otra sesión en el árbol principal). Primer deploy de 4.

@@ -83,6 +83,10 @@ INSTALLED_APPS = [
     # aquí se instala solo para que La Gerencia corra su migración (Bug B §14).
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Imprenta (2026-09-29): los ajustes de los PDF, su historial y las
+    # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
+    # que configura y previsualiza).
+    "imprenta.apps.ImprentaConfig",
     # La Recepción (S5): los accesos de clientes al portal. La UI vive en El
     # Taller (ficha del cliente) y en La Recepción; aquí sólo se instala para
     # que La Gerencia corra su migración (es la única que corre migrate, Bug B).

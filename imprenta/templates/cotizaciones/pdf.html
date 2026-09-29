@@ -1,4 +1,4 @@
-{% load forms_helpers %}<!DOCTYPE html>
+{% load forms_helpers imprenta %}<!DOCTYPE html>
 {% comment %}
 Documento de cotización de Learning Center (layout LC 2026-07, calcado del
 formato que Oscar venía armando a mano).
@@ -59,7 +59,11 @@ suban.
 Montos sin signo y sin centavos cuando son .00 (filtro |dinero_sin_signo).
 {% endcomment %}
 <html lang="es">
-<head><meta charset="utf-8"><title>{{ cot.titulo_documento }}</title>
+<head><meta charset="utf-8"><title>{{ titulo_documento }}</title>
+{% comment %}La Imprenta (2026-09-29): las fuentes elegidas en La Gerencia. Vacío con
+Arial, que es la de siempre. Para el motor la ruta es el nombre del archivo, que
+viaja pegado a la conversión (ver `imprenta.config.Estilo.fuentes_css`).{% endcomment %}
+{{ e.fuentes_css|safe }}
 {% if preview %}
 {% comment %}Envoltorio SOLO de pantalla (LC 2026-07-26): hoja carta con sus
 márgenes sobre fondo gris + barra para bajar el PDF. Nada de esto viaja al
@@ -74,12 +78,12 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
     border-radius: 8px; padding: 7px 14px; border: 1px solid transparent; }
   .lc-btn { background: #465fff; color: #ffffff; font-weight: 600; }
   .lc-btn-sec { background: transparent; color: #e5e7eb; border-color: #4b5563; }
-  /* Los márgenes de la hoja ESPEJAN los del documento real (medio inch arriba,
-     0.6 abajo, una pulgada a los lados). Viven en
-     `services._MARGEN_*_PT`: si allá cambian, aquí también, o la vista previa
-     deja de parecerse al PDF. */
-  .lc-hoja { background: #ffffff; width: 8.5in; max-width: 100%; box-sizing: border-box;
-    margin: 24px auto; padding: 0.5in 1in 0.6in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  /* Los márgenes y el tamaño de la hoja ESPEJAN los del documento real: salen
+     de la misma configuración que se le manda al motor (`hoja_css`, de
+     `imprenta.config.pagina`), así que la vista previa no puede quedarse con
+     otros cuando alguien los cambia en La Gerencia. */
+  .lc-hoja { background: #ffffff; width: {{ hoja_css.ancho }}in; max-width: 100%; box-sizing: border-box;
+    margin: 24px auto; padding: {{ hoja_css.arriba }}in {{ hoja_css.derecha }}in {{ hoja_css.abajo }}in {{ hoja_css.izquierda }}in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
   .lc-pie { margin: 0.35in 0 0; text-align: center; font-size: 9pt; color: #666666; }
   @media (max-width: 900px) { .lc-hoja { padding: 0.4in 0.5in 0.5in; margin: 12px auto; } }
   /* Al imprimir, el margen lo pone la HOJA y no la página: con `@page {
@@ -89,7 +93,7 @@ documento que convierte Google — va todo dentro de `{% if preview %}`.{% endco
   @media print {
     body { background: #ffffff; }
     .lc-barra { display: none; }
-    .lc-hoja { width: auto; margin: 0; padding: 0.5in 0.8in 0.6in; box-shadow: none; }
+    .lc-hoja { width: auto; margin: 0; padding: {{ hoja_css.arriba }}in {{ hoja_css.derecha }}in {{ hoja_css.abajo }}in {{ hoja_css.izquierda }}in; box-shadow: none; }
   }
 </style>
 {% endif %}
@@ -99,8 +103,12 @@ elementos»). Docs respeta `line-height` como interlineado del párrafo.
 LC 2026-08-04 (Oscar): «apretar aún más el interlineado de todo» → 1.15 → 1.02
 (el mínimo que Docs sigue respetando sin encimar los acentos) y todos los
 márgenes/paddings del documento bajan a la par, ver los bloques de abajo.{% endcomment %}
-<body style="font-family: Arial, sans-serif; color: #000000; font-size: 11pt; line-height: 1.02;">
+{% comment %}La Imprenta: letra, color, tamaño e interlineado salen de La Gerencia
+(`e.cuerpo`). Con los valores de fábrica es el mismo `Arial 11pt · 1.02` de
+siempre; el interlineado de la hoja general ahora SÍ se aplica.{% endcomment %}
+<body style="{{ e.cuerpo }}">
 {% if preview %}
+{% if not sin_barra %}
 <div class="lc-barra">
   <span>{% if aviso %}{{ aviso }}{% else %}Vista previa · <strong>{{ nombre_archivo }}</strong>{% endif %}</span>
   <span>
@@ -213,6 +221,7 @@ ratón/trackpad.{% endcomment %}
 })();
 </script>
 {% endif %}
+{% endif %}{# sin_barra #}
 <div class="lc-hoja">
 {% endif %}
 
@@ -224,17 +233,21 @@ ratón/trackpad.{% endcomment %}
       con él: así el encabezado se lee como una sola línea (render de Oscar,
       2026-07-25 tercera ronda).{% endcomment %}
       <td style="border:none; width:33%; vertical-align:top; text-align:left;">
-        {{ cot.fecha_emision|date:"j" }} {{ cot.fecha_emision|date:"F"|capfirst }} {{ cot.fecha_emision|date:"Y" }}
+        {% if b.logo and logo_url and e.logo_alinea == "left" %}{% include "imprenta/_logo.html" with alinea="left" %}{% endif %}
+        {% if b.fecha %}{{ cot.fecha_emision|date:"j" }} {{ cot.fecha_emision|date:"F"|capfirst }} {{ cot.fecha_emision|date:"Y" }}{% endif %}
       </td>
       <td style="border:none; width:34%; vertical-align:top;">
         {% comment %}LC 2026-08-17 (Oscar, punto 1 del render): el logotipo crece
         un 5% (48 → 50pt) para que tenga la presencia que tiene en el formato de
         referencia. Va con ancho y alto FIJOS por la misma razón que las fotos de
         producto: el convertidor hace caso a los atributos.{% endcomment %}
-        {% if logo_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ logo_url }}" alt="Learning Center" width="50" height="50" style="width:50pt; height:50pt;"></p>{% endif %}
+        {% comment %}La Imprenta: el logotipo, su alto y su lugar salen de La Gerencia;
+        de fábrica es el de siempre, 50pt al centro.{% endcomment %}
+        {% if b.logo and logo_url and e.logo_alinea == "center" %}{% include "imprenta/_logo.html" with alinea="center" %}{% endif %}
       </td>
       <td style="border:none; width:33%; vertical-align:top; text-align:right;">
-        {{ cot.cliente.razon_social|upper }}
+        {% if b.logo and logo_url and e.logo_alinea == "right" %}{% include "imprenta/_logo.html" with alinea="right" %}{% endif %}
+        {% if b.cliente %}{{ cot.cliente.razon_social|upper }}{% endif %}
       </td>
     </tr>
   </table>
@@ -249,7 +262,9 @@ ratón/trackpad.{% endcomment %}
   El aire de abajo bajó de 28pt a 14pt (Oscar 2026-07-28, punto 2: «entre el
   título y el primer elemento hay un <br> de más») y de 14pt a 8pt en la ronda
   del 2026-08-04 («apretar aún más el interlineado de todo»).{% endcomment %}
-  <p style="text-align:center; margin:0 0 8pt 0;">{{ cot.titulo_documento }}</p>
+  {% include "imprenta/_datos_despacho.html" %}
+  <p style="{{ e.titulo }} margin:0 0 8pt 0;">{{ titulo_documento }}</p>
+  {% if texto_intro %}<p style="margin:0 0 8pt 0;">{{ texto_intro }}</p>{% endif %}
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
   y la foto van en UNA SOLA tabla: dos tablas seguidas dejaban un renglón en
@@ -276,14 +291,14 @@ ratón/trackpad.{% endcomment %}
   (`services._ALTO_FOTO_PT`), para que ese aire de arriba tampoco sea mucho.{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:{% if apretado %}0{% else %}3{% endif %}pt;">
     <tr>
-      <td style="border:none; width:22pt; vertical-align:top;">{{ forloop.counter }}.</td>
+      <td style="border:none; width:22pt; vertical-align:top;">{% if b.numeracion %}{{ forloop.counter }}.{% endif %}</td>
       <td colspan="2" style="border:none; vertical-align:top;"><u>{{ fila.it.concepto_visible }}</u></td>
     </tr>
-    {% if fila.it.detalle_lineas or fila.imagen %}
+    {% if fila.lineas or fila.imagen %}
     <tr>
       <td style="border:none; width:22pt;">&nbsp;</td>
       <td style="border:none; width:62%; vertical-align:bottom; padding-left:12pt;">
-        {% for renglon in fila.it.detalle_lineas %}{{ renglon }}<br>{% endfor %}
+        {% for renglon in fila.lineas %}{{ renglon }}<br>{% endfor %}
       </td>
       {% comment %}La foto va centrada a lo ancho y asentada ABAJO (Oscar
       2026-08-18): al ras de la última línea de la descripción, para que el
@@ -312,47 +327,49 @@ ratón/trackpad.{% endcomment %}
   · **Línea (C).** Gris claro, no negra. Va celda por celda: un borde declarado
     sólo en la tabla no se dibuja. Sin `<thead>/<tbody>` — el convertidor los
     trata como bloques y metía un renglón en blanco.{% endcomment %}
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:10pt;">
+  {% if b.montos %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:{{ e.tabla_pt }}pt;">
     <tr>
       <td style="border:none; width:11%;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:36%; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:12%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:15%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:15%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="{{ e.th }} width:36%; text-align:left; {{ e.th_letra }}">{{ r.concepto }}</td>
+      <td style="{{ e.th }} width:12%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+      <td style="{{ e.th }} width:15%; text-align:right; {{ e.th_letra }}">{{ r.precio }}</td>
+      <td style="{{ e.th }} width:15%; text-align:right; {{ e.th_letra }}">{{ r.subtotal }}</td>
       <td style="border:none; width:11%;">&nbsp;</td>
     </tr>
-    <tr>
+    <tr style="{{ e|rayado:1 }}">
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
+      <td style="{{ e.td }} text-align:left; font-style:italic;">{{ fila.it.concepto_visible }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ fila.it.cantidad|floatformat:"-2" }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ fila.it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ fila.it.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% comment %}LC 2026-07-26 (Oscar): procesos de VENTA del producto (Ponchado,
     arte…). Se le cobran aparte —son sus propias líneas— pero viven en la MISMA
     tablita del producto, para que el cliente lea el bloque completo.{% endcomment %}
     {% for ex in fila.extras %}
-    <tr>
+    <tr style="{{ e|rayado:forloop.counter0 }}">
       <td style="border:none;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
+      <td style="{{ e.td }} text-align:left; font-style:italic;">{{ ex.concepto_visible }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ ex.cantidad|floatformat:"-2" }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ ex.precio_unitario|dinero_sin_signo }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ ex.subtotal|dinero_sin_signo }}</td>
       <td style="border:none;">&nbsp;</td>
     </tr>
     {% endfor %}
   </table>
+  {% endif %}
   </div>
   </td></tr>
   {% endfor %}
   </table>
   {% else %}
-  <p style="color:#666666;">Sin conceptos.</p>
+  <p style="{{ e.suave_css }}">Sin conceptos.</p>
   {% endif %}
 
   {# Desglose y cálculo de impuestos: solo si el interruptor está prendido #}
-  {% if cot.incluir_desglose %}
+  {% if cot.incluir_desglose and b.desglose %}
   {% comment %}LC 2026-08-04 (Oscar): la TABLA de desglose se omite cuando hay un
   solo producto (sería copia de la tablita de montos de arriba); los impuestos y
   el total sí van. Ver `services._mostrar_desglose`.{% endcomment %}
@@ -373,24 +390,24 @@ ratón/trackpad.{% endcomment %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
-  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:10pt;">
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:{% if apretado %}3{% else %}10{% endif %}pt; font-size:{{ e.tabla_pt }}pt;">
     <tr>
-      <td colspan="5" style="border:none; padding:0 0 6pt 0; text-align:center; font-size:12pt;">Desglose de Elementos</td>
+      <td colspan="5" style="border:none; padding:0 0 6pt 0; text-align:center; font-size:12pt;">{{ r.titulo_desglose }}</td>
     </tr>
     <tr>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:22pt; text-align:center;">&#10004;</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; text-align:left; font-style:italic;">Concepto</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:16%; text-align:right; font-style:italic;">Cantidad</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">P. Unitario</td>
-      <td style="border:1px solid #cccccc; background-color:#f2f2f2; padding:1pt 5pt; width:19%; text-align:right; font-style:italic;">Subtotal</td>
+      <td style="{{ e.th }} width:22pt; text-align:center;">&#10004;</td>
+      <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.concepto }}</td>
+      <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+      <td style="{{ e.th }} width:19%; text-align:right; {{ e.th_letra }}">{{ r.precio }}</td>
+      <td style="{{ e.th }} width:19%; text-align:right; {{ e.th_letra }}">{{ r.subtotal }}</td>
     </tr>
     {% for it in items_desglose %}
-    <tr>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt;">&nbsp;</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
-      <td style="border:1px solid #cccccc; padding:1pt 5pt; text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
+    <tr style="{{ e|rayado:forloop.counter }}">
+      <td style="{{ e.td }}">&nbsp;</td>
+      <td style="{{ e.td }} text-align:left; font-style:italic;">{{ it.concepto_visible }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ it.precio_unitario|dinero_sin_signo }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ it.subtotal|dinero_sin_signo }}</td>
     </tr>
     {% endfor %}
   </table>
@@ -405,7 +422,7 @@ ratón/trackpad.{% endcomment %}
   los `.00`, que en un documento fiscal se lee raro).{% endcomment %}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:14pt;">
     <tr>
-      <td style="border:none; padding:1pt 5pt;">Subtotal</td>
+      <td style="border:none; padding:1pt 5pt;">{{ r.rotulo_subtotal }}</td>
       <td style="border:none; padding:1pt 5pt; text-align:right;">{{ totales.subtotal_items|dinero_exacto_sin_signo }}</td>
     </tr>
     {% if totales.descuento_global %}
@@ -423,8 +440,8 @@ ratón/trackpad.{% endcomment %}
     </tr>
     {% endfor %}
     <tr>
-      <td style="border:none; padding:2pt 5pt; font-weight:bold;">Total</td>
-      <td style="border:none; padding:2pt 5pt; text-align:right; font-weight:bold;">{{ totales.total|dinero_exacto_sin_signo }}</td>
+      <td style="border:none; padding:2pt 5pt; font-weight:bold; {{ e.total }}">{{ r.rotulo_total }}</td>
+      <td style="border:none; padding:2pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ totales.total|dinero_exacto_sin_signo }}</td>
     </tr>
   </table>
   {% endif %}
@@ -441,6 +458,8 @@ ratón/trackpad.{% endcomment %}
   los bloques de producto: una fila con `preventOverflow` no se corta, así que
   o caben enteras o pasan enteras. El hueco que las empuja al pie va DENTRO de
   la celda para que viaje con ellas.{% endcomment %}
+  {% if texto_cierre %}<p style="margin:0 0 8pt 0;">{{ texto_cierre }}</p>{% endif %}
+  {% if b.notas and notas %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
   <tr><td style="border:none; padding:0; vertical-align:top;">
@@ -450,10 +469,10 @@ ratón/trackpad.{% endcomment %}
     el bloque viaja entero (fila con `preventOverflow`), arranca la siguiente y
     ahí necesita ese aire para no quedar pegado al borde.{% endcomment %}
     <div style="margin-top:{{ espacio_notas_pt }}pt;">{% if brs_notas %}<br><br>{% endif %}
-      <p style="margin:0 0 2pt 0; font-size:9pt;">Notas:</p>
+      <p style="margin:0 0 2pt 0; font-size:{{ e.notas_pt }}pt;">{{ r.rotulo_notas }}</p>
       {% comment %}LC 2026-08-04 (Oscar): interlineado un poco más apretado —
       padding a 0 y `line-height:1.1` en la tabla (el del cuerpo es 1.15).{% endcomment %}
-      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:9pt; line-height:1.0;">
+      <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:{{ e.notas_pt }}pt; line-height:1.0;">
         {% for nota in notas %}
         <tr>
           <td style="border:none; width:18pt; vertical-align:top; padding:0;">{{ forloop.counter }}.</td>
@@ -465,9 +484,10 @@ ratón/trackpad.{% endcomment %}
   </td></tr>
   </table>
   </div>
+  {% endif %}
 
-  {% if cot.terminos %}
-  <p style="margin:12pt 0 3pt 0; font-size:10pt; font-weight:bold;">Condiciones adicionales</p>
+  {% if cot.terminos and b.condiciones %}
+  <p style="margin:12pt 0 3pt 0; font-size:10pt; font-weight:bold;">{{ r.rotulo_condiciones }}</p>
   <div style="font-size:10pt; white-space:pre-line;">{{ cot.terminos }}</div>
   {% endif %}
 

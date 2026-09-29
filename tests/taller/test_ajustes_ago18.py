@@ -443,7 +443,7 @@ def test_la_pagina_del_documento_lleva_el_margen_del_encabezado():
 
 def test_la_descripcion_y_la_foto_se_asientan_abajo():
     """Así el sobrante queda ARRIBA y la tablita pega con la descripción."""
-    pdf = (TALLER / "templates/cotizaciones/pdf.html").read_text()
+    pdf = (RAIZ / "imprenta/templates/cotizaciones/pdf.html").read_text()
     bloque = pdf[pdf.index("{% for fila in filas %}"):pdf.index("Tabla de montos")]
     assert bloque.count("vertical-align:bottom") == 2      # el texto y la foto
     assert "vertical-align:middle" not in bloque
@@ -463,7 +463,7 @@ def _plan(monkeypatch, libre_normal, libre_apretado):
     """Fija lo que «queda libre» en la hoja para probar la escalera."""
     from apps.cotizaciones import services
 
-    def falso(cot, filas, items, *, apretado=False):
+    def falso(cot, filas, items, *, apretado=False, **_):
         return {"libre": libre_apretado if apretado else libre_normal}
 
     monkeypatch.setattr(services, "_paginar", falso)
@@ -492,6 +492,6 @@ def test_si_ni_apretando_caben_arrancan_a_dos_renglones(monkeypatch):
 
 
 def test_el_modo_apretado_llega_al_documento():
-    pdf = (TALLER / "templates/cotizaciones/pdf.html").read_text()
+    pdf = (RAIZ / "imprenta/templates/cotizaciones/pdf.html").read_text()
     assert "{% if apretado %}" in pdf
     assert "{% if brs_notas %}<br><br>{% endif %}" in pdf
