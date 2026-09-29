@@ -10471,3 +10471,62 @@ el piso de 76 px se conserva (La Gerencia no cambia). Medido: botones 76–118 �
 
 **Lección:** la suite renderiza HTML pero no mide layout — un envoltorio «que no
 se ve» metido en una retícula pasa todas las pruebas. Se cazó sólo mirando.
+
+### S-Deuda-Sep28 ✅ — VERSION 2026.09.05 (2026-09-28)
+
+Oscar: «termina toda la deuda técnica». Cuatro agentes en worktrees propios
+(carpeta temporal y Redis propios, commit antes de mutar), integrados en
+`agent/deuda-sep28`. Suite integrada: 4342 passed (sólo los 4 locales de
+`test_portavoz_worker`).
+
+**Entregado**
+- **Ninguna puerta decide por rol literal (§4 #20), «como hoy»** (decisión de
+  Oscar: nadie gana ni pierde acceso; el diseñador sigue sin editar proyectos y se
+  le quitó `proyectos.editar` de su default). `es_admin`, `puede_ver_finanzas`,
+  `puede_ver_proyecto`, `puede_editar/archivar_proyecto`, `puede_ver/editar_cartera`,
+  comentarios internos, borrar tarea ajena, mandados de todos, borrar del Buzón,
+  `/api/site/`, tablero de La Gerencia y saldo de Chalanes preguntan por acciones
+  granulares; nuevas: `proyectos.ver_todos`, `proyectos.archivar`,
+  `pizarron.ver_comentarios`, `pizarron.comentar_interno`, `pizarron.eliminar`,
+  `pizarron.ver_todos_mandados`, `buzon.eliminar`, `site.api`. Se borraron
+  `es_admin`, `requires_role`/`requires_any_role`, `Usuario.es_admin`.
+  `cuentas/0047_permisos_sin_rol_literal` (sólo datos, idempotente): JSON de los 4
+  roles del sistema = su regla vieja; una fila por persona donde el rol daba la
+  puerta (si no, guardar la grilla de El Directorio la apagaría); apaga lo que
+  abriría una puerta que hoy no abría. Sobre la foto de producción del 28-sep
+  apaga 3 filas sin efecto real. Candado `tests/test_permisos_sin_rol_literal.py`:
+  160 usuarios sintéticos, puerta vieja congelada vs nueva en 16 puertas +
+  querysets reales; falla si reaparece un rol literal.
+- **Pantalla de corte con roadmap automático** (§4 #23, tercera pieza):
+  `(lc_failover)` sirve `/srv/mantenimiento-vivo/en-curso.html` o
+  `/srv/mantenimiento/index.html` (DIRECTORIOS montados, Bug F), 503 +
+  `Retry-After` + `no-store`, sondas en 502, reserva mínima en línea. El job
+  `mudanza` arma la pantalla en el runner (`infra/scripts/pantalla_mantenimiento.py`)
+  y la escribe en La Sede con un `docker run --rm` desechable ANTES de saltar al NUC;
+  `trap` la borra al salir. Barra por tiempo esperado (20/60/120 s), vieja a los
+  30 min. `tests/test_pantalla_mantenimiento.py` (34, con Caddy real en Docker).
+- **Testigo en la versión de cotización del proyecto (`ppv`)**: piezas múltiples
+  por POST (`revisar_juntas`), testigo propio por versión (`_edicion_testigo_ppv`,
+  `edicion/_testigo_pieza.html`, `class="contents"`, sin segundo `_edicion_forzar`).
+- **Limpiezas**: `papeleo_limpiar_unidos` (7 días, cron 4:20; nunca borra lo
+  compartido); roles nuevos con `PERMISOS_UNIVERSALES`; la presencia ignora 3xx;
+  3 plantillas muertas de `buzon_empleado/`; `campo-form` en partidas del asiento;
+  `.toque-minimo` (44×44 < 768 px) en todo botón «⧉» con candado; ignorar CFDI
+  propio pide `facturacion.editar`; el pin del proveedor se reubica en fondo al
+  cambiar la dirección (ficha, editar y `actualizar_proveedor`), no pisa un pin
+  puesto a mano (>100 m de la dirección anterior).
+
+**Decisiones pendientes de Oscar (se conservaron como hoy)**
+- Tres puertas siguen por rol primario porque pasarlas cambiaría a alguien:
+  `lib/middleware.py` (echaría de La Gerencia a quien le revocaron el acceso con la
+  sesión abierta), `auth_google/views.py` (un Director sobre `miembro` entraría por
+  Google a La Gerencia), `referencias/views.py` (autocompletar acota al diseñador).
+- Un Director sobre rol primario `miembro` no lee comentarios (la regla era por
+  primario): se arregla prendiendo `pizarron.ver_comentarios` por persona.
+
+**Deuda que queda**
+- KPIs (`roles_visible`), sugerencias y hero del Inicio acotan por rol primario;
+  categorías de push y destinatarios usan `usuarios_con_rol` (avisos, no puertas).
+- `proyectos.crear/asignar/cambiar_estado` siguen muertas (crear usa `editar`).
+- Pin: no se reubica en el alta de proveedor; el marcador de la ficha abierta no
+  se mueve hasta recargar. En un corte que no es deploy la pantalla es la corta.

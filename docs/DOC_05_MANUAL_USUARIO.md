@@ -5,6 +5,41 @@
 
 ---
 
+## Novedades — Más avisos que te cuidan el trabajo y una pantalla de espera que explica (28 de septiembre de 2026)
+
+**La pantalla de espera dice qué está pasando.** Si el sistema se detiene un
+momento por una actualización, la pantalla ya no sólo dice «volvemos pronto»:
+dice qué versión está entrando, qué trae y cuánto falta, con una barra de avance.
+Se revisa sola y te regresa en cuanto el sistema vuelve; si estabas mandando un
+formulario, no se vuelve a enviar.
+
+**Las versiones de cotización dentro del proyecto también avisan si alguien más
+las cambió.** En las pestañas v1, v2… de «Productos involucrados», si otra persona
+(o tú en otra ventana) guardó primero, sale el mismo aviso que en el resto del
+proyecto, con quién fue y las opciones «Ver su versión», «Guardar la mía de todos
+modos» y «Copiar lo mío y recargar».
+
+**El pin de un proveedor sigue a su dirección.** Si cambias su dirección (en su
+ficha o pidiéndoselo a El Chalán), su pin en el mapa se mueve solo, salvo que lo
+hayas puesto a mano. Si no se encuentra la dirección, la ficha te avisa.
+
+**En el celular, los botones de duplicar (⧉) se atinan con el dedo**, en la lista
+de proyectos, el tablero y la tarjeta de cada producto.
+
+**En «Nuevo asiento» los campos de cada partida ya se ven con su orilla.**
+
+**Quien lleva la facturación ya puede ignorar un CFDI que emitimos nosotros**, sin
+necesitar permiso de capturar gastos.
+
+**Los PDF que unes en el Papeleo se borran solos a la semana**; lo que mandaste al
+archivo sigue ahí.
+
+**Más permisos que se pueden dar a cualquiera.** Quién puede hacer qué sigue
+exactamente igual, pero desde El Directorio ahora se pueden dar por persona cosas
+que antes sólo venían con el rol: ver todos los proyectos, archivar proyectos,
+borrar tareas de otros, ver todos los mandados, borrar mensajes del Buzón, marcar
+comentarios como internos y leer comentarios.
+
 ## Novedades — El proyecto vuelve a verse en su orden (28 de septiembre de 2026)
 
 **El detalle del proyecto (y los formularios de proyecto, cliente, producto y
