@@ -27,8 +27,10 @@ def test_kpis_por_rol_admin_ve_mas_que_disenador(usuario_factory):
 def test_kpi_buzon_solo_admin(usuario_factory):
     from apps.taller_home.kpis import kpi_por_slug
     kpi = kpi_por_slug("buzon-sin-responder")
-    assert "super_admin" in kpi.roles_visible
-    assert "disenador" not in kpi.roles_visible
+    assert kpi.visible_para(usuario_factory(rol="super_admin"))
+    assert kpi.visible_para(usuario_factory(rol="dueno"))
+    assert not kpi.visible_para(usuario_factory(rol="disenador"))
+    assert not kpi.visible_para(usuario_factory(rol="contador"))
 
 
 def test_kpi_dinero_ya_no_es_pendiente_tesoreria():
