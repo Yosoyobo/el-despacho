@@ -5,6 +5,31 @@
 
 ---
 
+## Novedades — Tu tablero lo arma La Gerencia, metas que avisan y 45 indicadores nuevos (29 de septiembre de 2026)
+
+**«Tu tablero» del Inicio ya no es fijo.** En La Gerencia → **KPIs** se decide qué
+indicadores ve cada rol y en qué orden. Tú puedes quitar o agregar desde «Editar
+tablero»: ahora sí, lo que marcas aparece (antes sólo se veían ocho, marcaras lo que
+marcaras). Quien no tiene tablero de su rol ve el de siempre.
+
+**Metas que se miden bien.** Se le puede poner meta a cualquier indicador, para todo el
+despacho, para una persona o para un cliente. Se mide **proporcional al mes**: el día 15,
+llevar la mitad es ir bien, y la barra marca dónde deberías ir hoy. En lo que **mejor
+baja** (deudas, gastos, vencidos) la meta es un tope. Si una meta va en riesgo, **te llega
+un aviso una sola vez** por periodo.
+
+**Semáforo.** En La Gerencia se le pueden poner umbrales amarillo y rojo a cada
+indicador; en tu tablero se ve un punto de color junto al título.
+
+**45 indicadores nuevos** que el sistema ya sabía medir: cuántos días tarda en aprobarse
+una cotización y en cobrarse una factura, proyectos y tareas a tiempo, horas extra, margen
+y cobrado por cliente, gastos sin comprobante, banco sin conciliar, rutas, campañas y más.
+Y los indicadores de dinero **por fin guardan su historia** (antes no), así que ya se ve
+cómo vienen contra el mes pasado.
+
+**Con El Chalán:** «¿cómo va mi tablero?», «¿qué metas van en riesgo?» o «ponle meta de
+250 mil a los ingresos del mes».
+
 ## Novedades — Los documentos en PDF ya se personalizan desde La Gerencia (29 de septiembre de 2026)
 
 **En Gerencia → Ajustes → Documentos cambias cómo se ve la cotización**: tu

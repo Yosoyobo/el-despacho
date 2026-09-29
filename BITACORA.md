@@ -13601,3 +13601,14 @@ documento de siempre; con Google (respaldo) sale el formato de siempre con el
 contenido elegido. Permiso nuevo `documentos` (4 acciones). El Chalán:
 `formato_documentos`. Se arregló que el interlineado elegido no se aplicaba.
 Trabajo en worktree propio (otra sesión en el árbol principal). Primer deploy de 4.
+
+## 2026-09-29 — S-KPIs-V2 · 1 (VERSION 2026.09.16)
+
+Ronda de KPIs con Oscar → fases 1 y 2. La Gerencia → Ajustes → KPIs: catálogo
+(prender/apagar, dirección, umbrales), tableros por rol y metas del despacho, por
+persona o por cliente, proporcionales al periodo y con aviso único por El Interfón si
+van en riesgo. El Inicio pinta el tablero del rol; Perfil → Tablero guarda sólo
+diferencias. 45 KPIs nuevos (agente en paralelo). La foto diaria nunca había guardado
+los KPIs de dinero (se saltaba el texto): arreglado. El Chalán: metas_kpi,
+mi_tablero_kpis, configuracion_kpi y fijar_meta_kpi; serie_kpi ya no filtra historia
+ajena. Permiso kpis.configurar sembrado «como hoy». Siguiente: el constructor (fase 3).

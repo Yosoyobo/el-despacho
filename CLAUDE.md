@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.15` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.16` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.16 | S-KPIs-V2 · 1 | Ajustes → KPIs (catálogo, tableros por rol, metas por despacho/persona/cliente proporcionales con aviso); 45 KPIs nuevos; la foto diaria por fin guarda el dinero; `kpis.configurar` |
 | 2026.09.15 | S-Imprenta · 1 | La Imprenta: marca, tablas, datos del despacho y bloques/rótulos por tipo con vista previa en vivo, PDF de prueba e historial; permiso `documentos` |
 | 2026.09.14 | S-Portal-Llave-Documentos | La llave del portal no caduca (pide el correo; copiar/cambiar en la ficha); el cliente sube documentos; El Chalán lee la CSF y revisa su vigencia |
 | 2026.09.13 | S-KPIs-Guardar | Guardar metas de KPI y aprobar KPIs de equipo ya no dan 500 (la imagen de Gerencia no traía `taller_home`); 3 campos fantasma del DSL de KPIs custom |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.09 | S-Recepcion-Caja | Portal de clientes encendido (enlace por correo, aprobar cotizaciones, facturas); La Caja apagada sin llaves |
 | 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
 | 2026.09.07 | S-Fin-Sep29 · cabos | Grupos de recados por rol cuentan el rol asignado |
-| 2026.09.06 | S-Fin-Sep29 | Las 3 puertas por rol primario a permiso (decisión de Oscar); KPIs/avisos por permiso; comentarios por rol asignado; pin en el alta |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -433,6 +433,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Nunca `not in resp.content` con un literal corto (el token CSRF lo genera por azar).
 - Medir consultas: armar el formset DENTRO de la medición (el `_result_cache` esconde el N+1).
 - `{% static %}` a un archivo inexistente = 500 en prod (no lo caza la suite).
+- El valor de un KPI puede venir pintado («$12,345», «32%»): todo lo que JUZGA (foto diaria, metas, umbrales) lo lee con `kpi_valor.numero_del_resultado()`; con `isinstance(valor, str)` el dinero se quedó meses sin historia.
 - Google Docs → PDF: baja imágenes ANÓNIMO y con poca paciencia (precalentar); ignora
   `page-break-inside` (usar `preventOverflow` por API); tablas sin borde salen con borde.
 - Cambiar el cliente OAuth del SSO tumba Drive (`drive.file` es por cliente+cuenta).

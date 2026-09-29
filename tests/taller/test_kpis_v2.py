@@ -7,7 +7,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
-
 from apps.taller_home.metas import avance_periodo, clave_periodo, evaluar
 
 # ── El juicio (función pura) ─────────────────────────────────────────────
@@ -276,9 +275,8 @@ def test_el_dry_run_no_manda_ni_marca(usuario_factory, monkeypatch):
 
 @pytest.mark.django_db
 def test_la_foto_diaria_guarda_el_dinero_y_se_salta_lo_personal(usuario_factory):
-    from django.core.management import call_command
-
     from apps.taller_home.models import SnapshotKPI
+    from django.core.management import call_command
 
     usuario_factory(rol="super_admin")
     call_command("kpi_foto_diaria")
@@ -291,9 +289,8 @@ def test_la_foto_diaria_guarda_el_dinero_y_se_salta_lo_personal(usuario_factory)
 
 @pytest.mark.django_db
 def test_lo_apagado_no_se_fotografia(usuario_factory):
-    from django.core.management import call_command
-
     from apps.taller_home.models import ConfigKPI, SnapshotKPI
+    from django.core.management import call_command
 
     usuario_factory(rol="super_admin")
     ConfigKPI.objects.create(kpi_slug="ingresos-mes", activo=False)
@@ -321,9 +318,8 @@ def test_lo_que_acumula_se_compara_con_el_mismo_dia_del_periodo_anterior():
 def test_la_limpieza_de_preferencias_respeta_lo_que_la_persona_decidio(usuario_factory):
     import importlib
 
-    from django.apps import apps as django_apps
-
     from apps.taller_home.models import PreferenciaKPI
+    from django.apps import apps as django_apps
 
     mig = importlib.import_module("apps.taller_home.migrations.0007_sembrar_tablero_omision")
     u = usuario_factory(rol="dueno")
