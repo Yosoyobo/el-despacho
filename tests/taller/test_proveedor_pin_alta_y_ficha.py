@@ -183,7 +183,7 @@ def test_alta_rapida_buscador_caido_crea_igual(navegador, buscador):
     "tesoreria/_modal_nuevo_egreso.html", "tesoreria/egreso_form.html",
 ])
 def test_las_altas_rapidas_mandan_la_direccion(plantilla):
-    """Las cuatro altas rápidas piden la dirección y la mandan al endpoint."""
+    """Las altas rápidas piden la dirección y la mandan al endpoint."""
     from pathlib import Path
 
     texto = (Path(__file__).resolve().parents[2] / "el-taller" / "templates" / plantilla).read_text()
@@ -428,3 +428,63 @@ def test_si_el_buscador_revienta_la_ficha_lo_avisa_al_abrir(navegador, monkeypat
     assert _alta(navegador).status_code == 302
     assert "No se pudo ubicar la dirección nueva" in navegador.get(
         _ficha(_ultimo())).content.decode()
+
+
+# ── Las altas rápidas del proyecto (gasto y «Agregar proveedor») ──────────
+
+_MODALES_PROYECTO = {
+    # plantilla: (id del campo, cómo lo manda el JS)
+    "proyectos/_modal_registrar_gasto.html": (
+        "rg-nuevo-direccion",
+        "body.append('direccion', ((slot.querySelector('#rg-nuevo-direccion')"),
+    "proyectos/_modal_agregar_proveedor.html": (
+        "pv-direccion", "body.append('direccion', direccion ? direccion.value"),
+}
+
+
+@pytest.mark.parametrize("plantilla", sorted(_MODALES_PROYECTO))
+def test_las_altas_rapidas_del_proyecto_mandan_la_direccion(plantilla):
+    from pathlib import Path
+
+    campo, envio = _MODALES_PROYECTO[plantilla]
+    texto = (Path(__file__).resolve().parents[2] / "el-taller" / "templates" / plantilla).read_text()
+    assert f'id="{campo}"' in texto, "el modal no pide la dirección"
+    assert envio in texto, "el modal no manda la dirección al alta rápida"
+
+
+def _modal_pinta_el_campo(navegador, url, campo):
+    r = navegador.get(url, HTTP_HX_REQUEST="true")
+    assert r.status_code == 200, (url, r.status_code)
+    return f'id="{campo}"' in r.content.decode()
+
+
+def test_los_modales_del_proyecto_pintan_la_direccion(navegador, proyecto_factory):
+    """Renderizados de verdad: los dos modales traen el campo nuevo."""
+    from django.template.loader import render_to_string
+    from django.test import RequestFactory
+    from django.urls import reverse
+
+    p = proyecto_factory()
+    assert _modal_pinta_el_campo(navegador, reverse("proyectos-agregar-proveedor", args=[p.pk]),
+                                 "pv-direccion")
+    # El de gasto sale de una unidad pendiente; se pinta con el contexto real de
+    # la vista y un gasto SIN proveedor (el único caso con alta rápida).
+    from apps.los_proyectos.views import _ctx_modal_pago
+
+    ctx = _ctx_modal_pago(p, info={"monto": 100, "label": "1 concepto", "proveedor": None},
+                          accion_url="/x")
+    html = render_to_string("proyectos/_modal_registrar_gasto.html", ctx,
+                            request=RequestFactory().get("/"))
+    assert 'id="rg-nuevo-direccion"' in html
+
+
+@pytest.mark.parametrize("origen", ["gasto del proyecto", "agregar proveedor al proyecto"])
+def test_el_alta_rapida_del_proyecto_programa_el_pin(navegador, buscador, origen):  # noqa: ARG001
+    """Lo que mandan los dos modales del proyecto (mismos campos que su JS)."""
+    campos = {"razon_social": "Imprenta Morelos", "nombre_contacto": "Luis",
+              "telefono": "555 000 1111", "direccion": DIRECCION}
+    if origen == "gasto del proyecto":
+        campos["email_contacto"] = "luis@morelos.mx"
+    r = navegador.post("/catalogo/proveedores/quick-create/", campos)
+    assert r.status_code == 200 and r.json()["pin_programado"] is True
+    assert _pin(_ultimo()) == PUNTO

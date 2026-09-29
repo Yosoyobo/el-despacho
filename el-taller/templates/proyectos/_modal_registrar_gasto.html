@@ -67,6 +67,7 @@ que el grupo trae `info.conceptos` para enlistar lo que se está pagando.{% endc
                         <input id="rg-nuevo-contacto" type="text" placeholder="Contacto" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
                         <input id="rg-nuevo-email" type="email" placeholder="Email" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
                         <input id="rg-nuevo-tel" type="text" placeholder="Teléfono" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <input id="rg-nuevo-direccion" type="text" autocomplete="off" placeholder="Dirección (el pin se ubica solo)" class="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm sm:col-span-2 dark:border-gray-700 dark:bg-gray-900">
                     </div>
                     <button type="button" id="rg-nuevo-crear" class="btn-secundario mt-2 text-xs">Crear y seleccionar</button>
                     <p id="rg-nuevo-msg" class="mt-1 hidden text-xs text-error-600 dark:text-error-400"></p>
@@ -184,6 +185,7 @@ que el grupo trae `info.conceptos` para enlistar lo que se está pagando.{% endc
                 body.append('nombre_contacto', (slot.querySelector('#rg-nuevo-contacto').value || ''));
                 body.append('email_contacto', (slot.querySelector('#rg-nuevo-email').value || ''));
                 body.append('telefono', (slot.querySelector('#rg-nuevo-tel').value || ''));
+                body.append('direccion', ((slot.querySelector('#rg-nuevo-direccion') || {}).value || '').trim());
                 var resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: body });
                 var data = await resp.json();
                 if (!resp.ok || !data.ok) { msg.textContent = data.error || 'No se pudo crear.'; msg.classList.remove('hidden'); btn.disabled = false; return; }
