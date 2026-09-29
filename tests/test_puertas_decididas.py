@@ -25,11 +25,20 @@ import pytest
 from django.test import override_settings
 
 from lib import permisos
-from tests.test_permisos_sin_rol_literal import FOTO_ROLES, FOTO_USUARIOS, _filas_de_la_foto
+from tests.test_permisos_sin_rol_literal import (
+    ASIGNABLES,
+    FOTO_ROLES,
+    FOTO_USUARIOS,
+    PRIMARIOS,
+    _comentarios,
+    _filas_de_la_foto,
+    v_ver_comentario,
+    v_ver_proyecto,
+)
 
 pytestmark = pytest.mark.django_db
 
-MIGRACIONES = ("0047_permisos_sin_rol_literal",)
+MIGRACIONES = ("0047_permisos_sin_rol_literal", "0048_puertas_decididas")
 
 
 @pytest.fixture
@@ -315,3 +324,134 @@ class TestAutocompletar:
             assert resp.status_code == 200
             totales[uid] = resp.json()["total"]
         assert totales == {1: 1, 3: 1, 4: 1, 5: 0}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 4. Alex lee comentarios (0048): los roles asignados cuentan
+# ═════════════════════════════════════════════════════════════════════════════
+
+TODAS = frozenset(f"{clase} en {cual}" for clase in ("público", "interno ajeno", "interno propio")
+                  for cual in ("asignado", "ajeno"))
+
+
+def _lee(foto_o_esc, fn):
+    """Qué comentarios lee `u` según `fn(u, c)`: {«clase en proyecto»}."""
+    def _para(u):
+        return frozenset(
+            f"{clase} en {cual}"
+            for cual, p in (("asignado", foto_o_esc.propio), ("ajeno", foto_o_esc.ajeno))
+            for clase, c in _comentarios(foto_o_esc.ajeno.creado_por_id, p, u).items()
+            if fn(u, c)
+        )
+    return _para
+
+
+def v_ver_comentario_por_roles_asignados(u, c):
+    """La regla vieja leyendo los roles EFECTIVOS en vez del primario: lo que
+    decidió Oscar para quien tiene un rol del sistema asignado."""
+    from lib.permisos import roles_efectivos
+
+    roles = roles_efectivos(u)
+    if roles & {"super_admin", "dueno", "contador"}:
+        return True
+    if "disenador" in roles:
+        if c.es_interno and c.autor_id != u.pk:
+            return False
+        return v_ver_proyecto(u, c.proyecto)
+    return False
+
+
+def _migracion_0048():
+    return importlib.import_module("cuentas.migrations.0048_puertas_decididas")
+
+
+class TestAlexLeeComentarios:
+    def test_quien_lee_que_antes_y_despues(self, foto):
+        """Alex (4) no leía nada —la regla era por su primario `miembro`— y
+        ahora lee como el dueño que es: todo, internos ajenos incluidos."""
+        antes = _lee(foto, v_ver_comentario)
+        despues = _lee(foto, permisos.puede_ver_comentario)
+        assert _tabla(foto, antes, despues) == {
+            1: (TODAS, TODAS),
+            3: (TODAS, TODAS),
+            4: (frozenset(), TODAS),      # ← el cambio decidido
+            5: (frozenset(), frozenset()),  # «Administrativo» no es rol del sistema
+        }
+
+    def test_la_0048_toca_exactamente_estas_filas_de_la_foto(self):
+        roles = [{"id": rid, "clave": clave} for rid, (clave, _n, _p) in FOTO_ROLES.items()]
+        usuarios = [{"id": uid, "rol": d["rol"], "roles": d["roles"]} for uid, d in FOTO_USUARIOS.items()]
+        # Las filas como quedan tras la 0047 (que apagó ver_internos de Alex).
+        from tests.test_permisos_sin_rol_literal import _migracion
+
+        filas = _filas_de_la_foto()
+        _json, filas_0047 = _migracion().planear(
+            usuarios, [{**r, "permisos": FOTO_ROLES[r["id"]][2]} for r in roles], filas)
+        filas.update({(u, m, a): activo for u, m, a, activo in filas_0047})
+        assert filas[(4, "pizarron", "ver_internos")] is False
+        plan = _migracion_0048().planear_comentarios(usuarios, roles, filas)
+        assert sorted(plan) == [
+            (4, "pizarron", "ver_comentarios", True),
+            (4, "pizarron", "ver_internos", True),
+        ]
+        # Idempotente: con esas filas ya puestas no queda nada que hacer.
+        filas.update({(u, m, a): activo for u, m, a, activo in plan})
+        assert _migracion_0048().planear_comentarios(usuarios, roles, filas) == []
+
+    def test_enciende_aunque_la_grilla_la_haya_guardado_apagada(self, foto):
+        """La grilla de El Directorio escribe una fila por acción al guardarse:
+        una fila apagada no es una decisión. La 0048 gana."""
+        from django.apps import apps as django_apps
+
+        from cuentas.models.permiso_usuario import PermisoUsuario
+
+        PermisoUsuario.objects.filter(usuario_id=4, modulo="pizarron",
+                                      permiso="ver_comentarios").update(activo=False)
+        _migracion_0048().aplicar(django_apps, None)
+        assert PermisoUsuario.objects.get(usuario_id=4, modulo="pizarron",
+                                          permiso="ver_comentarios").activo is True
+
+    def test_regla_general_sobre_cada_combinacion_de_roles(self, usuario_factory, proyecto_factory):
+        """Sobre los 160 usuarios sintéticos (5 primarios × 32 combinaciones de
+        roles asignados): tras la 0048, cada quien lee exactamente lo que la
+        regla vieja le daría leyendo sus roles EFECTIVOS. Y sólo cambió quien
+        tiene asignado un rol del sistema que su primario no le daba."""
+        import itertools
+
+        from apps.los_proyectos.models import ProyectoAsignacion
+        from django.apps import apps as django_apps
+
+        from cuentas.models.rol import Rol
+
+        propio, ajeno = proyecto_factory(nombre="Asignado"), proyecto_factory(nombre="Ajeno")
+        roles = {c: Rol.objects.get(clave=c) for c in ASIGNABLES}
+        usuarios = []
+        for primario in PRIMARIOS:
+            for n in range(len(ASIGNABLES) + 1):
+                for extra in itertools.combinations(ASIGNABLES, n):
+                    u = usuario_factory(rol=primario)
+                    if extra:
+                        u.roles_extra.add(*(roles[c] for c in extra))
+                    ProyectoAsignacion.objects.create(proyecto=propio, usuario=u)
+                    usuarios.append((primario, set(extra), u))
+        esc = SimpleNamespace(propio=propio, ajeno=ajeno)
+        antes = {u.pk: _lee(esc, permisos.puede_ver_comentario)(u) for _p, _e, u in usuarios}
+        _migracion_0048().aplicar(django_apps, None)
+        permisos.invalidar_cache_permisos()
+        esperado_lee = _lee(esc, v_ver_comentario_por_roles_asignados)
+        distintos, cambiaron = [], set()
+        for primario, extra, u in usuarios:
+            ahora = _lee(esc, permisos.puede_ver_comentario)(u)
+            if ahora != esperado_lee(u):
+                distintos.append(f"{primario}+{sorted(extra)}")
+            if ahora != antes[u.pk]:
+                cambiaron.add((primario, frozenset(extra)))
+        assert not distintos, distintos
+        todos, fin = {"super_admin", "dueno", "contador", "disenador"}, {"super_admin", "dueno", "contador"}
+        # El caso de Alex, y el diseñador de primario que tiene asignado un rol
+        # que lee los internos, están entre los que cambiaron.
+        assert ("miembro", frozenset({"dueno"})) in cambiaron
+        assert ("disenador", frozenset({"contador"})) in cambiaron
+        for primario, extra in cambiaron:
+            assert (primario not in todos and extra & todos) or (primario not in fin and extra & fin), \
+                (primario, extra)

@@ -561,8 +561,10 @@ def puede_ver_comentario(user, comentario) -> bool:
     por los roles efectivos como todo lo demás: quien tiene un rol ASIGNADO
     (p. ej. «Director» sobre un rol primario `miembro`) no leía ningún
     comentario. La migración 0047 lo conservó «como hoy» —sembró
-    `ver_comentarios`/`ver_internos` sólo por rol primario—; para que alguien
-    más los lea basta prender el permiso en El Directorio.
+    `ver_comentarios`/`ver_internos` sólo por rol primario— y la 0048 lo
+    corrigió por decisión de Oscar (2026-09-28): quien tiene ASIGNADO un rol del
+    sistema recibe las filas que ese rol le daría. Para que alguien más los lea
+    basta prender el permiso en El Directorio.
     """
     if es_super_admin(user):
         return True
