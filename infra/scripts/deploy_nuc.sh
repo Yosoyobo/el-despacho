@@ -40,6 +40,27 @@ COMMIT_NUEVO=$(git rev-parse HEAD)
 # shellcheck source=infra/scripts/_compose_nuc.sh
 . infra/scripts/_compose_nuc.sh
 
+# §4 #23: TODO despliegue abre y cierra su ventana de mantenimiento (el banner
+# ámbar de las 3 apps). Antes lo hacía `mudanza.sh`; al mudarse el deploy al NUC
+# el paso se perdió y quedó dependiendo de que alguien lo corriera a mano — y el
+# 2026-09-28 un deploy salió sin aviso por eso. Ahora lo hace el guion: se abre
+# antes del `pull` y se cierra al salir por CUALQUIER camino (verde, rollback o
+# error), con `trap`. TTL de 30 min como red por si el guion muere a media
+# corrida. Best-effort: si Redis o el contenedor no contestan, avisa y sigue.
+ventana() {  # $1 = abrir | cerrar
+  local py
+  if [ "$1" = "abrir" ]; then
+    py="from lib.aviso_deploy import marcar_deploy_en_curso as m; m('${COMMIT_NUEVO:0:8}', ttl_segundos=1800)"
+  else
+    py="from lib.aviso_deploy import limpiar_deploy_en_curso as l; l()"
+  fi
+  docker compose $COMPOSE_FILES exec -T el-taller python manage.py shell -c "$py" >/dev/null 2>&1 \
+    || echo "⚠️  No se pudo ${1} la ventana de mantenimiento (no tumba el deploy)."
+}
+echo "=== Ventana de mantenimiento: abierta ==="
+ventana abrir
+trap 'ventana cerrar' EXIT
+
 echo "=== docker compose pull ==="
 docker compose $COMPOSE_FILES pull
 
@@ -159,6 +180,11 @@ if [ -n "$DIGEST_MAL" ]; then
   exit 1
 fi
 echo "✅ Las imágenes que corren son las de este despliegue."
+
+# Verde y comprobado: la ventana se cierra ya, no al final del aviso de
+# Novedades (el `trap` la vuelve a cerrar al salir; borrar dos veces no daña).
+echo "=== Ventana de mantenimiento: cerrada ==="
+ventana cerrar
 
 echo "=== Sincronizando crons (infra/cron/el-despacho.cron) ==="
 bash infra/scripts/sync_crons.sh || echo "⚠️  sync de crons falló — revisar manualmente en La Sede"
