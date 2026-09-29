@@ -50,6 +50,17 @@ def _pestanas() -> dict:
     return pestanas
 
 
+def _claves_permitidas(user, ambito: str) -> set[str]:
+    """Los campos de un ámbito que `user` puede guardar, sección por sección."""
+    from imprenta import config
+
+    claves = set()
+    for s in config.secciones_de(ambito):
+        if _puede(user, s.permiso):
+            claves.update(c.clave for c in s.campos)
+    return claves
+
+
 def _puede(user, accion: str) -> bool:
     return {
         "ver": permisos.puede_ver_documentos,
@@ -143,18 +154,24 @@ def documentos_panel(request):
         if pestana == "historial":
             raise Http404
         titulo, ambitos, accion = pestanas[pestana]
-        if not _puede(request.user, accion):
-            return HttpResponseForbidden("No tienes permiso para cambiar esta parte de los documentos.")
-
         guardado = config.guardado()
         cambios, avisos = {}, []
         for ambito in ambitos:
             if ambito == "hoja":
-                cambios["hoja"] = _leer_hoja(request.POST)
-            else:
-                cambios[ambito], av = _leer_ambito(
-                    request.POST, request.FILES, ambito, guardado.get(ambito, {}), subir=True)
-                avisos.extend(av)
+                if _puede(request.user, accion):
+                    cambios["hoja"] = _leer_hoja(request.POST)
+                continue
+            # Cada sección pide SU permiso (las notas, `editar_notas`): lo de las
+            # que no puede cambiar se ignora, no se guarda.
+            permitidas = _claves_permitidas(request.user, ambito)
+            if not permitidas:
+                continue
+            valores, av = _leer_ambito(
+                request.POST, request.FILES, ambito, guardado.get(ambito, {}), subir=True)
+            cambios[ambito] = {k: v for k, v in valores.items() if k in permitidas}
+            avisos.extend(av)
+        if not cambios:
+            return HttpResponseForbidden("No tienes permiso para cambiar esta parte de los documentos.")
 
         base = request.POST.get("base")
         base = int(base) if (base or "").isdigit() else None
@@ -204,7 +221,11 @@ def _pintar(request, pestana: str, *, choque=None, status: int = 200, enviados=N
 
     titulo, ambitos, accion = pestanas[pestana]
     contexto["titulo_pestana"] = titulo
-    contexto["puede_guardar"] = _puede(request.user, accion)
+    # Se puede guardar si alguna sección de la pestaña es suya (las notas
+    # tienen su propio permiso; la hoja general, el de estilo).
+    contexto["puede_guardar"] = (
+        _puede(request.user, accion) if pestana == "general"
+        else any(_claves_permitidas(request.user, a) for a in ambitos))
 
     # Qué documento se previsualiza: el de la pestaña, o la cotización.
     tipo_vista = pestana if tipos.definicion(pestana) else next(iter(tipos.TIPOS))
@@ -238,6 +259,7 @@ def _pintar(request, pestana: str, *, choque=None, status: int = 200, enviados=N
                                       {**guardado.get(ambito, {}), **enviados.get(ambito, {})})
             for s in config.secciones_de(ambito):
                 grupos.append({"ambito": ambito, "seccion": s,
+                               "editable": _puede(request.user, s.permiso),
                                "campos": [_campo_vista(ambito, c, valores) for c in s.campos]})
         contexto["grupos"] = grupos
     return render(request, "ajustes/imprenta/panel.html", contexto, status=status)

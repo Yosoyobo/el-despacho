@@ -264,6 +264,7 @@ ratón/trackpad.{% endcomment %}
   del 2026-08-04 («apretar aún más el interlineado de todo»).{% endcomment %}
   {% include "imprenta/_datos_despacho.html" %}
   <p style="{{ e.titulo }} margin:0 0 8pt 0;">{{ titulo_documento }}</p>
+  {% include "imprenta/_folio.html" %}
   {% if texto_intro %}<p style="margin:0 0 8pt 0;">{{ texto_intro }}</p>{% endif %}
 
   {% comment %}Un bloque numerado por concepto. El nombre, las especificaciones
@@ -459,6 +460,7 @@ ratón/trackpad.{% endcomment %}
   o caben enteras o pasan enteras. El hueco que las empuja al pie va DENTRO de
   la celda para que viaje con ellas.{% endcomment %}
   {% if texto_cierre %}<p style="margin:0 0 8pt 0;">{{ texto_cierre }}</p>{% endif %}
+  {% include "imprenta/_firmas.html" %}
   {% if b.notas and notas %}
   <div style="page-break-inside:avoid;">
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">

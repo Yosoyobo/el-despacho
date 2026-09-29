@@ -61,6 +61,39 @@ casillas ocupan las dos columnas; lo demás, una.{% endcomment %}
     </div>
     {% if c.ayuda %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ c.ayuda }}</p>{% endif %}
 </fieldset>
+{% elif c.tipo == "notas" %}
+<div class="sm:col-span-2" data-notas-editor>
+    <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ c.etiqueta }}</span>
+    {% if c.ayuda %}<p class="mb-2 text-xs text-gray-500 dark:text-gray-400">{{ c.ayuda }} La casilla apaga una nota sin borrarla.</p>{% endif %}
+    <ol class="space-y-2" data-notas-lista>
+        {% for n in f.valor %}
+        <li class="flex items-start gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700" data-nota>
+            <input type="hidden" name="{{ f.nombre }}__id" value="{{ n.id }}">
+            <input type="checkbox" name="{{ f.nombre }}__activa" value="{{ n.id }}" {% if n.activa %}checked{% endif %}
+                   class="mt-2 h-5 w-5 shrink-0" aria-label="Nota activa">
+            <textarea name="{{ f.nombre }}__texto" rows="2" maxlength="400" class="min-w-0 flex-1" aria-label="Texto de la nota">{{ n.texto }}</textarea>
+            <span class="flex shrink-0 flex-col gap-1">
+                <button type="button" data-nota-subir class="h-9 w-9 rounded border border-gray-200 text-sm dark:border-gray-700" aria-label="Subir">↑</button>
+                <button type="button" data-nota-bajar class="h-9 w-9 rounded border border-gray-200 text-sm dark:border-gray-700" aria-label="Bajar">↓</button>
+                <button type="button" data-nota-quitar class="h-9 w-9 rounded border border-gray-200 text-sm text-error-600 dark:border-gray-700" aria-label="Quitar">✕</button>
+            </span>
+        </li>
+        {% endfor %}
+    </ol>
+    <template data-notas-molde>
+        <li class="flex items-start gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700" data-nota>
+            <input type="hidden" name="{{ f.nombre }}__id" value="">
+            <input type="checkbox" checked disabled class="mt-2 h-5 w-5 shrink-0" aria-label="Nota activa (nueva)">
+            <textarea name="{{ f.nombre }}__texto" rows="2" maxlength="400" class="min-w-0 flex-1" aria-label="Texto de la nota nueva"></textarea>
+            <span class="flex shrink-0 flex-col gap-1">
+                <button type="button" data-nota-subir class="h-9 w-9 rounded border border-gray-200 text-sm dark:border-gray-700" aria-label="Subir">↑</button>
+                <button type="button" data-nota-bajar class="h-9 w-9 rounded border border-gray-200 text-sm dark:border-gray-700" aria-label="Bajar">↓</button>
+                <button type="button" data-nota-quitar class="h-9 w-9 rounded border border-gray-200 text-sm text-error-600 dark:border-gray-700" aria-label="Quitar">✕</button>
+            </span>
+        </li>
+    </template>
+    <button type="button" data-nota-agregar class="mt-2 min-h-[44px] rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">+ Agregar nota</button>
+</div>
 {% elif c.tipo == "imagen" %}
 <div class="sm:col-span-2">
     <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ c.etiqueta }}</span>

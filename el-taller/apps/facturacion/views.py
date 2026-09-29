@@ -918,7 +918,30 @@ def pdf_ver(request, pk):
     if (r := _gate_ver(request)) is not None:
         return r
     fac = get_object_or_404(Factura, pk=pk)
-    return HttpResponse(services.construir_html_pdf(fac))
+    return HttpResponse(services.construir_html_pdf(fac, preview=True))
+
+
+@login_required
+def pdf_comercial(request, pk):
+    """La factura COMERCIAL en PDF (La Imprenta). No es el CFDI.
+
+    La arma el motor propio al pedirla, con el formato de Ajustes → Documentos.
+    Si el motor no contesta, se ofrece la versión imprimible de siempre.
+    """
+    if (r := _gate_ver(request)) is not None:
+        return r
+    fac = get_object_or_404(Factura, pk=pk)
+    pdf = services.pdf_comercial(fac)
+    if not pdf:
+        messages.warning(request, "El motor de PDF no contesta: aquí está la versión imprimible.")
+        return redirect("facturacion:ver", pk=fac.pk)
+    from urllib.parse import quote
+
+    nombre = f"{services.nombre_archivo(fac)}.pdf"
+    ascii_ = nombre.encode("ascii", "ignore").decode() or f"{fac.codigo}.pdf"
+    resp = HttpResponse(pdf, content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="{ascii_}"; filename*=UTF-8\'\'{quote(nombre)}'
+    return resp
 
 
 def _servir_archivo(file_id: str, nombre_sugerido: str):

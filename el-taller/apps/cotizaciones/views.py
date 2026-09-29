@@ -1025,6 +1025,9 @@ def documento_opciones(request, pk):
     - `forma_pago`: cambia la última nota («Anticipo N%» / «Un sólo pago»).
     - `titulo_documento_manual`: el encabezado centrado del PDF. Vacío vuelve
       al automático («Producción de elementos para proyecto '…'»).
+    - `nota` (La Imprenta): quita o vuelve a poner una nota global en ESTA
+      cotización (`nota_id`; la casilla apagada no viaja: ausencia = quitarla).
+    - `notas_extra`: las notas propias de esta cotización, una por renglón.
 
     No mueve dinero — sólo cómo se presenta —, así que basta con
     `permite_editar_texto`.
@@ -1055,6 +1058,22 @@ def documento_opciones(request, pk):
         # devuelven igual al automático, se guarda vacío para que la cotización
         # siga heredando el nombre del proyecto en lugar de congelarlo.
         cot.titulo_documento_manual = "" if titulo == cot.titulo_documento_auto else titulo
+    elif campo == "nota":
+        # La Imprenta: quitar o volver a poner UNA nota global en esta cotización.
+        # Sólo ids de las notas que existen: el formulario se puede manipular.
+        from .notas import notas_globales
+
+        ident = (request.POST.get("nota_id") or "").strip()
+        if ident not in {n["id"] for n in notas_globales()}:
+            return HttpResponseBadRequest("Nota desconocida.")
+        omitidas = [x for x in (cot.notas_omitidas or []) if x != ident]
+        if not request.POST.get("valor_nota"):
+            omitidas.append(ident)
+        cot.notas_omitidas = omitidas
+        campo = "notas_omitidas"
+    elif campo == "notas_extra":
+        cot.notas_extra = "\n".join(
+            r.strip() for r in (valor or "").splitlines() if r.strip())[:2000]
     else:
         return HttpResponseBadRequest("Campo no editable.")
     cot.save(update_fields=[campo, "actualizado_en"])
@@ -1105,7 +1124,7 @@ def generar_pdf(request, pk):
     # (.../pdf/). Con `attachment` + RFC 5987 el archivo se guarda SIEMPRE como
     # «NombreDelProyecto_Vn.pdf» (decisión Oscar — tolera espacios y acentos).
     from urllib.parse import quote
-    nombre = f"{cot.nombre_pdf}.pdf"
+    nombre = f"{services.nombre_archivo(cot)}.pdf"
     nombre_ascii = nombre.encode("ascii", "ignore").decode() or f"{cot.codigo}.pdf"
     resp = HttpResponse(res.pdf_bytes, content_type="application/pdf")
     resp["Content-Disposition"] = (

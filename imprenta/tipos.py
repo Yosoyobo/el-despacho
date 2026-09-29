@@ -13,7 +13,22 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .esquema import Bloque, Columna, DefinicionTipo
+from .esquema import Bloque, Columna, DefinicionTipo, Marca
+
+#: Las notas con las que Learning Center cotiza (antes fijas en
+#: `apps.cotizaciones.notas`; desde La Imprenta se editan en La Gerencia).
+NOTAS_COTIZACION = (
+    "Precios unitarios de producción.",
+    "Todo detalle está abierto a cambios, nuevas ideas y necesidades.",
+    "Las imágenes son ilustrativas y no representan productos finales exactos.",
+    "Debido a procesos manuales y características de los materiales, pueden "
+    "existir leves variaciones en color, tamaño y acabado respecto a "
+    "indicaciones o referencias.",
+    "No nos hacemos responsables por retrasos ocasionados por proveedores "
+    "externos o causas de fuerza mayor.",
+    "Todos los productos sujetos a existencias.",
+    "Los precios no incluyen IVA.",
+)
 
 # ── Cotización ──────────────────────────────────────────────────────────────
 
@@ -46,6 +61,63 @@ COTIZACION = DefinicionTipo(
         Columna("rotulo_total", "Total"),
         Columna("rotulo_notas", "Notas:"),
         Columna("rotulo_condiciones", "Condiciones adicionales"),
+    ),
+    vigencia=True,
+    notas_default=NOTAS_COTIZACION,
+    nota_automatica="la forma de pago (anticipo o un solo pago)",
+    aceptacion_texto="Acepto esta cotización y sus condiciones.",
+    qr_opciones=("", "pago", "portal"),
+    # La de «sin enviar» sigue siendo la de la hoja general (BORRADOR); éstas son
+    # las demás y nacen vacías: el documento de siempre no lleva ninguna.
+    marcas=(
+        Marca("aprobada", "Aprobada", "", "#12b76a"),
+        Marca("perdida", "Rechazada o anulada", "", "#d92d20"),
+        Marca("vencida", "Vencida", "", "#f79009"),
+    ),
+)
+
+
+# ── Factura (comercial, no fiscal) ─────────────────────────────────────────
+
+FACTURA = DefinicionTipo(
+    slug="factura",
+    nombre="Factura",
+    subcarpeta="Facturas",
+    ayuda="La factura comercial (no es el CFDI: ése lo timbra el contador y se sube aparte).",
+    bloques=(
+        Bloque("fecha", "Fecha de emisión (arriba a la izquierda)"),
+        Bloque("logo", "Logotipo"),
+        Bloque("cliente", "Datos del cliente (razón social, RFC, correo, teléfono)"),
+        Bloque("fechas", "Emisión, vencimiento y moneda"),
+        Bloque("proyecto", "Proyecto"),
+        Bloque("descuento", "Columna de descuento"),
+        Bloque("saldo", "Cobrado y saldo pendiente"),
+        Bloque("pago_en_linea", "Recuadro de pago en línea",
+               ayuda="Sólo sale si La Caja está encendida y hay saldo."),
+        Bloque("notas", "Notas de la factura"),
+        Bloque("terminos", "Términos de la factura"),
+    ),
+    columnas=(
+        Columna("descripcion", "Descripción"),
+        Columna("cantidad", "Cant."),
+        Columna("precio", "P. unitario"),
+        Columna("descuento", "Desc."),
+        Columna("importe", "Importe"),
+        Columna("rotulo_cliente", "Cliente"),
+        Columna("rotulo_subtotal", "Subtotal"),
+        Columna("rotulo_total", "TOTAL"),
+        Columna("rotulo_notas", "Notas"),
+    ),
+    # Lo más útil al que paga: con qué razón social, RFC y a qué cuenta. Salen
+    # sólo si se capturaron en «Datos y firma».
+    datos_default=("razon_social", "rfc", "direccion", "bancarios"),
+    qr_opciones=("", "pago", "portal"),
+    pdfa_default=True,
+    marcas=(
+        Marca("borrador", "Borrador", "BORRADOR", "#d92d20"),
+        Marca("pagada", "Pagada", "PAGADA", "#12b76a"),
+        Marca("cancelada", "Cancelada", "CANCELADA", "#d92d20"),
+        Marca("vencida", "Vencida", "VENCIDA", "#f79009"),
     ),
 )
 
@@ -88,9 +160,33 @@ def _cot_pagina(pk: int, config) -> dict:
     return services.pagina_documento(cot, config=config)
 
 
+def _fac_ejemplos(limite: int = 15) -> list[tuple[int, str]]:
+    from apps.facturacion.models import Factura
+
+    qs = Factura.objects.select_related("cliente").order_by("-actualizado_en")[:limite]
+    return [(f.pk, f"{f.folio or f.codigo} · {f.cliente.razon_social} · "
+                   f"{f.concepto or f.titulo}"[:90]) for f in qs]
+
+
+def _fac_html(pk: int, config, preview: bool = True, **kwargs) -> str:
+    from apps.facturacion import services
+    from apps.facturacion.models import Factura
+
+    fac = Factura.objects.select_related("cliente", "proyecto").get(pk=pk)
+    return services.construir_html_pdf(fac, config=config, preview=preview, **kwargs)
+
+
+def _fac_pagina(pk: int, config) -> dict:
+    from apps.facturacion import services
+    from apps.facturacion.models import Factura
+
+    return services.pagina_documento(Factura.objects.get(pk=pk), config=config)
+
+
 #: slug → (definición, adaptador). El orden es el de las pestañas.
 TIPOS: dict[str, tuple[DefinicionTipo, Adaptador]] = {
     "cotizacion": (COTIZACION, Adaptador(_cot_ejemplos, _cot_html, _cot_pagina)),
+    "factura": (FACTURA, Adaptador(_fac_ejemplos, _fac_html, _fac_pagina)),
 }
 
 
@@ -115,4 +211,4 @@ def ejemplos(slug: str, limite: int = 15) -> list[tuple[int, str]]:
         return []
 
 
-__all__ = ["COTIZACION", "TIPOS", "Adaptador", "adaptador", "definicion", "ejemplos"]
+__all__ = ["COTIZACION", "FACTURA", "NOTAS_COTIZACION", "TIPOS", "Adaptador", "adaptador", "definicion", "ejemplos"]

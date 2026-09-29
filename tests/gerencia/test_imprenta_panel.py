@@ -68,7 +68,7 @@ URL = "ajustes-documentos"
 # ── 1. Las pestañas ────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "historial"])
+@pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "factura", "historial"])
 def test_cada_pestana_abre(client, jefe, cot, tab):
     client.force_login(jefe)
     r = client.get(reverse(URL), {"tab": tab})
