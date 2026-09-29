@@ -10816,3 +10816,69 @@ ningún permiso efectivo (foto de producción y 5 primarios × todas las combina
 **Deuda**: un usuario con primario super_admin SIN el rol asignado (estado previo a
 S-Roles-V2, no existe en producción) pierde el super_admin al guardar el panel
 (`sincronizar_rol_primario`), con o sin este arreglo.
+
+### S-Historial-Actividad ✅ — Historial de actividad y quién hace cada petición (2026-09-29, VERSION 2026.09.12)
+
+Oscar: «ya tenemos la actividad del equipo, ahora sólo falta cruzar eso con las
+peticiones en vivo y almacenar la actividad de los usuarios». Decisiones (4
+preguntas): guardar **pantallas y acciones** (no cada petición, no sólo sesiones) ·
+**un año** · el de otros con **permiso nuevo sólo para dueños**, el propio siempre ·
+Peticiones en vivo con **nombre y además IP**.
+
+**Entregado** (`tests/test_historial_actividad.py`, 58; tres mutaciones vistas fallar)
+- **El cruce, sin escritura extra por petición.** `PresenciaMiddleware` pone
+  `X-Despacho-Quien` (`u:<id>`, `u:<real>><como>` impersonando, `c:<acceso>` desde
+  `SesionClienteMiddleware` del portal); gunicorn la loguea con
+  `"%({x-despacho-quien}o)s"` antes de `%(D)s` en las 3 apps (probado con gunicorn
+  23 real); `lib/site/actividad._RE_COLA_QUIEN` (se prueba ANTES que `_RE_COLA`,
+  que casaría los 3 últimos campos) + `con_personas()` (2 consultas por refresco).
+  El Portero la quita: snippet `(sin_quien)` con `header -X-Despacho-Quien`
+  (borrado diferido, alcanza al `reverse_proxy`) en taller/gerencia/recepción/`:80`.
+  La cabecera sólo se arma si `request.user` ya estaba cargado (no fuerza 2 consultas).
+- **Panel `_peticiones.html`** (compartido pared/El Site, §4 #22): nombre (+ empresa
+  si es cliente, «como X» si impersona) y la IP debajo; en El Site el nombre enlaza a
+  `directorio-actividad` si `equipo.ver_historial`. Arreglo de paso: La Recepción se
+  pintaba como «El Mostrador».
+- **`cuentas/0052_registro_actividad`** (esquema) + **`0053_seed_permiso_equipo_historial`**
+  (datos, super_admin + dueño por persona y JSON de sus roles). `RegistroActividad`:
+  usuario (el real), `como`, tipo pantalla/accion/entrada/salida, app, ruta +
+  url_name + kwargs de la PANTALLA, `destino` + `destino_url_name` del POST, IP, agente.
+- **`lib/historial_actividad.py`**: pantalla nueva = renglón; misma pantalla sólo si se
+  NAVEGA a ella otra vez tras 60 s (los fragmentos HTMX nunca); acción = POST <400
+  **incluidas 3xx** (guardar un form clásico redirige) desde `HX-Current-URL`/Referer,
+  misma acción <60 s no repite (autoguardado). Último renglón por tipo en caché
+  (fallback 1 consulta indexada). Sondeo excluido con `presencia.es_sondeo`. Texto al
+  mostrar reusando `presencia._PANTALLAS/_objeto` (nombre sólo si quien mira lo abre).
+  Tiempo activo = huecos topados a 5 min, no cuenta tras «salida». Días en hora MX.
+- **Pantallas**: vista compartida `cuentas/historial_views.py` (`vista_persona` /
+  `vista_propia`), partial dual-copy `_historial_actividad.html`; La Gerencia
+  `/directorio/<pk>/actividad` (+ «Actividad» en la fila), El Taller
+  `/directorio/<pk>/actividad/` («Ver su actividad» en la ficha) y `/perfil/actividad/`
+  («Mi actividad»). Navegación por días con actividad, 4 cifras, CSV del día / 30 días.
+- **El Chalán + MCP**: `historial_de_actividad(persona?, fecha?)` (gating abierto,
+  permiso re-chequeado dentro) + tool stdio en `mcp_despacho`.
+- **Purga**: `manage.py historial_actividad_purgar` (`--dry-run`) a las 4:35 en
+  `infra/cron/el-despacho.cron`, por tandas de 5 000.
+- **Aviso de privacidad** (Taller + Gerencia): párrafo «Registro de actividad del
+  equipo». El del portal ya declaraba IP y navegador.
+
+**Decisiones durables**
+- El historial NO reemplaza la presencia: son dos escritores con topes distintos
+  (presencia 1/min por los campos del usuario; historial por cambio de pantalla).
+- La identidad del flujo viaja en el log, no en Redis ni en una tabla: nombre al leer.
+- `equipo.ver_historial` NO es universal (`PERMISOS_UNIVERSALES` sigue sólo con
+  `ver_actividad`); constante `HISTORIAL_EQUIPO` en `permisos_defaults`.
+
+**Deuda**
+- Un POST que vuelve 200 con errores de formulario se anota como «guardó» (no se
+  distingue sin tocar cada vista).
+- Sin resumen diario permanente: a los 12 meses se borra todo el detalle (Oscar eligió
+  un año sin resumen).
+- La actividad de los clientes del portal no va al historial (sólo al flujo en vivo);
+  el portal tiene su propio `portal.EventoPortal`.
+- Líneas de log anteriores al deploy no traen identidad: salen sólo con IP hasta que
+  roten.
+- Costo medido: la primera visita a una pantalla suma 4 consultas (savepoint + INSERT,
+  y un SELECT si la caché no tiene el último renglón); repetirla dentro del minuto,
+  cero. Un test que compare consultas entre dos GET debe calentar antes (se ajustó
+  `test_ajustes_ago12::test_las_fichas_no_hacen_una_consulta_por_producto`).

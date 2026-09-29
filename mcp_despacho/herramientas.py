@@ -230,3 +230,15 @@ def mi_recibo(fecha: str = "") -> dict[str, Any]:
 
     usuario = _usuario_actual()
     return _h_mi_recibo({"fecha": _texto(fecha, 10)}, usuario)
+
+
+def historial_de_actividad(persona: str = "", fecha: str = "") -> dict[str, Any]:
+    """Qué hizo alguien en un día (pantallas, cambios guardados, entradas y salidas,
+    tiempo activo). Sin persona es el de quien opera la conexión; el de otro pide
+    `equipo.ver_historial`, que se re-chequea dentro."""
+    from capacidades.lecturas import _h_historial_de_actividad
+
+    usuario = _usuario_actual()
+    return _h_historial_de_actividad(
+        {"persona": _texto(persona, 120), "fecha": _texto(fecha, 10)}, usuario,
+    )

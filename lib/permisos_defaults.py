@@ -127,6 +127,11 @@ TODO_MCP = ["usar"]
 # (incluido `miembro`, que no tiene defaults). Sigue siendo granular (§4 #20):
 # el super_admin lo revoca por usuario desde /directorio/<id>/permisos/.
 TODO_EQUIPO = ["ver_actividad"]
+# 2026-09-29 (Oscar): el HISTORIAL de actividad de otros (un año de pantallas y
+# acciones) es más sensible que la presencia de ahora, así que NO es universal:
+# nace para super_admin y dueño (migración `cuentas/0053`) y se delega por
+# persona. El propio historial lo ve cada quien sin permiso.
+HISTORIAL_EQUIPO = "ver_historial"
 # La Recepción (portal de clientes, S5 2026-09-29): quién ve los accesos de un
 # cliente, quién lo invita y quién le quita el acceso. «Como hoy»: lo trae quien
 # edita la cartera (super_admin y dueño por default; la migración
@@ -191,7 +196,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogos": list(TODO_CATALOGOS),
         "interfono": list(TODO_INTERFONO),
         "mcp": list(TODO_MCP),
-        "equipo": list(TODO_EQUIPO),
+        "equipo": [*TODO_EQUIPO, HISTORIAL_EQUIPO],
         "recepcion": list(TODO_RECEPCION),
     },
     "dueno": {
@@ -228,7 +233,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "chalanes": ["ver"],
         "site": list(TODO_SITE),
         "interfono": list(TODO_INTERFONO),
-        "equipo": list(TODO_EQUIPO),
+        "equipo": [*TODO_EQUIPO, HISTORIAL_EQUIPO],
         "recepcion": list(TODO_RECEPCION),
     },
     "contador": {
@@ -330,8 +335,9 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "catalogos": list(TODO_CATALOGOS),
     "interfono": list(TODO_INTERFONO),
     "mcp": list(TODO_MCP),
-    # Ver quién está en línea y su última actividad (nace activo para todos).
-    "equipo": list(TODO_EQUIPO),
+    # Ver quién está en línea y su última actividad (nace activo para todos) y el
+    # historial de un año de otros (sólo super_admin y dueño por default).
+    "equipo": [*TODO_EQUIPO, HISTORIAL_EQUIPO],
     # La Recepción: ver / invitar / revocar el acceso de un cliente al portal.
     "recepcion": list(TODO_RECEPCION),
 }

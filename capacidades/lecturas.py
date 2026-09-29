@@ -889,6 +889,68 @@ def _h_quien_esta_en_linea(args: dict, usuario) -> dict:
     }
 
 
+def _h_historial_de_actividad(args: dict, usuario) -> dict:
+    """Qué hizo alguien en un día: pantallas que abrió, qué guardó, a qué hora
+    entró y salió, y su tiempo activo (2026-09-29).
+
+    Sin `persona` es el de quien pregunta, y ése no pide permiso. El de otro pide
+    `equipo.ver_historial` (nace para super_admin y dueño) — se re-chequea aquí
+    porque la capacidad está abierta para que cada quien pregunte por el suyo.
+    `fecha`: «hoy» (default), «ayer», «anteayer» o AAAA-MM-DD. Guarda un año.
+    """
+    from datetime import date, timedelta
+
+    from django.utils import timezone
+
+    from cuentas.models.usuario import Usuario
+    from lib import historial_actividad, presencia
+    from lib.permisos import puede_ver_historial_de
+
+    aguja = presencia.normalizar(args.get("persona") or "").lstrip("@")
+    persona = usuario
+    if aguja and aguja not in ("yo", "mi", "mio"):
+        candidatos = list(Usuario.objects.filter(is_active=True))
+
+        def _clave(u):
+            return presencia.normalizar(u.nombre_completo or ""), presencia.normalizar(u.email or "")
+
+        exactas = [u for u in candidatos if aguja in _clave(u)]
+        casan = exactas or [u for u in candidatos if any(aguja in c for c in _clave(u))]
+        if not casan:
+            return {"error": "persona_no_encontrada", "persona": aguja}
+        if len(casan) > 1:
+            return {"error": "ambiguo",
+                    "coinciden": [u.nombre_completo or u.email for u in casan]}
+        persona = casan[0]
+    if not puede_ver_historial_de(usuario, persona):
+        return {"error": "sin_permiso",
+                "detalle": "Ver la actividad de otra persona pide el permiso «equipo · ver_historial»."}
+
+    hoy = timezone.localdate()
+    texto = presencia.normalizar(str(args.get("fecha") or "hoy"))
+    relativos = {"hoy": 0, "ayer": 1, "anteayer": 2, "antier": 2}
+    if texto in relativos:
+        fecha = hoy - timedelta(days=relativos[texto])
+    else:
+        try:
+            fecha = date.fromisoformat(texto)
+        except ValueError:
+            return {"error": "fecha_invalida", "fecha": texto,
+                    "ayuda": "Usa hoy, ayer, anteayer o AAAA-MM-DD."}
+    if fecha > hoy:
+        return {"error": "fecha_futura", "fecha": fecha.isoformat()}
+    if fecha < hoy - timedelta(days=historial_actividad.RETENCION_DIAS):
+        return {"error": "fuera_de_retencion",
+                "detalle": f"El historial se guarda {historial_actividad.RETENCION_DIAS} días."}
+    dia = historial_actividad.del_dia(persona, fecha, viewer=usuario)
+    return {
+        "persona": persona.nombre_completo or persona.email,
+        "regla": ("Cuenta lo que la persona abrió y guardó; una pestaña abierta sin usar no "
+                  "cuenta. El tiempo activo suma los ratos entre una cosa y otra, de 5 min máx."),
+        **historial_actividad.para_chalan(dia),
+    }
+
+
 _REGLA_PRESENCIA = (
     "En línea = actividad en los últimos 5 minutos; ausente = de 5 a 30; "
     "desconectado = más de 30. Una pestaña abierta sin usar no cuenta."
@@ -1805,6 +1867,18 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={"persona": {"tipo": "str", "requerido": False}},
         gating="equipo_actividad", fn=_h_quien_esta_en_linea,
+    ),
+    "historial_de_actividad": Capacidad(
+        nombre="historial_de_actividad",
+        descripcion=(
+            "Qué hizo una persona en un día: a qué hora entró y salió, qué pantallas "
+            "abrió, qué guardó y su tiempo activo. Sin `persona` es el tuyo; el de otro "
+            "pide permiso de ver el historial del equipo. Args opcionales: `persona` "
+            "(nombre o correo) y `fecha` (hoy, ayer, anteayer o AAAA-MM-DD). Se guarda un año."
+        ),
+        args_schema={"persona": {"tipo": "str", "requerido": False},
+                     "fecha": {"tipo": "str", "requerido": False}},
+        gating="abierto", fn=_h_historial_de_actividad,
     ),
     "contaduria_saldo_cuenta": Capacidad(
         nombre="contaduria_saldo_cuenta",

@@ -5,6 +5,31 @@
 
 ---
 
+## Novedades — Tu historial de actividad y quién hace cada petición (29 de septiembre de 2026)
+
+**Ahora queda un historial de lo que hace cada quien.** Además de ver quién está
+conectado ahora, el sistema guarda qué pantallas abrió cada persona, qué cambios
+guardó, a qué hora entró y salió, y desde qué aparato. Se guarda un año y después
+se borra solo. Tener una pestaña abierta sin usarla no cuenta.
+
+**Mi actividad.** Cada quien ve la suya: en Equipo, abre tu ficha y pica **Mi
+actividad**. Ves el día con tu primera y última actividad, el tiempo activo, cuántas
+pantallas abriste y cuántos cambios guardaste, y puedes moverte de un día a otro o
+bajarlo en CSV (el día o los últimos 30 días).
+
+**La actividad de otras personas** sólo la ven los dueños; se le puede dar a alguien
+más desde El Directorio (permiso «equipo · ver_historial»). Se abre desde la ficha de
+Equipo («Ver su actividad») o desde El Directorio («Actividad»).
+
+**Peticiones en vivo dice quién.** En El Vigía y en El Site, cada petición ya trae el
+nombre de la persona (o del cliente del portal, con su empresa) y, además, su
+dirección IP. En El Site, el nombre te lleva a su historial.
+
+**Pregúntale al Chalán:** «¿qué hice ayer?», «¿qué hizo Jorge el lunes?», «¿a qué hora
+entró Ana hoy?».
+
+**El aviso de privacidad** explica qué se registra y cuánto se guarda.
+
 ## Novedades — Los permisos de El Directorio dicen de dónde vienen y ya no se pierden al guardar (29 de septiembre de 2026)
 
 **En El Directorio → Permisos, cada permiso dice de dónde le viene a la persona**:
@@ -5565,6 +5590,52 @@ se ve en Equipo (puntito en cada persona; al abrirla, en qué sección y pantall
 anda y desde qué aparato), en El Directorio (columna «Última actividad») y en El
 Site. Tener una pestaña abierta sin usarla no cuenta. Con El Chalán: «¿quién está
 en línea?» o «¿qué está haciendo Jorge?».
+
+## Tu actividad (el historial)
+
+**Para qué sirve.** «Quién está conectado» dice dónde anda cada quien **ahora**. El
+historial dice qué hizo **cualquier día del último año**: a qué hora entró y salió,
+qué pantallas abrió («Viendo LC-0044 · Gorras Cruz Azul») y qué cambios guardó
+(«Guardó cambios en la cotización COT-2026-0044»), desde qué aparato y con qué
+dirección IP.
+
+**Qué cuenta y qué no.**
+
+- Cuenta abrir una pantalla y guardar algo (también un autoguardado).
+- No cuenta tener la pestaña abierta: lo que la pantalla pide sola cada tantos
+  segundos no se anota.
+- Recargar la misma pantalla o autoguardar el mismo formulario dentro del mismo
+  minuto se anota una sola vez.
+- Si un administrador está «viendo como» otra persona, la actividad se anota a
+  nombre del administrador, con la marca «como …».
+
+**Dónde se ve.**
+
+- **Mi actividad**: en Equipo, abre tu ficha y pica **Mi actividad**. Siempre
+  puedes ver la tuya, sin permiso especial.
+- **La de otra persona**: en su ficha de Equipo («Ver su actividad») o en La
+  Gerencia → El Directorio («Actividad» en su renglón). Hace falta el permiso
+  **equipo · ver_historial**, que de entrada sólo tienen los dueños y se le puede
+  dar a quien se quiera desde El Directorio → Permisos.
+- **En El Site**: en *Peticiones en vivo* cada petición dice el nombre de quién la
+  hizo y su dirección IP; picar el nombre abre su historial (con el permiso).
+
+**Cómo se lee la página.** Arriba eliges el día (las flechas saltan al día anterior o
+siguiente **con actividad**). Cuatro cifras: primera y última actividad, **tiempo
+activo** (suma los ratos entre una cosa y la siguiente, cada uno de 5 minutos como
+máximo, así que irse a comer no cuenta), pantallas abiertas y cambios guardados.
+Abajo, la línea de tiempo con lo más reciente arriba. El nombre de un registro
+(proyecto, cliente, factura) sólo sale si tú también podrías abrirlo; si no, dice
+«un proyecto», «un cliente».
+
+**Bajarlo.** «CSV del día» o «CSV de 30 días» (los 30 que terminan en el día
+elegido). Abre bien en Excel.
+
+**Cuánto se guarda.** Un año. Cada noche se borra lo que pasó de ahí.
+
+**Con El Chalán.** «¿Qué hice ayer?», «¿qué hizo Jorge el 28?», «¿a qué hora entró
+Ana hoy?», «¿cuánto tiempo estuvo activo Luis el lunes?». Sin decir persona, te
+contesta de ti; de otra persona, sólo si tienes el permiso.
 
 ## Clientes
 

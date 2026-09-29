@@ -66,5 +66,5 @@ exec gunicorn la_gerencia.wsgi:application \
     --max-requests 1000 \
     --max-requests-jitter 100 \
     --access-logfile - \
-    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" "%({x-forwarded-for}i)s" %(D)s' \
+    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" "%({x-forwarded-for}i)s" "%({x-despacho-quien}o)s" %(D)s' \
     --error-logfile -

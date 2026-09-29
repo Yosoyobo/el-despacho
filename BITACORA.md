@@ -13556,3 +13556,13 @@ La Caja y el Portal salen de la deuda por decisión de Oscar.
 
 La grilla de permisos de El Directorio ya reconoce el rol asignado: cada casilla dice
 de dónde viene y «Guardar permisos» ya no quita en silencio lo que da un rol asignado.
+
+## 2026-09-29 — S-Historial-Actividad (VERSION 2026.09.12)
+
+Oscar pidió cruzar la actividad del equipo con Peticiones en vivo y guardar la
+actividad de cada usuario. Decidió: pantallas y acciones, un año, el de otros sólo
+para dueños (permiso nuevo `equipo.ver_historial`), y en el flujo nombre y además IP.
+El nombre viaja en una cabecera que gunicorn escribe en su log y El Portero quita
+antes del navegador. Pantallas: Mi actividad (El Taller), Actividad en El Directorio
+y en la ficha de Equipo, CSV; El Chalán y MCP `historial_de_actividad`; purga nocturna;
+aviso de privacidad actualizado. Worktree propio (había otra sesión en el árbol).

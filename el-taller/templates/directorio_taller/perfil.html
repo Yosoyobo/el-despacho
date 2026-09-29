@@ -39,6 +39,9 @@
             </div>
         </div>
         <div class="flex shrink-0 flex-wrap gap-2">
+            {% if puede_ver_historial %}
+            <a href="{% if es_self %}{% url 'perfil-actividad' %}{% else %}{% url 'directorio-actividad' empleado.pk %}{% endif %}" class="btn-secundario text-xs">{% if es_self %}Mi actividad{% else %}Ver su actividad{% endif %}</a>
+            {% endif %}
             {% if puede_editar_ficha %}
             <a href="https://gerencia.learningcenter.mx/directorio/" target="_blank" rel="noopener" class="btn-secundario text-xs">Editar en Gerencia →</a>
             {% endif %}

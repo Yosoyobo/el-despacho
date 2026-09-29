@@ -1,0 +1,103 @@
+{% comment %}
+El historial de actividad de un día: navegación, resumen y línea de tiempo
+(2026-09-29). Lo arma `cuentas.historial_views` con `lib.historial_actividad`.
+
+DOS COPIAS SINCRONIZADAS — Taller y Gerencia (regla §18). El test
+tests/test_historial_actividad.py exige que sean idénticas.
+
+Los textos ya vienen resueltos: el nombre de un registro sólo sale si quien mira
+podría abrirlo; si no, su genérico («un proyecto»).
+{% endcomment %}
+{% with res=dia.resumen %}
+<section class="mb-5 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between">
+    <form method="get" class="flex flex-wrap items-center gap-2">
+        {% if dia_anterior %}
+        <a href="?fecha={{ dia_anterior|date:'Y-m-d' }}" title="Día anterior con actividad" class="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5">← <span class="ml-1 hidden sm:inline">{{ dia_anterior|date:"j M" }}</span></a>
+        {% endif %}
+        <label class="sr-only" for="historial-fecha">Día</label>
+        <input id="historial-fecha" type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" min="{{ minimo|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}"
+               onchange="this.form.submit()"
+               class="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-brand-800">
+        {% if dia_siguiente %}
+        <a href="?fecha={{ dia_siguiente|date:'Y-m-d' }}" title="Día siguiente con actividad" class="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"><span class="mr-1 hidden sm:inline">{{ dia_siguiente|date:"j M" }}</span> →</a>
+        {% endif %}
+        {% if not es_hoy %}
+        <a href="?" class="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Hoy</a>
+        {% endif %}
+        <noscript><button type="submit" class="h-11 rounded-lg border px-3 text-sm">Ver</button></noscript>
+    </form>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="?fecha={{ fecha|date:'Y-m-d' }}&amp;csv=dia" class="inline-flex h-11 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5">CSV del día</a>
+        <a href="?fecha={{ fecha|date:'Y-m-d' }}&amp;csv=30" class="inline-flex h-11 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5">CSV de 30 días</a>
+    </div>
+</section>
+
+<section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Primera y última</p>
+        <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{% if res.primera %}{{ res.primera|time:"H:i" }} – {{ res.ultima|time:"H:i" }}{% else %}—{% endif %}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs text-gray-500 dark:text-gray-400" title="Suma los ratos entre una cosa y la siguiente, cada uno de 5 minutos como máximo">Tiempo activo</p>
+        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ res.activo_texto|default:"—" }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Pantallas abiertas</p>
+        <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ res.pantallas }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Cambios guardados</p>
+        <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ res.acciones }}</p>
+    </div>
+</section>
+
+<section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if es_hoy %}Hoy{% else %}{{ fecha|date:"l j \d\e F \d\e Y"|capfirst }}{% endif %}</h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Lo más reciente arriba · se guarda un año</p>
+    </header>
+    {% if dia.items %}
+    <ol class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for i in dia.items %}
+        <li class="flex flex-col gap-1 px-5 py-2.5 sm:flex-row sm:items-center sm:gap-4">
+            {% comment %}En el teléfono la hora y la etiqueta van en un solo renglón; desde sm el envoltorio desaparece (contents) y son dos columnas.{% endcomment %}
+            <div class="flex items-center gap-3 sm:contents">
+                <span class="w-16 shrink-0 font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ i.hora }}</span>
+                <span class="shrink-0 sm:w-24">
+                    {% if i.tipo == "accion" %}<span class="badge badge-sm badge-success">Guardó</span>
+                    {% elif i.tipo == "entrada" %}<span class="badge badge-sm badge-brand">Entró</span>
+                    {% elif i.tipo == "salida" %}<span class="badge badge-sm badge-gray">Salió</span>
+                    {% else %}<span class="badge badge-sm badge-gray">Abrió</span>{% endif %}
+                </span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="break-words text-sm text-gray-800 dark:text-gray-100">
+                    {% if i.url %}<a href="{{ i.url }}" class="hover:text-brand-600 hover:underline dark:hover:text-brand-400">{{ i.texto }}</a>{% else %}{{ i.texto }}{% endif %}
+                    {% if i.como %}<span class="badge badge-sm badge-warning ml-1" title="Estaba viendo el sistema como otra persona">como {{ i.como }}</span>{% endif %}
+                </p>
+                <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                    {% if i.app_label %}{{ i.app_label }}{% endif %}{% if i.detalle %} · {{ i.detalle }}{% endif %}
+                </p>
+            </div>
+            <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400 sm:text-right" title="{{ i.dispositivo.texto }}">
+                {% if i.dispositivo.texto %}{{ i.dispositivo.icono }} {{ i.dispositivo.texto }}{% endif %}{% if i.ip %}<span class="block font-mono text-[11px] text-gray-400 dark:text-gray-500">{{ i.ip }}</span>{% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <div class="px-5 py-10">
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin actividad este día" descripcion="No abrió pantallas ni guardó nada. Una pestaña abierta sin usar no cuenta." icono="search" %}
+    </div>
+    {% endif %}
+</section>
+
+{% if dias_recientes %}
+<p class="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+    <span>Días recientes con actividad:</span>
+    {% for d in dias_recientes %}
+    <a href="?fecha={{ d|date:'Y-m-d' }}" class="inline-flex h-9 items-center rounded-full border px-3 {% if d == fecha %}border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5{% endif %}">{{ d|date:"D j M" }}</a>
+    {% endfor %}
+</p>
+{% endif %}
+{% endwith %}

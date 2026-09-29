@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.11` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.12` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.12 | S-Historial-Actividad | Historial de actividad de un año (pantallas y acciones; `equipo.ver_historial` sólo dueños); Peticiones en vivo con nombre + IP vía `X-Despacho-Quien` en el log |
 | 2026.09.11 | S-Grilla-Permisos | La grilla de El Directorio reconoce el rol asignado; guardarla ya no quita permisos |
 | 2026.09.10 | S-Checador-V2 | Nómina quincenal de sueldo fijo (recibos, préstamos, reembolsos, Mis recibos, costeo por sueldo); `.venv` 3.12 + suite portable; `ROLES.md` generado |
 | 2026.09.09 | S-Recepcion-Caja | Portal de clientes encendido (enlace por correo, aprobar cotizaciones, facturas); La Caja apagada sin llaves |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.05 | S-Deuda-Sep28 | Ninguna puerta por rol literal («como hoy», `cuentas/0047`); pantalla de corte con roadmap automático; testigo en versiones de cotización; 8 limpiezas |
 | 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda; la barra de guardar va debajo de las pestañas |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
-| 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -448,6 +448,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Un envoltorio «invisible» (inputs ocultos, contenedor OOB) como hijo directo de un `grid` se come una celda: `class="contents"`, no `hidden` si adentro va algo que debe verse.
 - La Recepción carga modelos de El Taller: toda app que use necesita estar en su `INSTALLED_APPS` **y** su `COPY` en `la-recepcion/Dockerfile` (Bug A); un `reverse()` ahí usa SUS rutas (La Caja arma su URL con `apps.caja.urls_raiz`).
 - Tests que barren el árbol usan `tests/_arbol.archivos_del_repo()` (nunca `rglob` desde la raíz: ve `.claude/worktrees`); Redis de tests SIEMPRE por `REDIS_URL` — los dos con candado (`test_suite_portable.py`). `ROLES.md` se regenera con `infra/scripts/tabla_roles.py --escribir`.
+- Un campo nuevo en el log de gunicorn va ANTES de `%(D)s` y su regex se prueba antes que las viejas (`lib/site/actividad.py`): los parseos anclan la duración al final y casan los últimos campos entrecomillados.
 - Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
 - Crear en bloque (importar, sembrar) sin `lib.carga_masiva.carga_masiva()` dispara los correos automáticos a clientes (pago, bienvenida) y difiere los asientos a `on_commit`.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;

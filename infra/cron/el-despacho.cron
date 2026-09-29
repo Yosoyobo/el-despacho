@@ -93,4 +93,8 @@ CRON_TZ=America/Mexico_City
 # resultado en El Almacén para bajarlo o archivarlo; a los 7 días se borra, salvo
 # que otro registro comparta el mismo archivo. Diario 4:20, lejos del respaldo.
 20 4 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py papeleo_limpiar_unidos >> /var/log/papeleo.log 2>&1
+
+# El historial de actividad del equipo se guarda un año (decisión de Oscar,
+# 2026-09-29): cada noche se borra lo que pasó de ahí.
+35 4 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py historial_actividad_purgar >> /var/log/historial_actividad.log 2>&1
 # <<< El Despacho <<<
