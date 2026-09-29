@@ -630,3 +630,163 @@ def test_la_tarjeta_del_detalle_trae_el_bloque(client, equipo, linea_viva):
     html = client.get(f"/proyectos/{linea_viva.proyecto_id}/").content.decode()
     assert f'data-tarea-rapida-campo="{linea_viva.pk}"' in html
     assert f"/producto/{linea_viva.pk}/tarea-rapida" in html
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 5. Plegado móvil: ficha del cliente y ficha del producto
+# ═════════════════════════════════════════════════════════════════════════════
+# Contrato de `input.css` / `ui.js` (ver `tests/taller/test_plegado_movil.py`):
+# `[data-movil-plegable]:not([data-abierto]) > [data-movil-cuerpo]` se esconde
+# en el celular. Tres cosas fallan EN SILENCIO y sólo se ven en un teléfono:
+# - un cuerpo que no es HIJO DIRECTO de su plegable no se pliega;
+# - un plegable sin asa (o con el asa DENTRO del cuerpo) no se puede volver a
+#   abrir: su contenido queda inalcanzable;
+# - un asa o un cuerpo sueltos, sin plegable arriba, son basura que confunde al
+#   siguiente que lea la plantilla.
+# En escritorio no cambia nada: la media query no aplica y la flecha es
+# `md:hidden`.
+
+
+class _Plegables:
+    """Recorre el HTML y anota, por cada plegable, si su cuerpo es hijo directo
+    y si tiene un asa fuera del cuerpo. También junta asas/cuerpos sueltos."""
+
+    VACIOS = {"br", "hr", "img", "input", "meta", "link", "path", "circle",
+              "rect", "source", "col", "wbr"}
+
+    def __init__(self, html: str):
+        import re
+        from html.parser import HTMLParser
+
+        self.secciones: dict[str, dict] = {}
+        self.sueltos: list[str] = []
+        self.flechas_sin_md_hidden: list[str] = []
+        pila: list[tuple[str, dict]] = []
+        yo = self
+
+        class _P(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                d = dict(attrs)
+                plegable_arriba = next(
+                    (a for _t, a in reversed(pila) if "data-movil-plegable" in a), None)
+                if "data-movil-plegable" in d:
+                    yo.secciones[d["data-movil-plegable"]] = {
+                        "cuerpo_directo": False, "asa": False,
+                        "abierto": "data-movil-abierto" in d,
+                    }
+                if "data-movil-cuerpo" in d:
+                    padre = pila[-1][1] if pila else {}
+                    if "data-movil-plegable" in padre:
+                        yo.secciones[padre["data-movil-plegable"]]["cuerpo_directo"] = True
+                    else:
+                        yo.sueltos.append(f"cuerpo bajo <{pila[-1][0] if pila else ''}>")
+                if "data-movil-asa" in d:
+                    dentro_del_cuerpo = any("data-movil-cuerpo" in a for _t, a in pila)
+                    if plegable_arriba is None:
+                        yo.sueltos.append("asa sin plegable")
+                    elif not dentro_del_cuerpo:
+                        yo.secciones[plegable_arriba["data-movil-plegable"]]["asa"] = True
+                if "data-movil-flecha" in d and "md:hidden" not in (d.get("class") or ""):
+                    yo.flechas_sin_md_hidden.append(tag)
+                texto = self.get_starttag_text() or ""
+                if tag not in _Plegables.VACIOS and not texto.endswith("/>"):
+                    pila.append((tag, d))
+
+            def handle_endtag(self, tag):
+                for i in range(len(pila) - 1, -1, -1):
+                    if pila[i][0] == tag:
+                        del pila[i:]
+                        return
+
+        p = _P(convert_charrefs=True)
+        p.feed(re.sub(r"<script.*?</script>", "", html, flags=re.S))
+
+    def rotos(self) -> list[str]:
+        malos = [f"{k}: cuerpo no es hijo directo" for k, v in self.secciones.items()
+                 if not v["cuerpo_directo"]]
+        malos += [f"{k}: sin asa fuera del cuerpo" for k, v in self.secciones.items()
+                  if not v["asa"]]
+        return malos + self.sueltos + [f"flecha visible en escritorio <{t}>"
+                                       for t in self.flechas_sin_md_hidden]
+
+
+@pytest.fixture
+def admin(db, usuario_factory):
+    return usuario_factory(rol="super_admin")
+
+
+@pytest.mark.django_db
+def test_la_ficha_del_cliente_pliega_lo_de_consulta_y_deja_a_la_vista_lo_demas(
+        client, admin, cliente):
+    """Oscar: en el celular la ficha del cliente nace con lo que se consulta de
+    vez en cuando plegado. Las notas, los proyectos y el contacto —lo que se
+    busca al entrar— quedan a la vista."""
+    cliente.notas = "Paga a 30 días"
+    cliente.save()
+    client.force_login(admin)
+    resp = client.get(f"/cartera/{cliente.pk}/")
+    assert resp.status_code == 200
+    html = resp.content.decode()
+    p = _Plegables(html)
+    assert not p.rotos(), p.rotos()
+    assert set(p.secciones) == {"cotizaciones", "facturas", "ingresos", "ubicacion",
+                                "papeleo", "identificacion"}
+    assert "Paga a 30 días" in html
+
+
+@pytest.mark.django_db
+def test_la_ficha_del_producto_al_editar_se_pliega_bien(client, admin, producto_con_dos):
+    srv, *_ = producto_con_dos
+    client.force_login(admin)
+    resp = client.get(f"/catalogo/{srv.pk}/editar")
+    assert resp.status_code == 200
+    p = _Plegables(resp.content.decode())
+    assert not p.rotos(), p.rotos()
+    assert set(p.secciones) == {"imagen", "descripcion", "proveedores", "procesos", "usos"}
+    # Sin errores, nada nace abierto.
+    assert not any(v["abierto"] for v in p.secciones.values())
+
+
+@pytest.mark.django_db
+def test_en_el_alta_del_producto_no_se_pliega_nada(client, admin, categoria):
+    """En el alta se llena todo: esconder campos sería esconder el trabajo. Y
+    sin plegable no quedan asas ni cuerpos sueltos."""
+    client.force_login(admin)
+    resp = client.get("/catalogo/nuevo")
+    assert resp.status_code == 200
+    html = resp.content.decode()
+    assert "data-movil-" not in html
+
+
+@pytest.mark.django_db
+def test_un_recuadro_con_error_nace_abierto(client, admin, producto_con_dos, categoria):
+    """Plegar el recuadro que trae el error sería esconder por qué no se guardó."""
+    srv, alfa, _zeta = producto_con_dos
+    client.force_login(admin)
+    resp = client.post(f"/catalogo/{srv.pk}/editar", {
+        "nombre": srv.nombre, "descripcion_default": "", "costo": "50",
+        "precio_base": "100", "categoria": categoria.pk,
+        "proveedores": [str(alfa.pk), "999999"],
+        "proveedores_orden": f"{alfa.pk},999999",
+    })
+    assert resp.status_code == 200          # re-render con el error, no redirect
+    p = _Plegables(resp.content.decode())
+    assert not p.rotos(), p.rotos()
+    assert p.secciones["proveedores"]["abierto"]
+    assert not p.secciones["descripcion"]["abierto"]
+
+
+@pytest.mark.django_db
+def test_los_recuadros_compartidos_no_se_pliegan_donde_no_se_pidio(client, admin):
+    """`_ubicacion.html` y `papeleo/_recuadro.html` también viven en la ficha
+    del proveedor: ahí no se pidió plegar y no se pliega."""
+    client.force_login(admin)
+    prov = _prov("Proveedor Suelto")
+    resp = client.get(f"/catalogo/proveedores/{prov.pk}/")
+    assert resp.status_code == 200
+    html = resp.content.decode()
+    # Los dos recuadros compartidos SÍ se pintaron (si no, el candado de abajo
+    # pasaría por la razón equivocada)…
+    assert "Ubicación y dirección" in html and "Buscar en el archivo" in html
+    # …y sin plegar.
+    assert "data-movil-" not in html

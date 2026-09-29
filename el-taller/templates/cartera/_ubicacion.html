@@ -3,9 +3,15 @@ Tarjeta de Ubicación + Dirección (cliente o proveedor). Reusada por el detalle
 de Cartera y de Catálogo. Params: nombre, direccion, direccion_fiscal,
 fiscal_igual, ultima_visita (Visita geolocalizada o None).
 La última ubicación sale de las visitas del Checador; el mapa abre en modal.
+
+LC 2026-09-28: con `plegable="<slug>"` el recuadro se pliega en el celular (la
+ficha del cliente). Sin el parámetro —la ficha del proveedor— no cambia nada. El
+margen del título pasó al cuerpo para que, plegado, el recuadro no deje un hueco
+bajo el título; en escritorio se ve igual.
 {% endcomment %}
-<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación y dirección</h2>
+<section {% if plegable %}data-movil-plegable="{{ plegable }}" {% endif %}class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 {% if plegable %}data-movil-asa {% endif %}class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Ubicación y dirección{% if plegable %}<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span>{% endif %}</h2>
+    <div {% if plegable %}data-movil-cuerpo {% endif %}class="mt-3">
 
     <div class="mb-3 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
         {% if ultima_visita %}
@@ -30,4 +36,5 @@ La última ubicación sale de las visitas del Checador; el mapa abre en modal.
             </dd>
         </div>
     </dl>
+    </div>
 </section>

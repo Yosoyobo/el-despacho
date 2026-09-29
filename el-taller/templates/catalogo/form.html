@@ -63,6 +63,14 @@ producto que estás viendo queda marcada.{% endcomment %}
 </nav>
 {% endif %}
 
+{% comment %}LC 2026-09-28 (Oscar): al EDITAR, en el celular la ficha nace con los
+datos del producto a la vista y lo demás PLEGADO —imagen, descripción,
+proveedores, impresión y procesos, historial de usos—. En el alta no se pliega
+nada (ahí se llena todo) y en escritorio no cambia nada: el pliegue vive en una
+media query de `input.css`. Un recuadro con un error de validación nace abierto.
+Contrato `data-movil-plegable` / `-asa` / `-cuerpo`; el cuerpo es HIJO DIRECTO
+del plegable. Candado en `tests/taller/test_producto_sep28.py`. La calculadora
+no se pliega: es herramienta de trabajo y ya se esconde sola si no aplica.{% endcomment %}
 <form id="producto-form" method="post" data-avisar-cambios class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
 
@@ -115,8 +123,9 @@ producto que estás viendo queda marcada.{% endcomment %}
     {% comment %}── Aside: imagen + descripción + proveedores como ventanas chicas ──{% endcomment %}
     <aside class="min-w-0 space-y-6">
         {% comment %}LC 2026-07 (D5): imagen del producto — pegar (Ctrl/Cmd+V) o elegir archivo → Drive.{% endcomment %}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Imagen</h3>
+        <section {% if modo == 'editar' %}data-movil-plegable="imagen" {% endif %}class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 {% if modo == 'editar' %}data-movil-asa {% endif %}class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Imagen{% if modo == 'editar' %}<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span>{% endif %}</h3>
+            <div {% if modo == 'editar' %}data-movil-cuerpo{% endif %}>
             {% if servicio %}
             {% comment %}LC 2026-07-26 (Oscar, ronda 3): en ESTA página quitar la
             foto es un cambio PENDIENTE — se aplica al «Guardar producto», no al
@@ -145,21 +154,22 @@ producto que estás viendo queda marcada.{% endcomment %}
             {% else %}
             <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Guarda el producto primero; luego podrás pegar o subir su imagen.</p>
             {% endif %}
+            </div>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción</h3>
-            <div class="mt-3">
+        <section {% if modo == 'editar' %}data-movil-plegable="descripcion" {% if form.descripcion_default.errors %}data-movil-abierto {% endif %}{% endif %}class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 {% if modo == 'editar' %}data-movil-asa {% endif %}class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Descripción{% if modo == 'editar' %}<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span>{% endif %}</h3>
+            <div {% if modo == 'editar' %}data-movil-cuerpo {% endif %}class="mt-3">
                 {% include "_componentes_tailadmin/_form_campo.html" with campo=form.descripcion_default ancho_completo=True %}
                 {% include "_componentes_tailadmin/_ia_bar.html" with target="#"|add:form.descripcion_default.id_for_label contexto_modelo="" contexto_id="" instruccion_ph="Ej. describe este producto para una cotización" %}
             </div>
         </section>
 
         {% comment %}Proveedores aplicables — checkboxes en pastillas + quick-create inline{% endcomment %}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex items-baseline justify-between gap-3">
+        <section {% if modo == 'editar' %}data-movil-plegable="proveedores" {% if form.proveedores.errors %}data-movil-abierto {% endif %}{% endif %}class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div {% if modo == 'editar' %}data-movil-asa {% endif %}class="flex items-baseline justify-between gap-3">
                 <div class="min-w-0">
-                    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ form.proveedores.label }}</h3>
+                    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ form.proveedores.label }}{% if modo == 'editar' %}<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span>{% endif %}</h3>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.proveedores.help_text }}</p>
                 </div>
                 {% if permisos_modulos.chalan %}
@@ -169,6 +179,7 @@ producto que estás viendo queda marcada.{% endcomment %}
                 </button>
                 {% endif %}
             </div>
+            <div {% if modo == 'editar' %}data-movil-cuerpo{% endif %}>
             <p id="prov-sugerir-msg" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400"></p>
             {% comment %}LC 2026-08-28 (Oscar): «hay varios selectores de
             proveedores… dejemos sólo uno, y al agregarlos en orden el primero
@@ -221,6 +232,7 @@ producto que estás viendo queda marcada.{% endcomment %}
                     <p id="prov-msg" class="text-xs hidden"></p>
                 </div>
             </details>
+            </div>
         </section>
     </aside>
 
@@ -228,15 +240,16 @@ producto que estás viendo queda marcada.{% endcomment %}
     producto. Es una PLANTILLA: al elegir este producto en un proyecto, su
     tarjeta se pre-llena con estos procesos (y ahí se editan). No se suman al
     Costo — el proyecto los cuenta aparte (si no, el gasto se duplicaría).{% endcomment %}
-    <section data-procs-box class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-gray-800 dark:bg-gray-900">
+    <section data-procs-box {% if modo == 'editar' %}data-movil-plegable="procesos" {% endif %}class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-gray-800 dark:bg-gray-900">
         <input type="hidden" name="procesos_default_json" data-procs-json value="{{ procesos_default_json|default:'[]' }}">
-        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div {% if modo == 'editar' %}data-movil-asa {% endif %}class="flex flex-wrap items-end justify-between gap-3">
             <div class="min-w-0">
-                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">🖨️ Impresión y procesos adicionales</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">🖨️ Impresión y procesos adicionales{% if modo == 'editar' %}<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span>{% endif %}</h2>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Se copian solos a la tarjeta del producto cuando lo agregas a un proyecto (ahí los puedes ajustar). No cambian el Costo de este producto.</p>
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Suma de procesos (1 pz): <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100" data-procs-total>—</span></p>
         </div>
+        <div {% if modo == 'editar' %}data-movil-cuerpo {% endif %}class="mt-4">
 
         {% comment %}Impresión: proveedor (dropdown con buscador) + costo + por pieza.{% endcomment %}
         <div class="grid grid-cols-2 gap-3 md:grid-cols-[1.4fr_140px_auto_auto] md:items-end">
@@ -294,6 +307,7 @@ producto que estás viendo queda marcada.{% endcomment %}
                 </button>
             </div>
         </template>
+        </div>
     </section>
 
     {% comment %}LC 2026-08-22 (nota 3): la calculadora vive en un partial que
@@ -306,11 +320,12 @@ producto que estás viendo queda marcada.{% endcomment %}
     {% comment %}Sprint 2 UX (item 7): historial de usos EN el panel — el detalle y
     la edición quedan unificados en una sola pantalla. Solo lectura.{% endcomment %}
     {% if modo == 'editar' and servicio %}
-    <section id="usos-historial" class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-gray-800 dark:bg-gray-900">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Historial de usos</h2>
+    <section id="usos-historial" data-movil-plegable="usos" class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm xl:col-span-3 dark:border-gray-800 dark:bg-gray-900">
+        <div data-movil-asa class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Historial de usos<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span></h2>
             <span class="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ usos|length }} uso{{ usos|length|pluralize }}</span>
         </div>
+        <div data-movil-cuerpo class="mt-4">
         <div class="overflow-x-auto">
         <table class="min-w-[900px] md:min-w-full text-sm">
             <thead class="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -378,6 +393,7 @@ producto que estás viendo queda marcada.{% endcomment %}
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         </div>
     </section>
     {% endif %}
