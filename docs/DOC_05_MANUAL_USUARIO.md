@@ -5,6 +5,38 @@
 
 ---
 
+## Novedades — Cada quien ve lo que su permiso le abre, y el pin del proveedor se pone solo (29 de septiembre de 2026)
+
+**Si te quitan el acceso a La Gerencia, sales en ese momento**, aunque tengas la
+sesión abierta. Y quien tiene acceso a La Gerencia ya puede entrar también con
+Google.
+
+**Al escribir `$` o `#` sólo te sugiere los clientes y proyectos que puedes
+abrir.**
+
+**El rol «Director» lee los comentarios** de proyectos y tareas, internos
+incluidos, igual que los demás directores; también quien lo reciba después.
+
+**Tu Inicio y La Sala de Juntas muestran los indicadores de lo que tu permiso
+abre.** Si tu rol se asignó encima de otro (Director y parecidos), ahora ves las
+tarjetas de ingresos y utilidad como un dueño. Los roles que no son de los cuatro
+de siempre (Administrativo, Runner) ya ven los indicadores de lo que pueden abrir.
+Quien tiene un solo rol no nota ningún cambio.
+
+**Crear, asignar y cambiar de estado un proyecto se pueden dar por separado**
+desde El Directorio (hoy nadie cambia). El botón «Nuevo proyecto» sólo aparece a
+quien puede crear, y el enlace «Crea uno primero» de la tarea nueva ya funciona.
+
+**El pin de un proveedor se pone solo al darlo de alta con dirección** (en su
+pantalla, desde un producto, desde un gasto, un CFDI, un proyecto o pidiéndoselo a
+El Chalán). Las altas rápidas de proveedor ahora piden también la dirección. Y si
+cambias la dirección con la ficha abierta, el pin se mueve en unos segundos, sin
+recargar.
+
+**Los avisos** (cobranza, proyectos detenidos, tareas por vencer, soporte, gasto de
+IA) llegan a quien tiene el permiso de ese tema. En Ajustes → Recordatorios, la
+opción de los admins ahora dice «A quien gestiona proyectos».
+
 ## Novedades — Más avisos que te cuidan el trabajo y una pantalla de espera que explica (28 de septiembre de 2026)
 
 **La pantalla de espera dice qué está pasando.** Si el sistema se detiene un

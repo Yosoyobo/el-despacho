@@ -272,12 +272,12 @@ def rentabilidad_impl(args: dict, usuario) -> dict[str, Any]:
 def indicadores_impl(args: dict, usuario) -> dict[str, Any]:
     """El tablero completo: cada indicador con su valor, tendencia y si es raro."""
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpis_aplicables_a_rol
+    from apps.taller_home.kpis import kpis_aplicables
 
     categoria = (args.get("categoria") or "").strip().lower()
     limite = _limite(args.get("limite"))
     filas = []
-    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+    for kpi in kpis_aplicables(usuario):
         if categoria and kpi.categoria != categoria:
             continue
         try:

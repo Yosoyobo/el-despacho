@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.09.05` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-28:** producción en `VERSION 2026.09.06` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.06 | S-Fin-Sep29 | Las 3 puertas por rol primario a permiso (decisión de Oscar); KPIs/avisos por permiso; comentarios por rol asignado; pin en el alta |
 | 2026.09.05 | S-Deuda-Sep28 | Ninguna puerta por rol literal («como hoy», `cuentas/0047`); pantalla de corte con roadmap automático; testigo en versiones de cotización; 8 limpiezas |
 | 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda; la barra de guardar va debajo de las pestañas |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.08.48 | S-Ajustes-Ago28 · 2 | `Tarea.producto`; buscador del Inicio abarca clientes/productos/proveedores |
 | 2026.08.47 | S-Ajustes-Ago28 · 1 | Duplicar producto, markup en catálogo, un solo control de proveedores |
 | 2026.08.46 | S-Rutas-Descuadre | Reconciliar paradas con dueño ajeno; reactivar repartos cancelados |
-| 2026.08.45 | S-Papeleo-Visor | El papeleo de Paperless se ve dentro de El Taller (proxy con permiso) |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 

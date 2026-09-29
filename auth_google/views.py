@@ -88,7 +88,7 @@ def callback(request: HttpRequest) -> HttpResponse:
         _emitir_error("desconocido", str(exc), request)
         return _render_error(request, motivo="desconocido", status=500)
 
-    if not _host_permite_rol(request.get_host(), usuario.rol):
+    if not _host_permite(request.get_host(), usuario):
         return _render_error(request, motivo="rol_no_permitido", email_google=perfil.email, status=403)
 
     usuario.backend = "django.contrib.auth.backends.ModelBackend"
@@ -116,10 +116,20 @@ def _app_de_host(host: str) -> str:
     return "taller"
 
 
-def _host_permite_rol(host: str, rol: str) -> bool:
-    """La Gerencia es solo para super_admin/dueno. El Taller acepta los 4 roles."""
-    if "gerencia" in host:
-        return rol in ("super_admin", "dueno")
+def _host_permite(host: str, usuario) -> bool:
+    """¿Esta cuenta entra por Google a la app de este host?
+
+    A La Gerencia entra quien tiene `gerencia.acceder` (super_admin siempre): la
+    misma puerta que el login con contraseña y que el middleware de La Gerencia.
+    Hasta 2026.09.05 el SSO leía el rol PRIMARIO (sólo super_admin/dueño), así
+    que quien era «Director» sobre un primario `miembro` entraba con contraseña
+    pero no con Google. Decisión de Oscar (2026-09-28): que decida el permiso,
+    sabiendo que eso le abre el SSO a ese Director. El Taller acepta a todos.
+    """
+    if "gerencia" in (host or "").lower():
+        from lib.permisos import puede_acceder_gerencia
+
+        return puede_acceder_gerencia(usuario)
     return True
 
 

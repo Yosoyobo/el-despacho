@@ -32,12 +32,11 @@ from lib.busqueda import q_texto
 
 from .kpis import (
     CATEGORIAS,
-    ROLES_ADMIN_CONTADOR,
     _kpi_ingresos_mes,
     _kpi_proyectos_activos,
     _kpi_utilidad_mes,
     kpi_por_slug,
-    kpis_aplicables_a_rol,
+    kpis_aplicables,
 )
 from .models import PreferenciaKPI, SugerenciaKPI
 from .sugerencias import evaluar_y_persistir, sugerencias_pendientes
@@ -91,14 +90,25 @@ def _safe(label: str, fn, default):
         return default
 
 
-def _puede_finanzas(rol) -> bool:
-    return rol in ROLES_ADMIN_CONTADOR
+def _puede_finanzas(user) -> bool:
+    """Las tarjetas de dinero del Inicio: `tesoreria.ver`, lo mismo que abre La
+    Tesorería (antes, el rol PRIMARIO super_admin/dueño/contador)."""
+    from lib.permisos import puede_ver_finanzas
+    return puede_ver_finanzas(user)
 
 
-def _hero_kpis(user, rol) -> list[dict]:
+def _solo_lo_suyo(user) -> bool:
+    """¿Los conteos del hero se acotan a lo de `user`? Quien ve proyectos
+    pero no todos (`proyectos.ver` sin `ver_todos`); antes, el rol PRIMARIO
+    diseñador."""
+    from lib.permisos import solo_proyectos_asignados
+    return solo_proyectos_asignados(user)
+
+
+def _hero_kpis(user) -> list[dict]:
     """Las 5 KPIs grandes del render. Slugs sintéticos `hero-*` para poder
     ocultarlas por tarjeta desde /perfil/dashboard sin chocar con la zona
-    compacta. Las financieras sólo para roles con acceso a finanzas."""
+    compacta. Las financieras sólo para quien ve el dinero (`tesoreria.ver`)."""
     from apps.el_pizarron.models import Tarea
 
     ocultos = set(
@@ -107,11 +117,12 @@ def _hero_kpis(user, rol) -> list[dict]:
     )
     mes = _NOMBRES_MESES[date.today().month - 1]
 
+    solo_lo_suyo = _solo_lo_suyo(user)
     en_produccion = Proyecto.activos.filter(estado="en_proceso_produccion")
-    if rol == "disenador":
+    if solo_lo_suyo:
         en_produccion = en_produccion.filter(asignaciones__usuario=user).distinct()
     tareas_urgentes = Tarea.objects.filter(prioridad="alta").exclude(estado="completada")
-    if rol == "disenador":
+    if solo_lo_suyo:
         tareas_urgentes = tareas_urgentes.filter(asignada_a=user)
 
     candidatos: list[dict] = [
@@ -123,7 +134,7 @@ def _hero_kpis(user, rol) -> list[dict]:
          "valor": tareas_urgentes.count(),
          "nota": ("alerta" if tareas_urgentes.exists() else ""), "link": "/tareas/?estado=pendiente"},
     ]
-    if _puede_finanzas(rol):
+    if _puede_finanzas(user):
         candidatos.append({"slug": "hero-ingresos", "titulo": f"Ingresos {mes}",
                            **_kpi_ingresos_mes(user)})
         candidatos.append({"slug": "hero-utilidad", "titulo": f"Utilidad bruta {mes}",
@@ -134,8 +145,8 @@ def _hero_kpis(user, rol) -> list[dict]:
     ]
 
 
-def _compact_kpis(user, rol) -> list[dict]:
-    """Los 8 KPIs compactos: default del render, filtrados por rol, honrando
+def _compact_kpis(user) -> list[dict]:
+    """Los 8 KPIs compactos: default del render, filtrados por permiso, honrando
     `PreferenciaKPI` (oculto + orden). Los 3 financieros llevan sparkline 6m."""
     ocultos = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
@@ -145,7 +156,7 @@ def _compact_kpis(user, rol) -> list[dict]:
     )
 
     spark = {}
-    if _puede_finanzas(rol):
+    if _puede_finanzas(user):
         try:
             from apps.tesoreria.services import series_mensuales_6m
             spark = series_mensuales_6m()
@@ -162,7 +173,7 @@ def _compact_kpis(user, rol) -> list[dict]:
     candidatos += [(100 + i, kpi) for i, kpi in enumerate(_kpis_custom_para(user))]
 
     for orden_default, kpi in candidatos:
-        if kpi is None or rol not in kpi.roles_visible or kpi.slug in ocultos:
+        if kpi is None or not kpi.visible_para(user) or kpi.slug in ocultos:
             continue
         try:
             res = kpi.calcular(user)
@@ -506,7 +517,6 @@ def _infra_gauges(user):
 @login_required
 def home(request):
     user = request.user
-    rol = getattr(user, "rol", None)
 
     # Capa 2: evalúa reglas heurísticas — crea SugerenciaKPI (se ven en
     # /perfil/dashboard; el banner ya no vive en el home).
@@ -517,8 +527,8 @@ def home(request):
     mis_tareas, mis_tareas_total = _safe("mis_tareas", lambda: _mis_tareas(user), ([], 0))
     proximos, proximos_mas = _safe("proximos_eventos", lambda: _proximos_eventos(user), ([], 0))
     kanban_cols = _safe("kanban_cols", lambda: _kanban_cols(user), [])
-    hero_kpis = _safe("hero_kpis", lambda: _hero_kpis(user, rol), [])
-    compact_kpis = _safe("compact_kpis", lambda: _compact_kpis(user, rol), [])
+    hero_kpis = _safe("hero_kpis", lambda: _hero_kpis(user), [])
+    compact_kpis = _safe("compact_kpis", lambda: _compact_kpis(user), [])
     calendarios = _safe("calendarios", lambda: _calendarios(user),
                         {"actual": None, "siguiente": None})
     # S-Mandados-V2: protagonismo para repartidores — widget de sus mandados.
@@ -555,8 +565,7 @@ def home(request):
 def dashboard_preferencias(request):
     """Página de edición de KPIs visibles + sugerencias del Chalán."""
     user = request.user
-    rol = getattr(user, "rol", None) or "disenador"
-    aplicables = kpis_aplicables_a_rol(rol, user=user)
+    aplicables = kpis_aplicables(user)
 
     ocultos = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
@@ -590,7 +599,7 @@ def dashboard_preferencias(request):
     hero_cards = [
         {"slug": slug, "titulo": titulo, "visible": slug not in hero_ocultos}
         for slug, titulo, requiere_finanzas in HERO_DEFS
-        if (not requiere_finanzas) or _puede_finanzas(rol)
+        if (not requiere_finanzas) or _puede_finanzas(user)
     ]
 
     return render(request, "taller_home/dashboard_preferencias.html", {
@@ -605,8 +614,7 @@ def dashboard_preferencias(request):
 def dashboard_guardar(request):
     """Guarda visibles[] de la página de preferencias. Slugs no marcados → ocultos."""
     user = request.user
-    rol = getattr(user, "rol", None) or "disenador"
-    aplicables_slugs = {k.slug for k in kpis_aplicables_a_rol(rol, user=user)}
+    aplicables_slugs = {k.slug for k in kpis_aplicables(user)}
     marcados = set(request.POST.getlist("visible"))
 
     for slug in aplicables_slugs:
@@ -618,7 +626,7 @@ def dashboard_guardar(request):
     # Tarjetas del header (zona hero) — checkboxes `hero_visible`.
     hero_marcados = set(request.POST.getlist("hero_visible"))
     for slug, _titulo, requiere_finanzas in HERO_DEFS:
-        if requiere_finanzas and not _puede_finanzas(rol):
+        if requiere_finanzas and not _puede_finanzas(user):
             continue
         PreferenciaKPI.objects.update_or_create(
             usuario=user, kpi_slug=slug,

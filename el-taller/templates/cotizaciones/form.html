@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers permisos %}
 {% block title %}{% if modo == 'nuevo' %}Nueva cotización{% else %}Editar {{ cot.codigo }}{% endif %} — El Taller{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Cotizaciones" "/cotizaciones/" titulo_pagina as breadcrumb_items %}
@@ -39,7 +39,9 @@
                 <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ form.proyecto.label }} <span class="text-error-500" title="Obligatorio">*</span></label>
                 <div class="flex items-center gap-2">
                     <div class="min-w-0 flex-1">{{ form.proyecto }}</div>
+                    {% if request.user|puede_crear_proyecto %}
                     <a href="{% url 'proyectos-nuevo' %}" class="btn-secundario whitespace-nowrap">+ Nuevo</a>
+                    {% endif %}
                 </div>
                 {% if form.proyecto.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ form.proyecto.errors|join:" · " }}</p>{% endif %}
             </div>

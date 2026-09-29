@@ -41,6 +41,8 @@ urlpatterns = [
     path("sugerir-proveedores/", views.sugerir_proveedores, name="catalogo-sugerir-proveedores"),
     path("proveedores/<int:pk>/", views.proveedor_detalle, name="catalogo-proveedor-detalle"),
     path("proveedores/<int:pk>/editar", views.proveedor_editar, name="catalogo-proveedor-editar"),
+    # Deuda Sep28: la ficha abierta pregunta si ya se ubicó el pin (sondeo corto).
+    path("proveedores/<int:pk>/pin/", views.proveedor_pin, name="catalogo-proveedor-pin"),
     path("proveedores/<int:pk>/servicios", views.proveedor_servicios, name="catalogo-proveedor-servicios"),
     path("proveedores/<int:pk>/archivar", views.proveedor_archivar, name="catalogo-proveedor-archivar"),
     path("proveedores/<int:pk>/eliminar", views.proveedor_eliminar, name="catalogo-proveedor-eliminar"),

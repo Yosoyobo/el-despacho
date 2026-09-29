@@ -46,7 +46,7 @@ def _resolver_tarea(tid, contexto=None):
 @registrar("duplicar_proyecto")
 def duplicar_proyecto(accion, usuario, contexto=None):
     """Payload: proyecto_slug, nombre? (del duplicado)."""
-    _gate(usuario, "puede_gestionar_proyectos", "duplicar proyectos")
+    _gate(usuario, "puede_crear_proyecto", "duplicar proyectos")
     from apps.los_proyectos.services_duplicar import duplicar_proyecto as svc
 
     payload = accion.payload or {}

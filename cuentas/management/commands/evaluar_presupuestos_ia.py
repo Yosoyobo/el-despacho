@@ -2,7 +2,7 @@
 
 S-Directorio-Panel-V1. Para AMBAS políticas (`alertar` y `topar`): si el gasto
 del mes alcanzó el tope y aún no se avisó este mes, emite `presupuesto_ia.rebasado`
-por Portavoz + push a super_admin/dueño, y marca `alerta_mes` para no repetir.
+por Portavoz + push a quien ve Los Chalanes (`chalanes.ver`), y marca `alerta_mes` para no repetir.
 
 El gate que BLOQUEA la IA (política `topar`) vive en `lib.analistas.analizar` —
 este cron solo avisa. Idempotente: una vez por mes por usuario.
@@ -18,7 +18,7 @@ from django.utils import timezone
 
 from cuentas.models.presupuesto_ia import PresupuestoIA
 from lib.analistas.stats import gasto_mes_usuario
-from lib.permisos import usuarios_con_rol
+from lib.permisos import usuarios_con_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -66,8 +66,9 @@ class Command(BaseCommand):
 
         from lib.interfono import enviar_a_usuario
         accion = "se topó la IA" if p.politica == PresupuestoIA.POLITICA_TOPAR else "solo alerta"
-        # V6 Bloque 10: usuarios_con_rol ya filtra is_active=True e incluye roles_extra.
-        for admin in usuarios_con_rol("super_admin", "dueno"):
+        # Quien ve el gasto de la IA (`chalanes.ver`, §4 #20): con los defaults,
+        # super_admin y dueño, como antes.
+        for admin in usuarios_con_permiso("chalanes", "ver"):
             # Un push roto (sin VAPID/Redis) no debe romper el cron.
             with contextlib.suppress(Exception):
                 enviar_a_usuario(

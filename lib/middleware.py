@@ -1,10 +1,15 @@
 """Middlewares custom de El Despacho.
 
-`RedirigirRolesOperativosMiddleware` — defensa profunda en La Gerencia:
-si un usuario autenticado tiene rol `contador` o `disenador`, se le redirige
-a https://taller.learningcenter.mx/ (donde sí pertenece). El flujo normal
-(`auth_gerencia`) ya rechaza esos roles en `/sign-in`, pero este middleware
-cubre el edge case de un cambio de rol mid-sesión o un bookmark stale.
+`RedirigirRolesOperativosMiddleware` — la puerta de La Gerencia, en cada
+petición: quien tiene la sesión abierta pero NO tiene `gerencia.acceder`
+(super_admin siempre lo tiene: es el failsafe) sale de La Gerencia —se le cierra
+la sesión de aquí— y se le manda a El Taller, donde sí pertenece.
+
+Antes decidía por el rol PRIMARIO (sacaba a `contador`/`disenador`). Decisión de
+Oscar (2026-09-28): pasa a permiso granular (§4 #20), y a propósito cambia algo
+—quien pierde el acceso desde El Directorio sale de inmediato, aunque tenga la
+sesión abierta; antes se quedaba hasta que la sesión caducara—. El login
+(`auth_gerencia`) y el SSO de Google ya preguntan por el mismo permiso.
 
 Whitelist: paths que NO disparan redirect (auth, assets, healthcheck, etc.).
 """
@@ -27,8 +32,8 @@ PREFIJOS_WHITELIST = (
     "/oauth/",
 )
 
-# Destino al que se redirige a los roles operativos cuando aterrizan en
-# La Gerencia. Configurable vía settings.TALLER_URL si se quiere.
+# Destino al que se manda a quien no tiene acceso a La Gerencia.
+# Configurable vía settings.TALLER_URL si se quiere.
 TALLER_URL_DEFAULT = "https://taller.learningcenter.mx/"
 
 
@@ -39,6 +44,12 @@ class RedirigirRolesOperativosMiddleware:
     def __call__(self, request: HttpRequest):
         if self._debe_redirigir(request):
             from django.conf import settings
+            from django.contrib.auth import logout
+
+            # «Sale de inmediato»: se cierra la sesión de La Gerencia (la de El
+            # Taller es otra cookie y no se toca). Así, si le devuelven el
+            # permiso, vuelve a entrar por el login como cualquiera.
+            logout(request)
             destino = getattr(settings, "TALLER_URL", TALLER_URL_DEFAULT)
             return HttpResponseRedirect(destino)
         return self.get_response(request)
@@ -53,4 +64,6 @@ class RedirigirRolesOperativosMiddleware:
         user = getattr(request, "user", None)
         if not user or not getattr(user, "is_authenticated", False):
             return False
-        return getattr(user, "rol", None) in ("contador", "disenador")
+        from lib.permisos import puede_acceder_gerencia
+
+        return not puede_acceder_gerencia(user)

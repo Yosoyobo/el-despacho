@@ -4,7 +4,8 @@ Cada KPI es un dataclass `KPI` con:
 - `slug`: identificador estable (también clave de `PreferenciaKPI.kpi_slug`)
 - `titulo`, `descripcion`
 - `categoria`: agrupa visualmente la lista de preferencias
-- `roles_visible`: tupla de roles que pueden activarlo
+- `permisos`: los permisos granulares que hacen falta para verlo —todos—
+  (`permisos_kpi.py`: el permiso del DATO que enseña, nunca un nombre de rol)
 - `origen`: 'manual' (catálogo) | 'sugerido_chalan' (S2b.2+) | 'custom_chalan' (S2b.5)
 - `estado_kpi`: 'activo' (calcula) | 'pendiente_tesoreria' (placeholder S2b.3)
 - `calcular(user) -> dict`: retorna `{valor, nota, link}`
@@ -12,7 +13,7 @@ Cada KPI es un dataclass `KPI` con:
 Agregar un KPI = agregar una entrada a `KPIS`. Las preferencias del usuario
 se persisten en `taller_home.PreferenciaKPI`; default opt-in (visible si no
 hay fila explícita), opuesto al opt-out de `PreferenciaCategoriaPush` porque
-para KPIs el comportamiento natural es "mostrar todo lo que aplica a mi rol".
+para KPIs el comportamiento natural es "mostrar todo lo que puedo ver".
 
 NOTA: Las consultas se ejecutan en cada render. Para 5 usuarios y ~30 KPIs
 visibles el costo es bajo (~30 COUNT con índices). Si crece, agregar caché
@@ -26,12 +27,31 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
+from .permisos_kpi import (
+    ATIENDE_SOPORTE,
+    CHECA,
+    CONFIGURA_INTERFONO,
+    EDITA_CARTERA,
+    GESTIONA_PROYECTOS,
+    VE_BUZON_PROPIO,
+    VE_CARTERA,
+    VE_CONTADURIA,
+    VE_COTIZACIONES,
+    VE_DINERO,
+    VE_FACTURACION,
+    VE_PROYECTOS,
+    VE_RECADOS,
+    VE_SITE,
+    VE_TAREAS,
+    VE_TODOS_PROYECTOS,
+    VIGILA_CONTADURIA,
+    puede_ver,
+    puede_ver_con,
+)
+
 # ── Constantes auxiliares ──────────────────────────────────────────────────
 
 ESTADOS_PROYECTO_ACTIVOS = ("en_proceso_diseno", "en_proceso_produccion")
-ROLES_TODOS = ("super_admin", "dueno", "contador", "disenador")
-ROLES_ADMIN = ("super_admin", "dueno")
-ROLES_ADMIN_CONTADOR = ("super_admin", "dueno", "contador")
 
 
 @dataclass(frozen=True)
@@ -40,10 +60,14 @@ class KPI:
     titulo: str
     descripcion: str
     categoria: str
-    roles_visible: tuple[str, ...]
+    permisos: tuple[str, ...]
     calcular: Callable[[Any], dict[str, Any]]
     origen: str = "manual"
     estado_kpi: str = "activo"
+
+    def visible_para(self, user) -> bool:
+        """¿`user` puede ver este KPI? (sus permisos; super_admin siempre)."""
+        return puede_ver(user, self.permisos)
 
 
 # ── Helpers de cálculo (mantienen las queries simples y legibles) ───────────
@@ -558,134 +582,134 @@ def _kpi_checador_horas_proyecto_top(user) -> dict:
 KPIS: list[KPI] = [
     # Operación
     KPI("proyectos-activos", "Proyectos activos", "Proyectos en diseño, revisión o producción.",
-        "operacion", ROLES_TODOS, _kpi_proyectos_activos),
+        "operacion", VE_PROYECTOS, _kpi_proyectos_activos),
     KPI("prospectos-pipeline", "Prospectos en pipeline", "Clientes potenciales con conversación abierta.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_prospectos_pipeline),
+        "operacion", VE_TODOS_PROYECTOS, _kpi_prospectos_pipeline),
     KPI("valor-proyectos", "Valor en proyectos", "Suma estimada (derivada de productos) de los proyectos no terminados.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_valor_proyectos),
+        "operacion", VE_DINERO, _kpi_valor_proyectos),
     KPI("cotizados-sin-avance", "Cotizados >7d sin avance", "Cotización enviada y sin movimiento. Velocidad comercial.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizados_sin_avance),
+        "operacion", VE_TODOS_PROYECTOS, _kpi_cotizados_sin_avance),
     KPI("proyectos-en-pausa", "Proyectos en pausa", "Pausados — insumos atrasados, cliente desaparecido.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_proyectos_en_pausa),
+        "operacion", VE_TODOS_PROYECTOS, _kpi_proyectos_en_pausa),
     KPI("por-entregar-esta-semana", "Por entregar esta semana", "Proyectos con fecha de entrega en los próximos 7 días.",
-        "operacion", ROLES_TODOS, _kpi_por_entregar_esta_semana),
+        "operacion", VE_PROYECTOS, _kpi_por_entregar_esta_semana),
     KPI("proyectos-vencidos", "Proyectos vencidos", "Activos con fecha de entrega pasada.",
-        "operacion", ROLES_TODOS, _kpi_proyectos_vencidos),
+        "operacion", VE_PROYECTOS, _kpi_proyectos_vencidos),
     KPI("proyectos-sin-actividad", "Proyectos sin actividad (>14d)", "Activos sin actualizar en 2 semanas — riesgo de cliente perdido.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_proyectos_sin_actividad),
+        "operacion", VE_TODOS_PROYECTOS, _kpi_proyectos_sin_actividad),
     KPI("proyectos-cancelados-mes", "Cancelados este mes", "Señal de churn comercial.",
-        "operacion", ROLES_ADMIN, _kpi_proyectos_cancelados_mes),
+        "operacion", GESTIONA_PROYECTOS, _kpi_proyectos_cancelados_mes),
 
     # Tareas
     KPI("mis-tareas-vencidas", "Mis tareas vencidas", "Tareas tuyas con fecha de compromiso pasada.",
-        "tareas", ROLES_TODOS, _kpi_mis_tareas_vencidas),
+        "tareas", VE_TAREAS, _kpi_mis_tareas_vencidas),
     KPI("mis-tareas-proximas-3d", "Mis tareas (próximos 3 días)", "Tareas tuyas que vencen pronto.",
-        "tareas", ROLES_TODOS, _kpi_mis_tareas_proximas),
+        "tareas", VE_TAREAS, _kpi_mis_tareas_proximas),
     KPI("tareas-vencidas-equipo", "Tareas vencidas del equipo", "Vista cross-equipo para admins.",
-        "tareas", ROLES_ADMIN, _kpi_tareas_vencidas_equipo),
+        "tareas", GESTIONA_PROYECTOS, _kpi_tareas_vencidas_equipo),
     # Slug preservado por compatibilidad con PreferenciaKPI; semántica V6 =
     # atrasadas (el estado `bloqueada` ya no existe).
     KPI("tareas-bloqueadas", "Tareas atrasadas", "Compromiso vencido sin cerrar.",
-        "tareas", ROLES_TODOS, _kpi_tareas_bloqueadas),
+        "tareas", VE_TAREAS, _kpi_tareas_bloqueadas),
     KPI("tareas-sin-asignar", "Tareas sin asignar", "Tareas activas sin owner.",
-        "tareas", ROLES_ADMIN, _kpi_tareas_sin_asignar),
+        "tareas", GESTIONA_PROYECTOS, _kpi_tareas_sin_asignar),
     KPI("tareas-completadas-semana", "Completadas esta semana", "Throughput del equipo.",
-        "tareas", ROLES_ADMIN, _kpi_tareas_completadas_semana),
+        "tareas", GESTIONA_PROYECTOS, _kpi_tareas_completadas_semana),
 
     # Buzón
     KPI("buzon-sin-responder", "Buzón sin responder", "Mensajes de empleados en estado 'nuevo'.",
-        "buzon", ROLES_ADMIN, _kpi_buzon_sin_responder),
+        "buzon", ATIENDE_SOPORTE, _kpi_buzon_sin_responder),
     KPI("buzon-bugs-abiertos", "Bugs abiertos", "Mensajes tipo 'problema' no archivados.",
-        "buzon", ROLES_ADMIN, _kpi_buzon_bugs_abiertos),
+        "buzon", ATIENDE_SOPORTE, _kpi_buzon_bugs_abiertos),
     KPI("buzon-sugerencias", "Sugerencias acumuladas", "Mensajes tipo 'sugerencia' en estado 'nuevo'.",
-        "buzon", ROLES_ADMIN, _kpi_buzon_sugerencias),
+        "buzon", ATIENDE_SOPORTE, _kpi_buzon_sugerencias),
     KPI("buzon-mios-sin-responder", "Mis mensajes sin responder", "Mensajes que envié al Buzón y siguen abiertos.",
-        "buzon", ROLES_TODOS, _kpi_buzon_mios_sin_responder),
+        "buzon", VE_BUZON_PROPIO, _kpi_buzon_mios_sin_responder),
 
     # Recados
     KPI("mis-recados-no-leidos", "Mis recados no leídos", "Mensajería interna sin leer.",
-        "recados", ROLES_TODOS, _kpi_mis_recados_no_leidos),
+        "recados", VE_RECADOS, _kpi_mis_recados_no_leidos),
     KPI("recados-enviados-semana", "Recados que envié (semana)", "Mi nivel de actividad en mensajería.",
-        "recados", ROLES_TODOS, _kpi_recados_enviados_semana),
+        "recados", VE_RECADOS, _kpi_recados_enviados_semana),
 
     # Cartera
     KPI("clientes-activos", "Clientes activos", "Cartera total sin soft-delete.",
-        "cartera", ROLES_ADMIN_CONTADOR, _kpi_clientes_activos),
+        "cartera", VE_CARTERA, _kpi_clientes_activos),
     KPI("clientes-nuevos-mes", "Clientes nuevos del mes", "Crecimiento de cartera.",
-        "cartera", ROLES_ADMIN_CONTADOR, _kpi_clientes_nuevos_mes),
+        "cartera", VE_CARTERA, _kpi_clientes_nuevos_mes),
     KPI("clientes-sin-proyectos", "Clientes sin proyectos activos", "Oportunidad de cross-sell.",
-        "cartera", ROLES_ADMIN, _kpi_clientes_sin_proyectos),
+        "cartera", EDITA_CARTERA, _kpi_clientes_sin_proyectos),
     KPI("clientes-con-pry-activos", "Clientes con proyectos vivos", "Cuántos clientes están comprándote ahora.",
-        "cartera", ROLES_ADMIN_CONTADOR, _kpi_clientes_con_pry_activos),
+        "cartera", VE_CARTERA, _kpi_clientes_con_pry_activos),
 
     # Infraestructura
     KPI("interfon-suscripciones", "Suscripciones del Interfón", "Dispositivos del equipo recibiendo push.",
-        "infraestructura", ROLES_ADMIN, _kpi_interfon_suscripciones),
+        "infraestructura", CONFIGURA_INTERFONO, _kpi_interfon_suscripciones),
     KPI("interfon-pushes-semana", "Pushes enviados (semana)", "Volumen de notificaciones de la semana.",
-        "infraestructura", ROLES_ADMIN, _kpi_interfon_pushes_semana),
+        "infraestructura", CONFIGURA_INTERFONO, _kpi_interfon_pushes_semana),
     KPI("site-integraciones-rojo", "Integraciones en rojo", "Plataformas externas fallando en El Site.",
-        "infraestructura", ("super_admin", "dueno"), _kpi_site_integraciones_rojo),
+        "infraestructura", VE_SITE, _kpi_site_integraciones_rojo),
 
     # Dinero (S2b.3)
     KPI("ingresos-mes", "Ingresos del mes", "Cobros vigentes (no anulados) del mes en curso.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_ingresos_mes),
+        "dinero", VE_DINERO, _kpi_ingresos_mes),
     KPI("egresos-mes", "Egresos del mes", "Gastos vigentes del mes en curso.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_egresos_mes),
+        "dinero", VE_DINERO, _kpi_egresos_mes),
     KPI("utilidad-mes", "Utilidad bruta del mes", "Ingresos menos egresos del mes.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_utilidad_mes),
+        "dinero", VE_DINERO, _kpi_utilidad_mes),
     KPI("cxc-total", "Cuentas por cobrar", "Saldos pendientes por cobrar (mientras Facturación llega, se calcula sobre proyectos).",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxc_total),
+        "dinero", VE_DINERO, _kpi_cxc_total),
     KPI("cxp-total", "Cuentas por pagar", "Egresos pendientes o por reembolsar.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_cxp_total),
+        "dinero", VE_DINERO, _kpi_cxp_total),
     KPI("reembolsos-pendientes", "Reembolsos pendientes", "Dinero adelantado por empleados que el despacho debe.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_reembolsos_pendientes),
+        "dinero", VE_DINERO, _kpi_reembolsos_pendientes),
 
     # Cotizaciones (S2b.cotizaciones-v1)
     KPI("cotizaciones-pendientes", "Cotizaciones pendientes", "Enviadas y esperando respuesta del cliente.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_pendientes),
+        "operacion", VE_COTIZACIONES, _kpi_cotizaciones_pendientes),
     KPI("cotizaciones-vencidas", "Cotizaciones vencidas", "Enviadas con fecha de validez ya pasada.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_vencidas),
+        "operacion", VE_COTIZACIONES, _kpi_cotizaciones_vencidas),
     KPI("cotizaciones-aprobadas-mes", "Cotizaciones aprobadas (mes)", "Conversiones del mes en curso.",
-        "operacion", ROLES_ADMIN_CONTADOR, _kpi_cotizaciones_aprobadas_mes),
+        "operacion", VE_COTIZACIONES, _kpi_cotizaciones_aprobadas_mes),
     KPI("anticipos-pendientes", "Anticipos pendientes de facturar",
         "Cotizaciones aprobadas con anticipo > 0 sin factura del anticipo generada.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_anticipos_pendientes),
+        "dinero", VE_FACTURACION, _kpi_anticipos_pendientes),
 
     # Facturación (S2b.facturacion-v1)
     KPI("facturas-pendientes-cobro", "Facturas pendientes de cobro",
         "Facturas emitidas (totalmente o parcialmente cobradas con saldo pendiente).",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturas_pendientes_cobro),
+        "dinero", VE_FACTURACION, _kpi_facturas_pendientes_cobro),
     KPI("facturas-vencidas", "Facturas vencidas",
         "Facturas con fecha de vencimiento pasada y saldo > 0.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturas_vencidas),
+        "dinero", VE_FACTURACION, _kpi_facturas_vencidas),
     KPI("monto-por-cobrar", "Monto por cobrar",
         "Suma del saldo pendiente de todas las facturas emitidas o parciales.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_monto_por_cobrar),
+        "dinero", VE_FACTURACION, _kpi_monto_por_cobrar),
     KPI("facturado-mes", "Facturado del mes",
         "Suma del total de facturas emitidas en el mes en curso (no canceladas).",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_facturado_mes),
+        "dinero", VE_FACTURACION, _kpi_facturado_mes),
 
     # Contaduría (S3.contaduria-v1)
     KPI("contaduria-asientos-mes", "Asientos del mes", "Movimientos contables (vigentes) del mes en curso.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_asientos_mes_contaduria),
+        "dinero", VE_CONTADURIA, _kpi_asientos_mes_contaduria),
     KPI("contaduria-saldo-banco", "Saldo en bancos", "Saldo deudor actual de la cuenta de Bancos.",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_saldo_banco),
+        "dinero", VE_CONTADURIA, _kpi_saldo_banco),
     KPI("contaduria-balance-descuadrado", "Asientos descuadrados", "Asientos del mes con cargos ≠ abonos. Debe ser 0.",
-        "dinero", ROLES_ADMIN, _kpi_balance_descuadrado),
+        "dinero", VIGILA_CONTADURIA, _kpi_balance_descuadrado),
 
     # Contaduría (S3.contaduria-v2)
     KPI("contaduria-utilidad-neta-mes", "Utilidad neta del mes", "Resultado del periodo según el estado de resultados (sin ISR estimado).",
-        "dinero", ROLES_ADMIN_CONTADOR, _kpi_utilidad_neta_mes_contaduria),
+        "dinero", VE_CONTADURIA, _kpi_utilidad_neta_mes_contaduria),
 
     # Checador (S-Checador E6) — personales, todo el staff.
     KPI("checador-horas-semana", "Mis horas esta semana", "Horas de jornada (entrada→salida) acumuladas esta semana.",
-        "checador", ROLES_TODOS, _kpi_checador_horas_semana),
+        "checador", CHECA, _kpi_checador_horas_semana),
     KPI("checador-retardos-mes", "Mis retardos del mes", "Días con retardo este mes según tu horario.",
-        "checador", ROLES_TODOS, _kpi_checador_retardos_mes),
+        "checador", CHECA, _kpi_checador_retardos_mes),
     KPI("checador-visitas-semana", "Mis visitas esta semana", "Visitas a clientes/proveedores registradas esta semana.",
-        "checador", ROLES_TODOS, _kpi_checador_visitas_semana),
+        "checador", CHECA, _kpi_checador_visitas_semana),
     KPI("checador-horas-por-proyecto-top", "Proyecto con más horas", "Proyecto donde más tiempo registraste esta semana.",
-        "checador", ROLES_TODOS, _kpi_checador_horas_proyecto_top),
+        "checador", CHECA, _kpi_checador_horas_proyecto_top),
 ]
 
 
@@ -700,10 +724,8 @@ KPIS: list[KPI] = [
 from .kpis_bi import catalogo_bi  # noqa: E402
 
 KPIS += [
-    KPI(slug, titulo, descripcion, categoria, roles, fn)
-    for slug, titulo, descripcion, categoria, roles, fn in catalogo_bi(
-        ROLES_TODOS, ROLES_ADMIN, ROLES_ADMIN_CONTADOR,
-    )
+    KPI(slug, titulo, descripcion, categoria, permisos, fn)
+    for slug, titulo, descripcion, categoria, permisos, fn in catalogo_bi()
 ]
 
 
@@ -751,7 +773,10 @@ def _kpis_custom_para(user) -> list[KPI]:
             titulo=kpi_db.titulo,
             descripcion=kpi_db.descripcion or "KPI personalizado.",
             categoria=kpi_db.categoria or "custom",
-            roles_visible=ROLES_TODOS,
+            # Los hizo El Chalán para su autor o se aprobaron para el equipo: no
+            # llevan permiso propio (antes, «los cuatro roles», pero el catálogo
+            # los agregaba a todos sin mirar la tupla).
+            permisos=(),
             calcular=_calc,
             origen="custom_chalan",
             estado_kpi="activo",
@@ -765,37 +790,33 @@ def models_Q_personal_o_equipo(user):
     return Q(alcance="equipo") | Q(alcance="personal", autor=user)
 
 
+def kpis_aplicables(user) -> list[KPI]:
+    """El catálogo que `user` puede ver —por sus permisos (§4 #20)— más sus
+    KPIs del Chalán (S2b.5)."""
+    return [k for k in KPIS if k.visible_para(user)] + _kpis_custom_para(user)
+
+
 def kpis_aplicables_a_rol(rol: str, *, user=None) -> list[KPI]:
-    """Filtra el catálogo por rol del usuario.
-
-    Si `user` se pasa, agrega también los KPIs custom (S2b.5) del usuario.
-
-    V6 Bloque 10: cuando hay `user`, la comparación contra `roles_visible`
-    usa sus roles EFECTIVOS (rol primario + roles personalizados vía
-    roles_extra) — un "miembro" con rol personalizado "dueno" ve los mismos
-    KPIs que veía un dueño. Llamadas solo-string (tests, herramientas)
-    conservan el comportamiento literal.
-    """
-    roles = {rol} if rol else set()
+    """Compatibilidad: con `user`, lo mismo que `kpis_aplicables(user)` (el
+    rol ya no decide nada). Sólo con el nombre de un rol, lo que verían los
+    DEFAULTS de ese rol (`lib.permisos_defaults`), sin KPIs del Chalán."""
     if user is not None:
-        from lib.permisos import roles_efectivos
-        roles |= roles_efectivos(user)
-    base = [k for k in KPIS if roles & set(k.roles_visible)]
-    if user is not None:
-        base = base + _kpis_custom_para(user)
-    return base
+        return kpis_aplicables(user)
+    from lib.permisos_defaults import defaults_de
+
+    mapa = defaults_de(rol or "")
+    return [k for k in KPIS if puede_ver_con(mapa, k.permisos)]
 
 
 def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI, dict]]:
     """Retorna lista de (KPI, resultado_dict) respetando preferencias del usuario.
 
     Si `incluir_ocultos=True` (página de edición), devuelve TODOS los aplicables
-    al rol, sin calcular los ocultos. Si False (dashboard), devuelve sólo los
+    al usuario, sin calcular los ocultos. Si False (dashboard), devuelve sólo los
     visibles y ya calculados.
     """
     from .models.preferencia_kpi import PreferenciaKPI
-    rol = getattr(user, "rol", None) or "disenador"
-    aplicables = kpis_aplicables_a_rol(rol, user=user)
+    aplicables = kpis_aplicables(user)
     ocultos: set[str] = set(
         PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
     )

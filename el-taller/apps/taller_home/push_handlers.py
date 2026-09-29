@@ -7,7 +7,7 @@ transacción hace rollback. Respeta opt-out por categoría
 a `lib.interfono.enviar_a_usuario` (S2b.1.5).
 
 Categorías nuevas en S2b.4:
-- `buzon` — admin/dueno reciben nuevos mensajes del Buzón
+- `buzon` — quien atiende el soporte (`buzon.eliminar`) recibe los mensajes nuevos
 - `proyectos` — asignados + creador reciben creación / cambio de estado
 - `tareas` — el `asignada_a` recibe al ser asignado
 
@@ -37,18 +37,37 @@ def _al_confirmar(hacer) -> None:
     transaction.on_commit(lambda: ejecutar_en_fondo(hacer))
 
 
-def _admins_activos():
-    # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
-    # personalizados (roles_extra) y ya filtra is_active=True.
-    from lib.permisos import usuarios_con_rol
-    return usuarios_con_rol("super_admin", "dueno")
+# A quién le llega cada aviso: a quien tiene el permiso del DATO que avisa (§4
+# #20), nunca a un rol. Con los defaults, las mismas personas que antes; lo
+# prueba `tests/test_kpis_por_permiso.py`. Es el mismo permiso que ofrece la
+# casilla de la categoría en /perfil/notificaciones/ (`CATEGORIAS`).
+#
+# Soporte: el dato es `buzon.ver_todos`, pero por default sólo lo trae el
+# super_admin y el dueño recibía estos avisos; `buzon.eliminar` (borrar de la
+# bandeja de soporte) es la acción del módulo con su misma audiencia.
+PERMISO_SOPORTE = ("buzon", "eliminar")
+# Cobranza: facturas vencidas y anticipos por registrar son dinero por cobrar.
+PERMISO_COBRANZA = ("tesoreria", "ver")
+# Proyecto nuevo: a quien gestiona los proyectos.
+PERMISO_PROYECTOS = ("proyectos", "editar")
+
+
+def _soporte_activos():
+    """Quien atiende la bandeja de soporte del Buzón."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso(*PERMISO_SOPORTE)
+
+
+def _gestores_activos():
+    """Quien gestiona los proyectos (se entera de los nuevos)."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso(*PERMISO_PROYECTOS)
 
 
 def _cobranza_activos():
-    """Usuarios que reciben alertas de cobranza: admins + contadores activos."""
-    # V6 Bloque 10: usuarios_con_rol (rol primario + roles_extra, is_active).
-    from lib.permisos import usuarios_con_rol
-    return usuarios_con_rol("super_admin", "dueno", "contador")
+    """Quien recibe las alertas de cobranza: quien ve el dinero."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso(*PERMISO_COBRANZA)
 
 
 def _enviar(usuario, titulo: str, cuerpo: str, *, url: str, tag: str, categoria: str,
@@ -113,9 +132,9 @@ def notificar_anticipo_por_registrar(cotizacion) -> None:
 
 
 def notificar_buzon_nuevo(mensaje, autor) -> None:
-    """Push a admins activos cuando un empleado crea un mensaje."""
+    """Push a quien atiende el soporte cuando un empleado crea un mensaje."""
     def _hacer():
-        for admin in _admins_activos():
+        for admin in _soporte_activos():
             if admin.pk == autor.pk:
                 continue
             _enviar(
@@ -152,7 +171,7 @@ def notificar_buzon_estado(mensaje, actor) -> None:
         _al_confirmar(_hacer)
     elif accion == "notificar_admins":
         def _hacer():
-            for admin in _admins_activos():
+            for admin in _soporte_activos():
                 if actor and admin.pk == actor.pk:
                     continue
                 _enviar(
@@ -194,7 +213,7 @@ def notificar_buzon_comentario(mensaje, autor_comentario) -> None:
 
     def _hacer():
         if es_autor_del_mensaje:
-            destinatarios = list(_admins_activos())
+            destinatarios = list(_soporte_activos())
         else:
             destinatarios = [mensaje.autor] if mensaje.autor_id else []
         for u in destinatarios:
@@ -217,9 +236,9 @@ def notificar_buzon_comentario(mensaje, autor_comentario) -> None:
 
 
 def notificar_proyecto_creado(proyecto, creador) -> None:
-    """Push a admins activos cuando se crea un proyecto."""
+    """Push a quien gestiona proyectos cuando se crea uno."""
     def _hacer():
-        for admin in _admins_activos():
+        for admin in _gestores_activos():
             if admin.pk == creador.pk:
                 continue
             _enviar(
@@ -265,7 +284,7 @@ def notificar_proyecto_status_cambiado(proyecto, anterior: str, nuevo: str, acto
 
 
 def notificar_factura_vencida(factura, dias_vencida: int, saldo: float) -> None:
-    """Push a admins + contador cuando el cron marca una factura como vencida.
+    """Push a quien ve el dinero cuando el cron marca una factura como vencida.
 
     Categoría `cobranza` — opt-out individual desde /perfil/notificaciones/.
     Idempotente porque el cron sólo dispara una vez por factura (campo

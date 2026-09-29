@@ -26,11 +26,6 @@ class ContextoUsuario:
     roles: frozenset[str] = field(default_factory=frozenset)
 
     @property
-    def es_admin(self) -> bool:
-        # V6 Bloque 10: reconoce roles personalizados además del rol primario.
-        return bool(({self.rol} | self.roles) & {"super_admin", "dueno"})
-
-    @property
     def es_super_admin(self) -> bool:
         # V6 Bloque 10: idem — super_admin puede venir como rol personalizado.
         return "super_admin" in ({self.rol} | self.roles)

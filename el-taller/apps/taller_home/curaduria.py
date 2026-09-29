@@ -83,14 +83,14 @@ def destacados_de_hoy(usuario, *, cuantos: int = CUANTOS_DESTACAR) -> list[dict]
     levanta, en su historia y en la meta. Devuelve `[{kpi, valor, razon}]`.
     """
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpis_aplicables_a_rol
+    from apps.taller_home.kpis import kpis_aplicables
     from apps.taller_home.models import MetaKPI
 
     cfg = _cfg()
     metas = {m.kpi_slug: m for m in MetaKPI.objects.filter(activa=True)}
     candidatos: list[dict] = []
 
-    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+    for kpi in kpis_aplicables(usuario):
         try:
             r = kpi.calcular(usuario)
         except Exception:  # noqa: BLE001
@@ -132,7 +132,7 @@ def sobran(usuario, *, dias_quieto: int = 30) -> list[dict]:
     Un número que marca lo mismo todos los días no informa, sólo ocupa lugar.
     """
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpis_aplicables_a_rol
+    from apps.taller_home.kpis import kpis_aplicables
     from apps.taller_home.models import PreferenciaKPI
 
     ya_ocultos = set(
@@ -140,7 +140,7 @@ def sobran(usuario, *, dias_quieto: int = 30) -> list[dict]:
         .values_list("kpi_slug", flat=True)
     )
     quietos = []
-    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+    for kpi in kpis_aplicables(usuario):
         if kpi.slug in ya_ocultos:
             continue
         historia = series.serie(kpi.slug, dias=dias_quieto)
