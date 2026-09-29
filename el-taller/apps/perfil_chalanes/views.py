@@ -39,24 +39,20 @@ from lib.dictado_catalogo import (
     IDENTIFICAR_CLIENTE,
     REFERENCIAS_ENTRE_ACCIONES,
 )
-from lib.permisos import roles_efectivos, tiene_rol
+from lib.permisos import puede_consultar_saldo_chalanes, solo_proyectos_asignados, tiene_rol
 from lib.portavoz import emitir
 
-ROLES_ADMIN_TALLER = {"super_admin", "dueno"}
-
-# Estaciones ocultas a roles operativos no-admin (Pre-S2b.1 acuerdo).
+# Estaciones ocultas a quien sólo ve sus proyectos (Pre-S2b.1 acuerdo).
 ESTACIONES_OCULTAS_DISENADOR = {"ocr_recibo", "dictado_gasto"}
 
 
 @login_required
 def panel(request):
     user = request.user
-    # V6 Bloque 10: roles efectivos (rol primario + roles personalizados).
-    roles = roles_efectivos(user)
-
-    # Estaciones disponibles.
+    # Estaciones disponibles. Las de gasto se esconden a quien sólo ve SUS
+    # proyectos (antes, por rol: «diseñador sin un rol amplio»).
     cuadro_qs = CuadroChalanes.objects.all().order_by("estacion")
-    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
+    if solo_proyectos_asignados(user):
         cuadro_qs = cuadro_qs.exclude(estacion__in=ESTACIONES_OCULTAS_DISENADOR)
 
     asignados = {
@@ -187,13 +183,12 @@ def guardar_voz(request):
 @require_POST
 @login_required
 def consultar_saldo(request, nombre: str):
-    """POST /perfil/chalanes/<nombre>/saldo — solo super_admin/dueno.
+    """POST /perfil/chalanes/<nombre>/saldo — `chalanes.ver`.
 
-    Misma lógica que en Gerencia, pero accesible desde el panel del Taller.
+    Misma lógica —y mismo permiso— que en Gerencia, pero desde el panel del Taller.
     """
-    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
-    if not tiene_rol(request.user, "super_admin", "dueno"):
-        messages.error(request, "Sólo super_admin y dueño pueden consultar saldo.")
+    if not puede_consultar_saldo_chalanes(request.user):
+        messages.error(request, "No tienes permiso para consultar el saldo.")
         return redirect("perfil-chalanes")
     adapter = _registry.adapter_de(nombre)
     if adapter is None:

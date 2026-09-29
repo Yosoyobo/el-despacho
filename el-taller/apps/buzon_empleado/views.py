@@ -32,7 +32,7 @@ from buzon.estados import estados_activos, label_de
 from buzon.models import MensajeBuzon
 from lib.busqueda import q_texto
 from lib.colador import colar_reporte
-from lib.permisos import es_admin, puede, requiere_permiso
+from lib.permisos import puede, puede_eliminar_buzon, requiere_permiso
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 from lib.sanear import sanear_contexto
@@ -144,6 +144,7 @@ def lista(request):
         "page_obj": page_obj,
         "querystring_paginacion": qs_pag,
         "es_admin_buzon": es_admin_buzon,
+        "puede_eliminar_buzon": puede_eliminar_buzon(user),
         "estado_filtro": estado,
         "tipo_filtro": tipo,
         "adjunto_filtro": adjunto,
@@ -526,8 +527,8 @@ def accion_masiva(request):
     qs = MensajeBuzon.objects.filter(pk__in=ids_int)
     n = qs.count()
     if accion == "eliminar":
-        if not es_admin(request.user):
-            return HttpResponse("Solo super_admin o dueño pueden eliminar.", status=403)
+        if not puede_eliminar_buzon(request.user):
+            return HttpResponse("Sin permiso para eliminar mensajes del Buzón.", status=403)
         # Emite evento antes de borrar.
         for m in qs:
             emitir(EventoPortavoz(

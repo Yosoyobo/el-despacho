@@ -6,7 +6,7 @@ identidad la lleva la `clave` interna, no el `nombre` visible.
 
 import pytest
 
-from lib.permisos import es_admin, roles_efectivos
+from lib.permisos import puede_gestionar_proyectos, roles_efectivos
 
 pytestmark = [pytest.mark.gerencia, pytest.mark.django_db]
 
@@ -27,7 +27,7 @@ def test_renombrar_rol_no_rompe_permisos(client, usuario_factory):
     sa = usuario_factory(rol="super_admin", email="sa@lc.mx")
     socio = usuario_factory(rol="disenador", email="socio@lc.mx")
     socio.roles_extra.add(_rol("dueno"))
-    assert es_admin(socio) is True
+    assert puede_gestionar_proyectos(socio) is True
 
     client.force_login(sa)
     rol = _rol("dueno")
@@ -40,7 +40,7 @@ def test_renombrar_rol_no_rompe_permisos(client, usuario_factory):
     assert rol.nombre == "Socio"
     assert rol.clave == "dueno"           # clave intacta
     socio.refresh_from_db()
-    assert es_admin(socio) is True         # permisos intactos
+    assert puede_gestionar_proyectos(socio) is True  # permisos intactos
     assert "dueno" in roles_efectivos(socio)
 
 

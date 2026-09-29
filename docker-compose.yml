@@ -188,5 +188,10 @@ services:
       # Sólo `pub/` (derivados propios), NUNCA `orig/` — ver el snippet
       # `(medios)` del Caddyfile.
       - ./data/media/pub:/srv/medios:ro
+      # La pantalla de mantenimiento (§4 #23), ver `(lc_failover)` del Caddyfile.
+      # DIRECTORIOS, no archivos sueltos (§14 Bug F). La corta viene del repo; la
+      # del roadmap la escribe y la borra el job `mudanza` en cada deploy.
+      - ./infra/mantenimiento:/srv/mantenimiento:ro
+      - ./data/caddy/mantenimiento:/srv/mantenimiento-vivo:ro
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config

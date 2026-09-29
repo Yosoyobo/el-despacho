@@ -13495,3 +13495,13 @@ la llave al gestor de Oscar. Detalle en `docs/HISTORIAL_SESIONES.md`.
 El detalle del proyecto (y 4 formularios más en retícula) quedó recorrido tras el
 Deploy 3: el contenedor del testigo de edición pisada ocupaba la primera celda.
 Ahora es `display: contents`; verificado en Chrome antes/después y con candado.
+
+## 2026-09-28 — S-Deuda-Sep28 (VERSION 2026.09.05)
+
+Oscar pidió terminar toda la deuda técnica. Cuatro frentes: permisos sin rol
+literal «como hoy» (migración `cuentas/0047`, candado de equivalencia de 160
+usuarios), pantalla de corte con roadmap automático en El Portero, testigo de
+edición pisada en las versiones de cotización del proyecto, y 8 limpiezas (PDF
+unidos, roles con universales, presencia sin 3xx, plantillas muertas, borde del
+asiento, botones ⧉ de 44×44, CFDI propio, pin del proveedor). Quedan 3 puertas
+por rol primario que decide Oscar (ver historial).

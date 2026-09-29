@@ -3,7 +3,7 @@
 Refresca por OOB el indicador ✓/✕ y la marca de última actualización.{% endcomment %}
 <span id="prov-guardado" hx-swap-oob="true"
       class="inline-flex items-center gap-1 text-xs font-medium {% if ok %}text-success-600 dark:text-success-400{% else %}text-error-600 dark:text-error-400{% endif %}">
-    {% if ok %}✓ Guardado{% else %}✕ {{ error_detalle|default:"No se pudo guardar" }}{% endif %}
+    {% if ok %}✓ Guardado{% if pin_programado %} · el pin del mapa se acomoda a la dirección nueva{% endif %}{% else %}✕ {{ error_detalle|default:"No se pudo guardar" }}{% endif %}
 </span>
 <time id="prov-ult-act" hx-swap-oob="true">{{ proveedor.actualizado_en|hfmt:"d M Y H:i" }}</time>
 {% comment %}El Testigo (S-Pendientes-Sep28 · Deploy 3): tras un guardado propio

@@ -14,9 +14,25 @@ from __future__ import annotations
 
 # Acciones por módulo — espejo "todo permitido" para super_admin y dueno.
 TODO_CARTERA = ["ver", "crear", "editar", "archivar"]
-TODO_PROYECTOS = ["ver", "crear", "editar", "asignar", "cambiar_estado"]
-TODO_PIZARRON = ["ver", "crear", "editar", "completar", "ver_internos"]
-TODO_BUZON = ["ver_propios", "ver_todos", "responder"]
+# S-Deuda-Permisos (2026-09-28): las puertas que decidían por ROL pasan a estas
+# acciones. Cada una nace con el alcance EXACTO que el rol daba (decisión de
+# Oscar: «como hoy» — nadie gana ni pierde). La migración
+# `cuentas/0047_permisos_sin_rol_literal` las siembra por usuario.
+#   proyectos.ver        → ver los proyectos donde estás asignado
+#   proyectos.ver_todos  → ver TODOS los proyectos (antes: super_admin/dueño/contador)
+#   proyectos.archivar   → archivar/reactivar proyectos (antes: super_admin/dueño)
+TODO_PROYECTOS = ["ver", "ver_todos", "crear", "editar", "asignar", "cambiar_estado", "archivar"]
+#   pizarron.ver_comentarios   → leer comentarios de proyectos y tareas
+#   pizarron.ver_internos      → leer TODOS los comentarios internos
+#   pizarron.comentar_interno  → marcar un comentario como interno
+#   pizarron.eliminar          → borrar tareas que creó otra persona
+#   pizarron.ver_todos_mandados → ver los mandados de todo el equipo
+TODO_PIZARRON = [
+    "ver", "crear", "editar", "completar", "ver_internos",
+    "ver_comentarios", "comentar_interno", "eliminar", "ver_todos_mandados",
+]
+#   buzon.eliminar → borrar mensajes de la bandeja de soporte
+TODO_BUZON = ["ver_propios", "ver_todos", "responder", "eliminar"]
 TODO_RECADOS = ["ver", "crear", "editar_propios", "adjuntar_drive", "ver_historial_todos"]
 TODO_TESORERIA = [
     "ver", "capturar_ingreso", "capturar_egreso", "ocr",
@@ -83,7 +99,10 @@ TODO_AJUSTES = ["acceder"]
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
 TODO_CHALANES = ["ver", "configurar"]
-TODO_SITE = ["ver", "limpiar"]
+# `api` es el API JSON de El Site (`/api/site/…`). Va aparte de `ver` porque
+# hasta S-Deuda-Permisos lo abría el ROL (super_admin/dueño) y no el permiso de la
+# pantalla: hay quien tiene uno sin el otro, y «como hoy» obliga a respetarlo.
+TODO_SITE = ["ver", "limpiar", "api"]
 TODO_CATALOGOS = ["estados", "tipos", "centros_costo"]
 TODO_INTERFONO = ["configurar"]
 # MCP local: habilita el acceso al servidor; cada herramienta exige además
@@ -103,6 +122,12 @@ TODO_EQUIPO = ["ver_actividad"]
 PERMISOS_UNIVERSALES: dict[str, list[str]] = {
     "equipo": list(TODO_EQUIPO),
 }
+
+
+# Las claves de los roles del sistema (para elegir una audiencia por rol en El
+# Interfón, p. ej.). Vive aquí y no en `lib.permisos` porque allí ninguna puerta
+# puede nombrar un rol (§4 #20).
+ROLES_SISTEMA = ("super_admin", "dueno", "contador", "disenador")
 
 
 DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
@@ -149,7 +174,9 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # super_admin puede conceder `ver_todos` a quien quiera desde
         # /directorio/<id>/permisos/. El dueño conserva su propio buzón
         # (`ver_propios` + `responder`), no la bandeja de soporte completa.
-        "buzon": ["ver_propios", "responder"],
+        # `eliminar` (borrar de la bandeja de soporte) sí es del dueño; sin
+        # `ver_todos` no llega a la bandeja, igual que antes.
+        "buzon": ["ver_propios", "responder", "eliminar"],
         "recados": list(TODO_RECADOS),
         "tesoreria": list(TODO_TESORERIA),
         "dictado": list(TODO_DICTADO),
@@ -175,8 +202,11 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
         "cartera": ["ver"],
-        "proyectos": ["ver"],
-        "pizarron": ["ver"],
+        # Contador ve TODOS los proyectos (para reconciliar pagos), no edita.
+        "proyectos": ["ver", "ver_todos"],
+        # Lee todos los comentarios (también los internos) y puede escribir
+        # internos — así era por su rol PRIMARIO (ver la migración 0047).
+        "pizarron": ["ver", "ver_comentarios", "ver_internos", "comentar_interno"],
         "buzon": ["ver_propios", "responder"],
         "recados": ["ver", "crear", "editar_propios", "adjuntar_drive"],
         "tesoreria": list(TODO_TESORERIA),
@@ -195,8 +225,12 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
     },
     "disenador": {
         # Diseñador NO ve cartera (DOC_01 §4.4).
-        "proyectos": ["ver", "editar"],  # sólo donde asignado (enforced en views)
-        "pizarron": ["ver", "crear", "editar", "completar"],
+        # Sólo ve los proyectos donde está asignado (`ver` sin `ver_todos`).
+        # S-Deuda-Permisos: traía `editar` «sólo donde asignado», pero la puerta
+        # era el ROL y nunca le dejó editar nada. Se le quita para que el
+        # permiso no mienta (decisión Oscar: «como hoy»).
+        "proyectos": ["ver"],
+        "pizarron": ["ver", "crear", "editar", "completar", "ver_comentarios"],
         "buzon": ["ver_propios", "responder"],
         "recados": ["ver", "crear", "editar_propios", "adjuntar_drive"],
         "dictado": ["actualizar_proyecto", "crear_tarea"],
@@ -268,7 +302,17 @@ def defaults_de(rol: str) -> dict[str, list[str]]:
     Un rol desconocido (o `miembro`, que no tiene defaults a propósito) recibe
     sólo `PERMISOS_UNIVERSALES`: lo que TODO usuario trae desde que nace.
     """
-    base = {m: list(a) for m, a in DEFAULTS_POR_ROL.get(rol, {}).items()}
+    return con_universales(DEFAULTS_POR_ROL.get(rol, {}))
+
+
+def con_universales(permisos: dict | None) -> dict[str, list[str]]:
+    """El JSON de un rol con `PERMISOS_UNIVERSALES` sumados (sin repetir).
+
+    Lo usa el alta de roles: todo usuario trae los universales por su fila
+    individual, así que un rol que naciera sin ellos haría mentir a «ver como
+    rol» (que evalúa SÓLO el JSON del rol simulado). Se revocan por persona,
+    no por rol (`cuentas/0046`)."""
+    base = {m: list(a) for m, a in (permisos or {}).items()}
     for modulo, acciones in PERMISOS_UNIVERSALES.items():
         actuales = base.setdefault(modulo, [])
         for accion in acciones:

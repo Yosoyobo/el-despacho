@@ -296,8 +296,10 @@ def actualizar_proveedor(accion, usuario, contexto=None):
     telefono?, rfc?, direccion?, direccion_fiscal?, notas?.
 
     Mismo permiso que editar la ficha del proveedor en pantalla. Lista blanca
-    de campos: no archiva, no borra ni toca qué surte. El pin del mapa no se
-    mueve solo al cambiar la dirección: se ajusta en la ficha."""
+    de campos: no archiva, no borra ni toca qué surte. Si cambia la dirección,
+    el pin del mapa se vuelve a ubicar en el fondo, igual que desde la ficha
+    (`apps.el_catalogo.ubicacion`): no espera al buscador, no pisa un pin puesto
+    a mano y, si no encuentra la dirección, deja el pin y lo avisa en la ficha."""
     _gate(usuario, "puede_editar_proveedores", "editar proveedores del Catálogo")
     from django.core.exceptions import ValidationError
     from django.core.validators import validate_email
@@ -321,6 +323,9 @@ def actualizar_proveedor(accion, usuario, contexto=None):
     if campos.get("razon_social_nueva"):
         campos["razon_social"] = campos["razon_social_nueva"]
     prov = _proveedor(identificador, contexto)
+    from apps.el_catalogo import ubicacion
+
+    antes_pin = ubicacion.antes_de(prov)
 
     cambios: list[str] = []
     for campo, largo in _TEXTO_PROVEEDOR.items():
@@ -353,6 +358,7 @@ def actualizar_proveedor(accion, usuario, contexto=None):
 
     _exigir(bool(cambios), "No me dijiste qué cambiar del proveedor (teléfono, correo, dirección…).")
     prov.save(update_fields=[*dict.fromkeys(cambios), "actualizado_en"])
+    ubicacion.programar(prov, antes_pin)
     accion.entidad_tipo = "proveedor"
     accion.entidad_id = prov.pk
     _emitir("proveedor.actualizado", usuario,

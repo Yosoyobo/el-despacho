@@ -22,7 +22,7 @@
         {% csrf_token %}
         {% include "_componentes_tailadmin/_textarea_ia.html" with name="cuerpo" id="comentario-proyecto" rows=2 required=True data_referencias=True placeholder="Nuevo comentario… usa @persona, #LC-0001 o $cliente" contexto_modelo="comentario_proyecto" contexto_id=proyecto.pk instruccion_ph="Ej. resume el estado del proyecto para @oscar" %}
         <div class="mt-2 flex flex-wrap items-center justify-end gap-3">
-            {% if es_admin or request.user|tiene_rol:"contador" %}
+            {% if puede_comentar_interno %}
             <label class="mr-auto inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300" title="Oculto a diseñadores no asignados">
                 <input type="checkbox" name="es_interno" value="on" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
                 Interno

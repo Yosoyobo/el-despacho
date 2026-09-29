@@ -46,7 +46,7 @@ def _resolver_tarea(tid, contexto=None):
 @registrar("duplicar_proyecto")
 def duplicar_proyecto(accion, usuario, contexto=None):
     """Payload: proyecto_slug, nombre? (del duplicado)."""
-    _gate(usuario, "es_admin", "duplicar proyectos")
+    _gate(usuario, "puede_gestionar_proyectos", "duplicar proyectos")
     from apps.los_proyectos.services_duplicar import duplicar_proyecto as svc
 
     payload = accion.payload or {}
@@ -89,10 +89,11 @@ def quitar_producto_proyecto(accion, usuario, contexto=None):
 def archivar_proyecto(accion, usuario, contexto=None):
     """Payload: proyecto_slug, restaurar? (bool → desarchiva). Reversible; no borra."""
     from lib.fecha import ahora_mx
-    from lib.permisos import puede_editar_proyecto
+    from lib.permisos import puede_archivar_proyecto
     payload = accion.payload or {}
     proyecto = _resolver_proyecto(payload.get("proyecto_slug"), contexto)
-    _exigir(puede_editar_proyecto(usuario, proyecto), "No tienes permiso para editar este proyecto.")
+    # El mismo permiso que el botón «Archivar» del proyecto.
+    _exigir(puede_archivar_proyecto(usuario), "No tienes permiso para archivar proyectos.")
     restaurar = bool(payload.get("restaurar"))
     proyecto.archivado = not restaurar
     proyecto.archivado_en = None if restaurar else ahora_mx()

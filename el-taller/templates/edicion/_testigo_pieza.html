@@ -1,0 +1,20 @@
+{% comment %}
+El testigo de una PIEZA que viaja en el POST de otro formulario (S-Pendientes-Sep28).
+Hoy: la pestaña de una versión de cotización dentro del proyecto
+(`los_proyectos/testigo.py::edicion_version`). Se carga por HTMX después de la
+página, así que no cabe en el testigo del formulario y lleva el suyo, con otro
+nombre (`edicion.campo`).
+
+Sólo el oculto: NI `_edicion_forzar` NI el aviso. El aviso sale en el contenedor
+del formulario, y su «Guardar la mía» pone el único `_edicion_forzar` —un
+segundo, vacío y más abajo en la página, ganaría en el POST y lo anularía—.
+Sin `data-edicion` a propósito: para `ui.js` el contenedor del formulario es uno.
+
+`contents` por la misma razón que `_testigo.html`: no genera caja.
+`oob=True` lo refresca tras cada autoguardado propio.
+{% endcomment %}
+{% if edicion %}
+<div id="{{ edicion.id }}" data-edicion-pieza class="contents"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <input type="hidden" name="{{ edicion.campo }}" value="{{ edicion.testigo }}">
+</div>
+{% endif %}

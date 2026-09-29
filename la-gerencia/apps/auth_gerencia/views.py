@@ -19,22 +19,18 @@ from django.views.decorators.http import require_http_methods
 
 from lib.auditoria_acceso import registrar as _auditar
 from lib.errors import RateLimitExcedido
-from lib.permisos import puede, tiene_rol
+from lib.permisos import puede_acceder_gerencia
 from lib.ratelimit import intentar, reset
 
 # S-LC-Feedback-V5 c5: el acceso a La Gerencia se hereda por permiso
 # granular (modulo="gerencia", accion="acceder"). Super_admin y dueno lo
 # reciben por default. Cualquier otro rol puede recibirlo manualmente
 # desde Directorio en La Gerencia.
-ROLES_PERMITIDOS_FAILSAFE = ("super_admin",)
 
 
 def _puede_entrar_gerencia(user) -> bool:
-    """Combina permiso granular + failsafe para super_admin (siempre puede)."""
-    # V6 Bloque 10: el failsafe también reconoce roles personalizados.
-    if tiene_rol(user, *ROLES_PERMITIDOS_FAILSAFE):
-        return True
-    return puede(user, "gerencia", "acceder")
+    """Permiso granular + failsafe de super_admin (siempre puede)."""
+    return puede_acceder_gerencia(user)
 
 
 @require_http_methods(["GET", "POST"])

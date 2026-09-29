@@ -43,10 +43,10 @@
                 <tbody id="ctd-partidas-body" class="divide-y divide-gray-200 dark:divide-gray-800">
                     {% for f in formset %}
                     <tr class="align-top">
-                        <td class="px-3 py-2">{{ f.id }}{{ f.cuenta }}{% if f.cuenta.errors %}<p class="text-xs text-error-600">{{ f.cuenta.errors|join:" " }}</p>{% endif %}</td>
-                        <td class="px-3 py-2">{{ f.descripcion }}</td>
-                        <td class="px-3 py-2">{{ f.cargo }}</td>
-                        <td class="px-3 py-2">{{ f.abono }}</td>
+                        <td class="campo-form px-3 py-2">{{ f.id }}{{ f.cuenta }}{% if f.cuenta.errors %}<p class="text-xs text-error-600">{{ f.cuenta.errors|join:" " }}</p>{% endif %}</td>
+                        <td class="campo-form px-3 py-2">{{ f.descripcion }}</td>
+                        <td class="campo-form px-3 py-2">{{ f.cargo }}</td>
+                        <td class="campo-form px-3 py-2">{{ f.abono }}</td>
                         <td class="px-3 py-2 text-right">
                             <label class="text-xs text-error-600">{{ f.DELETE }} eliminar</label>
                             {{ f.orden.as_hidden }}
@@ -59,15 +59,15 @@
 
         <template id="ctd-partida-template">
             <tr class="align-top">
-                <td class="px-3 py-2">
+                <td class="campo-form px-3 py-2">
                     <select name="partidas-__prefix__-cuenta">
                         <option value="">— Selecciona cuenta —</option>
                         {% for c in cuentas %}<option value="{{ c.id }}">{{ c.codigo }} · {{ c.nombre }}</option>{% endfor %}
                     </select>
                 </td>
-                <td class="px-3 py-2"><input type="text" name="partidas-__prefix__-descripcion" value=""></td>
-                <td class="px-3 py-2"><input type="number" step="0.01" name="partidas-__prefix__-cargo" value="0"></td>
-                <td class="px-3 py-2"><input type="number" step="0.01" name="partidas-__prefix__-abono" value="0"></td>
+                <td class="campo-form px-3 py-2"><input type="text" name="partidas-__prefix__-descripcion" value="" maxlength="200"></td>
+                <td class="campo-form px-3 py-2"><input type="number" step="0.01" name="partidas-__prefix__-cargo" value="0"></td>
+                <td class="campo-form px-3 py-2"><input type="number" step="0.01" name="partidas-__prefix__-abono" value="0"></td>
                 <td class="px-3 py-2 text-right">
                     <label class="text-xs text-error-600"><input type="checkbox" name="partidas-__prefix__-DELETE"> eliminar</label>
                     <input type="hidden" name="partidas-__prefix__-orden" value="0">

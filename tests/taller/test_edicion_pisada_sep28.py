@@ -564,3 +564,220 @@ def test_con_choque_el_aviso_se_ve_y_el_contenedor_sigue_sin_caja(dos, caso):
         assert "contents" in clases and "hidden" not in clases, tag
     aviso = re.search(r"<div[^>]*\bdata-edicion-choque\b[^>]*>", html)
     assert aviso and "fixed" in _clases(aviso.group(0)), "el aviso dejó de flotar: ocuparía una celda"
+
+
+# ── La pestaña de una versión de cotización dentro del proyecto (`ppv`) ──────
+#
+# Era la deuda que quedó declarada en `los_proyectos/testigo.py`: las tarjetas de
+# una versión viajan en el MISMO autoguardado del proyecto, pero la pestaña se
+# carga por HTMX después de la página, así que no las cubría el testigo del
+# proyecto. Ahora la pestaña trae el suyo y se revisan juntos.
+
+
+@pytest.fixture
+def con_version(usuario_factory, proyecto_factory):
+    """Un proyecto con una línea completa y la v1 de su cotización generada."""
+    from apps.cotizaciones import services
+    from apps.el_catalogo.models import CategoriaServicio, Proveedor, Servicio
+    from apps.los_proyectos.models import ProyectoProducto, ProyectoProductoProceso
+
+    cat, _ = CategoriaServicio.objects.get_or_create(nombre="Producción", defaults={"orden": 10})
+    prov = Proveedor.objects.create(razon_social="Crea Blanks", activo=True)
+    srv = Servicio.objects.create(nombre="Playera Dry Fit", precio_base="220",
+                                  costo="44.94", categoria=cat)
+    admin = usuario_factory(rol="super_admin")
+    p = proyecto_factory(nombre="Jeep Parte 1", creado_por=admin)
+    linea = ProyectoProducto.objects.create(
+        proyecto=p, servicio=srv, proveedor=prov, nombre_proyecto="Playera Janet",
+        cantidad=29, merma=1, precio_unitario=Decimal("220.00"),
+        costo_unitario=Decimal("44.94"), incluir_en_calculo=True)
+    ProyectoProductoProceso.objects.create(
+        producto=linea, tipo="operativo", descripcion="Adaptación y positivos",
+        costo=Decimal("150.00"), por_pieza=False, orden=0)
+    cot = services.generar_desde_proyecto(p, admin)
+    assert cot.version > 0
+    return {"p": p, "cot": cot, "fila": cot.productos_version.get(),
+            "url": reverse("proyectos-detalle", args=[p.pk]),
+            "url_tab": reverse("proyectos-productos-version", args=[p.pk, cot.pk])}
+
+
+def _abrir_con_version(cliente: Client, cv) -> dict[str, list[str]]:
+    """Lo que manda el navegador con la pestaña de la v1 abierta: el form del
+    proyecto más los campos que la pestaña metió en él (llegan por HTMX)."""
+    datos = _abrir(cliente, cv["url"])
+    resp = cliente.get(cv["url_tab"], **HTMX)
+    assert resp.status_code == 200
+    tab = _sueltos(resp.content.decode())
+    assert "_edicion_testigo_ppv" in tab, "la pestaña de la versión no pintó su testigo"
+    datos.update(tab)
+    return datos
+
+
+def _fila_de(cv, campo):
+    cv["fila"].refresh_from_db()
+    return getattr(cv["fila"], campo)
+
+
+def test_version_choque_detectado_y_no_se_guarda(dos, con_version):
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+    rb = dos["cb"].post(cv["url"], _con(b, **{"ppv-0-cantidad": "35"}), **HTMX)
+    assert rb.status_code == 200 and AVISO not in rb.content.decode()
+    assert _fila_de(cv, "cantidad") == 35
+
+    resp = dos["ca"].post(cv["url"], _con(a, **{"ppv-0-cantidad": "40"}), **HTMX)
+    _assert_choque(resp, "Beto Barrios", "40", htmx=True)
+    cuerpo = resp.content.decode()
+    assert "Cant. de «Playera Janet» (v1)" in cuerpo, "el aviso no nombra la línea de la versión"
+    assert _fila_de(cv, "cantidad") == 35, "el guardado de Ana pisó la versión de Beto"
+    item = cv["cot"].items.filter(agrupado=False).get()
+    assert item.cantidad == Decimal("35"), "el documento de la versión quedó con lo de Ana"
+
+
+def test_version_forzar_guarda_lo_mio(dos, con_version):
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+    dos["cb"].post(cv["url"], _con(b, **{"ppv-0-cantidad": "35"}), **HTMX)
+    mio = _con(a, **{"ppv-0-cantidad": "40"})
+    assert dos["ca"].post(cv["url"], mio, **HTMX).status_code == 409
+    resp = dos["ca"].post(cv["url"], _forzado(mio), **HTMX)
+    assert resp.status_code == 200 and AVISO not in resp.content.decode()
+    assert _fila_de(cv, "cantidad") == 40
+
+
+def test_version_sin_choque_guarda_como_siempre(dos, con_version):
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    resp = dos["ca"].post(cv["url"], _con(a, **{"ppv-0-cantidad": "33"}), **HTMX)
+    assert resp.status_code == 200 and AVISO not in resp.content.decode()
+    assert _fila_de(cv, "cantidad") == 33
+
+
+def test_la_version_de_beto_no_detiene_a_quien_no_la_tiene_abierta(dos, con_version):
+    """Beto guarda la v1 desde su pestaña; Ana tiene el proyecto abierto SIN la
+    pestaña y cambia el nombre. Lo que Ana manda no toca la versión, así que no
+    hay nada que pisar: guarda, y lo de Beto se queda."""
+    cv = con_version
+    a = _abrir(dos["ca"], cv["url"])
+    b = _abrir_con_version(dos["cb"], cv)
+    assert dos["cb"].post(cv["url"], _con(b, **{"ppv-0-cantidad": "35"}), **HTMX).status_code == 200
+    resp = dos["ca"].post(cv["url"], _con(a, nombre="Jeep de Ana"), **HTMX)
+    assert resp.status_code == 200 and AVISO not in resp.content.decode()
+    cv["p"].refresh_from_db()
+    assert cv["p"].nombre == "Jeep de Ana"
+    assert _fila_de(cv, "cantidad") == 35
+
+
+def test_si_choca_la_version_tampoco_se_guarda_el_proyecto(dos, con_version):
+    """El guardado es uno solo: si la pestaña choca, lo que Ana cambió en el
+    proyecto tampoco entra, y va en «Copiar lo mío» junto con lo de la versión."""
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+    dos["cb"].post(cv["url"], _con(b, **{"ppv-0-cantidad": "35"}), **HTMX)
+    resp = dos["ca"].post(cv["url"], _con(a, nombre="Jeep de Ana",
+                                          **{"ppv-0-cantidad": "40"}), **HTMX)
+    _assert_choque(resp, "Beto Barrios", "Jeep de Ana", htmx=True)
+    cv["p"].refresh_from_db()
+    assert cv["p"].nombre == "Jeep Parte 1"
+    # El 409 vuelve a pintar el testigo del PROYECTO tal como llegó.
+    oob = _sueltos(resp.content.decode())
+    assert oob.get("_edicion_testigo") == a["_edicion_testigo"]
+    assert "_edicion_testigo_ppv" not in oob
+
+
+def test_version_choque_en_sus_procesos(dos, con_version):
+    """Los procesos de la foto se guardan en una columna JSON, pero el navegador
+    los manda igual que en la línea viva: también se vigilan."""
+    import json
+
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+
+    def procesos(desc, costo):
+        return json.dumps([{"tipo": "operativo", "proveedor_id": None,
+                            "descripcion": desc, "costo": costo, "por_pieza": False}])
+    assert dos["cb"].post(cv["url"], _con(b, **{"ppv-0-procesos_json": procesos("Positivos", "90")}),
+                          **HTMX).status_code == 200
+    resp = dos["ca"].post(cv["url"], _con(a, **{"ppv-0-procesos_json": procesos("Serigrafía", "120")}),
+                          **HTMX)
+    _assert_choque(resp, "Beto Barrios", "Serigrafía", htmx=True)
+    assert "Procesos de producción de «Playera Janet» (v1)" in resp.content.decode()
+    assert [p["descripcion"] for p in _fila_de(cv, "procesos_json")] == ["Positivos"]
+
+
+def test_version_coincidir_no_es_chocar(dos, con_version):
+    """Beto y Ana dejan los MISMOS procesos, pero cada navegador los escribe a su
+    modo (número o texto, con o sin la cuenta vacía, otro orden de llaves). No
+    hay nada que pisar: lo guardado y lo mandado pasan por el mismo normalizador
+    antes de compararse. Sin eso, cada autoguardado se detendría por unos
+    procesos que dicen lo mismo."""
+    import json
+
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+    de_beto = json.dumps([{"tipo": "operativo", "proveedor_id": None, "descripcion": "Positivos",
+                           "costo": "90.00", "costo_expr": "", "por_pieza": False}])
+    de_ana = json.dumps([{"por_pieza": False, "costo": 90, "descripcion": "Positivos",
+                          "tipo": "operativo"}])
+    assert dos["cb"].post(cv["url"], _con(b, **{"ppv-0-procesos_json": de_beto}),
+                          **HTMX).status_code == 200
+    resp = dos["ca"].post(cv["url"], _con(a, **{"ppv-0-procesos_json": de_ana}), **HTMX)
+    assert resp.status_code == 200 and AVISO not in resp.content.decode()
+    assert [p["descripcion"] for p in _fila_de(cv, "procesos_json")] == ["Positivos"]
+
+
+def test_version_dos_autoguardados_seguidos_no_chocan_ni_duplican(dos, con_version):
+    """La misma pestaña cambia la MISMA cantidad dos veces: el testigo nuevo de
+    la versión regresa por OOB y el segundo guardado no choca consigo mismo. Y
+    ni la foto ni el documento de la versión ganan líneas."""
+    cv = con_version
+    filas_antes = cv["cot"].productos_version.count()
+    items_antes = cv["cot"].items.count()
+    datos = _con(_abrir_con_version(dos["ca"], cv), **{"ppv-0-cantidad": "32"})
+    r1 = dos["ca"].post(cv["url"], datos, **HTMX)
+    oob = _sueltos(r1.content.decode())
+    assert "_edicion_testigo_ppv" in oob, "el autoguardado no devolvió el testigo nuevo de la versión"
+    assert oob["_edicion_testigo_ppv"] != datos["_edicion_testigo_ppv"]
+    assert f'id="edicion-testigo-ppv-{cv["cot"].pk}"' in r1.content.decode()
+    datos = _con(_tras_autoguardado(datos, r1), **{"ppv-0-cantidad": "34"})
+    r2 = dos["ca"].post(cv["url"], datos, **HTMX)
+    assert r2.status_code == 200 and AVISO not in r2.content.decode(), \
+        "el segundo autoguardado de la versión chocó consigo mismo"
+    assert _fila_de(cv, "cantidad") == 34
+    assert cv["cot"].productos_version.count() == filas_antes, "se duplicó la foto"
+    assert cv["cot"].items.count() == items_antes, "se duplicaron las líneas del documento"
+
+
+def test_version_otra_ventana_de_la_misma_persona_choca(dos, con_version):
+    cv = con_version
+    uno = _abrir_con_version(dos["ca"], cv)
+    dos_ = _abrir_con_version(dos["ca"], cv)
+    assert dos["ca"].post(cv["url"], _con(uno, **{"ppv-0-cantidad": "35"}), **HTMX).status_code == 200
+    resp = dos["ca"].post(cv["url"], _con(dos_, **{"ppv-0-cantidad": "40"}), **HTMX)
+    _assert_choque(resp, "Tú mismo, desde otra ventana o pestaña", "40", htmx=True)
+
+
+def test_version_sin_testigo_pasa_como_antes(dos, con_version):
+    """Una pestaña abierta antes de este cambio no trae el testigo de la versión."""
+    cv = con_version
+    a = _abrir_con_version(dos["ca"], cv)
+    b = _abrir_con_version(dos["cb"], cv)
+    dos["cb"].post(cv["url"], _con(b, **{"ppv-0-cantidad": "35"}), **HTMX)
+    viejo = _con(a, **{"ppv-0-cantidad": "40"})
+    viejo.pop("_edicion_testigo_ppv")
+    assert dos["ca"].post(cv["url"], viejo, **HTMX).status_code == 200
+    assert _fila_de(cv, "cantidad") == 40
+
+
+def test_el_testigo_de_la_version_no_ocupa_celda_ni_anula_el_forzar(dos, con_version):
+    """Su contenedor no genera caja, y NO trae otro `_edicion_forzar`: uno vacío
+    más abajo en la página ganaría en el POST y «Guardar la mía» no guardaría."""
+    html = dos["ca"].get(con_version["url_tab"], **HTMX).content.decode()
+    tag = re.search(r"<div[^>]*\bdata-edicion-pieza\b[^>]*>", html)
+    assert tag and "contents" in _clases(tag.group(0)), tag
+    assert "_edicion_forzar" not in html

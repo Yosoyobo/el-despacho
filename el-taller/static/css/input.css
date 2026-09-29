@@ -395,6 +395,29 @@
   }
 }
 
+/* ── Área táctil mínima (deuda Sep28) ───────────────────────────────────────
+   Un botón de ícono chico (⧉ duplicar mide 13×15 px en el Kanban) se ve bien
+   con ratón pero no se atina con el dedo. `.toque-minimo` le da en pantalla
+   chica una caja de 44×44 (la guía de Apple y la WCAG 2.5.5) sin agrandar el
+   ícono: la caja crece, el glifo se queda igual y centrado. En escritorio la
+   media query no aplica y el botón es el de siempre. Es UN módulo: todo botón
+   de ícono que se pique en el celular lo lleva, no un tamaño por plantilla.
+   El corte se escribe como el `max-md:` de Tailwind (mismo 768 px) y no como
+   `max-width: 767px`: el candado del pliegue busca ESA media query. */
+@media not all and (min-width: 768px) {
+  .toque-minimo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* (Vive aquí, antes del pliegue móvil, a propósito: del pliegue al final el
+   archivo es dual-copy exacto con La Gerencia —hay candados que lo comparan—, y
+   este módulo sólo lo usa El Taller.) */
+
 /* ── LC 2026-08-23 (Oscar): en el celular y en la PWA, las tarjetas nacen
    PLEGADAS. «Hay mucho scroll» — un dashboard que en escritorio se lee de un
    vistazo, en un teléfono son varias pantallas de deslizar antes de llegar a lo

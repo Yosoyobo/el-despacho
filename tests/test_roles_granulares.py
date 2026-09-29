@@ -14,12 +14,12 @@ def _rol_dueno():
 def test_miembro_con_rol_personalizado_dueno_es_admin(usuario_factory):
     """El corazón del Bloque 10: un 'miembro' con el Rol personalizado 'dueno'
     pasa los mismos checks que pasaba el rol duro."""
-    from lib.permisos import es_admin, roles_efectivos, tiene_rol
+    from lib.permisos import puede_gestionar_proyectos, roles_efectivos, tiene_rol
     u = usuario_factory(rol="miembro")
-    assert es_admin(u) is False
+    assert puede_gestionar_proyectos(u) is False
     u.roles_extra.add(_rol_dueno())
     assert roles_efectivos(u) == {"miembro", "dueno"}
-    assert es_admin(u) is True
+    assert puede_gestionar_proyectos(u) is True
     assert tiene_rol(u, "dueno") is True
     assert tiene_rol(u, "contador") is False
 
@@ -91,6 +91,6 @@ def test_migracion_0024_dueno_a_miembro(usuario_factory):
     u.refresh_from_db()
     assert u.rol == "miembro"
     assert "dueno" in set(u.roles_extra.values_list("nombre", flat=True))
-    # Sigue siendo admin vía roles_efectivos.
-    from lib.permisos import es_admin
-    assert es_admin(u) is True
+    # Sigue gestionando proyectos: el rol "dueno" asignado trae el permiso.
+    from lib.permisos import puede_gestionar_proyectos
+    assert puede_gestionar_proyectos(u) is True

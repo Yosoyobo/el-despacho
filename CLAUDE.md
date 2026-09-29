@@ -198,7 +198,14 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
       roadmap que sobrevive al trabajo terminado miente.
 
     Cerrar la ventana es `limpiar_deploy_en_curso()` **y** devolver la
-    pantalla a su versión corta. Un banner ámbar olvidado entrena al equipo
+    pantalla a su versión corta. **Desde 2026.09.05 las tres piezas son
+    automáticas en cada deploy**: `deploy_nuc.sh` abre/cierra el banner
+    (`trap`), y el job `mudanza` escribe en La Sede
+    `data/caddy/mantenimiento/en-curso.html` (roadmap armado en el runner con
+    `infra/scripts/pantalla_mantenimiento.py` desde el primer bloque de
+    Novedades) y lo borra al salir (`trap`); sin él, El Portero sirve la corta
+    de `infra/mantenimiento/index.html`. En un corte que NO es deploy sale la
+    corta. Un banner ámbar olvidado entrena al equipo
     a ignorarlo, que es exactamente lo que esta regla evita.
 
 ---
@@ -375,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.09.04` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-28:** producción en `VERSION 2026.09.05` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -387,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.05 | S-Deuda-Sep28 | Ninguna puerta por rol literal («como hoy», `cuentas/0047`); pantalla de corte con roadmap automático; testigo en versiones de cotización; 8 limpiezas |
 | 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda; la barra de guardar va debajo de las pestañas |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
 | 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
@@ -396,12 +404,13 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.08.47 | S-Ajustes-Ago28 · 1 | Duplicar producto, markup en catálogo, un solo control de proveedores |
 | 2026.08.46 | S-Rutas-Descuadre | Reconciliar paradas con dueño ajeno; reactivar repartos cancelados |
 | 2026.08.45 | S-Papeleo-Visor | El papeleo de Paperless se ve dentro de El Taller (proxy con permiso) |
-| 2026.08.44 | S-Latencia-Ago24 | Push fuera de la petición, permisos memoizados, context processors perezosos |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
 - `lib.permisos.puede()` **no tiene failsafe automático de super_admin**: una acción nueva
   necesita estar en `DEFAULTS_POR_ROL["super_admin"]` + migración `seed_permisos_*`.
+  Si la acción REEMPLAZA a una puerta por rol, se siembra POR PERSONA (fila `PermisoUsuario`):
+  la grilla de El Directorio muestra fila o default del rol primario, y guardarla la apagaría.
 - Acción de catálogo: `ver_nombres`/`ver_precios` (no existe `catalogo.ver`); `puede_ver_catalogo`
   ya pregunta por `ver_nombres` (2026.09.01).
 - `app_label` reales: tareas = `pizarron`, proyectos = `proyectos`, cartera = `cartera`
@@ -560,7 +569,7 @@ from ajustes.models.credencial import Credencial      # KV cifrado
 from lib.boveda import cifrar, descifrar
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
-from lib.permisos import requires_role, puede_ver_proyecto
+from lib.permisos import puede, puede_ver_proyecto   # nunca por rol literal (§4 #20)
 from lib.sesion import getAuth
 from lib.ratelimit import intentar, reset
 from lib import google_oauth

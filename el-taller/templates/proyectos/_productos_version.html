@@ -9,10 +9,11 @@ guardar; la merma, el costo, el proveedor y los procesos se quedan aquí.
 
 Se guarda con el MISMO autoguardado del proyecto: los campos viajan en el
 formulario y `views.detalle` los reconoce por el prefijo `ppv`. El pk de la
-cotización va en el hidden de abajo.
+cotización va en el hidden de abajo, y su testigo de edición pisada al lado.
 {% endcomment %}
 <div id="formset-productos-version" class="space-y-3">
     <input type="hidden" name="ppv_cotizacion" value="{{ cot.pk }}">
+    {% include "edicion/_testigo_pieza.html" with edicion=edicion_version %}
     {{ formset.management_form }}
 
     <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-500/30 dark:bg-brand-500/10">
