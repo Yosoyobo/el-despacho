@@ -268,3 +268,4 @@ def test_la_portada_solo_con_el_motor_propio(cliente_factory, jefe):
     assert "page-break-after:always" in html and "Propuesta 2027" in html
     basico = services.construir_html_pdf(cot, config=resolver("cotizacion", basico=True))
     assert "Propuesta 2027" not in basico, "Google recibió la portada"
+    assert "page-break-after:always" not in basico, "Google recibió el salto de la portada"

@@ -204,8 +204,11 @@ def _pintar(request, pestana: str, *, choque=None, status: int = 200, enviados=N
 
     contexto = {
         "pestana": pestana,
-        "tabs": [{"clave": c, "etiqueta": t, "url": f"?tab={c}"} for c, (t, _, _) in pestanas.items()]
-        + [{"clave": "historial", "etiqueta": "Historial", "url": "?tab=historial"}],
+        # Sin `url`: `_tabs.html` arma `?tab=<clave>` solo. Con url, su
+        # `|default:…|add:clave` le volvía a pegar la clave (`?tab=marcamarca`) y
+        # todas las pestañas caían de vuelta en la primera.
+        "tabs": [{"clave": c, "etiqueta": t} for c, (t, _, _) in pestanas.items()]
+        + [{"clave": "historial", "etiqueta": "Historial"}],
         "base": ultima.pk if ultima else 0,
         "choque": choque,
         "puede": {a: _puede(request.user, a)
