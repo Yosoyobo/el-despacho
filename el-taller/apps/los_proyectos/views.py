@@ -43,7 +43,10 @@ from lib.busqueda import q_texto
 from lib.permisos import (
     puede,
     puede_archivar_proyecto,
+    puede_asignar_proyecto,
+    puede_cambiar_estado_proyecto,
     puede_comentar_interno,
+    puede_crear_proyecto,
     puede_editar_proyecto,
     puede_eliminar_proyecto,
     puede_ver_finanzas,
@@ -394,7 +397,7 @@ def lista(request):
     # LC 2026-08-28: la columna de «duplicar» sólo existe para quien puede crear
     # proyectos. La cabecera se condiciona con ella — una celda sin cabecera (o al
     # revés) descuadra la tabla, que es la lección del sprint anterior.
-    puede_crear_proyecto = puede_editar_proyecto(request.user, None)
+    puede_crear = puede_crear_proyecto(request.user)
     cabeceras = [
         # S-LC-Feedback-V4: nombre es lo principal, código secundario.
         {"label": "Proyecto", "sort_key": "nombre"},
@@ -402,7 +405,7 @@ def lista(request):
         {"label": "Estado", "sort_key": "estado"},
         {"label": "Compromiso", "sort_key": "fecha_compromiso"},
     ]
-    if puede_crear_proyecto:
+    if puede_crear:
         cabeceras.append({"label": "", "align": "right", "clase_th": "w-10"})
     return render(request, "proyectos/lista.html", {
         "proyectos": page_obj.object_list,
@@ -414,7 +417,7 @@ def lista(request):
         "querystring_base": querystring_base,
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
         "cabeceras_proyectos": cabeceras,
-        "puede_crear": puede_crear_proyecto,
+        "puede_crear": puede_crear,
         "ver_archivados": ver_archivados,
         "archivados_count": archivados_count,
         "kpis": kpis,
@@ -468,8 +471,17 @@ def kanban(request):
     return render(request, "proyectos/kanban.html", {
         "fila_arriba": fila_arriba,
         "fila_abajo": fila_abajo,
-        "puede_crear": puede_editar_proyecto(request.user, None),
+        "puede_crear": puede_crear_proyecto(request.user),
     })
+
+
+def _con_candado_de_estado(user, form):
+    """El estado viaja en el form de edición (a la vista en la página completa,
+    oculto en el detalle): sólo lo cambia quien tiene `proyectos.cambiar_estado`.
+    Deshabilitado, Django ignora lo que llegue y se queda con el de la base."""
+    if not puede_cambiar_estado_proyecto(user):
+        form.fields["estado"].disabled = True
+    return form
 
 
 def _reconciliar_equipo(request, proyecto):
@@ -577,7 +589,7 @@ def detalle(request, pk):
     estado_http = 200
     ctx_edicion = None
     if request.method == "POST" and puede_ed:
-        form = ProyectoForm(request.POST, instance=proyecto)
+        form = _con_candado_de_estado(request.user, ProyectoForm(request.POST, instance=proyecto))
         formset = ProyectoProductoFormSetDetalle(request.POST, instance=proyecto)
         # S-Pendientes-Sep28 (Deploy 3): ANTES de validar —y de que `is_valid()`
         # escriba lo mandado sobre `proyecto` (§14 Bug D)— se pregunta si
@@ -642,7 +654,9 @@ def detalle(request, pk):
             # formset por OOB para que la tarjeta nueva traiga su pk y NO se
             # duplique en el siguiente autosave (bug que motivó el modal en V8).
             hubo_nuevos = bool(getattr(formset, "new_objects", None))
-            _reconciliar_equipo(request, proyecto)
+            # El equipo viaja en el mismo autoguardado; sólo lo toca quien asigna.
+            if puede_asignar_proyecto(request.user):
+                _reconciliar_equipo(request, proyecto)
             proyecto.recalcular_monto_estimado()
             proyecto.refresh_from_db()
             emitir(EventoPortavoz(
@@ -701,7 +715,7 @@ def detalle(request, pk):
             # que se abrió, así que el testigo es el que llegó.
             ctx_edicion = edicion.contexto(request, testigo=ed_proyecto.testigo_para(request))
     else:
-        form = ProyectoForm(instance=proyecto)
+        form = _con_candado_de_estado(request.user, ProyectoForm(instance=proyecto))
         formset = ProyectoProductoFormSetDetalle(instance=proyecto)
         if puede_ed:
             ctx_edicion = edicion.contexto(
@@ -723,6 +737,10 @@ def detalle(request, pk):
         "form": form,
         "formset": formset,
         "puede_editar": puede_ed,
+        # Crear (duplicar), asignar y cambiar de estado van aparte de editar.
+        "puede_crear": puede_crear_proyecto(request.user),
+        "puede_asignar": puede_asignar_proyecto(request.user),
+        "puede_cambiar_estado": puede_cambiar_estado_proyecto(request.user),
         "pagos_pendientes": pagos_pendientes,
         "pagos_grupos": pagos_grupos,
         "pagos_desglose": pagos_desglose,
@@ -805,8 +823,8 @@ def resumen_actividad(request, pk):
 
 @login_required
 def nuevo(request):
-    if not puede_editar_proyecto(request.user, None):
-        return HttpResponseForbidden("Solo admins pueden crear proyectos.")
+    if not puede_crear_proyecto(request.user):
+        return HttpResponseForbidden("Sin permiso para crear proyectos.")
     # Revisión buzón R2: si es HTMX se sirve como quick-create modal con
     # mini-Chalán para meter productos (#modal-slot). La página full (con el
     # formset de productos) queda de fallback.
@@ -1043,7 +1061,7 @@ def editar(request, pk):
     from .testigo import edicion_proyecto
     choque = None
     if request.method == "POST":
-        form = ProyectoForm(request.POST, instance=proyecto)
+        form = _con_candado_de_estado(request.user, ProyectoForm(request.POST, instance=proyecto))
         formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
         # El Testigo: se revisa ANTES de validar (§14 Bug D).
         ed_proyecto = edicion_proyecto(proyecto, form, formset)
@@ -1060,7 +1078,7 @@ def editar(request, pk):
             request, testigo=choque.testigo if choque else ed_proyecto.testigo_para(request),
             choque=choque)
     else:
-        form = ProyectoForm(instance=proyecto)
+        form = _con_candado_de_estado(request.user, ProyectoForm(instance=proyecto))
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
         ctx_edicion = edicion.contexto(
             request, testigo=edicion_proyecto(proyecto, form, formset).testigo())
@@ -1086,7 +1104,8 @@ def cliente_inline(request):
     """
     from apps.los_proyectos.forms import ClienteInlineForm
 
-    if not puede_editar_proyecto(request.user, None):
+    # Se abre desde el alta y desde la edición del proyecto: vale cualquiera.
+    if not (puede_crear_proyecto(request.user) or puede_editar_proyecto(request.user, None)):
         return HttpResponseForbidden()
     es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
@@ -1118,7 +1137,7 @@ def duplicar(request, pk):
     """Clona un proyecto completo con nombre nuevo (LC 2026-07). Patrón Wave 5:
     GET HTMX → modal; POST → crea y redirige al nuevo proyecto."""
     proyecto = get_object_or_404(Proyecto, pk=pk)
-    if not puede_editar_proyecto(request.user, None):
+    if not puede_crear_proyecto(request.user):
         return HttpResponseForbidden("Sin permiso para crear proyectos.")
     es_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST":
@@ -1134,8 +1153,8 @@ def duplicar(request, pk):
 @login_required
 def cambiar_estado(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
-    if not puede_editar_proyecto(request.user, proyecto):
-        return HttpResponseForbidden("Solo admins cambian estado.")
+    if not puede_cambiar_estado_proyecto(request.user):
+        return HttpResponseForbidden("Sin permiso para cambiar el estado.")
     es_htmx = request.headers.get("HX-Request") == "true"
     # S-Proyecto-Estados-V1: si llega `estado` directo en POST sin
     # `fecha_real_entrega`, lo tratamos como dropdown inline y devolvemos
@@ -1239,7 +1258,8 @@ def motivo_cancelacion(request, pk):
     omitir: el proyecto ya está cancelado y esto sólo agrega la razón.
     """
     proyecto = get_object_or_404(Proyecto, pk=pk)
-    if not puede_editar_proyecto(request.user, proyecto):
+    # El motivo es parte de cancelar: lo pide quien puede cambiar el estado.
+    if not puede_cambiar_estado_proyecto(request.user):
         return HttpResponseForbidden("Sin permiso.")
     if request.method == "POST":
         slug = (request.POST.get("motivo") or "").strip()
@@ -1309,7 +1329,7 @@ def cancelaciones(request):
         "total": total,
         "sin_info": sin_info,
         "resumen": resumen,
-        "puede_editar": puede_editar_proyecto(request.user, None),
+        "puede_cambiar_estado": puede_cambiar_estado_proyecto(request.user),
         "back_url": reverse("proyectos-kanban"),
         "back_label": "Proyectos",
     })
@@ -1318,8 +1338,8 @@ def cancelaciones(request):
 @login_required
 def asignar(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
-    if not puede_editar_proyecto(request.user, proyecto):
-        return HttpResponseForbidden("Solo admins asignan.")
+    if not puede_asignar_proyecto(request.user):
+        return HttpResponseForbidden("Sin permiso para asignar.")
     if request.method == "POST":
         accion = request.POST.get("accion", "agregar")
         if accion == "quitar":
@@ -2072,7 +2092,7 @@ def _ctx_cotizaciones(proyecto, user) -> dict:
         cots
         and proyecto.estado == "por_cotizar"
         and destino_activo
-        and puede_editar_proyecto(user, proyecto)
+        and puede_cambiar_estado_proyecto(user)
     )
     return {
         "proyecto": proyecto,

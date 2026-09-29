@@ -1,4 +1,4 @@
-{% load forms_helpers %}
+{% load forms_helpers permisos %}
 {% comment %}Form-in-modal "Nuevo ingreso". Se inyecta en #modal-slot. Sprint 2 UX
 (item 5, decisión Oscar): SIN selector de cliente (se hereda del proyecto) y SIN
 pastillas legacy de proyectos/clientes — solo el dropdown buscable de proyecto,
@@ -59,7 +59,9 @@ IVA, mini-calendario, método en pills y comprobante. El script está rooteado e
                         <label for="{{ form.proyecto.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proyecto</label>
                         {{ form.proyecto }}
                         <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">El cliente se toma automáticamente del proyecto elegido.</p>
+                        {% if request.user|puede_crear_proyecto %}
                         <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
+                        {% endif %}
                     </div>
                 </div>
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers permisos %}
 {% block title %}Contaduría — El Taller{% endblock %}
 {% block contenido %}
 {% load forms_helpers %}
@@ -20,7 +20,7 @@
         <a href="{% url 'contaduria:cierre-lista' %}" class="btn-secundario">Cierres de periodo</a>
         <a href="{% url 'contaduria:export' %}" class="btn-secundario">Export contador</a>
         {% if puede_capturar %}<a href="{% url 'contaduria:movimiento-nuevo' %}" class="btn-primario">+ Nuevo movimiento</a>{% endif %}
-        {% if user.rol == 'super_admin' %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-secundario">+ Movimiento avanzado</a>{% endif %}
+        {% if user|es_super_admin %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-secundario">+ Movimiento avanzado</a>{% endif %}
     </div>
 </header>
 

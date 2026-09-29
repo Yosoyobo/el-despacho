@@ -64,7 +64,7 @@ Facturación.
                     <td class="px-5 py-3 text-gray-600 dark:text-gray-300">
                         <div class="flex items-center justify-between gap-3">
                             <span class="min-w-0 flex-1 truncate">{{ p.nota_cancelacion|default:"" }}</span>
-                            {% if puede_editar %}
+                            {% if puede_cambiar_estado %}
                             <button type="button"
                                     hx-get="{% url 'proyectos-motivo-cancelacion' p.pk %}?recargar=1"
                                     hx-target="#modal-slot" hx-swap="innerHTML"

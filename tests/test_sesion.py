@@ -31,8 +31,10 @@ def test_user_autenticado_devuelve_contexto():
     assert isinstance(ctx, ContextoUsuario)
     assert ctx.id == 42
     assert ctx.rol == "dueno"
-    assert ctx.es_admin is True
     assert ctx.es_super_admin is False
+    # `es_admin` (super_admin|dueño por NOMBRE de rol) se borró: nadie lo usaba y
+    # sólo invitaba a gatear por rol (§4 #20).
+    assert not hasattr(ctx, "es_admin")
 
 
 def test_super_admin_flag():
@@ -42,14 +44,12 @@ def test_super_admin_flag():
     )
     ctx = getAuth(_req(user))
     assert ctx.es_super_admin is True
-    assert ctx.es_admin is True
 
 
-def test_disenador_no_es_admin():
+def test_disenador_no_es_super_admin():
     user = SimpleNamespace(
         is_authenticated=True, pk=2, email="d@y.com",
         nombre_completo="D", rol="disenador", is_active=True,
     )
     ctx = getAuth(_req(user))
-    assert ctx.es_admin is False
     assert ctx.es_super_admin is False

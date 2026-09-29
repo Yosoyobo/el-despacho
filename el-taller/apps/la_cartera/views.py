@@ -240,7 +240,7 @@ def detalle(request, pk):
         pass
     # LC 2026-08-04 (Oscar): botón «+ Nuevo proyecto» para ESTE cliente. Se gatea
     # con el permiso de crear proyectos, no con el de ver la cartera.
-    from lib.permisos import puede_editar_proyecto
+    from lib.permisos import puede_crear_proyecto
 
     # El papeleo de este cliente: contratos, remisiones, lo que se haya ligado.
     # Sale de NUESTRA base, así que la ficha se pinta igual si el archivo de
@@ -249,7 +249,7 @@ def detalle(request, pk):
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
         "puede_editar": puede_editar,
-        "puede_crear_proyecto": puede_editar_proyecto(request.user, None),
+        "puede_crear_proyecto": puede_crear_proyecto(request.user),
         **contexto_ficha(request.user, cliente),
         "ultima_visita": ultima_visita,
         "contactos": list(cliente.contactos.all()),

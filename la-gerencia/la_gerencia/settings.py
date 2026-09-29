@@ -117,7 +117,7 @@ MIDDLEWARE = [
     "cuentas.middleware.PresenciaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # Pre-S2b.2: redirige contador/disenador autenticados a El Taller.
+    # Saca a El Taller (y cierra la sesión de aquí) a quien no tiene gerencia.acceder.
     "lib.middleware.RedirigirRolesOperativosMiddleware",
 ]
 

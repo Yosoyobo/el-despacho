@@ -467,7 +467,7 @@ def crear_proyecto(accion, usuario, contexto=None):
     descripcion?, estado?, fecha_compromiso?, monto_estimado?,
     monto_cotizado?.
     """
-    _gate(usuario, "puede_gestionar_proyectos", "crear proyectos")
+    _gate(usuario, "puede_crear_proyecto", "crear proyectos")
 
     from apps.los_proyectos.models import Proyecto
 
@@ -575,6 +575,9 @@ def actualizar_proyecto(accion, usuario, contexto=None):
     _gate(usuario, "puede_gestionar_proyectos", "actualizar proyectos")
     proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     campos = _campos_a_actualizar(accion.payload or {}, CAMPOS_PROYECTO_PERMITIDOS)
+    # Mover el proyecto por su ciclo es su propia acción (como la barra de status).
+    if "estado" in campos:
+        _gate(usuario, "puede_cambiar_estado_proyecto", "cambiar el estado de proyectos")
     aplicado = []
     for k, v in campos.items():
         # C6 S-LC-Feedback-V6: fecha_compromiso del proyecto es datetime con
@@ -681,7 +684,7 @@ def agregar_producto_proyecto(accion, usuario, contexto=None):
 
 @registrar("asignar_usuario_proyecto")
 def asignar_usuario_proyecto(accion, usuario, contexto=None):
-    _gate(usuario, "puede_gestionar_proyectos", "asignar usuarios a proyectos")
+    _gate(usuario, "puede_asignar_proyecto", "asignar usuarios a proyectos")
     proyecto = _resolver_proyecto(accion.payload.get("proyecto_slug", ""), contexto)
     u = _resolver_usuario(accion.payload.get("usuario_slug", ""), contexto)
     rol_en_proyecto = (accion.payload.get("rol_en_proyecto") or "disenador").lower()

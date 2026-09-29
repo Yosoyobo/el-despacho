@@ -158,20 +158,49 @@ def puede_ver_proyecto(user, proyecto) -> bool:
 
 
 def puede_gestionar_proyectos(user) -> bool:
-    """Crear, editar, asignar y cambiar de estado proyectos (`proyectos.editar`).
+    """Editar proyectos (`proyectos.editar`): datos, productos, fechas, dinero.
 
     Antes: super_admin/dueño. El diseñador traía `editar` en sus defaults «sólo
     donde asignado», pero la puerta era el rol y nunca editó nada; se le quitó
     (decisión Oscar: «como hoy»). También abre la actividad de TODOS los
     proyectos en Recados — quien los gestiona ve lo que pasa en ellos.
+
+    Crear, asignar y cambiar de estado tienen su propia acción desde
+    2026-09-28 (`puede_crear_proyecto`, `puede_asignar_proyecto`,
+    `puede_cambiar_estado_proyecto`); hasta entonces las tres usaban ésta.
     """
     return es_super_admin(user) or puede(user, "proyectos", "editar")
 
 
 def puede_editar_proyecto(user, proyecto) -> bool:
-    """Mutar un proyecto (o crearlo, con `proyecto=None`). No depende del
-    proyecto: quien gestiona proyectos los gestiona todos."""
+    """Mutar un proyecto. No depende del proyecto: quien gestiona proyectos los
+    gestiona todos. (Crearlo es `puede_crear_proyecto`.)"""
     return puede_gestionar_proyectos(user)
+
+
+# `proyectos.crear/asignar/cambiar_estado` estaban en el catálogo pero ninguna
+# puerta las leía: todo pasaba por `editar`. Se conectaron «como hoy»: la
+# migración `cuentas/0048` sembró cada una, por persona, a exactamente quien
+# tenía `editar` efectivo (y la apagó a quien la traía sin él).
+
+
+def puede_crear_proyecto(user) -> bool:
+    """Crear proyectos: el alta, duplicar uno existente, y El Chalán
+    (`crear_proyecto`, `duplicar_proyecto`)."""
+    return es_super_admin(user) or puede(user, "proyectos", "crear")
+
+
+def puede_asignar_proyecto(user) -> bool:
+    """Decidir quién trabaja en un proyecto: la pantalla de asignar, el equipo
+    del detalle y El Chalán (`asignar_usuario_proyecto`)."""
+    return es_super_admin(user) or puede(user, "proyectos", "asignar")
+
+
+def puede_cambiar_estado_proyecto(user) -> bool:
+    """Mover un proyecto por su ciclo (barra de status, Kanban, «¿pasar a
+    Esperando respuesta?», motivo de cancelación) y El Chalán cuando
+    `actualizar_proyecto` trae un `estado`."""
+    return es_super_admin(user) or puede(user, "proyectos", "cambiar_estado")
 
 
 def puede_archivar_proyecto(user) -> bool:
@@ -561,8 +590,12 @@ def puede_ver_comentario(user, comentario) -> bool:
     por los roles efectivos como todo lo demás: quien tiene un rol ASIGNADO
     (p. ej. «Director» sobre un rol primario `miembro`) no leía ningún
     comentario. La migración 0047 lo conservó «como hoy» —sembró
-    `ver_comentarios`/`ver_internos` sólo por rol primario—; para que alguien
-    más los lea basta prender el permiso en El Directorio.
+    `ver_comentarios`/`ver_internos` sólo por rol primario— y la 0048 lo
+    corrigió por decisión de Oscar (2026-09-28): quien tiene ASIGNADO un rol del
+    sistema recibe las filas que ese rol le daría, y la 0049 lo volvió regla
+    —los roles del sistema traen otra vez `ver_comentarios`/`ver_internos` en su
+    JSON—, así que quien reciba el rol mañana lee igual. Para que alguien más
+    los lea basta prender el permiso en El Directorio.
     """
     if es_super_admin(user):
         return True

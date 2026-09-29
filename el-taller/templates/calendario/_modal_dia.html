@@ -1,3 +1,4 @@
+{% load permisos %}
 {% comment %}
 Modal HTMX de día — patrón Wave 5. Lista los eventos del día y ofrece crear un
 evento genérico, una tarea o un proyecto con la fecha precargada.
@@ -54,8 +55,10 @@ S-LC-Feedback-V13.
                         class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">📌 Nuevo evento</button>
                 <a href="{% url 'pizarron-nueva-tarea-global' %}?fecha={{ fecha|date:'Y-m-d' }}"
                    class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">✅ Nueva tarea</a>
+                {% if request.user|puede_crear_proyecto %}
                 <a href="{% url 'proyectos-nuevo' %}?fecha_compromiso={{ fecha|date:'Y-m-d' }}"
                    class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-brand-500/5">📁 Nuevo proyecto</a>
+                {% endif %}
             </div>
         </div>
     </div>
