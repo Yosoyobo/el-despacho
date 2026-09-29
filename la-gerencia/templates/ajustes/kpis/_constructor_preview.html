@@ -1,0 +1,22 @@
+{% if vacio %}
+<p class="text-sm text-gray-400">Elige de qué se cuenta para ver su número.</p>
+{% elif error %}
+<p class="rounded-lg bg-error-50 p-3 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-400" role="alert">Todavía no se puede calcular: {{ error }}</p>
+{% else %}
+<p class="text-title-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ valor_txt }}</p>
+{% if nota %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ nota }}</p>{% endif %}
+{% if sin_permiso %}<p class="mt-1 text-xs text-warning-600">Tú no tienes el permiso de este dato: no verás su número.</p>{% endif %}
+<p class="mt-3 text-sm text-gray-700 dark:text-gray-200">{{ descripcion }}</p>
+{% if comparacion %}
+<p class="mt-2 text-xs text-gray-600 dark:text-gray-300">Periodo anterior: <span class="tabular-nums">{{ comparacion.anterior_txt }}</span>{% if comparacion.cambio_pct is not None %} · {% if comparacion.cambio_pct > 0 %}+{% endif %}{{ comparacion.cambio_pct|floatformat:1 }}%{% else %} · sin base para comparar{% endif %}</p>
+{% endif %}
+{% if grupos %}
+<table class="mt-3 w-full text-xs" data-tabla-movil>
+    <thead><tr class="text-left text-[11px] uppercase tracking-wider text-gray-400"><th class="py-1">Reparto</th><th class="py-1 text-right">Valor</th></tr></thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for g in grupos %}<tr><td class="py-1 text-gray-700 dark:text-gray-200">{{ g.etiqueta }}</td><td class="py-1 text-right tabular-nums">{{ g.valor_txt }}</td></tr>{% endfor %}
+    </tbody>
+</table>
+{% endif %}
+<p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">Lo verá quien tenga: {{ permisos }}{% if direccion and direccion != 'neutro' %} · {% if direccion == 'baja' %}menos es mejor{% else %}más es mejor{% endif %}{% endif %}</p>
+{% endif %}

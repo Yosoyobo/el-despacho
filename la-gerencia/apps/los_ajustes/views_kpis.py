@@ -37,6 +37,7 @@ TABS = [
     {"clave": "catalogo", "etiqueta": "Catálogo", "url": "/ajustes/kpis/"},
     {"clave": "tableros", "etiqueta": "Tableros por rol", "url": "/ajustes/kpis/tableros/"},
     {"clave": "metas", "etiqueta": "Metas", "url": "/ajustes/kpis/metas/"},
+    {"clave": "constructor", "etiqueta": "Constructor", "url": "/ajustes/kpis/constructor/"},
 ]
 
 _MODULOS = {
@@ -79,10 +80,11 @@ def _decimal_o_none(texto: str | None):
 
 
 def _catalogo():
-    from apps.taller_home.kpis import CATEGORIAS, KPIS
+    """Todos los KPIs: los del código y los de equipo del constructor/El Chalán."""
+    from apps.taller_home.kpis import CATEGORIAS, KPIS, _kpis_custom_equipo
 
-    etiquetas = dict(CATEGORIAS)
-    return KPIS, etiquetas
+    etiquetas = {**dict(CATEGORIAS), "custom": "🛠 Hechos en el constructor"}
+    return [*KPIS, *_kpis_custom_equipo()], etiquetas
 
 
 def _ultimos_valores() -> dict:
@@ -214,17 +216,17 @@ def _rol_de(valor: str | None):
 
 def _kpis_que_ve_el_rol(rol) -> list:
     """Lo que un rol puede ver por su JSON de permisos (super_admin: todo)."""
-    from apps.taller_home.kpis import KPIS
     from apps.taller_home.permisos_kpi import puede_ver_con
     from apps.taller_home.tablero import apagados
 
     from lib.permisos_defaults import con_universales
 
+    kpis, _ = _catalogo()
     fuera = apagados()
     if rol is None or rol.clave == "super_admin":
-        return [k for k in KPIS if k.slug not in fuera]
+        return [k for k in kpis if k.slug not in fuera]
     mapa = con_universales(rol.permisos or {})
-    return [k for k in KPIS if k.slug not in fuera and puede_ver_con(mapa, k.permisos)]
+    return [k for k in kpis if k.slug not in fuera and puede_ver_con(mapa, k.permisos)]
 
 
 def _contexto_tablero(rol) -> dict:

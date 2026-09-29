@@ -45,8 +45,9 @@ def test_validar_sum_campo_no_numerico_rechaza():
 def test_validar_filtro_campo_no_filtrable_rechaza():
     from lib.kpi_dsl import ValidacionError, validar
     with pytest.raises(ValidacionError, match="no permitido"):
+        # v2 abrió los montos a filtro; `slug` sigue fuera de la whitelist.
         validar({"entidad": "proyecto",
-                 "filtros": [{"campo": "monto_cotizado", "op": "eq", "valor": 1}]})
+                 "filtros": [{"campo": "slug", "op": "eq", "valor": 1}]})
 
 
 def test_validar_filtro_op_invalida_rechaza():

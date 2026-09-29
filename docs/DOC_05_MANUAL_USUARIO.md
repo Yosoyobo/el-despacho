@@ -5,6 +5,24 @@
 
 ---
 
+## Novedades — Arma tus propios KPIs desde La Gerencia (29 de septiembre de 2026)
+
+**Hay un constructor de KPIs.** En La Gerencia → KPIs → **Constructor** armas un
+indicador nuevo sin programar: eliges qué contar o sumar (proyectos, tareas,
+cotizaciones, facturas, ingresos, gastos, jornadas, visitas, CFDI, banco…), con qué
+condiciones, de qué periodo, y si se reparte **por persona o por cliente**. También
+puede ser un **porcentaje** («qué parte de las tareas se cerró a tiempo») o compararse
+con el periodo anterior. Mientras lo armas, a la derecha ves **su número con los datos
+de hoy** y una frase que dice qué mide.
+
+**El Chalán te lo llena.** Escribe lo que quieres medir con tus palabras y El Chalán
+llena el formulario; tú lo revisas y lo guardas.
+
+Lo que armes queda para el equipo, entra al catálogo, a los tableros y a las metas
+como cualquier otro, y **sólo lo ve quien tiene permiso de ese dato** (un indicador de
+dinero no lo ve quien no ve La Tesorería). Aquí mismo se aprueban los que alguien
+propone desde El Taller.
+
 ## Novedades — Recibos de pago, estados de cuenta, remisiones, órdenes de trabajo y comprobantes de reembolso (29 de septiembre de 2026)
 
 **Cinco documentos nuevos en PDF**, todos con tu logotipo, tu letra y tus
@@ -5788,6 +5806,40 @@ persona y cliente sólo se pueden en los KPIs que se reparten así (por ejemplo
   de los meses anteriores) pidiendo un 10% más, o un 10% menos si menos es mejor.
   Con «Usar» se llena el formulario; ninguna se activa sola.
 
+### Constructor
+
+Para armar un KPI que no está en el catálogo, sin programar. **KPIs → Constructor →
+Nuevo KPI**:
+
+1. **¿De qué?** Sobre qué se cuenta o se suma: proyectos, tareas, clientes,
+   cotizaciones, facturas, ingresos, gastos, jornadas, visitas, CFDI recibidos,
+   líneas del banco, mandados… (sólo aparecen los datos que tu permiso deja ver).
+2. **¿Cómo se calcula?** Un número (contar, sumar, promedio, mínimo, máximo de un
+   monto o de un tiempo, como «días para aprobarse») o un **porcentaje**.
+3. **¿Cuáles cuentan?** Condiciones: «estado es…», «fecha de compromiso es antes de
+   hoy», «completada está vacía», «hace 30 días», o una fecha contra otra del mismo
+   registro («se completó hasta su fecha de compromiso»).
+4. **La parte** (sólo en porcentaje): qué condición cumple la parte que mides. «A
+   tiempo» = total de tareas completadas; parte = las completadas hasta su fecha de
+   compromiso.
+5. **¿De cuándo?** Este mes, esta semana, los últimos 90 días… y según qué fecha. Con
+   «Comparar con el periodo anterior» se compara contra el mismo tramo del periodo
+   pasado (del 1 al 29 contra el 1 al 29).
+6. **Reparto** por persona, cliente, proyecto o estado. Repartir por persona o por
+   cliente permite ponerle meta a cada quien. «Sólo lo mío»: cada quien ve lo suyo.
+7. **¿Cómo se lee?** Formato (pesos, porcentaje, días…) y hacia dónde es mejor.
+
+A la derecha, la **vista previa** con los datos de hoy, la frase de lo que mide y
+quién lo verá. **Pídeselo a El Chalán**: escribes «qué porcentaje de las tareas se
+cierra a tiempo, por persona» y te llena el formulario; lo que se guarda es lo que
+diga el formulario.
+
+Lo que se guarda aquí queda **para el equipo y activo**: aparece en el catálogo (grupo
+«Hechos en el constructor» o el que elijas), se puede poner en el tablero de un rol y
+ponerle metas. Lo ve sólo quien tiene el permiso de su dato. En la lista del
+constructor se **archiva**, se **reactiva** y se **aprueban o rechazan** los que alguien
+propuso desde El Taller (Perfil → «Pedirle KPIs custom al Chalán»).
+
 ### Los KPIs nuevos (29 de septiembre de 2026)
 
 Se agregaron 45 indicadores que el sistema ya podía medir y nadie medía:
@@ -5823,8 +5875,8 @@ Salen en el catálogo, en "Editar tablero" y en El Chalán como cualquier otro.
 - «¿qué debo ver hoy?» → *kpis_a_mirar_hoy*: ahora también cuenta las metas en
   riesgo y los KPIs en rojo según sus umbrales.
 
-El catálogo, los tableros y los umbrales se cambian sólo en La Gerencia; El Chalán
-los consulta.
+El catálogo, los tableros, los umbrales y el constructor se usan sólo en La Gerencia;
+El Chalán los consulta (y en el constructor, te llena el formulario).
 
 ---
 
