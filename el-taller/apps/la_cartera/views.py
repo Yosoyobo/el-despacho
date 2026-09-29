@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods
 
+from lib import edicion
 from lib.busqueda import q_texto
 from lib.permisos import (
     puede_editar_cartera,
@@ -309,6 +310,9 @@ def cliente_celda(request, pk):
     else:
         return HttpResponseBadRequest("Campo no editable.")
 
+    # La firma: si alguien tenía la ficha abierta y choca con este cambio, su
+    # aviso puede decir quién fue (S-Pendientes-Sep28 · Deploy 3).
+    edicion.firmar(cliente, request.user)
     emitir(EventoPortavoz(
         tipo="cliente.actualizado",
         actor_id=request.user.pk,
@@ -465,16 +469,33 @@ def nuevo(request):
     return render(request, tmpl, ctx)
 
 
+def _edicion_cliente(cliente, form, formset, formset_razones):
+    """Lo que vigila El Testigo en la ficha del cliente: sus datos, sus
+    contactos y sus razones sociales (S-Pendientes-Sep28 · Deploy 3)."""
+    grupos = {"contactos": edicion.Grupo(
+        formset, etiqueta_linea=lambda c: f"el contacto «{c.nombre or 'sin nombre'}»")}
+    if formset_razones is not None:
+        grupos["razones"] = edicion.Grupo(
+            formset_razones,
+            etiqueta_linea=lambda r: f"la razón social «{r.razon_social or 'sin nombre'}»")
+    return edicion.Edicion(cliente, form, grupos=grupos)
+
+
 @login_required
 def editar(request, pk):
     if not puede_editar_cartera(request.user):
         return HttpResponseForbidden("Solo admins pueden editar clientes.")
     cliente = get_object_or_404(Cliente, pk=pk)
+    choque = None
     if request.method == "POST":
         form = ClienteForm(request.POST, instance=cliente)
         formset = ClienteContactoFormSet(request.POST, instance=cliente)
         formset_razones = _razones_del_post(request, instance=cliente)
-        if (form.is_valid() and formset.is_valid()
+        # El Testigo: antes de validar (§14 Bug D) se pregunta si guardar
+        # pisaría lo que alguien más cambió desde que se abrió la ficha.
+        ed_cliente = _edicion_cliente(cliente, form, formset, formset_razones)
+        choque = ed_cliente.revisar(request)
+        if (choque is None and form.is_valid() and formset.is_valid()
                 and (formset_razones is None or formset_razones.is_valid())):
             from apps.la_cartera.services import (
                 espejar_contacto_principal,
@@ -492,13 +513,19 @@ def editar(request, pk):
                 actor_email=request.user.email,
                 payload={"cliente_id": cliente.pk},
             ))
+            edicion.firmar(cliente, request.user, edicion.ventana_posteada(request))
             messages.success(request, "Cliente actualizado.")
             return redirect("cartera-detalle", pk=cliente.pk)
+        ctx_edicion = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_cliente.testigo_para(request),
+            choque=choque)
     else:
         form = ClienteForm(instance=cliente)
         formset = ClienteContactoFormSet(instance=cliente)
         formset_razones = ClienteRazonSocialFormSet(instance=cliente)
-    return render(request, "cartera/form.html", {"form": form, "formset": formset, "formset_razones": formset_razones, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social})
+        ctx_edicion = edicion.contexto(
+            request, testigo=_edicion_cliente(cliente, form, formset, formset_razones).testigo())
+    return render(request, "cartera/form.html", {"form": form, "formset": formset, "formset_razones": formset_razones, "modo": "editar", "cliente": cliente, "breadcrumb_items": [{"url": "/cartera/", "label": "Clientes"}, {"url": f"/cartera/{cliente.pk}/", "label": cliente.razon_social}, {"label": "Editar"}], "back_url": f"/cartera/{cliente.pk}/", "back_label": cliente.razon_social, "edicion": ctx_edicion}, status=409 if choque else 200)
 
 
 @login_required

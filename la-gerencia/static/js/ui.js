@@ -1169,6 +1169,10 @@ window.abrirRickroll = function () {
     sucio: ['● Sin guardar', 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-300'],
     guardando: ['Guardando…', 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'],
     guardado: ['✓ Guardado', 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-300'],
+    // S-Pendientes-Sep28 (Deploy 3): alguien más guardó esto mientras lo
+    // editabas y NO se guardó lo tuyo. Manda sobre los demás mientras el aviso
+    // siga en pantalla (ver el bloque «Edición pisada» más abajo).
+    choque: ['⚠ Choque: alguien más lo cambió', 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-300'],
   };
   function pintarEstado() {
     if (!lista) return;   // en esta página no hay nada que guardar
@@ -1183,6 +1187,10 @@ window.abrirRickroll = function () {
     estadoEl.className = 'rounded-full px-2.5 py-1 text-xs font-medium shadow-theme-xs ' + def[1];
   }
   window.__guardarEstado = function (estado) {
+    // Mientras el aviso de choque esté en pantalla nada lo tapa: un «✓ Guardado»
+    // de otro control (una celda, el polling de un panel) mentiría — lo que el
+    // usuario escribió en el formulario NO se guardó.
+    if (estado !== 'choque' && document.querySelector('[data-edicion-choque]')) estado = 'choque';
     ultimoEstado = estado;
     if (estadoTimer) { clearTimeout(estadoTimer); estadoTimer = null; }
     pintarEstado();
@@ -1284,6 +1292,151 @@ window.abrirRickroll = function () {
   var slot = document.getElementById('modal-slot');
   if (slot && window.MutationObserver) {
     new MutationObserver(function () { pintar(ultimoFuera); }).observe(slot, { childList: true });
+  }
+})();
+
+/* ── Edición pisada (S-Pendientes-Sep28 · Deploy 3) ─────────────────────────
+   Decisión de Oscar: si alguien más —otra persona u otra ventana tuya— guardó
+   el registro mientras lo editabas, el servidor NO guarda y contesta con un
+   aviso (`templates/edicion/_aviso_choque.html`). Aquí vive lo del navegador:
+
+   - El 409 del autoguardado SÍ se pinta: trae el aviso por OOB. HTMX no pinta
+     un 4xx por su cuenta; se le permite sólo cuando la cabecera dice que es un
+     choque (`X-Edicion-Choque`), así un 4xx cualquiera sigue sin pintarse.
+   - Mientras el aviso esté en pantalla, el autoguardado por `change` se detiene
+     (volvería a chocar y a pisar la pantalla con el mismo aviso). Un «Guardar»
+     explícito sí sale: el servidor vuelve a preguntar.
+   - Los tres botones: ver su versión (recarga con GET), guardar la mía de todos
+     modos (reenvía con `_edicion_forzar=1`) y copiar lo mío y recargar.
+   - El formulario queda marcado como «sin guardar»: salirse sin decidir avisa.
+
+   Vive en `ui.js` (dual-copy, §18) para que el estado de la barra flotante sea
+   uno solo; en La Gerencia no hay pantallas con testigo y todo queda inerte. */
+(function () {
+  'use strict';
+  var CABECERA = 'X-Edicion-Choque';
+
+  function avisoDe(form) {
+    var avisos = document.querySelectorAll('[data-edicion-choque]');
+    for (var i = 0; i < avisos.length; i++) {
+      if (formDelAviso(avisos[i]) === form) return avisos[i];
+    }
+    return null;
+  }
+  function formDelAviso(aviso) {
+    var cont = aviso && aviso.closest('[data-edicion]');
+    var testigo = cont && cont.querySelector('input[name="_edicion_testigo"]');
+    return (testigo && testigo.form) || (cont && cont.closest('form')) || null;
+  }
+  function limpiarSucio() {
+    Array.prototype.forEach.call(document.querySelectorAll('form'), function (f) {
+      delete f.dataset.cambiosSinGuardar;
+    });
+  }
+  var huboChoque = false;
+  function marcar() {
+    var avisos = document.querySelectorAll('[data-edicion-choque]');
+    if (!avisos.length) {
+      // El aviso se fue sin salir de la página: fue un «Guardar la mía» que sí
+      // pasó (su respuesta trae el testigo nuevo, sin aviso).
+      if (huboChoque) {
+        huboChoque = false;
+        if (window.__guardarEstado) window.__guardarEstado('guardado');
+      }
+      return;
+    }
+    huboChoque = true;
+    Array.prototype.forEach.call(avisos, function (a) {
+      var f = formDelAviso(a);
+      if (f) f.dataset.cambiosSinGuardar = '1';
+    });
+    if (window.__guardarEstado) window.__guardarEstado('choque');
+  }
+  function ir(aviso) {
+    limpiarSucio();   // es la persona quien decidió irse: que no le pregunte
+    window.location.assign(aviso.getAttribute('data-edicion-url') || window.location.href);
+  }
+  function copiar(texto) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(texto).then(function () { return true; },
+        function () { return copiarViejo(texto); });
+    }
+    return Promise.resolve(copiarViejo(texto));
+  }
+  function copiarViejo(texto) {
+    var ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  function forzar(aviso, boton) {
+    var form = formDelAviso(aviso);
+    var cont = aviso.closest('[data-edicion]');
+    var campo = cont && cont.querySelector('input[name="_edicion_forzar"]');
+    if (!form || !campo) return;
+    campo.value = '1';
+    boton.disabled = true;
+    delete form.dataset.cambiosSinGuardar;
+    if (window.htmx && form.getAttribute('hx-post')) {
+      window.htmx.trigger(form, 'submit');
+    } else if (form.requestSubmit) {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-edicion-accion]');
+    if (!b) return;
+    var aviso = b.closest('[data-edicion-choque]');
+    if (!aviso) return;
+    e.preventDefault();
+    var accion = b.getAttribute('data-edicion-accion');
+    if (accion === 'ver') { ir(aviso); return; }
+    if (accion === 'forzar') { forzar(aviso, b); return; }
+    if (accion === 'copiar') {
+      var ta = aviso.querySelector('[data-edicion-texto]');
+      b.disabled = true;
+      copiar(ta ? ta.value : '').then(function (ok) {
+        b.textContent = ok ? 'Copiado ✓ — recargando…' : 'No se pudo copiar';
+        if (ok) setTimeout(function () { ir(aviso); }, 450);
+        else b.disabled = false;
+      });
+    }
+  });
+
+  // El 409 del choque trae el aviso: se pinta (sigue contando como fallido, así
+  // que nadie lo confunde con un guardado).
+  document.body.addEventListener('htmx:beforeSwap', function (e) {
+    var x = e.detail && e.detail.xhr;
+    if (x && x.status === 409 && x.getResponseHeader && x.getResponseHeader(CABECERA)) {
+      e.detail.shouldSwap = true;
+    }
+  });
+  // Con el aviso en pantalla el autoguardado por `change` se detiene.
+  document.body.addEventListener('htmx:beforeRequest', function (e) {
+    var elt = e.detail && e.detail.elt;
+    if (!elt || elt.tagName !== 'FORM' || !avisoDe(elt)) return;
+    var forz = elt.querySelector('input[name="_edicion_forzar"]');
+    if (forz && forz.value === '1') return;
+    var cfg = e.detail.requestConfig || {};
+    var ev = cfg.triggeringEvent;
+    if (ev && ev.type === 'submit') return;   // «Guardar» explícito: que pregunte el servidor
+    e.preventDefault();
+  });
+  document.body.addEventListener('htmx:afterSettle', marcar);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', marcar);
+  } else {
+    marcar();
   }
 })();
 

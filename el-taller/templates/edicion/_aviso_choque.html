@@ -1,0 +1,41 @@
+{% comment %}
+El aviso de choque (S-Pendientes-Sep28 · Deploy 3). Decisión de Oscar:
+«Detener y preguntar» — no se guardó nada, se dice quién y cuándo cambió el
+registro, y se ofrecen tres salidas:
+
+- «Ver su versión»: recarga la pantalla con GET (lo que hay hoy en la base).
+- «Guardar la mía de todos modos»: reenvía lo que la persona tiene en pantalla
+  con `_edicion_forzar=1`, sabiendo que reemplaza lo del otro.
+- «Copiar lo mío y recargar»: copia al portapapeles lo que escribió, legible
+  por campo, y después recarga.
+
+Es un panel fijo abajo a la derecha para que se vea aunque la persona esté a
+media página (el autoguardado dispara desde cualquier campo). Los botones los
+cablea `ui.js` por `data-edicion-accion` — el panel llega igual en una página
+completa que por OOB del autoguardado.
+{% endcomment %}
+<div data-edicion-choque role="alert" aria-live="assertive" data-edicion-url="{{ url_ver }}"
+     class="fixed inset-x-3 bottom-3 z-40 rounded-2xl border-2 border-warning-400 bg-white p-4 shadow-theme-xl dark:border-warning-500/60 dark:bg-gray-900 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md">
+    <div class="flex items-start gap-3">
+        <span class="text-2xl leading-none" aria-hidden="true">⚠️</span>
+        <div class="min-w-0 flex-1">
+            <p class="text-base font-semibold text-gray-900 dark:text-gray-100">Alguien más cambió esto mientras lo editabas</p>
+            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                <strong>{{ choque.quien }}</strong> lo guardó{% if choque.cuando %} el {{ choque.cuando|hfmt:"d M H:i" }} (hace {{ choque.cuando|timesince }}){% endif %}.
+                Para no pisar su trabajo <strong>no guardamos tus cambios</strong>.
+            </p>
+            {% if choque.campos_visibles %}
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Lo que chocó: {% for c in choque.campos_visibles %}<span class="font-medium text-gray-700 dark:text-gray-200">{{ c }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}{% if choque.campos_de_mas %} y {{ choque.campos_de_mas }} más{% endif %}.
+            </p>
+            {% endif %}
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" data-edicion-accion="ver" class="btn-secundario text-sm">Ver su versión</button>
+                <button type="button" data-edicion-accion="copiar" class="btn-secundario text-sm">Copiar lo mío y recargar</button>
+                <button type="button" data-edicion-accion="forzar" class="rounded-lg bg-warning-500 px-3 py-2 text-sm font-medium text-white hover:bg-warning-600 disabled:opacity-50">Guardar la mía de todos modos</button>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">«Guardar la mía» reemplaza, en esos campos, lo que se guardó después de que abriste esta pantalla.{% if archivos %} Si adjuntaste archivos, vuelve a elegirlos antes de guardar.{% endif %}</p>
+            <textarea data-edicion-texto readonly tabindex="-1" aria-hidden="true" class="sr-only">{{ choque.texto }}</textarea>
+        </div>
+    </div>
+</div>

@@ -14,6 +14,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_http_methods
 
 from ajustes.models.tasa import TasaImpositiva
+from lib import edicion
 from lib.busqueda import q_texto
 from lib.permisos import (
     puede_cancelar_facturacion,
@@ -313,6 +314,46 @@ def nueva(request):
     return render(request, "facturacion/factura_form.html", ctx)
 
 
+def _initial_editar(fac) -> dict:
+    """Lo que el form de editar muestra sin salir del modelo: el monto (el
+    subtotal de hoy) y el modo de captura. Vive aparte porque El Testigo tiene
+    que armar la MISMA foto al pintar y al recibir — si no, «monto» siempre
+    parecería cambiado por alguien más."""
+    sub = fac.calcular_totales()["subtotal_items"]
+    tiene_desglose = fac.items.filter(servicio__isnull=False).exists() or fac.items.count() > 1
+    return {
+        "monto": sub if sub and sub > 0 else None,
+        "modo_lineas": "desglose" if tiene_desglose else "monto",
+    }
+
+
+def _edicion_factura(fac, form, formset, ids_actuales, *, request=None, con_items=True):
+    """Lo que vigila El Testigo en una factura (S-Pendientes-Sep28 · Deploy 3).
+
+    Las líneas y las tasas sólo cuentan cuando de verdad se van a guardar
+    (factura en borrador, captura por desglose): en modo «monto» el formset no
+    se usa y lo que manda es el campo `monto`, que ya está en el form."""
+    extras = {}
+    grupos = {}
+    if con_items:
+        posteado = edicion.SIN_DATO
+        if request is not None and request.method == "POST":
+            posteado = edicion.lista_canonica(sorted(set(_ids_tasas(request))))
+        extras["tasas"] = edicion.Extra(
+            etiqueta="Impuestos",
+            actual=edicion.lista_canonica(sorted(set(ids_actuales))),
+            posteado=posteado,
+            legible=lambda: ", ".join(
+                str(t) for t in TasaImpositiva.objects.filter(pk__in=_ids_tasas(request))) or "(ninguno)",
+        )
+        if formset is not None:
+            grupos["items"] = edicion.Grupo(
+                formset,
+                etiqueta_linea=lambda it: f"la línea «{(it.descripcion or 'sin nombre')[:40]}»",
+            )
+    return edicion.Edicion(fac, form, grupos=grupos, extras=extras)
+
+
 @login_required
 def editar(request, pk):
     if (r := _gate_ver(request)) is not None:
@@ -328,12 +369,18 @@ def editar(request, pk):
     ids_actuales = list(fac.impuestos.values_list("tasa_id", flat=True))
 
     if request.method == "POST":
-        form = FacturaForm(request.POST, instance=fac)
+        # El Testigo compara contra la MISMA foto que se pintó: el form lleva el
+        # `initial` de editar (monto + modo), que no sale del modelo.
+        form = FacturaForm(request.POST, instance=fac, initial=_initial_editar(fac))
         formset = ItemFormSet(request.POST, instance=fac) if editable_items else None
         ids = _ids_tasas(request)
         usar_desglose = editable_items and (request.POST.get("modo_lineas") or "monto").strip() == "desglose"
+        # Antes de validar (§14 Bug D). Las líneas sólo se vigilan si se guardan.
+        ed_fac = _edicion_factura(fac, form, formset if usar_desglose else None, ids_actuales,
+                                  request=request, con_items=editable_items)
+        choque = ed_fac.revisar(request)
         formset_ok = (formset is None) or (not usar_desglose) or formset.is_valid()
-        if form.is_valid() and formset_ok:
+        if choque is None and form.is_valid() and formset_ok:
             form.save()
             if editable_items:
                 monto = form.cleaned_data.get("monto")
@@ -347,26 +394,30 @@ def editar(request, pk):
                     _persistir_impuestos(fac, ids)
                     services.fijar_linea_concepto(fac, monto=monto)
             _procesar_cfdi(request, fac)
+            edicion.firmar(fac, request.user, edicion.ventana_posteada(request))
             services.emitir_actualizada(fac, request.user)
             messages.success(request, f"Factura {fac.codigo} actualizada.")
             return redirect("facturacion:detalle", pk=fac.pk)
         ctx = _ctx_form(form, formset, modo="editar", fac=fac, tasas_qs=tasas_qs,
                         tasas_seleccionadas=ids)
         ctx["editable_items"] = editable_items
-        return render(request, "facturacion/factura_form.html", ctx)
+        ctx["edicion"] = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_fac.testigo_para(request),
+            choque=choque, archivos=True)
+        return render(request, "facturacion/factura_form.html", ctx, status=409 if choque else 200)
 
     # Prefill: monto = subtotal actual; modo = "desglose" solo si ya hay un
     # desglose real (líneas con producto o más de una línea), si no "monto".
-    sub = fac.calcular_totales()["subtotal_items"]
-    tiene_desglose = fac.items.filter(servicio__isnull=False).exists() or fac.items.count() > 1
-    form = FacturaForm(instance=fac, initial={
-        "monto": sub if sub and sub > 0 else None,
-        "modo_lineas": "desglose" if tiene_desglose else "monto",
-    })
+    form = FacturaForm(instance=fac, initial=_initial_editar(fac))
     formset = ItemFormSet(instance=fac) if editable_items else None
     ctx = _ctx_form(form, formset, modo="editar", fac=fac, tasas_qs=tasas_qs,
                     tasas_seleccionadas=ids_actuales)
     ctx["editable_items"] = editable_items
+    # Se vigilan las líneas siempre que existan: el testigo sirve para los dos
+    # modos (al recibir sólo se comparan si se van a guardar).
+    ctx["edicion"] = edicion.contexto(
+        request, testigo=_edicion_factura(fac, form, formset, ids_actuales,
+                                          con_items=editable_items).testigo())
     return render(request, "facturacion/factura_form.html", ctx)
 
 

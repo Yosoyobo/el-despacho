@@ -13,6 +13,11 @@ ya con su pk (acordeon omitido = todas visibles, el usuario está agregando).{% 
 <div id="formset-productos" class="space-y-4" hx-swap-oob="true">{% include "proyectos/_formset_productos.html" with con_autosave=True %}</div>
 {% endif %}
 {% include "proyectos/_guardado_indicador.html" with estado=ok|yesno:"guardado,error" oob=True %}
+{% comment %}El Testigo (S-Pendientes-Sep28 · Deploy 3): tras un guardado propio
+vuelve refrescado —y sin aviso— para que el siguiente autoguardado de esta
+misma ventana no choque consigo mismo. Sólo viaja en el `ok`: si el guardado
+falló por validación, el de la página sigue siendo el bueno.{% endcomment %}
+{% if ok and edicion %}{% include "edicion/_testigo.html" with edicion=edicion oob=True %}{% endif %}
 {% comment %}V6 Bloque 5: error legible del autosave — antes el fallo era un
 "✕" mudo y el usuario creía que su cambio (p.ej. el toggle de incluir) quedó
 guardado.{% endcomment %}
