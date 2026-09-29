@@ -415,3 +415,16 @@ def test_geo_picker_fija_sin_autoguardar_en_las_dos_apps():
     cuerpo = taller.split("function fijar(lat, lng) {", 1)[1].split("\n    }\n", 1)[0]
     assert "dispatchEvent" not in cuerpo, "fijar no debe avisar al formulario"
     assert 'addEventListener("geo:fijar"' in taller
+
+
+def test_si_el_buscador_revienta_la_ficha_lo_avisa_al_abrir(navegador, monkeypatch):
+    """Sin ficha abierta que pregunte: el aviso queda para la siguiente vez que se abre."""
+    from lib import geocoding
+
+    def _revienta(texto):
+        raise RuntimeError("Nominatim devolvió basura")
+
+    monkeypatch.setattr(geocoding, "primer_resultado", _revienta)
+    assert _alta(navegador).status_code == 302
+    assert "No se pudo ubicar la dirección nueva" in navegador.get(
+        _ficha(_ultimo())).content.decode()
