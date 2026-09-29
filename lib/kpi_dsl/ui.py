@@ -259,7 +259,9 @@ def resumen_para_prompt() -> str:
     for clave, cfg in ENTIDADES.items():
         campos = []
         for c, spec in cfg["campos"].items():
-            campos.append(f"{c}:{spec['tipo']}")
+            opciones = _opciones(clave, c, spec) or []
+            valores = f"[{'|'.join(str(o['valor']) for o in opciones)}]" if opciones else ""
+            campos.append(f"{c}:{spec['tipo']}{valores}")
         mio = "sí" if (cfg["campo_autor"] or cfg["campo_asignado"]) else "no"
         lineas.append(
             f"- {clave} ({cfg['etiqueta']}; fecha de la ventana={cfg['campo_fecha']}; mio={mio})\n"
@@ -269,7 +271,7 @@ def resumen_para_prompt() -> str:
         )
     ops = "; ".join(f"{t}: {', '.join(o)}" for t, o in _ops_por_tipo().items())
     return (
-        "ENTIDADES (campo:tipo):\n" + "\n".join(lineas) + "\n\n"
+        "ENTIDADES (campo:tipo[valores posibles]):\n" + "\n".join(lineas) + "\n\n"
         f"OPERADORES POR TIPO: {ops}\n"
         f"AGREGACIONES: {', '.join(AGREGACIONES)} (sum/avg/min/max sólo sobre campos numero/dinero; "
         f"sobre una duración: {', '.join(AGREGACIONES_DURACION)})\n"
