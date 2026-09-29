@@ -2,14 +2,14 @@
 # Cada push a main que cambie imágenes regenera este archivo.
 services:
   la-gerencia:
-    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:70a9d0534341425e2da26c7dedbf2c06b6aeb271bc6daa9816bcc7f0f053a0d1
+    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:1e4a7d4721b5900de4dadfb31cbb5d5dc4ae8c9a5d9386099aecc45df7aae31c
     build: null
   el-taller:
-    image: ghcr.io/yosoyobo/el-despacho-taller@sha256:d091390e23ca6e527585b24ba8a16eef8778245c6b9830b778bc1ae0579f6d4b
+    image: ghcr.io/yosoyobo/el-despacho-taller@sha256:49bcb18f7347c1e6e90065fabc6a898e32bb2b890f3a5884984e4946c32390a7
     build: null
   la-recepcion:
-    image: ghcr.io/yosoyobo/el-despacho-recepcion@sha256:15eae9337e7b44e285a5ad79f433166ad0f65da69f4e4cb6a95601549ec8faad
+    image: ghcr.io/yosoyobo/el-despacho-recepcion@sha256:e22ffbf9dfceb71b23f880724091411e7a499e63f08da5a6046a321d49003105
     build: null
   portavoz-worker:
-    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:70a9d0534341425e2da26c7dedbf2c06b6aeb271bc6daa9816bcc7f0f053a0d1
+    image: ghcr.io/yosoyobo/el-despacho-gerencia@sha256:1e4a7d4721b5900de4dadfb31cbb5d5dc4ae8c9a5d9386099aecc45df7aae31c
     build: null
