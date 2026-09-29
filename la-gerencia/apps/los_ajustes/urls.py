@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_imprenta, views_kpis
+from . import views, views_imprenta, views_kpis, views_kpis_constructor
 
 urlpatterns = [
     path("", views.panel, name="ajustes-panel"),
@@ -52,6 +52,14 @@ urlpatterns = [
     path("kpis/metas/", views_kpis.metas, name="ajustes-kpis-metas"),
     path("kpis/metas/crear", views_kpis.meta_crear, name="ajustes-kpis-meta-crear"),
     path("kpis/metas/<int:pk>/guardar", views_kpis.meta_guardar, name="ajustes-kpis-meta-guardar"),
+    path("kpis/constructor/", views_kpis_constructor.lista, name="ajustes-kpis-constructor"),
+    path("kpis/constructor/nuevo/", views_kpis_constructor.nuevo, name="ajustes-kpis-constructor-nuevo"),
+    path("kpis/constructor/vista-previa", views_kpis_constructor.vista_previa, name="ajustes-kpis-constructor-preview"),
+    path("kpis/constructor/chalan", views_kpis_constructor.con_chalan, name="ajustes-kpis-constructor-chalan"),
+    path("kpis/constructor/guardar", views_kpis_constructor.guardar, name="ajustes-kpis-constructor-guardar"),
+    path("kpis/constructor/<int:pk>/", views_kpis_constructor.editar, name="ajustes-kpis-constructor-editar"),
+    path("kpis/constructor/<int:pk>/guardar", views_kpis_constructor.guardar, name="ajustes-kpis-constructor-guardar-uno"),
+    path("kpis/constructor/<int:pk>/estado", views_kpis_constructor.cambiar_estado, name="ajustes-kpis-constructor-estado"),
     # S-Chalanes-UX #4: recordatorios de tareas por vencer (config global).
     path("recordatorios/", views.recordatorios_panel, name="ajustes-recordatorios"),
     # S3 resto: La Cobranza — recordatorios de pago al cliente.
