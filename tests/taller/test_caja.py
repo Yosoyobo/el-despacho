@@ -376,6 +376,13 @@ class TestPaginaPublica:
         assert kw["json"]["external_reference"] == link.token
         assert kw["json"]["items"][0]["unit_price"] == 1000.0
 
+    def test_una_url_fuera_de_la_pasarela_no_se_sigue(self, client, llaves, red, monkeypatch, cliente, jefe):
+        from lib import pasarelas
+        link = self._link(llaves, cliente, jefe)
+        monkeypatch.setattr(pasarelas, "_pedir", lambda *a, **k: (200, {"id": "cs_x", "url": "https://evil.example/stripe.com"}))
+        r = client.post(link.ruta_publica("stripe"))
+        assert r.status_code == 502 and "Location" not in r
+
     def test_pasarela_no_configurada_no_abre(self, client, llaves, red, cliente, jefe):
         link = self._link(llaves, cliente, jefe, mp=False)
         assert client.post(link.ruta_publica("mercadopago")).status_code == 400
