@@ -13575,3 +13575,17 @@ aprobación de KPIs de equipo en Los Chalanes. Candado que compara los imports d
 Gerencia contra su Dockerfile/INSTALLED_APPS, prueba de punta a punta del formulario,
 y tres campos inexistentes del DSL de KPIs custom corregidos (con su candado).
 Siguiente: ronda de preguntas sobre KPIs nuevos configurables desde La Gerencia.
+
+## 2026-09-29 — S-Portal-Llave-Documentos (VERSION 2026.09.14)
+
+Oscar: «los links expiran una vez que entras; que no expiren, que siempre pida el
+correo y que picar el botón te lleve» y «que el cliente pueda subir documentación».
+La llave del portal ya no caduca ni se gasta: pide el correo al que se mandó (5
+intentos por enlace), se guarda cifrada para reenviar la misma, y la ficha suma
+«Copiar enlace» y «Cambiar enlace»; la migración revive la última llave de cada
+quien. Documentos: sección nueva del portal + «Subir comprobante» en la factura,
+recuadro en la ficha para revisar/rechazar/subir, lista de lo que se pide y días de
+vigencia de la CSF en La Gerencia, El Chalán lee la CSF y propone RFC/razón
+social/régimen/CP (candado contra el texto del PDF) y revisa la vigencia. Permiso
+`recepcion.documentos`. Decisiones: revivir enlaces viejos, el comprobante sólo avisa,
+checklist configurable. Worktree propio (había otra sesión en el árbol principal).

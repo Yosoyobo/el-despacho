@@ -136,7 +136,10 @@ HISTORIAL_EQUIPO = "ver_historial"
 # cliente, quién lo invita y quién le quita el acceso. «Como hoy»: lo trae quien
 # edita la cartera (super_admin y dueño por default; la migración
 # `portal/0002` lo siembra por persona a quien hoy tiene `cartera.editar`).
-TODO_RECEPCION = ["ver", "invitar", "revocar"]
+#   documentos → ver, subir y revisar la papelería que entregan los clientes
+#                (comprobantes, CSF, actas). Lo siembra `portal/0006` a quien
+#                ya tiene `recepcion.ver`.
+TODO_RECEPCION = ["ver", "invitar", "revocar", "documentos"]
 # La Caja (links de pago con Stripe y MercadoPago, 2026-09-29). «Como hoy»: la
 # recibe quien ya ve el dinero (`tesoreria.ver`) o cobra facturas
 # (`facturacion.cobrar`) — la migración `caja/0002_seed_permisos_caja` la siembra.

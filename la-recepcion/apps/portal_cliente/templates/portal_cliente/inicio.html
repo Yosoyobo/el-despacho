@@ -22,6 +22,18 @@
     </a>
 </div>
 
+{% if documentos_faltan %}
+<section class="tarjeta mt-6 border-warning-200 dark:border-warning-500/30">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Nos falta papelería</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{% for p in documentos_faltan %}{{ p.nombre }}{% if p.estado == "rechazado" %} (volver a subir){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+        </div>
+        <a href="{% url 'recepcion-documentos' %}" class="btn-primario">Subir documentos</a>
+    </div>
+</section>
+{% endif %}
+
 {% if resumen.por_responder %}
 <section class="mt-8">
     <h2 class="text-theme-xl font-semibold text-gray-900 dark:text-white">Esperan tu respuesta</h2>

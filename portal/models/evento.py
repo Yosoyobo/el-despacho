@@ -14,12 +14,16 @@ from django.db import models
 TIPOS_EVENTO = (
     ("invitado", "Invitado por el despacho"),
     ("revocado", "Acceso revocado"),
-    ("enlace", "Pidió un enlace de entrada"),
+    ("enlace", "Se le mandó su enlace"),
+    ("copiado", "El despacho copió su enlace"),
+    ("cambiado", "El despacho le cambió el enlace"),
+    ("correo_mal", "Abrió su enlace con otro correo"),
     ("entrada", "Entró"),
     ("salida", "Salió"),
     ("descarga", "Descargó un documento"),
     ("aprobacion", "Aprobó una cotización"),
     ("rechazo", "Rechazó una cotización"),
+    ("documento", "Subió un documento"),
 )
 
 

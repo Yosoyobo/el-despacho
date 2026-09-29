@@ -5,7 +5,9 @@
     <div class="tarjeta p-6 sm:p-8">
         <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">{{ titulo|default:"Este enlace no sirve" }}</h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ mensaje }}</p>
-        <a href="{% url 'recepcion-entrar' %}{% if email %}?email={{ email|urlencode }}{% endif %}" class="btn-primario mt-6 w-full">Pedir un enlace nuevo</a>
+        {% comment %}Sin el correo prellenado: quien tiene el enlace en la mano no debe
+enterarse de a qué correo se mandó (es lo que pide la llave).{% endcomment %}
+        <a href="{% url 'recepcion-entrar' %}" class="btn-primario mt-6 w-full">Pedir mi enlace</a>
     </div>
 </div>
 {% endblock %}

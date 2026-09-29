@@ -196,6 +196,15 @@ def accesos_portal(cliente: str) -> dict[str, Any]:
     return _h_accesos_portal({"cliente": cliente}, usuario)
 
 
+def documentos_del_cliente(cliente: str = "") -> dict[str, Any]:
+    """La papelería que entregan los clientes por el portal."""
+    from capacidades.lecturas import _h_documentos_del_cliente
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "recepcion", "documentos")
+    return _h_documentos_del_cliente({"cliente": cliente}, usuario)
+
+
 def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
     """La Caja: pagos que llegaron por Stripe/MercadoPago (registrados, por
     revisar, pendientes) y lo cobrado en línea este mes."""

@@ -25,6 +25,7 @@ ESTACIONES: list[tuple[str, str, str, bool, str, str]] = [
     ("correo_redaccion",   "Redactar correo (El Cartero)", "Redacta/mejora el HTML de las plantillas de correo respetando las variables.", False, "anthropic", "claude-haiku-4-5"),
     ("redaccion_asistida", "Redactar texto (widget 🤖)",   "El botón 🤖 redacta comentarios, notas y respuestas; resuelve @#$ a datos reales.", False, "anthropic", "claude-haiku-4-5"),
     ("carga_contable",     "Revisar carga contable",       "Clasifica los movimientos de los estados de cuenta de la carga contable y sugiere cliente, factura, proveedor y centro. Sólo propone: una persona aplica.", False, "anthropic", "claude-haiku-4-5"),
+    ("documento_cliente",  "Leer documento del cliente",   "Lee la Constancia de Situación Fiscal que sube un cliente en el portal: propone RFC, razón social, régimen y CP para su ficha y revisa que sea reciente. Sólo propone: una persona aplica.", True, "anthropic", "claude-haiku-4-5"),
     ("smoke",              "Smoke test",                   "Prueba mínima desde Los Ajustes — un saludo.", False, "anthropic", "claude-haiku-4-5"),
 ]
 

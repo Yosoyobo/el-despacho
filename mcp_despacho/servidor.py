@@ -106,6 +106,14 @@ def accesos_portal(cliente: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def documentos_del_cliente(cliente: str = "") -> dict[str, Any]:
+    """La papelería que entregan los clientes por el portal (comprobantes de pago,
+    constancia fiscal, acta…): qué falta, qué subieron, su estado y lo que El
+    Chalán leyó de la constancia. Sin cliente, lo que está por revisar en todos."""
+    return herramientas.documentos_del_cliente(cliente)
+
+
+@mcp.tool()
 def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
     """La Caja: pagos que llegaron por Stripe o MercadoPago —registrados solos,
     por revisar (con el motivo) o por acreditar— y lo cobrado en línea este mes.

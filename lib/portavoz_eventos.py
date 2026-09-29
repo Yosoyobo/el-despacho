@@ -86,6 +86,10 @@ EventoTipo = Literal[
     "portal.acceso_revocado",
     "portal.cotizacion_aprobada",
     "portal.cotizacion_rechazada",
+    # La llave del cliente se cambió, y la papelería que sube (2026-09-29).
+    "portal.enlace_cambiado",
+    "portal.documento_subido",
+    "portal.documento_revisado",
     "pago.recibido",
     "pago.recordatorio",
     # La Caja (links de pago con Stripe/MercadoPago).

@@ -4,8 +4,10 @@
 
 {% comment %}
 La Recepción (el portal de clientes). Por decisión de Oscar los clientes entran
-SÓLO con el enlace que les llega por correo; «Entrar con Google» se prende aquí,
-y antes hay que registrar la dirección de regreso en Google Cloud Console.
+con su enlace personal (no caduca; pide el correo al que se mandó); «Entrar con
+Google» se prende aquí, y antes hay que registrar la dirección de regreso en
+Google Cloud Console. Abajo, la papelería que se le pide a todo cliente y cuántos
+días puede tener su constancia fiscal.
 {% endcomment %}
 
 {% block contenido %}
@@ -17,9 +19,10 @@ y antes hay que registrar la dirección de regreso en Google Cloud Console.
     <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-2 text-theme-xl font-medium text-gray-900 dark:text-white">Cómo entran</h2>
         <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
-            Siempre con un enlace de un solo uso que les llega a su correo, sin
-            contraseña. Sólo entra quien alguien del despacho invitó desde la
-            ficha del cliente.
+            Con su enlace personal, que les llega por correo y no caduca. Al
+            abrirlo, el portal les pide el correo al que se mandó; sin contraseña.
+            Sólo entra quien alguien del despacho invitó desde la ficha del
+            cliente, y desde ahí mismo se le puede cambiar el enlace o quitar el acceso.
         </p>
         <label class="flex items-start gap-3">
             <input type="checkbox" name="google_activo" value="1" {% if cfg.google_activo %}checked{% endif %}>
@@ -40,6 +43,53 @@ y antes hay que registrar la dirección de regreso en Google Cloud Console.
                 {% endif %}
             </span>
         </label>
+    </section>
+
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-2 text-theme-xl font-medium text-gray-900 dark:text-white">Documentos</h2>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+            El cliente sube su papelería desde el portal (comprobantes de pago,
+            constancia fiscal, acta constitutiva…) y el equipo la revisa en la
+            ficha del cliente, en El Taller.
+            {% if docs_por_revisar %}<strong class="text-gray-900 dark:text-white">Hoy hay {{ docs_por_revisar }} por revisar.</strong>{% endif %}
+        </p>
+        <label class="flex items-start gap-3">
+            <input type="checkbox" name="documentos_activo" value="1" {% if cfg.documentos_activo %}checked{% endif %}>
+            <span class="text-sm text-gray-900 dark:text-gray-100">Enseñar la sección «Documentos» en el portal</span>
+        </label>
+
+        <fieldset class="mt-5">
+            <legend class="text-sm font-medium text-gray-900 dark:text-gray-100">Lo que se le pide a todo cliente</legend>
+            <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">El portal le dice al cliente qué le falta, y la ficha se lo dice al equipo.</p>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {% for valor, nombre in tipos_pedibles %}
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" name="requeridos" value="{{ valor }}" {% if valor in cfg.documentos_requeridos %}checked{% endif %}>
+                    {{ nombre }}
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <div class="mt-5">
+            <label for="csf_vigencia_dias" class="block text-sm font-medium text-gray-900 dark:text-gray-100">Antigüedad máxima de la constancia fiscal</label>
+            <div class="mt-1 flex items-center gap-2">
+                <input id="csf_vigencia_dias" name="csf_vigencia_dias" type="number" min="1" max="730" required
+                       value="{{ cfg.csf_vigencia_dias }}" class="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <span class="text-sm text-gray-600 dark:text-gray-300">días</span>
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                El Chalán lee la fecha de emisión de la constancia que sube el
+                cliente y le avisa (a él y al equipo) si es más vieja. También
+                propone su RFC, razón social, régimen y código postal para la
+                ficha; nada cambia hasta que alguien lo aplica.
+            </p>
+            {% if chalan_lee_csf %}
+            <p class="mt-2 text-xs text-success-700 dark:text-success-400">✓ El Chalán está listo para leer constancias.</p>
+            {% else %}
+            <p class="mt-2 text-xs text-warning-700 dark:text-warning-400">El Chalán no tiene llaves para leer constancias (estación «Leer documento del cliente» en Chalanes): se guardan igual, pero las revisa una persona.</p>
+            {% endif %}
+        </div>
     </section>
     <div class="flex flex-wrap items-center gap-3">
         <button type="submit" class="btn-primario">Guardar</button>

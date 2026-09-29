@@ -1,0 +1,88 @@
+{% extends "portal_cliente/base.html" %}
+{% load forms_helpers portal_ui %}
+{% block title %}Documentos{% endblock %}
+{% block contenido %}
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Documentos</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Aquí nos entregas tu papelería: comprobantes de pago, constancia fiscal, acta constitutiva y lo que te pidamos. Sólo la ve el equipo de Learning Center.</p>
+
+<div class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-5">
+    <section class="tarjeta lg:col-span-3" id="subir">
+        <h2 class="font-semibold text-gray-900 dark:text-white">Subir un documento</h2>
+        <form method="post" action="{% url 'recepcion-documento-subir' %}" enctype="multipart/form-data" class="mt-4 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label for="tipo" class="etiqueta">¿Qué documento es?</label>
+                <select id="tipo" name="tipo" required class="campo">
+                    <option value="">Elige…</option>
+                    {% for valor, nombre in tipos %}<option value="{{ valor }}"{% if valor == tipo_elegido %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            {% if facturas %}
+            <div id="campo-factura">
+                <label for="factura" class="etiqueta">¿De qué factura es el pago? <span class="font-normal text-gray-500 dark:text-gray-400">(si es un comprobante)</span></label>
+                <select id="factura" name="factura" class="campo">
+                    <option value="">No sé / varias</option>
+                    {% for f in facturas %}<option value="{{ f.pk }}"{% if f.pk|stringformat:"s" == factura_elegida %} selected{% endif %}>Factura {{ f.folio }} · saldo {{ f.saldo|dinero_exacto }} {{ f.moneda }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div>
+                <label for="archivo" class="etiqueta">Archivo</label>
+                <input id="archivo" name="archivo" type="file" required accept="{{ acepta }}" class="campo file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700 dark:file:bg-brand-500/15 dark:file:text-brand-300">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">PDF o foto (JPG, PNG, HEIC), hasta 25 MB. Desde el celular puedes tomarle foto al documento.</p>
+            </div>
+            <div>
+                <label for="nota" class="etiqueta">Nota <span class="font-normal text-gray-500 dark:text-gray-400">(opcional)</span></label>
+                <textarea id="nota" name="nota" rows="2" maxlength="2000" class="campo" placeholder="Por ejemplo: transferencia del 28 de septiembre por $5,000"></textarea>
+            </div>
+            <button type="submit" class="btn-primario w-full sm:w-auto">Subir documento</button>
+        </form>
+    </section>
+
+    <aside class="space-y-5 lg:col-span-2">
+        {% if pendientes %}
+        <section class="tarjeta">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Lo que te pedimos</h2>
+            <ul class="mt-3 space-y-3">
+                {% for p in pendientes %}
+                <li class="flex items-start justify-between gap-3">
+                    <span class="min-w-0 text-sm text-gray-700 dark:text-gray-200">{{ p.nombre }}
+                        {% if p.estado == "rechazado" and p.doc.motivo_rechazo %}<span class="mt-0.5 block text-xs text-error-600 dark:text-error-400">{{ p.doc.motivo_rechazo }}</span>{% endif %}
+                    </span>
+                    {% if p.estado == "listo" %}<span class="chip {{ 'verde'|tono }} shrink-0">Listo</span>
+                    {% elif p.estado == "revision" %}<span class="chip {{ 'azul'|tono }} shrink-0">En revisión</span>
+                    {% elif p.estado == "rechazado" %}<a href="?tipo={{ p.tipo }}#subir" class="chip {{ 'rojo'|tono }} shrink-0">Volver a subir</a>
+                    {% else %}<a href="?tipo={{ p.tipo }}#subir" class="chip {{ 'ambar'|tono }} shrink-0">Falta</a>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+
+<section class="mt-8">
+    <h2 class="text-theme-xl font-semibold text-gray-900 dark:text-white">Lo que nos has entregado</h2>
+    {% if filas %}
+    <ul class="mt-3 space-y-3">
+        {% for fila in filas %}{% with d=fila.d %}
+        <li class="tarjeta">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="font-medium text-gray-900 dark:text-white">{{ d.tipo_nombre }}{% if d.factura %} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">· factura {{ d.factura.folio|default:d.factura.codigo }}</span>{% endif %}</p>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ d.nombre_archivo }} · {{ d.creado_en|date:"d M Y" }}{% if d.quien_subio %} · {{ d.quien_subio }}{% endif %}</p>
+                </div>
+                <span class="chip {{ fila.tono|tono }} shrink-0">{{ fila.estado }}</span>
+            </div>
+            {% if d.estado == "rechazado" and d.motivo_rechazo %}<p class="mt-2 text-sm text-error-700 dark:text-error-300">{{ d.motivo_rechazo }}</p>{% endif %}
+            {% if fila.aviso %}<p class="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ fila.aviso }}</p>{% endif %}
+            {% if d.nota %}<p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ d.nota|linebreaksbr }}</p>{% endif %}
+            <a href="{% url 'recepcion-documento-archivo' d.pk %}" class="enlace mt-2 inline-block text-sm">Descargar</a>
+        </li>
+        {% endwith %}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="tarjeta mt-3 text-sm text-gray-600 dark:text-gray-300">Todavía no nos has entregado ningún documento.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -52,12 +52,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Compartidas: el usuario del equipo (al que apuntan los `creado_por`), las
     # credenciales cifradas (El Cartero, Drive, Google) y El Interfón (el aviso
-    # al equipo cuando un cliente responde una cotización). Referencias,
-    # Chalanes, Campañas y Papeleo NO: el portal no los toca y el grafo de
-    # llaves cierra sin ellos (medido con `manage.py check`).
+    # al equipo cuando un cliente responde una cotización) y Chalanes (El
+    # Chalán lee la Constancia de Situación Fiscal que sube el cliente; sólo el
+    # modelo del cuadro, sin pantallas). Referencias, Campañas y Papeleo NO: el
+    # portal no los toca y el grafo de llaves cierra sin ellos.
     "cuentas.apps.CuentasConfig",
     "ajustes.apps.AjustesConfig",
     "interfono.apps.InterfonoConfig",
+    "chalanes.apps.ChalanesConfig",
     # Los accesos de los clientes.
     "portal.apps.PortalConfig",
     # Modelos de El Taller. Mismo grafo que La Gerencia: tesoreria.Ingreso →

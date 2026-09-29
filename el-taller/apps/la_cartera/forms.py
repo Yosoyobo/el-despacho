@@ -61,16 +61,27 @@ class ClienteRazonSocialForm(forms.ModelForm):
 
     class Meta:
         model = ClienteRazonSocial
-        fields = ["razon_social", "rfc", "principal"]
+        fields = ["razon_social", "rfc", "regimen_fiscal", "codigo_postal", "principal"]
         labels = {
             "razon_social": "Razón social",
             "rfc": "RFC",
+            "regimen_fiscal": "Régimen fiscal",
+            "codigo_postal": "CP fiscal",
             "principal": "Principal",
         }
         widgets = {
             "razon_social": forms.TextInput(attrs={"placeholder": "NOMBRE LEGAL DEL CFDI"}),
             "rfc": forms.TextInput(attrs={"placeholder": "XAXX010101000", "maxlength": 13}),
+            "regimen_fiscal": forms.TextInput(attrs={"placeholder": "601 · General de Ley Personas Morales"}),
+            "codigo_postal": forms.TextInput(attrs={"placeholder": "06600", "maxlength": 5,
+                                                    "inputmode": "numeric"}),
         }
+
+    def clean_codigo_postal(self):
+        cp = (self.cleaned_data.get("codigo_postal") or "").strip()
+        if cp and not (len(cp) == 5 and cp.isdigit()):
+            raise forms.ValidationError("El código postal son 5 dígitos.")
+        return cp
 
     def clean_razon_social(self):
         # Como aparece en el CFDI: mayúsculas.

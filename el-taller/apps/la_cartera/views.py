@@ -249,10 +249,14 @@ def detalle(request, pk):
 
     # La Recepción: quién de este cliente puede entrar al portal. Vacío (y el
     # recuadro no se pinta) sin permiso `recepcion.ver` / `recepcion.invitar`.
+    from portal.views_taller import contexto_documentos
     from portal.views_taller import contexto_ficha as contexto_portal
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
         **contexto_portal(request.user, cliente),
+        # La papelería que entrega el cliente (portal o equipo). Vacío sin
+        # permiso `recepcion.documentos`.
+        **contexto_documentos(request.user, cliente),
         "puede_editar": puede_editar,
         "puede_crear_proyecto": puede_crear_proyecto(request.user),
         **contexto_ficha(request.user, cliente),
