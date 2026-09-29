@@ -619,18 +619,9 @@ ROLES_PROHIBIDOS = {"dueno", "contador", "disenador"}
 # qué, y CUÁNTOS literales tiene: un literal más (o un archivo nuevo) hace fallar
 # la prueba; uno menos también — hay que bajar la cuenta o sacarlo de aquí.
 DEUDA = {
-    # La Sala de Juntas: el catálogo de 28 KPIs se filtra por `roles_visible`
-    # (tuplas de rol). Pasarlo a permiso es decidir KPI por KPI qué lo abre.
-    "el-taller/apps/taller_home/kpis.py": (8, "catálogo de KPIs por roles_visible"),
-    "el-taller/apps/taller_home/sugerencias.py": (2, "reglas de sugerencias de KPIs"),
-    # Tarjetas hero del Inicio: acotan por rol PRIMARIO `disenador`.
-    "el-taller/apps/taller_home/views.py": (4, "hero del Inicio y KPIs compactos (rol primario)"),
-    # A quién le llegan avisos (no es una puerta): usuarios_con_rol(...).
-    "el-taller/apps/taller_home/push_handlers.py": (3, "destinatarios de push"),
-    "el-taller/apps/tesoreria/push_handlers.py": (2, "destinatarios de push"),
-    "el-taller/apps/el_dictado/scouts.py": (3, "destinatarios de los scouts"),
-    "el-taller/apps/el_pizarron/management/commands/recordar_tareas_por_vencer.py": (1, "destinatarios"),
-    "el-taller/apps/perfil_notificaciones/views.py": (5, "categorías de push por rol"),
+    # (Los KPIs de La Sala de Juntas, las sugerencias y el hero del Inicio, las
+    # categorías de push y los destinatarios de avisos salieron de aquí en
+    # S-Fin-KPIs: deciden por permiso — `tests/test_kpis_por_permiso.py`.)
     # La Gerencia: cuántos «admins» hay (conteo) y etiquetas de rol (texto).
     "la-gerencia/apps/el_directorio/views.py": (4, "conteo de admins en el tablero"),
     "la-gerencia/apps/gerencia_home/views.py": (3, "etiquetas legibles de los roles"),
@@ -657,7 +648,7 @@ DEUDA_PUERTAS_PRIMARIO = {
 
 CARPETAS_VISTAS = ("el-taller/apps", "la-gerencia/apps", "la-recepcion/apps",
                    "capacidades", "mcp_despacho", "campanas", "papeleo", "referencias",
-                   "auth_google", "buzon", "interfono", "chalanes")
+                   "auth_google", "buzon", "interfono", "chalanes", "cuentas/management")
 
 
 def _literales_de_rol(ruta: Path) -> list[tuple[int, str]]:
