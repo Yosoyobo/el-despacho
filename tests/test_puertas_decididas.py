@@ -140,3 +140,79 @@ class TestSesionDeLaGerencia:
         permisos.invalidar_cache_permisos()
         resp = client.get("/")
         assert resp.status_code == 302 and resp["Location"] == "http://testserver-taller/"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 2. Google SSO a La Gerencia: `gerencia.acceder`
+# ═════════════════════════════════════════════════════════════════════════════
+
+GERENCIA = "gerencia.learningcenter.mx"
+TALLER = "taller.learningcenter.mx"
+
+
+def v_sso_gerencia(u):
+    """Antes: sólo el rol PRIMARIO super_admin/dueño entraba por Google."""
+    return getattr(u, "rol", None) in ("super_admin", "dueno")
+
+
+def n_sso(host):
+    from auth_google.views import _host_permite
+
+    return lambda u: _host_permite(host, u)
+
+
+def _configurar_google():
+    from ajustes.models.credencial import Credencial
+
+    Credencial.guardar("google_oauth_client_id", "abc.apps.googleusercontent.com")
+    Credencial.guardar("google_oauth_client_secret", "GOCSPX-prueba")
+
+
+def _callback_google(client, email, host):
+    from unittest.mock import patch
+
+    from lib.google_oauth import PerfilGoogle
+
+    client.get("/auth/google/iniciar", HTTP_HOST=host)
+    state = client.session.get("_google_oauth_state")
+    perfil = PerfilGoogle(sub=f"g-{email}", email=email, email_verified=True, nombre="X",
+                          apellido="", foto_url=None, locale=None)
+    with patch("auth_google.views.intercambiar_codigo_por_perfil", return_value=perfil):
+        return client.get("/auth/google/callback", {"code": "c", "state": state}, HTTP_HOST=host)
+
+
+class TestGoogleALaGerencia:
+    def test_quien_entra_antes_y_despues(self, foto):
+        """Alex (4) es Director sobre primario `miembro`: entraba con contraseña
+        pero no con Google. Ahora entra por los dos (consecuencia aceptada)."""
+        assert _tabla(foto, v_sso_gerencia, n_sso(GERENCIA)) == {
+            1: (True, True),
+            3: (True, True),
+            4: (False, True),    # ← el cambio decidido
+            5: (False, False),   # sin gerencia.acceder, igual que con contraseña
+        }
+
+    def test_el_taller_no_cambia(self, foto):
+        assert _tabla(foto, lambda u: True, n_sso(TALLER)) == {
+            uid: (True, True) for uid in foto.u
+        }
+
+    def test_google_y_contrasena_deciden_igual(self, foto):
+        """Las dos puertas de La Gerencia dicen lo mismo para cada persona."""
+        from apps.auth_gerencia.views import _puede_entrar_gerencia
+
+        for uid, u in foto.u.items():
+            assert n_sso(GERENCIA)(u) == _puede_entrar_gerencia(u), uid
+
+    def test_alex_entra_con_google(self, client, foto):
+        _configurar_google()
+        resp = _callback_google(client, "foto4@ejemplo.com", GERENCIA)
+        assert resp.status_code == 302 and resp["Location"] == "/"
+        assert client.session.get("_auth_user_id") == "4"
+
+    def test_larry_no_entra_con_google(self, client, foto):
+        _configurar_google()
+        resp = _callback_google(client, "foto5@ejemplo.com", GERENCIA)
+        assert resp.status_code == 403
+        assert "gerencia · acceder" in resp.content.decode()
+        assert "_auth_user_id" not in client.session
