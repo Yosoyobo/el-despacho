@@ -13536,3 +13536,10 @@ centros y desempata cobros; sólo propone, se valida contra el catálogo y se
 pregunta una vez. Permiso nuevo `contaduria.cargar`. La fecha de
 arranque la decide Oscar en la plantilla (viene con el 1 de enero). Trabajo hecho en
 worktree propio porque había otra sesión en el árbol principal.
+
+## 2026-09-29 — S-Recepcion-Caja (VERSION 2026.09.09)
+
+Portal de clientes (La Recepción) encendido sin invitar a nadie: enlace por correo,
+proyectos, aprobar/rechazar cotizaciones, facturas y pagos, aislamiento por cliente.
+La Caja (Stripe + MercadoPago) terminada y apagada/invisible sin llaves — Oscar: es
+«nice to have». Arreglo: cotizaciones rechazadas/anuladas se leían como enviadas.
