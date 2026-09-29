@@ -17,7 +17,7 @@ podría abrirlo; si no, su genérico («un proyecto»).
         <label class="sr-only" for="historial-fecha">Día</label>
         <input id="historial-fecha" type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" min="{{ minimo|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}"
                onchange="this.form.submit()"
-               class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:text-white/90">
+               class="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-brand-800">
         {% if dia_siguiente %}
         <a href="?fecha={{ dia_siguiente|date:'Y-m-d' }}" title="Día siguiente con actividad" class="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"><span class="mr-1 hidden sm:inline">{{ dia_siguiente|date:"j M" }}</span> →</a>
         {% endif %}
@@ -54,19 +54,22 @@ podría abrirlo; si no, su genérico («un proyecto»).
 <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-200 px-5 py-3 dark:border-gray-800">
         <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{% if es_hoy %}Hoy{% else %}{{ fecha|date:"l j \d\e F \d\e Y"|capfirst }}{% endif %}</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Lo más reciente arriba · se guarda {{ retencion_dias }} días</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Lo más reciente arriba · se guarda un año</p>
     </header>
     {% if dia.items %}
     <ol class="divide-y divide-gray-100 dark:divide-gray-800">
         {% for i in dia.items %}
         <li class="flex flex-col gap-1 px-5 py-2.5 sm:flex-row sm:items-center sm:gap-4">
-            <span class="w-16 shrink-0 font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ i.hora }}</span>
-            <span class="w-24 shrink-0">
-                {% if i.tipo == "accion" %}<span class="badge badge-sm badge-success">Guardó</span>
-                {% elif i.tipo == "entrada" %}<span class="badge badge-sm badge-brand">Entró</span>
-                {% elif i.tipo == "salida" %}<span class="badge badge-sm badge-gray">Salió</span>
-                {% else %}<span class="badge badge-sm badge-gray">Abrió</span>{% endif %}
-            </span>
+            {% comment %}En el teléfono la hora y la etiqueta van en un solo renglón; desde sm el envoltorio desaparece (contents) y son dos columnas.{% endcomment %}
+            <div class="flex items-center gap-3 sm:contents">
+                <span class="w-16 shrink-0 font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ i.hora }}</span>
+                <span class="shrink-0 sm:w-24">
+                    {% if i.tipo == "accion" %}<span class="badge badge-sm badge-success">Guardó</span>
+                    {% elif i.tipo == "entrada" %}<span class="badge badge-sm badge-brand">Entró</span>
+                    {% elif i.tipo == "salida" %}<span class="badge badge-sm badge-gray">Salió</span>
+                    {% else %}<span class="badge badge-sm badge-gray">Abrió</span>{% endif %}
+                </span>
+            </div>
             <div class="min-w-0 flex-1">
                 <p class="break-words text-sm text-gray-800 dark:text-gray-100">
                     {% if i.url %}<a href="{{ i.url }}" class="hover:text-brand-600 hover:underline dark:hover:text-brand-400">{{ i.texto }}</a>{% else %}{{ i.texto }}{% endif %}
@@ -93,7 +96,7 @@ podría abrirlo; si no, su genérico («un proyecto»).
 <p class="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
     <span>Días recientes con actividad:</span>
     {% for d in dias_recientes %}
-    <a href="?fecha={{ d|date:'Y-m-d' }}" class="rounded-full border px-2.5 py-1 {% if d == fecha %}border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5{% endif %}">{{ d|date:"D j M" }}</a>
+    <a href="?fecha={{ d|date:'Y-m-d' }}" class="inline-flex h-9 items-center rounded-full border px-3 {% if d == fecha %}border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300{% else %}border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5{% endif %}">{{ d|date:"D j M" }}</a>
     {% endfor %}
 </p>
 {% endif %}

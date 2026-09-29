@@ -587,6 +587,10 @@ def test_las_fichas_no_hacen_una_consulta_por_producto(client, admin_user, categ
 
     client.force_login(admin_user)
     sembrar(0, 12)
+    # Calentamiento: la PRIMERA visita a una pantalla la anota en el historial de
+    # actividad (lib.historial_actividad, 2026-09-29) y la segunda dentro del minuto
+    # no. Sin esto, las dos mediciones comparan estados distintos.
+    client.get("/catalogo/")
     with CaptureQueriesContext(connection) as con_12:
         assert client.get("/catalogo/").status_code == 200
     sembrar(12, 24)
