@@ -185,3 +185,12 @@ def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
     if isinstance(datos, dict) and datos.get("error") == "no_visible":
         raise ErrorAccesoMCP(f"No existe el indicador «{slug}».")
     return datos
+
+
+def accesos_portal(cliente: str) -> dict[str, Any]:
+    """Quién de un cliente puede entrar al portal de clientes (La Recepción)."""
+    from capacidades.lecturas import _h_accesos_portal
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "recepcion", "ver")
+    return _h_accesos_portal({"cliente": cliente}, usuario)

@@ -194,6 +194,15 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "cfdi (folio fiscal o serie-folio), factura_codigo (FAC-… o el folio F-…). El XML y el folio fiscal quedan guardados en la factura",
         "gating": "facturacion_editar",
     },
+    # La Recepción (S5): invitar al portal de clientes. Siempre propuesta: la
+    # invitación manda un correo con la llave de entrada, alguien lo confirma.
+    {
+        "tipo": "invitar_portal",
+        "titulo": "Invitar a un contacto al portal de clientes",
+        "ejemplo": "Invita al portal a Ana López de $heladeria-la-nieve.",
+        "payload": "cliente_slug (o nombre del cliente), contacto (nombre o correo de un contacto que YA está en la ficha del cliente). Le llega un correo con su enlace de entrada; consulta `accesos_portal` antes para no invitar a quien ya entra",
+        "gating": "recepcion_invitar",
+    },
     {
         "tipo": "reembolsar_egreso",
         "titulo": "Reembolsar egreso",
@@ -585,6 +594,8 @@ def _gating_checks():
         # uno solo no alcanza — el ejecutor pide los dos también.
         "cotizaciones_anexar": lambda u: (permisos.puede_editar_cotizaciones(u)
                                           and permisos.puede_ver_papeleo(u)),
+        # La Recepción: mandarle a un contacto su invitación al portal.
+        "recepcion_invitar": permisos.puede_invitar_portal,
     }
 
 
@@ -673,6 +684,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "resumen_perdidos", "que": "Lo que se perdió: cotizaciones caídas y su monto, proyectos cancelados con su motivo, propuestas enfriadas sin respuesta y trabajos que se ganaron pero dejaron pérdida (requiere permiso de Cotizaciones). Pregunta: «¿por qué estamos perdiendo trabajos?»."},
     {"nombre": "resumen_clientes", "que": "Quién deja más dinero, quién debe más, quién dejó de comprar y el ticket promedio (requiere permiso de Clientes). Pregunta: «¿cuáles son mis mejores clientes?»."},
     {"nombre": "cfdi_pendientes", "que": "Los CFDI que llegaron por correo y esperan que alguien decida: de quién son, por cuánto, por qué no se ligaron solos, qué proveedor o factura parece ser y si ya hay un egreso que casa (requiere permiso de Finanzas). Pregunta: «¿qué facturas de proveedores faltan por registrar?». Para resolverlos, El Chalán propone `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura` y tú confirmas."},
+    {"nombre": "accesos_portal", "que": "Quién de un cliente puede entrar al portal de clientes (La Recepción) y cuándo entró por última vez, y qué contactos con correo todavía no tienen acceso (requiere permiso del portal). Pregunta: «¿quién tiene acceso al portal de Optimist?». Para dar acceso, El Chalán propone `invitar_portal` y tú confirmas; revocar se hace en la ficha del cliente. El portal mismo no tiene Chalán."},
     {"nombre": "resumen_proveedores", "que": "A quién se le compra más, cuánto se le debe y qué egresos quedaron sin proveedor (requiere permiso de Finanzas). Pregunta: «¿a quién le debemos más?»."},
     {"nombre": "resumen_equipo", "que": "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y horas de la semana — sólo de la gente que tú puedes ver. Pregunta: «¿quién está saturado?» o «¿qué se está entregando tarde?»."},
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},

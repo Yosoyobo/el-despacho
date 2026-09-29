@@ -1469,6 +1469,59 @@ def _h_estado_herramientas(args: dict, usuario) -> dict:  # noqa: ARG001
     }
 
 
+
+# ── La Recepción (portal de clientes, S5) ────────────────────────────────────
+# «¿Quién tiene acceso al portal de Optimist?». Sólo lectura: invitar es una
+# PROPUESTA (`invitar_portal`) que una persona confirma.
+
+
+def _cliente_por_texto(texto: str):
+    """Un cliente por slug ($optimist), razón social o parte de ella."""
+    from apps.la_cartera.models import Cliente
+
+    limpio = (texto or "").strip().lstrip("$")
+    if not limpio:
+        return None
+    c = Cliente.objects.filter(slug=limpio.lower()).first()
+    if c is None:
+        from apps.el_dictado.ejecutores.basicos import _cliente_por_razon_social
+
+        c = (_cliente_por_razon_social(limpio)
+             or Cliente.objects.filter(razon_social__icontains=limpio).first())
+    return c
+
+
+def _h_accesos_portal(args: dict, usuario) -> dict:  # noqa: ARG001
+    from portal.servicios import invitables_de
+
+    c = _cliente_por_texto(str(args.get("cliente") or ""))
+    if c is None:
+        return {"error": "no_encontrado",
+                "nota": "No encontré ese cliente. Dame su nombre o su referencia con $."}
+    con, sin = [], []
+    for f in invitables_de(c):
+        a = f.acceso
+        if a is not None and a.activo:
+            con.append({
+                "nombre": f.nombre or f.email, "email": f.email,
+                "ultima_entrada": a.ultima_entrada_en.date().isoformat() if a.ultima_entrada_en else None,
+                "invitado_en": a.invitado_en.date().isoformat() if a.invitado_en else None,
+            })
+        else:
+            sin.append({"nombre": f.nombre or f.email, "email": f.email,
+                        "revocado": bool(a is not None)})
+    return {
+        "cliente": c.razon_social,
+        "con_acceso": con,
+        "sin_acceso": sin,
+        "ficha": f"/cartera/{c.pk}/",
+        "nota": ("Quien tiene acceso ve los proyectos, cotizaciones y facturas del "
+                 "cliente, sin costos ni notas internas, y puede aprobar cotizaciones. "
+                 "Para invitar a alguien de `sin_acceso`, propón `invitar_portal`; "
+                 "revocar se hace desde la ficha del cliente."),
+    }
+
+
 _LECTURAS: dict[str, Capacidad] = {
     "cfdi_pendientes": Capacidad(
         nombre="cfdi_pendientes",
@@ -1536,6 +1589,16 @@ _LECTURAS: dict[str, Capacidad] = {
                      "proyecto": {"tipo": "str", "requerido": False},
                      "proveedor": {"tipo": "str", "requerido": False}},
         gating="papeleo", fn=_h_papeleo_de,
+    ),
+    "accesos_portal": Capacidad(
+        nombre="accesos_portal",
+        descripcion=(
+            "Quién de un cliente puede entrar al portal de clientes (La "
+            "Recepción): con acceso (y su última entrada) y los contactos con "
+            "correo que todavía no. Arg: cliente (nombre o referencia $)."
+        ),
+        args_schema={"cliente": {"tipo": "str", "requerido": True}},
+        gating="recepcion", fn=_h_accesos_portal,
     ),
     "listar_automatizaciones": Capacidad(
         nombre="listar_automatizaciones",

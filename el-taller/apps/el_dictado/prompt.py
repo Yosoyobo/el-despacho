@@ -74,6 +74,9 @@ TIPOS DE ACCIÓN VÁLIDOS:
   `cfdi_pendientes` ANTES: de ahí sale el folio fiscal, el proveedor sugerido y
   si ya hay un egreso que casa. Si lo hay, propón ligarlo con `egreso_codigo` en
   vez de crear otro: capturarlo dos veces cuenta el gasto doble)
+- invitar_portal (La Recepción: le manda a un contacto del cliente su invitación
+  al portal de clientes. Sólo contactos que YA están en la ficha con correo;
+  consulta `accesos_portal` antes para no invitar a quien ya entra)
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
@@ -212,6 +215,7 @@ PAYLOADS:
   el CFDI a un egreso que ya existe; `crear_nuevo: true` sólo si es de verdad otro
   gasto. Una factura NUESTRA no va aquí sino en ligar_cfdi_a_factura)
 - ligar_cfdi_a_factura: {cfdi, factura_codigo (FAC-… o el folio F-…)}
+- invitar_portal: {cliente_slug, contacto (nombre o correo del contacto, tal como está en la ficha)}
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}
 - anular_ingreso: {codigo, motivo}

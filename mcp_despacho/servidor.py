@@ -98,6 +98,13 @@ def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
     return herramientas.serie_indicador(slug, dias)
 
 
+@mcp.tool()
+def accesos_portal(cliente: str) -> dict[str, Any]:
+    """Quién de un cliente puede entrar al portal de clientes (La Recepción),
+    cuándo entró por última vez, y qué contactos con correo todavía no."""
+    return herramientas.accesos_portal(cliente)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

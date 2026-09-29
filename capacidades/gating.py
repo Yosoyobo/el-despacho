@@ -40,5 +40,7 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         # Presencia del equipo: permiso propio (`equipo.ver_actividad`), nace
         # activo para todos y se revoca por persona desde El Directorio.
         "equipo_actividad": permisos.puede_ver_actividad_equipo,
+        # La Recepción: quién de un cliente entra al portal (`recepcion.ver`).
+        "recepcion": permisos.puede_ver_accesos_portal,
     }.get(gating)
     return bool(fn(usuario)) if fn else False
