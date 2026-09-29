@@ -426,7 +426,7 @@ jobs:
             # relleno; solo se está comprobando la sintaxis.
             echo "=== Validando el Caddyfile ==="
             docker run --rm -v /opt/el-despacho/Caddyfile:/etc/caddy/Caddyfile:ro \
-              -e UPSTREAM_TALLER=x:1 -e UPSTREAM_GERENCIA=x:1 \
+              -e UPSTREAM_TALLER=x:1 -e UPSTREAM_GERENCIA=x:1 -e UPSTREAM_RECEPCION=x:1 \
               -e LANDING_ROOT=/srv/lc-fallback \
               caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
@@ -461,8 +461,8 @@ jobs:
             # el NUC está caído (es el requisito del failover).
             code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 https://learningcenter.mx/ || echo FAIL)
             [ "$code" = "200" ] || fallos="$fallos homepage=$code"
-            # Las apps viven en el NUC: estas dos prueban ventana + tailnet + NUC.
-            for h in gerencia taller; do
+            # Las apps viven en el NUC: estas tres prueban ventana + tailnet + NUC.
+            for h in gerencia taller recepcion; do
               code=$(curl -fsS -o /dev/null -w "%{http_code}" --max-time 12 "https://$h.learningcenter.mx/ping" || echo FAIL)
               [ "$code" = "200" ] || fallos="$fallos $h=$code"
             done

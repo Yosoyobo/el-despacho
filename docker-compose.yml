@@ -119,12 +119,9 @@ services:
       start_period: 20s
 
   la-recepcion:
-    # S-RAM-Wave3: La Recepción es stub vacío hasta S5 — apagada por default
-    # para ahorrar ~120 MB de RAM en el droplet de 1 GB. Para reactivarla:
-    #   docker compose --profile s5 up -d la-recepcion
-    # Caddy responde 503 estático en recepcion.learningcenter.mx mientras esté
-    # apagada (ver Caddyfile).
-    profiles: ["s5"]
+    # El portal de clientes (S5, 2026-09-29). Encendido: sin ningún cliente
+    # invitado nadie pasa de /entrar/. NO corre migrate (§14 Bug B): lee la misma
+    # base y espera a que La Gerencia (la única que migra) esté sana.
     build:
       context: .
       dockerfile: la-recepcion/Dockerfile
@@ -133,11 +130,18 @@ services:
     env_file: .env
     environment:
       DJANGO_APP: la_recepcion
-      DJANGO_ALLOWED_HOSTS: ${RECEPCION_ALLOWED_HOSTS}
+      DJANGO_ALLOWED_HOSTS: ${RECEPCION_ALLOWED_HOSTS:-recepcion.learningcenter.mx,localhost,127.0.0.1}
       MALLOC_ARENA_MAX: "2"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      la-gerencia:
+        condition: service_healthy  # sus tablas las crea el migrate de La Gerencia
+    volumes:
+      - ./data/credenciales:/data/credenciales
+      - ./data/staticfiles-recepcion:/app/staticfiles
     expose:
       - "8002"
     healthcheck:
@@ -177,8 +181,8 @@ services:
         condition: service_healthy
       el-taller:
         condition: service_healthy
-      # la-recepcion: apagada por profile 's5' hasta que arranque S5.
-      # Caddy responde 503 estático en recepcion.learningcenter.mx mientras tanto.
+      la-recepcion:
+        condition: service_healthy
     ports:
       - "${CADDY_HTTP_PORT:-80}:80"
       - "${CADDY_HTTPS_PORT:-443}:443"
