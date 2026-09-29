@@ -730,9 +730,12 @@ class TestSinRolLiteral:
         assert not malos, "\n".join(malos)
 
     def test_las_plantillas_no_gatean_por_rol(self):
-        """Ni `user.rol == 'dueno'` ni `|tiene_rol:"contador"` en las plantillas."""
+        """Ni `user.rol == 'dueno'` ni `|tiene_rol:"contador"` en las plantillas.
+        Tampoco `user.rol == 'super_admin'`: el failsafe se pregunta con el
+        filtro `|es_super_admin` (roles efectivos y «ver como rol»), no leyendo
+        el rol primario a mano."""
         patron = re.compile(
-            r"""(\.rol\s*(==|!=|in)\s*['"](dueno|contador|disenador|runner)['"])"""
+            r"""(\.rol\s*(==|!=|in)\s*['"](dueno|contador|disenador|runner|super_admin|miembro)['"])"""
             r"""|(tiene_rol:["'][^"']*(dueno|contador|disenador|runner))"""
         )
         malos = []

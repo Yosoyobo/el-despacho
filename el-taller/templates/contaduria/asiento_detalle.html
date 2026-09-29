@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers contaduria_helpers %}
+{% load forms_helpers contaduria_helpers permisos %}
 {% block title %}{{ asiento.codigo }} — Contaduría{% endblock %}
 {% block contenido %}
 {% breadcrumb_items "Contaduría" "/contaduria/" "Asientos" "/contaduria/asientos/" asiento.codigo as breadcrumb_items %}
@@ -26,7 +26,7 @@
             {% for p in partidas %}
             {% with dir=p|direccion_partida %}
             <tr>
-                <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ p.cuenta.nombre }}{% if user.rol == 'super_admin' %} <span class="ml-1 font-mono text-xs text-gray-400">{{ p.cuenta.codigo }}</span>{% endif %}</td>
+                <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ p.cuenta.nombre }}{% if user|es_super_admin %} <span class="ml-1 font-mono text-xs text-gray-400">{{ p.cuenta.codigo }}</span>{% endif %}</td>
                 <td class="px-3 py-2 text-gray-700 dark:text-gray-200">{{ p.descripcion|default:"—" }}</td>
                 <td class="px-3 py-2">
                     {% if dir == 'Entra' %}

@@ -716,3 +716,33 @@ def _post_del_detalle(client, proyecto, **cambios):
         datos[m.group(1)] = m.group(2)
     datos.update(cambios)
     return datos
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 6. Contaduría: lo técnico se enseña al failsafe con `|es_super_admin`
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestContaduriaPorElFailsafe:
+    """Las plantillas comparaban `user.rol == 'super_admin'`; ahora usan el
+    filtro del failsafe. Mismo resultado para quien tiene el rol de verdad."""
+
+    @pytest.mark.parametrize("ruta,marca", [
+        ("/contaduria/", "+ Movimiento avanzado"),
+        ("/contaduria/asientos/", "+ Avanzado"),
+        ("/contaduria/cuentas/", ">Naturaleza<"),
+        ("/contaduria/balance/", ">Tipo<"),
+    ])
+    def test_lo_ve_el_super_admin_y_no_el_contador(self, client, usuario_factory, ruta, marca):
+        client.force_login(usuario_factory(rol="super_admin"))
+        assert marca in client.get(ruta).content.decode()
+        client.force_login(usuario_factory(rol="contador"))
+        r = client.get(ruta)
+        assert r.status_code == 200
+        assert marca not in r.content.decode()
+
+    def test_el_filtro_es_el_failsafe(self, usuario_factory):
+        from cuentas.templatetags.permisos import filtro_es_super_admin
+
+        for rol in ("super_admin", "dueno", "contador", "disenador", "miembro"):
+            u = usuario_factory(rol=rol)
+            assert filtro_es_super_admin(u) == permisos.es_super_admin(u) == (rol == "super_admin")
