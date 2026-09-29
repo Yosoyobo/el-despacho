@@ -40,6 +40,7 @@ import pytest
 RAIZ = Path(__file__).resolve().parent.parent
 CADDYFILE = RAIZ / "Caddyfile"
 CORTA = RAIZ / "infra" / "mantenimiento" / "index.html"
+CORTA_PORTAL = RAIZ / "infra" / "mantenimiento" / "index-portal.html"
 PLANTILLA = RAIZ / "infra" / "mantenimiento" / "en-curso.plantilla.html"
 WORKFLOW = RAIZ / ".github" / "workflows" / "el-mensajero.yml"
 COMPOSE = RAIZ / "docker-compose.yml"
@@ -49,6 +50,7 @@ FOOTER = re.compile(
     r"NoKo Devs</a>"
 )
 VIDEO = "youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1"
+PORTAL = "recepcion.learningcenter.mx"
 
 
 def _modulo():
@@ -210,6 +212,63 @@ class TestLasPantallasLlevanFooterYVideo:
         assert "setInterval(revisa, 20000)" in html
 
 
+
+class TestElPortalDeClientesVaSinVideo:
+    """Decisión de Oscar (2026-09-29): los clientes ven la pantalla de espera SIN
+    el video. No es otra página que se pueda quedar atrás: es la misma con el
+    bloque del video quitado."""
+
+    def test_la_corta_del_portal_esta_al_dia_con_la_del_equipo(self):
+        esperada = _modulo().sin_video(CORTA.read_text(encoding="utf-8"))
+        assert CORTA_PORTAL.read_text(encoding="utf-8") == esperada, (
+            "infra/mantenimiento/index-portal.html está vieja: regénerala con "
+            "`python3 infra/scripts/pantalla_mantenimiento.py --corta --sin-video`")
+
+    @pytest.mark.parametrize("html", [
+        pytest.param(lambda: CORTA_PORTAL.read_text(encoding="utf-8"), id="corta"),
+        pytest.param(lambda: _roadmap(video=False), id="roadmap"),
+    ])
+    def test_sin_video_pero_con_footer_y_su_recarga(self, html):
+        pagina = html()
+        assert "youtube" not in pagina and "<iframe" not in pagina
+        assert FOOTER.search(pagina)
+        assert "location.replace(location.href)" in pagina
+        assert "__" not in pagina.split("<script>")[0].split("-->", 1)[1]
+
+    def test_quitar_el_video_sin_sus_marcas_truena(self):
+        with pytest.raises(ValueError):
+            _modulo().sin_video("<html><iframe src=x></iframe></html>")
+
+    def test_la_linea_de_comandos_arma_las_dos_variantes(self, capsys):
+        mod = _modulo()
+        mod.main(["--commit", "abc", "--sin-video"])
+        assert "youtube" not in capsys.readouterr().out
+        mod.main(["--corta", "--sin-video"])
+        assert capsys.readouterr().out == CORTA_PORTAL.read_text(encoding="utf-8")
+
+    def test_el_portero_le_da_al_portal_sus_archivos_y_nunca_los_del_equipo(self):
+        s = _snippet("lc_failover")
+        rama = s[s.index("handle @portal_clientes {"):]
+        rama = rama[: rama.index("\n\t\t}\n")]
+        assert "@portal_clientes host recepcion.learningcenter.mx" in s
+        assert "try_files /mantenimiento-vivo/en-curso-portal.html /mantenimiento/index-portal.html" in rama
+        assert "index.html" not in rama and "en-curso.html" not in rama
+        assert "youtube" not in rama
+        # Va antes de la pantalla del equipo, y después de las sondas.
+        assert s.index("@sondas path") < s.index("handle @portal_clientes") < s.index(
+            "try_files /mantenimiento-vivo/en-curso.html")
+
+    def test_la_recepcion_importa_el_failover(self):
+        s = CADDYFILE.read_text(encoding="utf-8")
+        bloque = s[s.index(f"\n{PORTAL} {{"):]
+        assert "import lc_failover" in bloque[: bloque.index("\n}\n")]
+
+    def test_la_mudanza_arma_la_del_portal(self):
+        job = _job("mudanza")
+        assert "pantalla_mantenimiento.py --commit \"$GITHUB_SHA\" --sin-video > en-curso-portal.html" in job
+        assert "PANTALLA_PORTAL_B64: ${{ steps.pantalla.outputs.b64_portal }}" in job
+        assert re.search(r"envs: .*\bPANTALLA_PORTAL_B64\b", job)
+
 # ── (a) El Caddyfile sirve el archivo, no un literal ─────────────────────────
 
 
@@ -268,6 +327,7 @@ def portero(tmp_path_factory):
     for d in (etc, corta, vivo):
         d.mkdir()
     shutil.copy(CORTA, corta / "index.html")
+    shutil.copy(CORTA_PORTAL, corta / "index-portal.html")
     (etc / "Caddyfile").write_text(
         "{\n\tauto_https off\n\tadmin off\n}\n"
         + _snippet("lc_failover")
@@ -300,9 +360,11 @@ def portero(tmp_path_factory):
         subprocess.run(["docker", "rm", "-f", nombre], capture_output=True, timeout=60)
 
 
-def _pide(url: str, metodo: str = "GET") -> tuple[int, dict, str]:
+def _pide(url: str, metodo: str = "GET", host: str = "") -> tuple[int, dict, str]:
     datos = b"a=1" if metodo == "POST" else None
     req = urllib.request.Request(url, data=datos, method=metodo)
+    if host:
+        req.add_header("Host", host)
     try:
         r = urllib.request.urlopen(req, timeout=10)
         return r.status, dict(r.headers), r.read().decode()
@@ -353,6 +415,50 @@ class TestConCaddyDeVerdad:
         finally:
             corta.write_bytes(respaldo)
 
+
+    # ── El portal de clientes: la misma pantalla, SIN el video ──────────────
+
+    def test_el_portal_ve_su_corta_sin_video(self, portero):
+        codigo, cab, cuerpo = _pide(portero["url"] + "/cotizaciones/3/", host=PORTAL)
+        assert codigo == 503 and cab.get("Retry-After") == "120"
+        assert _marca(cuerpo) == "corta"
+        assert VIDEO not in cuerpo and "youtube" not in cuerpo
+        assert FOOTER.search(cuerpo)
+        # Y el equipo sigue viendo la suya, con video.
+        assert VIDEO in _pide(portero["url"] + "/")[2]
+
+    def test_con_deploy_el_portal_ve_su_roadmap_sin_video(self, portero):
+        vivo = portero["vivo"]
+        (vivo / "en-curso.html").write_text(_roadmap(commit="beef0000", inicio=9), encoding="utf-8")
+        (vivo / "en-curso-portal.html").write_text(
+            _roadmap(commit="beef0000", inicio=9, video=False), encoding="utf-8")
+        try:
+            _, _, cuerpo = _pide(portero["url"] + "/", host=PORTAL)
+            assert _marca(cuerpo) == "en-curso-beef0000-9"
+            assert "youtube" not in cuerpo and FOOTER.search(cuerpo)
+            assert VIDEO in _pide(portero["url"] + "/")[2]
+        finally:
+            for f in ("en-curso.html", "en-curso-portal.html"):
+                (vivo / f).unlink()
+        assert _marca(_pide(portero["url"] + "/", host=PORTAL)[2]) == "corta"
+
+    def test_el_portal_nunca_cae_a_la_pantalla_con_video(self, portero):
+        """Sin sus archivos, la mínima — aunque la del equipo (con video) sí esté."""
+        corta = portero["corta"] / "index-portal.html"
+        respaldo = corta.read_bytes()
+        corta.unlink()
+        (portero["vivo"] / "en-curso.html").write_text(_roadmap(), encoding="utf-8")
+        try:
+            codigo, _, cuerpo = _pide(portero["url"] + "/", host=PORTAL)
+            assert codigo == 503 and _marca(cuerpo) == "minima"
+            assert "youtube" not in cuerpo and FOOTER.search(cuerpo)
+        finally:
+            corta.write_bytes(respaldo)
+            (portero["vivo"] / "en-curso.html").unlink()
+
+    @pytest.mark.parametrize("sonda", ["/ping", "/salud"])
+    def test_las_sondas_del_portal_tambien_ven_la_caida(self, portero, sonda):
+        assert _pide(portero["url"] + sonda, host=PORTAL)[:1] == (502,)
 
 # ── (b) El Caddyfile completo es válido ──────────────────────────────────────
 
@@ -464,6 +570,14 @@ class TestLaMudanzaPoneYQuitaLaPantalla:
         assert self._orden(log) == ["poner", "ssh", "quitar"]
         assert (Path(str(correr.log) + ".stdin")).read_text() == "<html>roadmap</html>"
         assert "/opt/el-despacho/data/caddy/mantenimiento:/m" in log[0]
+
+    def test_pone_y_quita_tambien_la_del_portal(self, correr):
+        b64 = base64.b64encode(b"<html>portal</html>").decode()
+        r, log = correr(PANTALLA_PORTAL_B64=b64)
+        assert r.returncode == 0, r.stdout.decode()
+        assert self._orden(log) == ["poner", "ssh", "quitar"]
+        assert f"-e P={b64}" in log[0] and "/m/en-curso-portal.html" in log[0]
+        assert "/m/en-curso-portal.html" in log[-1]
 
     def test_si_el_deploy_falla_la_quita_igual_y_el_job_sigue_rojo(self, correr):
         r, log = correr(FAKE_SSH_RC="7")

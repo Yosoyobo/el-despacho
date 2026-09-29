@@ -326,8 +326,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/scripts/pantalla_mantenimiento.py --commit "$GITHUB_SHA" > en-curso.html
+          # La del portal de clientes: la misma, sin el video (decisión de Oscar).
+          python3 infra/scripts/pantalla_mantenimiento.py --commit "$GITHUB_SHA" --sin-video > en-curso-portal.html
           echo "b64=$(base64 -w0 en-curso.html)" >> "$GITHUB_OUTPUT"
-          echo "Pantalla lista: $(wc -c < en-curso.html) bytes."
+          echo "b64_portal=$(base64 -w0 en-curso-portal.html)" >> "$GITHUB_OUTPUT"
+          echo "Pantallas listas: $(wc -c < en-curso.html) y $(wc -c < en-curso-portal.html) bytes."
       - name: SSH a La Sede y deploy al NUC por el tailnet
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -336,12 +339,13 @@ jobs:
           SHA: ${{ github.sha }}
           CORRIDA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PANTALLA_B64: ${{ steps.pantalla.outputs.b64 }}
+          PANTALLA_PORTAL_B64: ${{ steps.pantalla.outputs.b64_portal }}
         with:
           host: ${{ secrets.SEDE_HOST }}
           username: ${{ secrets.SEDE_USER }}
           key: ${{ secrets.SEDE_SSH_KEY }}
           command_timeout: 20m
-          envs: NUC_HOST,NUC_USER,SHA,CORRIDA,PANTALLA_B64
+          envs: NUC_HOST,NUC_USER,SHA,CORRIDA,PANTALLA_B64,PANTALLA_PORTAL_B64
           script: |
             set -uo pipefail
 
@@ -362,13 +366,17 @@ jobs:
                   echo "· Sin pantalla con roadmap (no se armó en el runner): se queda la corta."
                   return 0
                 fi
+                # Las dos en el mismo contenedor: la del equipo por stdin y la del
+                # portal de clientes (sin video) por una variable. Si la del portal
+                # no vino, El Portero le sirve a los clientes su corta.
                 printf '%s' "$PANTALLA_B64" | base64 -d \
-                  | docker run --rm -i --network none -v "$PANTALLA_DIR:/m" caddy:2-alpine \
-                      sh -c 'cat > /m/.en-curso.tmp && mv -f /m/.en-curso.tmp /m/en-curso.html' \
+                  | docker run --rm -i --network none -e P="${PANTALLA_PORTAL_B64:-}" \
+                      -v "$PANTALLA_DIR:/m" caddy:2-alpine \
+                      sh -c 'cat > /m/.en-curso.tmp && mv -f /m/.en-curso.tmp /m/en-curso.html && { [ -z "$P" ] || { printf "%s" "$P" | base64 -d > /m/.en-curso-portal.tmp && mv -f /m/.en-curso-portal.tmp /m/en-curso-portal.html; }; }' \
                   || rc=$?
               else
                 docker run --rm --network none -v "$PANTALLA_DIR:/m" caddy:2-alpine \
-                  rm -f /m/en-curso.html /m/.en-curso.tmp || rc=$?
+                  rm -f /m/en-curso.html /m/.en-curso.tmp /m/en-curso-portal.html /m/.en-curso-portal.tmp || rc=$?
               fi
               if [ "$rc" -eq 0 ]; then
                 echo "=== Pantalla de mantenimiento: $1 ==="

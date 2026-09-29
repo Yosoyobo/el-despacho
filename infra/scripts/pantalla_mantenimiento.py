@@ -18,7 +18,17 @@ que el equipo ya ve en Ayuda → Novedades):
 - para qué sirve: las frases en negritas con que abren los párrafos de ese bloque,
 - qué falta: los pasos del deploy con una barra que avanza por tiempo esperado.
 
-Uso: python3 infra/scripts/pantalla_mantenimiento.py --commit <sha> > en-curso.html
+**La variante del portal de clientes va SIN el video** (decisión de Oscar,
+2026-09-29: el video es para el equipo, no para los clientes). No es otra
+plantilla: es la MISMA con el bloque entre los comentarios `<!-- video -->` y
+`<!-- /video -->` quitado (`sin_video`), así las dos no pueden divergir. El
+Portero sirve la variante en `recepcion.` (ver `(lc_failover)` del Caddyfile).
+
+Uso:
+  python3 infra/scripts/pantalla_mantenimiento.py --commit <sha> > en-curso.html
+  python3 infra/scripts/pantalla_mantenimiento.py --commit <sha> --sin-video > en-curso-portal.html
+  # la corta del portal, que va commiteada (un candado exige que esté al día):
+  python3 infra/scripts/pantalla_mantenimiento.py --corta --sin-video > infra/mantenimiento/index-portal.html
 """
 
 from __future__ import annotations
@@ -32,6 +42,9 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 PLANTILLA = RAIZ / "infra" / "mantenimiento" / "en-curso.plantilla.html"
+CORTA = RAIZ / "infra" / "mantenimiento" / "index.html"
+VIDEO_ABRE = "  <!-- video -->\n"
+VIDEO_CIERRA = "  <!-- /video -->\n"
 VERSION_PY = RAIZ / "lib" / "version.py"
 DOC_05 = RAIZ / "docs" / "DOC_05_MANUAL_USUARIO.md"
 
@@ -94,7 +107,22 @@ def novedad_reciente(texto_doc05: str) -> tuple[str, list[str]]:
     return titulo, [p for p in puntos if p][:MAX_PUNTOS]
 
 
-def armar(*, version: str, titulo: str, puntos: list[str], commit: str, inicio: int) -> str:
+def sin_video(pagina: str) -> str:
+    """La misma pantalla sin el video: quita el bloque entre sus comentarios.
+
+    Si la página perdió las marcas, truena en vez de devolverla con video: la
+    variante del portal nunca debe llevarlo."""
+    if pagina.count(VIDEO_ABRE) != 1 or pagina.count(VIDEO_CIERRA) != 1:
+        raise ValueError("La pantalla perdió las marcas <!-- video --> / <!-- /video -->")
+    ini = pagina.index(VIDEO_ABRE)
+    fin = pagina.index(VIDEO_CIERRA) + len(VIDEO_CIERRA)
+    if fin <= ini:
+        raise ValueError("Las marcas del video están al revés")
+    return pagina[:ini] + pagina[fin:]
+
+
+def armar(*, version: str, titulo: str, puntos: list[str], commit: str, inicio: int,
+          video: bool = True) -> str:
     """Llena la plantilla. Todo lo que entra se escapa: sale de un Markdown."""
     titulo = titulo or "Mejoras al sistema"
     lis = "".join(f"<li>{html.escape(p)}</li>" for p in puntos) or (
@@ -109,6 +137,8 @@ def armar(*, version: str, titulo: str, puntos: list[str], commit: str, inicio: 
         "__PUNTOS__": lis,
     }
     pagina = PLANTILLA.read_text(encoding="utf-8")
+    if not video:
+        pagina = sin_video(pagina)
     for marcador in valores:
         if marcador not in pagina:
             raise ValueError(f"La plantilla perdió el marcador {marcador}")
@@ -120,7 +150,15 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--commit", default="", help="SHA que se despliega")
     p.add_argument("--inicio", type=int, default=None, help="epoch del arranque (default: ahora)")
+    p.add_argument("--sin-video", action="store_true",
+                   help="la variante del portal de clientes (recepcion.)")
+    p.add_argument("--corta", action="store_true",
+                   help="escribe la pantalla corta (index.html) en vez del roadmap")
     args = p.parse_args(argv)
+    if args.corta:
+        corta = CORTA.read_text(encoding="utf-8")
+        sys.stdout.write(sin_video(corta) if args.sin_video else corta)
+        return 0
     titulo, puntos = novedad_reciente(DOC_05.read_text(encoding="utf-8"))
     sys.stdout.write(
         armar(
@@ -129,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             puntos=puntos,
             commit=args.commit,
             inicio=args.inicio if args.inicio is not None else int(time.time()),
+            video=not args.sin_video,
         )
     )
     return 0
