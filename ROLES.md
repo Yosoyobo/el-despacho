@@ -89,6 +89,7 @@ producción manda lo que diga esa pantalla.
 | `chalan` | todo | todo | todo | todo |
 | `analisis` | todo | — | — | — |
 | `checador` | todo | todo | checar, ver_equipo, exportar | checar |
+| `nomina` | todo | todo | todo | — |
 | `comunicacion` | todo | — | — | — |
 | `runner` | — | — | — | — |
 | `rutas` | todo | — | — | — |
