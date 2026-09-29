@@ -784,6 +784,12 @@ CATEGORIAS = (
     ("dinero", "💰 Dinero"),
     ("checador", "🕐 Checador"),
     ("gente", "🧑‍🔧 La gente"),
+    # Los de desempeño (2026-09-29, `kpis_desempeno.py`).
+    ("ventas", "📈 Ventas y cobranza"),
+    ("entregas", "🎯 Entregas y equipo"),
+    ("rentabilidad", "📊 Rentabilidad"),
+    ("control", "🧾 Control y papeleo"),
+    ("rutas", "🗺 Rutas"),
 )
 
 
