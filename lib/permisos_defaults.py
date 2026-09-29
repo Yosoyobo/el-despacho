@@ -115,6 +115,11 @@ TODO_MCP = ["usar"]
 # (incluido `miembro`, que no tiene defaults). Sigue siendo granular (§4 #20):
 # el super_admin lo revoca por usuario desde /directorio/<id>/permisos/.
 TODO_EQUIPO = ["ver_actividad"]
+# La Recepción (portal de clientes, S5 2026-09-29): quién ve los accesos de un
+# cliente, quién lo invita y quién le quita el acceso. «Como hoy»: lo trae quien
+# edita la cartera (super_admin y dueño por default; la migración
+# `portal/0002` lo siembra por persona a quien hoy tiene `cartera.editar`).
+TODO_RECEPCION = ["ver", "invitar", "revocar"]
 
 # Permisos que nacen activos para TODO usuario sin importar su rol primario.
 # `defaults_de()` los suma encima de los del rol, y el signal que siembra a los
@@ -165,6 +170,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "interfono": list(TODO_INTERFONO),
         "mcp": list(TODO_MCP),
         "equipo": list(TODO_EQUIPO),
+        "recepcion": list(TODO_RECEPCION),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -199,6 +205,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "site": list(TODO_SITE),
         "interfono": list(TODO_INTERFONO),
         "equipo": list(TODO_EQUIPO),
+        "recepcion": list(TODO_RECEPCION),
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -294,6 +301,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "mcp": list(TODO_MCP),
     # Ver quién está en línea y su última actividad (nace activo para todos).
     "equipo": list(TODO_EQUIPO),
+    # La Recepción: ver / invitar / revocar el acceso de un cliente al portal.
+    "recepcion": list(TODO_RECEPCION),
 }
 
 

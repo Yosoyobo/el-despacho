@@ -80,6 +80,12 @@ EventoTipo = Literal[
     "cfdi.ligado_factura",
     "cfdi.ignorado",
     "factura.eliminada",
+    # La Recepción (portal de clientes, S5): el despacho invita/revoca y el
+    # cliente responde una cotización desde el portal.
+    "portal.acceso_invitado",
+    "portal.acceso_revocado",
+    "portal.cotizacion_aprobada",
+    "portal.cotizacion_rechazada",
     "pago.recibido",
     "pago.recordatorio",
     "usuario.creado",

@@ -500,6 +500,21 @@ def puede_subir_papeleo(user) -> bool:
     return puede(user, "papeleo", "subir")
 
 
+def puede_ver_accesos_portal(user) -> bool:
+    """Ver quién de un cliente puede entrar a La Recepción (portal de clientes)."""
+    return puede(user, "recepcion", "ver")
+
+
+def puede_invitar_portal(user) -> bool:
+    """Mandarle a un contacto del cliente su invitación a La Recepción."""
+    return puede(user, "recepcion", "invitar")
+
+
+def puede_revocar_portal(user) -> bool:
+    """Quitarle a alguien el acceso a La Recepción (cierra su sesión viva)."""
+    return puede(user, "recepcion", "revocar")
+
+
 def usuarios_con_permiso(modulo: str, accion: str) -> list:
     """Usuarios activos que tienen `(modulo, accion)` — por fila propia o por
     cualquiera de sus roles.
