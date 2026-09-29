@@ -216,6 +216,15 @@ def nombre_archivo(cot: Cotizacion, cfg=None) -> str:
         fecha=cot.fecha_emision.strftime("%Y-%m-%d") if cot.fecha_emision else "")
 
 
+def _nombre_adjunto(cot: Cotizacion) -> str:
+    """El nombre del adjunto del correo: el del patrón si se escribió uno; si
+    no, el código de siempre (COT-2026-0044). Vacío = lo de siempre."""
+    from imprenta.config import resolver
+
+    cfg = resolver("cotizacion")
+    return nombre_archivo(cot, cfg) if (cfg.doc.get("patron_archivo") or "").strip() else cot.codigo
+
+
 def _linea_folio(cot: Cotizacion, cfg) -> str:
     """«Folio COT-2026-0044 · Válida hasta el 12 de octubre de 2026», o ""."""
     partes = []
@@ -772,7 +781,7 @@ def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):
     res_pdf = generar_pdf(cot, actor)
     if res_pdf.ok and res_pdf.pdf_bytes:
         adjuntos.append(cartero.Adjunto(
-            nombre=f"{nombre_archivo(cot)}.pdf", contenido=res_pdf.pdf_bytes,
+            nombre=f"{_nombre_adjunto(cot)}.pdf", contenido=res_pdf.pdf_bytes,
             mime="application/pdf"))
 
     asunto, html = _render_correo(cot)
