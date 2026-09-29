@@ -40,6 +40,12 @@ integración, un test viejo) pasa como siempre: no hay con qué comparar y
 bloquearla dejaría a alguien sin poder guardar. Tampoco se revisa cuando llega
 `_edicion_forzar=1` — es el «Guardar la mía de todos modos».
 
+**Varias piezas en un mismo POST.** El autoguardado del proyecto manda, además
+de lo suyo, la pestaña de una versión de cotización si está abierta. Cada pieza
+lleva su propio testigo (con su propio `campo`, porque la pestaña se carga
+después de la página) y `revisar_juntas` las revisa todas: si una choca, no se
+guarda ninguna —el guardado es uno solo— y el aviso nombra lo de todas.
+
 Nada de esto lanza hacia afuera: si el caché no responde, el aviso sale sin
 nombre; si algo no se puede comparar, se deja pasar. El testigo protege, no
 estorba.
@@ -353,15 +359,21 @@ class Edicion:
         # GET → contexto(request, testigo=ed.testigo())
         # POST, ANTES de guardar → choque = ed.revisar(request)
         # tras guardar → firmar(obj, request.user, ventana_posteada(request))
+
+    `form` puede ser None cuando la pieza es sólo un formset (la pestaña de una
+    versión de cotización). `campo` es el nombre del oculto donde viaja SU
+    testigo: el de siempre, salvo en una pieza que comparte el POST con otra.
     """
 
     def __init__(self, obj, form, *, grupos: dict[str, Grupo] | None = None,
-                 extras: dict[str, Extra] | None = None, ignorar=()):
+                 extras: dict[str, Extra] | None = None, ignorar=(),
+                 campo: str = CAMPO_TESTIGO):
         self.obj = obj
         self.form = form
         self.grupos = grupos or {}
         self.extras = extras or {}
         self.ignorar = tuple(ignorar)
+        self.campo = campo
 
     # ── El testigo (al pintar) ────────────────────────────────────────────
 
@@ -374,7 +386,7 @@ class Edicion:
 
     def huellas(self) -> dict:
         datos = {
-            "f": huellas_de_form(self.form, self.ignorar),
+            "f": huellas_de_form(self.form, self.ignorar) if self.form is not None else {},
             "x": {k: huella(e.actual) for k, e in self.extras.items()},
             "g": {},
         }
@@ -399,7 +411,7 @@ class Edicion:
         Tras un POST que NO se guardó (errores de validación) se conserva el que
         llegó: la persona sigue editando sobre lo que abrió, no sobre lo de hoy."""
         if request.method == "POST":
-            crudo = request.POST.get(CAMPO_TESTIGO)
+            crudo = request.POST.get(self.campo)
             if leer_testigo(crudo) is not None:
                 return crudo
         return self.testigo()
@@ -413,7 +425,7 @@ class Edicion:
         post = request.POST
         if (post.get(CAMPO_FORZAR) or "").strip() == "1":
             return None
-        crudo = post.get(CAMPO_TESTIGO)
+        crudo = post.get(self.campo)
         original = leer_testigo(crudo)
         if original is None:
             return None
@@ -431,23 +443,38 @@ class Edicion:
         return Choque(campos=vistos, quien=quien, cuando=cuando,
                       texto=_texto_mio(self.obj, mios), testigo=crudo)
 
+    def texto_mio(self, request) -> str:
+        """Lo que la persona cambió en ESTA pieza, legible, aunque no choque.
+
+        Para el portapapeles cuando choca OTRA pieza del mismo POST: tampoco esto
+        se guardó. Vacío si no hay testigo o no cambió nada."""
+        original = leer_testigo(request.POST.get(self.campo))
+        if original is None:
+            return ""
+        try:
+            _choques, mios = self._comparar(original)
+        except Exception:  # noqa: BLE001
+            return ""
+        return _texto_mio(self.obj, mios) if mios else ""
+
     def _comparar(self, original: dict) -> tuple[list[str], list[tuple[str, str]]]:
         choques: list[str] = []
         mios: list[tuple[str, str]] = []
 
-        # 1) El formulario principal.
+        # 1) El formulario principal (una pieza de sólo líneas no tiene).
         of = original.get("f") or {}
-        actual = huellas_de_form(self.form, self.ignorar)
-        cambiados = _cambiados_por_mi(self.form, self.ignorar)
-        for nombre in self.form.fields:
+        form = self.form
+        actual = huellas_de_form(form, self.ignorar) if form is not None else {}
+        cambiados = _cambiados_por_mi(form, self.ignorar) if form is not None else set()
+        for nombre in (form.fields if form is not None else ()):
             if nombre not in cambiados:
                 continue
-            etiqueta = _etiqueta(self.form, nombre)
+            etiqueta = _etiqueta(form, nombre)
             antes = of.get(nombre)
             if antes is not None and actual.get(nombre) not in (None, antes):
                 choques.append(etiqueta)
-            if antes is None or _huella_posteada(self.form, nombre) != antes:
-                mios.append((etiqueta, _legible(self.form, nombre)))
+            if antes is None or _huella_posteada(form, nombre) != antes:
+                mios.append((etiqueta, _legible(form, nombre)))
 
         # 2) Lo que se guarda por fuera del form.
         ox = original.get("x") or {}
@@ -520,6 +547,39 @@ class Edicion:
             if not ventana:
                 return "Tú mismo, desde otra pantalla", cuando
         return "Otra persona u otra ventana", getattr(self.obj, "actualizado_en", None)
+
+
+def revisar_juntas(request, ediciones: list[Edicion]) -> Choque | None:
+    """Revisa varias piezas que viajan en el MISMO POST. None = adelante.
+
+    El guardado es uno solo, así que si UNA choca no se guarda ninguna, y el
+    aviso lo dice completo: los campos que chocaron de todas y, para copiar, lo
+    que la persona cambió en todas (lo de la pieza que no chocó tampoco se
+    guardó). El testigo del choque es el de la PRIMERA pieza —la dueña del
+    contenedor del aviso—, tal como llegó: así un «Guardar» normal sigue
+    chocando hasta que se decida. Las demás conservan el suyo en la página.
+
+    `_edicion_forzar=1` vale para todas: «Guardar la mía» es una sola decisión.
+    """
+    if not ediciones:
+        return None
+    choques = [e.revisar(request) for e in ediciones]
+    if not any(c is not None for c in choques):
+        return None
+    primero = next(c for c in choques if c is not None)
+    campos: list[str] = []
+    textos: list[str] = []
+    for ed_, c in zip(ediciones, choques, strict=True):
+        if c is not None:
+            campos.extend(x for x in c.campos if x not in campos)
+            textos.append(c.texto)
+        else:
+            texto = ed_.texto_mio(request)
+            if texto:
+                textos.append(texto)
+    return Choque(campos=campos, quien=primero.quien, cuando=primero.cuando,
+                  texto="\n\n".join(textos),
+                  testigo=request.POST.get(ediciones[0].campo) or "")
 
 
 def _revisar_extra(extra: Extra, antes: str | None, choques, mios) -> None:
@@ -605,8 +665,8 @@ def firmar(obj, usuario, ventana: str | None = None) -> None:
         return
 
 
-def ventana_posteada(request) -> str:
-    datos = leer_testigo(request.POST.get(CAMPO_TESTIGO)) if request.method == "POST" else None
+def ventana_posteada(request, campo: str = CAMPO_TESTIGO) -> str:
+    datos = leer_testigo(request.POST.get(campo)) if request.method == "POST" else None
     return str((datos or {}).get("w") or "")
 
 
