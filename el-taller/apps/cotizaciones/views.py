@@ -534,6 +534,14 @@ def detalle(request, pk):
             token,
         ))
 
+    # La Caja: link para cobrar el anticipo en línea (o la factura del anticipo,
+    # si ya se generó). Vacío si La Caja está apagada o no hay nada que cobrar.
+    try:
+        from apps.caja.ui import boton_accion
+        if boton := boton_accion(request.user, cot):
+            acciones_html.append(boton)
+    except ImportError:  # La Caja no instalada
+        pass
     action_bar_acciones = mark_safe("".join(str(a) for a in acciones_html))
     action_bar_meta = format_html(
         '<span class="text-gray-500">Última actualización {}</span>',

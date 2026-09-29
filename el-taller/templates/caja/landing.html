@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}La Caja — Tesorería{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tesorería" "/tesoreria/" "La Caja" as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="min-w-0">
+        <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Tesorería</p>
+        <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">La Caja</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Links de pago en línea (Stripe y MercadoPago) y los pagos que llegaron. Cuando el cliente paga, el cobro se registra solo.</p>
+    </div>
+    {% if caja_estado.encendida %}
+    <div class="flex flex-wrap gap-1.5">
+        {% for info in pasarelas_activas %}
+        <span class="badge {% if info.prueba %}badge-warning{% else %}badge-success{% endif %}">{{ info.nombre }}{% if info.prueba %} · prueba{% endif %}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</header>
+
+{% include "caja/_aviso_estado.html" %}
+
+<div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Cobrado en línea este mes" valor=resumen.cobrado_mes|dinero subtexto=subtexto_pagos %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Links vigentes" valor=resumen.links_vigentes subtexto=resumen.por_cobrar_links|dinero %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por revisar" valor=resumen.por_revisar valor_alerta=resumen.por_revisar %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por acreditar" valor=resumen.pendientes subtexto="OXXO / SPEI" %}
+</div>
+
+{% if por_revisar %}
+<section class="mb-6 rounded-2xl border border-warning-300 bg-white shadow-theme-sm dark:border-warning-500/40 dark:bg-gray-900">
+    <header class="border-b border-warning-200 px-5 py-4 dark:border-warning-500/30">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Pagos por revisar</h2>
+        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Llegó dinero que no cuadró con su link. No se registró solo: decide qué hacer con cada uno.</p>
+    </header>
+    <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        {% for p in por_revisar %}
+        <li class="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="min-w-0">
+                <p class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ p.monto|dinero }} <span class="text-xs font-normal text-gray-500">{{ p.moneda }} · {{ p.get_pasarela_display }} · {{ p.fecha_pago|date:"d/m/Y H:i" }}</span></p>
+                <p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300">{% if p.link %}<a href="{% url 'caja:link-detalle' p.link.pk %}" class="hover:text-brand-600">{{ p.link.referencia }}</a>{% if p.link.cliente %} · {{ p.link.cliente.razon_social }}{% endif %}{% else %}Sin link{% endif %}</p>
+                <p class="mt-1 text-sm text-warning-700 dark:text-warning-400">{{ p.motivo }}</p>
+                <p class="mt-0.5 break-all font-mono text-[11px] text-gray-400">{{ p.id_externo }}</p>
+            </div>
+            {% if puede_revisar %}
+            <form method="post" action="{% url 'caja:pago-revisar' p.pk %}" class="campo-form flex w-full shrink-0 flex-col gap-2 lg:w-80">
+                {% csrf_token %}
+                <input type="text" name="nota" maxlength="200" placeholder="Nota (obligatoria para descartar)">
+                <div class="flex gap-2">
+                    <button type="submit" name="accion" value="registrar" class="btn-primario flex-1 text-xs" title="Si el link es de una factura que aún lo admite, entra como su cobro; si no, como ingreso del cliente.">Registrar</button>
+                    <button type="submit" name="accion" value="descartar" class="btn-secundario flex-1 text-xs" title="Por ejemplo, si ya se devolvió desde la pasarela.">Descartar</button>
+                </div>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="mb-6">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Links de pago</h2>
+        <nav class="flex flex-wrap gap-1.5 text-xs" aria-label="Filtrar links">
+            <a href="?" class="badge {% if not estado_filtro %}badge-brand{% else %}badge-gray{% endif %}">Todos</a>
+            {% for clave, nombre in filtros %}
+            <a href="?estado={{ clave }}" class="badge {% if estado_filtro == clave %}badge-brand{% else %}badge-gray{% endif %}">{{ nombre }}</a>
+            {% endfor %}
+        </nav>
+    </div>
+    <div class="ta-card overflow-x-auto p-0">
+        {% if links %}
+        <table data-tabla-movil class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="px-3 py-2 text-left">Qué</th>
+                    <th class="px-3 py-2 text-left">Cliente</th>
+                    <th class="px-3 py-2 text-right">Monto</th>
+                    <th class="px-3 py-2 text-left">Estado</th>
+                    <th class="px-3 py-2 text-left">Creado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for l in links %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td class="px-3 py-2"><a href="{% url 'caja:link-detalle' l.pk %}" class="font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100">{{ l.referencia }}</a>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ l.get_tipo_display }}</span></td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ l.cliente.razon_social|default:"—" }}</td>
+                    <td class="px-3 py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ l.monto|dinero }}</td>
+                    <td class="px-3 py-2"><span class="badge {% if l.estado == 'vigente' %}badge-success{% elif l.estado == 'pagado' %}badge-brand{% elif l.estado == 'anulado' %}badge-error{% else %}badge-gray{% endif %}">{{ l.get_estado_display }}</span></td>
+                    <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{{ l.creado_en|date:"d/m/Y" }}{% if l.creado_por %} · {{ l.creado_por.nombre_completo }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="px-5 py-6 text-sm text-gray-500 dark:text-gray-400">Todavía no hay links{% if estado_filtro %} en este estado{% endif %}. Se generan desde una factura emitida, una cotización aprobada con anticipo, o la ficha de un cliente o proyecto («Cobrar con link»).</p>
+        {% endif %}
+    </div>
+</section>
+
+<section class="mb-6">
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Pagos recibidos</h2>
+    <div class="ta-card overflow-x-auto p-0">
+        {% if pagos %}
+        <table data-tabla-movil class="min-w-full text-sm">
+            <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                <tr>
+                    <th class="px-3 py-2 text-left">Fecha</th>
+                    <th class="px-3 py-2 text-left">Qué</th>
+                    <th class="px-3 py-2 text-left">Pasarela</th>
+                    <th class="px-3 py-2 text-right">Monto</th>
+                    <th class="px-3 py-2 text-left">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for p in pagos %}
+                <tr>
+                    <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{{ p.fecha_pago|date:"d/m/Y H:i" }}</td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{% if p.link %}<a href="{% url 'caja:link-detalle' p.link.pk %}" class="hover:text-brand-600">{{ p.link.referencia }}</a>{% else %}—{% endif %}
+                        {% if p.ingreso %}<a href="{% url 'tesoreria:ingreso-detalle' p.ingreso.pk %}" class="block font-mono text-xs text-brand-600 hover:underline dark:text-brand-400">{{ p.ingreso.codigo }}</a>{% endif %}</td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ p.get_pasarela_display }}</td>
+                    <td class="px-3 py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ p.monto|dinero }}</td>
+                    <td class="px-3 py-2"><span class="badge {% if p.estado == 'registrado' %}badge-success{% elif p.estado == 'pendiente' %}badge-warning{% elif p.estado == 'rechazado' %}badge-error{% else %}badge-gray{% endif %}">{{ p.get_estado_display }}</span>
+                        {% if p.nota_revision %}<span class="block text-xs text-gray-500">{{ p.nota_revision }}</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="px-5 py-6 text-sm text-gray-500 dark:text-gray-400">Aún no llega ningún pago en línea.</p>
+        {% endif %}
+    </div>
+</section>
+
+<details class="rounded-2xl border border-gray-200 bg-white p-5 text-sm dark:border-gray-800 dark:bg-gray-900">
+    <summary class="cursor-pointer font-medium text-gray-800 dark:text-gray-200">¿Cómo se enciende? (para quien configura)</summary>
+    <ol class="mt-3 list-decimal space-y-1.5 pl-5 text-gray-600 dark:text-gray-400">
+        <li>En La Gerencia → Los Ajustes → «Cobros en línea», pega la llave de la pasarela.</li>
+        <li>Registra el webhook en la pasarela con esta dirección y pega el secreto que te da:
+            <span class="mt-1 block break-all font-mono text-xs text-gray-800 dark:text-gray-200">Stripe: {{ webhook_stripe }}</span>
+            <span class="block break-all font-mono text-xs text-gray-800 dark:text-gray-200">MercadoPago: {{ webhook_mp }}</span></li>
+        <li>Con llave + secreto, la pasarela aparece aquí arriba y en la página de pago.</li>
+    </ol>
+</details>
+{% endblock %}

@@ -193,7 +193,7 @@
         {% comment %} Grupo "Finanzas" — colapsable. Se auto-expande si alguna URL del grupo está activa.
            Estado persistido en localStorage. Sub-items gated por permiso individual.
            Inyectamos finanzas_grupo_activo desde el context processor sidebar_extras. {% endcomment %}
-        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria %}
+        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria or permisos_modulos.caja %}
         {% if not sidebar_orden.finanzas.oculto %}
         <button type="button"
                 style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
@@ -212,9 +212,15 @@
              style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
              class="ml-4 flex flex-col gap-1 border-l border-gray-200 pl-3 dark:border-gray-800 {% if not finanzas_grupo_activo %}hidden{% endif %}">
             {% if permisos_modulos.tesoreria %}
-            <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path and '/tesoreria/caja' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Tesorería
+            </a>
+            {% endif %}
+            {% if permisos_modulos.caja %}
+            <a href="{% url 'caja:landing' %}" class="menu-item {% if '/tesoreria/caja' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 11h18M7 15h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                La Caja
             </a>
             {% endif %}
             {% if permisos_modulos.facturacion %}

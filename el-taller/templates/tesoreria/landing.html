@@ -68,6 +68,7 @@
     <a href="{% url 'tesoreria:gastos-no-registrados' %}" class="btn-secundario">Gastos no registrados{% if gastos_no_registrados.cantidad %} ({{ gastos_no_registrados.cantidad }}){% endif %}</a>
     <a href="{% url 'tesoreria:cfdi-recibidos' %}" class="btn-secundario">CFDI recibidos{% if cfdi_pendientes %} ({{ cfdi_pendientes }}){% endif %}</a>
     <a href="{% url 'tesoreria:reportes' %}" class="btn-secundario">Reportes</a>
+    {% if permisos_modulos.caja %}<a href="{% url 'caja:landing' %}" class="btn-secundario" title="Links de pago en línea y los pagos que llegaron por Stripe y MercadoPago.">💳 La Caja</a>{% endif %}
     <a href="/contaduria/movimiento/traspaso/?origen=stripe_saldo&destino=banco&descripcion=Payout+de+Stripe+a+Banco" class="btn-secundario" title="Registra que bajaste tu balance de Stripe a tu cuenta de banco.">↓ Payout Stripe</a>
     <a href="/contaduria/movimiento/traspaso/?origen=mp_saldo&destino=banco&descripcion=Retiro+de+MercadoPago+a+Banco" class="btn-secundario" title="Registra que retiraste tu balance de MercadoPago a tu cuenta de banco.">↓ Retiro MP</a>
 </div>

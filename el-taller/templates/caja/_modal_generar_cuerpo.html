@@ -1,0 +1,9 @@
+{% load forms_helpers %}
+{% include "caja/_aviso_estado.html" %}
+<p>Se genera un link para que el cliente pague en línea <strong>{{ datos.monto|dinero }}</strong> — {{ datos.concepto }}.</p>
+<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Si el saldo cambia, el link se anula solo y hay que hacer otro. Cuando el cliente paga, el cobro se registra solo.</p>
+<form hx-post="{{ url_post }}" hx-target="#modal-slot" hx-swap="innerHTML" method="post" action="{{ url_post }}" class="mt-4 flex justify-end gap-2">
+    {% csrf_token %}
+    <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+    <button type="submit" class="btn-primario">Generar link</button>
+</form>

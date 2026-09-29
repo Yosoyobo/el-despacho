@@ -1,0 +1,10 @@
+{% comment %}Aviso de apagado / modo prueba. Pide `caja_estado` (lib.pasarelas.estado()).{% endcomment %}
+{% if not caja_estado.encendida %}
+<div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+    <strong>La Caja está apagada.</strong> Sin llaves de Stripe o MercadoPago no se ofrecen links de pago ni la página para pagar. Se encienden en La Gerencia → Los Ajustes → «Cobros en línea».
+</div>
+{% elif caja_estado.prueba %}
+<div class="mb-4 rounded-xl border border-warning-300 bg-warning-50 px-4 py-3 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300">
+    <strong>Modo prueba.</strong> Hay llaves de prueba puestas: los links NO cobran de verdad. No se los mandes a un cliente.
+</div>
+{% endif %}

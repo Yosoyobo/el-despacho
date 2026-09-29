@@ -66,6 +66,8 @@ INSTALLED_APPS = [
     # Campañas de correo masivo: app raíz compartida; la UI/operación vive aquí.
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Caja: links de pago con Stripe y MercadoPago (2026-09-29).
+    "apps.caja.apps.CajaConfig",
 ]
 
 MIDDLEWARE = [
