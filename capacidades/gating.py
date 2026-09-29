@@ -53,5 +53,7 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "nomina": permisos.puede_ver_nomina,
         # La Imprenta: cómo están configurados los PDF (`documentos.ver`).
         "documentos": permisos.puede_ver_documentos,
+        # Las órdenes de compra a proveedores (`compras.ver`).
+        "compras": permisos.puede_ver_compras,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

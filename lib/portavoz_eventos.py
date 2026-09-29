@@ -243,6 +243,10 @@ EventoTipo = Literal[
     # saldar los reembolsos que un recibo pagado incluyó).
     "nomina.periodo_cerrado",
     "nomina.recibo_pagado",
+    # Compras (La Imprenta · Deploy 4): las órdenes de compra a proveedores.
+    "compras.orden_creada",
+    "compras.orden_actualizada",
+    "compras.orden_estado",
 ]
 
 

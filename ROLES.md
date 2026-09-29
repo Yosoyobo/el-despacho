@@ -100,6 +100,7 @@ producción manda lo que diga esa pantalla.
 | `ajustes` | todo | — | — | — |
 | `kpis` | todo | — | — | — |
 | `documentos` | todo | — | — | — |
+| `compras` | todo | — | — | — |
 | `directorio` | todo | ver, gestionar | — | — |
 | `chalanes` | todo | ver | — | — |
 | `site` | todo | todo | — | — |

@@ -70,7 +70,7 @@ URL = "ajustes-documentos"
 
 @pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "factura",
                                  "recibo_pago", "estado_cuenta", "remision", "orden_trabajo",
-                                 "reembolso", "historial"])
+                                 "reembolso", "orden_compra", "historial"])
 def test_cada_pestana_abre(client, jefe, cot, tab):
     client.force_login(jefe)
     r = client.get(reverse(URL), {"tab": tab})

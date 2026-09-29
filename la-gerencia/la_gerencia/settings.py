@@ -87,6 +87,8 @@ INSTALLED_APPS = [
     # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
     # que configura y previsualiza).
     "imprenta.apps.ImprentaConfig",
+    # Las órdenes de compra a proveedores (La Imprenta · Deploy 4).
+    "apps.compras.apps.ComprasConfig",
     # La Recepción (S5): los accesos de clientes al portal. La UI vive en El
     # Taller (ficha del cliente) y en La Recepción; aquí sólo se instala para
     # que La Gerencia corra su migración (es la única que corre migrate, Bug B).

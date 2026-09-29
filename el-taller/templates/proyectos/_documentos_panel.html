@@ -5,4 +5,7 @@ taller). El formato sale de Gerencia → Ajustes → Documentos.{% endcomment %}
     <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Documentos</h3>
     {% include "imprenta/_botones_documento.html" with tipo="remision" pk=proyecto.pk etiqueta="Remisión" %}
     {% include "imprenta/_botones_documento.html" with tipo="orden_trabajo" pk=proyecto.pk etiqueta="Orden de trabajo" %}
+    {% if permisos_modulos.compras %}
+    <p class="mt-4 text-sm"><a href="/compras/nueva/?proyecto={{ proyecto.pk }}" class="text-brand-600 hover:underline dark:text-brand-400">+ Orden de compra para este proyecto</a></p>
+    {% endif %}
 </section>

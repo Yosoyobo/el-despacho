@@ -1,0 +1,49 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers imprenta %}
+{% comment %}La orden de compra al proveedor (La Imprenta): qué se le pide, cuánto,
+a qué precio acordado y para cuándo. La firma es la de quien la autoriza.{% endcomment %}
+{% block cuerpo %}
+{% if b.proveedor or b.proyecto or b.entrega %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="border:none; width:60%; vertical-align:top;">
+      {% if b.proveedor %}<div style="{{ e.suave_css }}">{{ r.rotulo_proveedor }}</div>
+      <div style="font-weight:bold;">{{ prov.razon_social }}</div>
+      {% if prov.rfc %}<div>RFC: {{ prov.rfc }}</div>{% endif %}
+      {% if prov.nombre_contacto %}<div>{{ prov.nombre_contacto }}</div>{% endif %}
+      {% if prov.email_contacto %}<div>{{ prov.email_contacto }}</div>{% endif %}
+      {% if prov.telefono %}<div>{{ prov.telefono }}</div>{% endif %}{% endif %}
+    </td>
+    <td style="border:none; vertical-align:top; text-align:right;">
+      {% if b.proyecto and orden.proyecto %}<div>Proyecto: {% firstof orden.proyecto.nombre orden.proyecto.codigo %}</div>{% endif %}
+      {% if b.entrega and orden.fecha_entrega %}<div style="font-weight:bold; {{ e.total }}">{{ r.rotulo_entrega }} {{ orden.fecha_entrega|date:"d/m/Y" }}</div>{% endif %}
+      <div>Moneda: {{ orden.moneda }}</div>
+    </td>
+  </tr>
+</table>
+{% endif %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="{{ e.th }} width:12%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+    <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.descripcion }}</td>
+    {% if b.precios %}<td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.precio }}</td>
+    <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.importe }}</td>{% endif %}
+  </tr>
+  {% for it in items %}
+  <tr style="{{ e|rayado:forloop.counter }}">
+    <td style="{{ e.td }} text-align:right;">{{ it.cantidad|floatformat:"-2" }} {{ it.unidad }}</td>
+    <td style="{{ e.td }} text-align:left;">{{ it.descripcion }}</td>
+    {% if b.precios %}<td style="{{ e.td }} text-align:right;">{{ it.precio_unitario|dinero }}</td>
+    <td style="{{ e.td }} text-align:right;">{{ it.subtotal|dinero }}</td>{% endif %}
+  </tr>
+  {% empty %}
+  <tr><td colspan="4" style="{{ e.td }} {{ e.suave_css }}">Sin renglones.</td></tr>
+  {% endfor %}
+  {% if b.precios and items %}
+  <tr><td colspan="3" style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ r.rotulo_total }}</td>
+      <td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ total|dinero }} {{ orden.moneda }}</td></tr>
+  {% endif %}
+</table>
+{% if b.condiciones and orden.condiciones %}<p style="margin:0 0 2pt 0; font-size:{{ e.notas_pt }}pt; font-weight:bold;">Condiciones</p><div style="margin-bottom:8pt; font-size:{{ e.notas_pt }}pt; white-space:pre-line;">{{ orden.condiciones }}</div>{% endif %}
+{% if b.notas and orden.notas %}<p style="margin:0 0 2pt 0; font-size:{{ e.notas_pt }}pt; font-weight:bold;">Notas</p><div style="margin-bottom:8pt; font-size:{{ e.notas_pt }}pt; white-space:pre-line;">{{ orden.notas }}</div>{% endif %}
+{% endblock %}

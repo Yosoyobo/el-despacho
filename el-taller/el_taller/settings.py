@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
     # que configura y previsualiza).
     "imprenta.apps.ImprentaConfig",
+    # Las órdenes de compra a proveedores (La Imprenta · Deploy 4).
+    "apps.compras.apps.ComprasConfig",
     # La Recepción (S5): desde la ficha del cliente se invita y se revoca.
     "portal.apps.PortalConfig",
     # La Caja: links de pago con Stripe y MercadoPago (2026-09-29).
