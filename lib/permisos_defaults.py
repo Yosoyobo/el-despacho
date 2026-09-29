@@ -268,7 +268,17 @@ def defaults_de(rol: str) -> dict[str, list[str]]:
     Un rol desconocido (o `miembro`, que no tiene defaults a propósito) recibe
     sólo `PERMISOS_UNIVERSALES`: lo que TODO usuario trae desde que nace.
     """
-    base = {m: list(a) for m, a in DEFAULTS_POR_ROL.get(rol, {}).items()}
+    return con_universales(DEFAULTS_POR_ROL.get(rol, {}))
+
+
+def con_universales(permisos: dict | None) -> dict[str, list[str]]:
+    """El JSON de un rol con `PERMISOS_UNIVERSALES` sumados (sin repetir).
+
+    Lo usa el alta de roles: todo usuario trae los universales por su fila
+    individual, así que un rol que naciera sin ellos haría mentir a «ver como
+    rol» (que evalúa SÓLO el JSON del rol simulado). Se revocan por persona,
+    no por rol (`cuentas/0046`)."""
+    base = {m: list(a) for m, a in (permisos or {}).items()}
     for modulo, acciones in PERMISOS_UNIVERSALES.items():
         actuales = base.setdefault(modulo, [])
         for accion in acciones:

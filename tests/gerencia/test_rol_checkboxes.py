@@ -31,4 +31,6 @@ def test_crear_rol_desde_checkboxes_persiste_dict(client, usuario_factory):
     })
     assert resp.status_code == 302
     rol = Rol.objects.get(nombre="supervisor_x")
-    assert rol.permisos == {"cartera": ["ver", "crear"], "proyectos": ["ver"]}
+    # Más los universales, con los que nace todo rol (`equipo.ver_actividad`).
+    assert rol.permisos == {"cartera": ["ver", "crear"], "proyectos": ["ver"],
+                            "equipo": ["ver_actividad"]}
