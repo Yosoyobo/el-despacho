@@ -263,7 +263,7 @@ def recibo_pdf(request, pk):
         from lib import gotenberg
 
         if gotenberg.disponible() and request.GET.get("html") != "1":
-            html = render_to_string("nomina/recibo_pdf.html", ctx, request=request)
+            html = render_to_string("nomina/pdf.html", ctx, request=request)
             pdf = gotenberg.html_a_pdf(html, pagina={
                 "pie_texto": f"Recibo interno de nómina · {r.periodo.etiqueta}",
                 "margen_superior_pt": 40, "margen_inferior_pt": 40,
@@ -276,7 +276,7 @@ def recibo_pdf(request, pk):
     except Exception:  # noqa: BLE001 — sin convertidor, la versión imprimible
         pass
     ctx["imprimible"] = True
-    return render(request, "nomina/recibo_pdf.html", ctx)
+    return render(request, "nomina/pdf.html", ctx)
 
 
 # ───────────────────────── sueldos ─────────────────────────
