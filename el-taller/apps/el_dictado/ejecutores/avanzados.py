@@ -17,6 +17,7 @@ el LLM proponga la acción.
 from __future__ import annotations
 
 import contextlib
+import re
 from datetime import date as _date
 from datetime import timedelta as _timedelta
 from decimal import Decimal, InvalidOperation
@@ -51,11 +52,22 @@ def _fecha(payload: dict, clave: str = "fecha"):
     return fecha
 
 
+_RE_FOLIO = re.compile(r"^F\s*-?\s*(\d+)$")
+
+
 def _factura_por_codigo(codigo: str):
+    """Factura por su código interno (FAC-AAAA-NNNN) o por el folio que se ve
+    en pantalla y en el CFDI («F-106», «F106» o sólo «106»): la gente dicta el
+    folio, casi nunca el código interno."""
     from apps.facturacion.models import Factura
-    codigo = (codigo or "").strip().upper()
-    _exigir(bool(codigo), "Falta `codigo` de la factura.")
+    codigo = str(codigo or "").strip().upper()
+    _exigir(bool(codigo), "Falta `codigo` de la factura (FAC-… o su folio F-###).")
     fac = Factura.objects.filter(codigo__iexact=codigo).first()
+    if fac is None:
+        m = _RE_FOLIO.match(codigo)
+        folio = m.group(1) if m else (codigo if codigo.isdigit() else None)
+        if folio:
+            fac = Factura.objects.filter(folio_numero=int(folio)).first()
     _exigir(fac is not None, f"Factura `{codigo}` no encontrada.")
     return fac
 

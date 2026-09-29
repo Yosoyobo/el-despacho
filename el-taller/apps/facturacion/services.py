@@ -205,7 +205,11 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
             terminos=cotizacion.terminos,
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
-        for it in cotizacion.items.all():
+        # Las líneas INFORMATIVAS (escalas de volumen que el cliente puede
+        # escoger, LC 2026-08-17) no se cobran: la cotización ya las excluye
+        # de su total y la factura no tiene esa bandera, así que copiarlas
+        # sumaría las alternativas y facturaría de más.
+        for it in cotizacion.items.filter(informativo=False):
             FacturaItem.objects.create(
                 factura=fac,
                 orden=it.orden,
@@ -223,6 +227,21 @@ def crear_desde_cotizacion(cotizacion, actor) -> Factura:
             FacturaImpuesto.objects.create(factura=fac, tasa=ci.tasa)
     _emitir("factura.creada", fac, actor,
             {"titulo": fac.titulo, "cotizacion_id": cotizacion.id})
+    return fac
+
+
+def ligar_a_proyecto(fac: Factura, proyecto, actor) -> Factura:
+    """Liga una factura EXISTENTE a un proyecto. Fuente única del flujo: la usan
+    el botón «Ligar» del recuadro de facturas del proyecto y El Chalán
+    (`ligar_factura_proyecto`)."""
+    if fac.estado == "cancelada":
+        raise ValueError(f"La factura {fac.folio_display} está cancelada; no se liga.")
+    if fac.proyecto_id == proyecto.pk:
+        raise ValueError(
+            f"La factura {fac.folio_display} ya está ligada a {proyecto.nombre or proyecto.codigo}.")
+    fac.proyecto = proyecto
+    fac.save(update_fields=["proyecto", "actualizado_en"])
+    emitir_actualizada(fac, actor)
     return fac
 
 
