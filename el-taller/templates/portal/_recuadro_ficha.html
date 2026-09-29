@@ -51,7 +51,7 @@ cómo salió. La respuesta de error también es 200 — HTMX no pinta un 4xx.
             {% if portal_puede_invitar or portal_puede_revocar and f.acceso.activo %}
             <div class="mt-2 flex flex-wrap gap-2">
                 {% if portal_puede_invitar %}
-                <button type="button" class="btn-secundario text-xs"
+                <button type="button" class="btn-secundario min-h-[44px] text-xs"
                         hx-post="{% url 'portal-invitar' cliente.pk %}"
                         hx-vals='{"email": "{{ f.email|escapejs }}"}'
                         hx-target="#portal-recuadro" hx-swap="outerHTML">
@@ -59,7 +59,7 @@ cómo salió. La respuesta de error también es 200 — HTMX no pinta un 4xx.
                 </button>
                 {% endif %}
                 {% if portal_puede_revocar and f.acceso.activo %}
-                <button type="button" class="btn-destructivo text-xs"
+                <button type="button" class="btn-destructivo min-h-[44px] text-xs"
                         hx-post="{% url 'portal-revocar' f.acceso.pk %}"
                         hx-confirm="¿Quitarle el acceso al portal a {{ f.email }}? Si tiene una sesión abierta, se cierra en su siguiente clic."
                         hx-target="#portal-recuadro" hx-swap="outerHTML">Revocar acceso</button>
