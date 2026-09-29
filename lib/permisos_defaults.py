@@ -108,6 +108,10 @@ TODO_PAPELEO = ["ver", "ligar", "subir"]
 # rol. `dueno` mantiene lo que ya alcanzaba (directorio básico, site, interfón,
 # lectura de Chalanes); las acciones que eran solo-super_admin se quedan así.
 TODO_AJUSTES = ["acceder"]
+# S-KPIs-V2 (2026-09-29): La Gerencia → Ajustes → KPIs (catálogo, tableros por
+# rol, metas y constructor). Nace «como hoy»: lo tenía quien abría Los Ajustes
+# (super_admin), y se delega por persona desde El Directorio.
+TODO_KPIS = ["configurar"]
 # La Imprenta (2026-09-29): cómo se arman los documentos PDF. Se separa en
 # cuatro porque no es la misma responsabilidad cambiar un color que las
 # condiciones que acepta el cliente o la CLABE a la que deposita:
@@ -203,6 +207,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
         "ajustes": list(TODO_AJUSTES),
+        "kpis": list(TODO_KPIS),
         "documentos": list(TODO_DOCUMENTOS),
         "directorio": list(TODO_DIRECTORIO),
         "chalanes": list(TODO_CHALANES),
@@ -343,6 +348,7 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),
+    "kpis": list(TODO_KPIS),
     # La Imprenta: los documentos PDF (estilo, notas, datos del despacho).
     "documentos": list(TODO_DOCUMENTOS),
     "directorio": list(TODO_DIRECTORIO),

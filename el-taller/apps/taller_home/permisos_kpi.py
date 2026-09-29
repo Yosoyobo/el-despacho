@@ -54,6 +54,14 @@ SUPERVISA_JORNADAS = ("checador.aprobar_correcciones",)
 # la separa, así que se pide además entrar a La Gerencia.
 VIGILA_CONTADURIA = ("contaduria.ver", "gerencia.acceder")
 
+# ── Los de desempeño (2026-09-29, `kpis_desempeno.py`) ───────────────────────
+# Aprobadas que ya se facturaron: el dato cruza las dos pantallas.
+COTIZA_Y_FACTURA = ("cotizaciones.ver", "facturacion.ver")
+VE_RUTAS = ("rutas.ver",)                  # el planeador de rutas de reparto
+ENVIA_CAMPANAS = ("comunicacion.campanas",)
+# Proyectos sin documentos: el archivo (Paperless) de TODOS los proyectos.
+VE_PAPELEO_PROYECTOS = ("papeleo.ver", "proyectos.ver_todos")
+
 
 def puede_ver(user, permisos: tuple[str, ...]) -> bool:
     """¿`user` tiene TODOS los `permisos` («modulo.accion»)? super_admin

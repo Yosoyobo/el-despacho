@@ -272,6 +272,7 @@ def rentabilidad_impl(args: dict, usuario) -> dict[str, Any]:
 def indicadores_impl(args: dict, usuario) -> dict[str, Any]:
     """El tablero completo: cada indicador con su valor, tendencia y si es raro."""
     from apps.taller_home import series
+    from apps.taller_home.kpi_valor import numero_del_resultado
     from apps.taller_home.kpis import kpis_aplicables
 
     categoria = (args.get("categoria") or "").strip().lower()
@@ -285,13 +286,14 @@ def indicadores_impl(args: dict, usuario) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             continue
         valor = r.get("valor")
+        numero = numero_del_resultado(r)
+        propio = not kpi.personal
         filas.append({
             "slug": kpi.slug, "titulo": kpi.titulo, "categoria": kpi.categoria,
-            "valor": valor, "nota": r.get("nota") or "",
-            "tendencia": series.tendencia(kpi.slug),
-            "anomalia": (
-                series.es_raro(kpi.slug, valor) if not isinstance(valor, str) else None
-            ),
+            "valor": valor, "numero": numero, "nota": r.get("nota") or "",
+            "hacia_donde_es_mejor": kpi.direccion, "periodo": kpi.acumula or "corte",
+            "tendencia": series.tendencia(kpi.slug) if propio else "sin_datos",
+            "juicio": series.juzgar(kpi, numero) if propio and numero is not None else None,
         })
         if len(filas) >= limite:
             break
@@ -301,11 +303,12 @@ def indicadores_impl(args: dict, usuario) -> dict[str, Any]:
 def serie_indicador_impl(args: dict, usuario) -> dict[str, Any]:
     """La historia de un indicador, para graficarla o analizarla fuera."""
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpi_por_slug
+    from apps.taller_home.kpis import kpi_por_slug, kpis_aplicables
 
     slug = (args.get("slug") or "").strip()
     kpi = kpi_por_slug(slug) if slug else None
-    if kpi is None:
+    # Sólo la historia de un KPI que `usuario` puede ver (antes, cualquiera).
+    if kpi is None or not any(k.slug == slug for k in kpis_aplicables(usuario)):
         return {"error": "no_visible"}
     try:
         dias = max(7, min(int(args.get("dias") or 90), 365))

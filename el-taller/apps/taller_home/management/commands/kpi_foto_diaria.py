@@ -41,16 +41,23 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("No hay usuarios; nada que medir."))
             return
 
+        from apps.taller_home.kpi_valor import numero_del_resultado
+        from apps.taller_home.kpis import _kpis_custom_equipo
+        from apps.taller_home.tablero import apagados
+
+        fuera = apagados()
         guardados = fallidos = 0
-        for kpi in KPIS:
-            # Los KPIs personales ("mis tareas") no tienen sentido como número
+        for kpi in [*KPIS, *_kpis_custom_equipo()]:
+            # Los KPIs personales («mis tareas», «mis horas») no son un número
             # del despacho: dependen de quién pregunta.
-            if kpi.slug.startswith("mis-"):
+            if kpi.personal or kpi.slug in fuera:
                 continue
             try:
                 r = kpi.calcular(actor)
-                valor = r.get("valor")
-                if isinstance(valor, str):   # "—" y demás: no es medible
+                # `numero_del_resultado` entiende «$12,345» y «32%»: hasta
+                # S-KPIs-V2 se saltaban los de texto y el dinero no tenía historia.
+                valor = numero_del_resultado(r)
+                if valor is None:   # «—» y demás: no se pudo medir
                     continue
                 if dry:
                     self.stdout.write(f"  {kpi.slug} = {valor}")

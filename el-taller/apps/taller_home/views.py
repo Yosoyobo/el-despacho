@@ -53,7 +53,9 @@ KANBAN_SLUGS_DASHBOARD = (
     "por_cotizar", "esperando_respuesta", "en_proceso_diseno", "en_proceso_produccion",
 )
 
-# Zona compacta: 8 KPIs del render como default para todos (personalizable).
+# Los 8 KPIs que el Inicio pintaba fijos hasta S-KPIs-V2. Hoy son el tablero
+# por omisión (`TableroKPI(rol=None)`, sembrado en taller_home/0007); se
+# conservan aquí como referencia para las pruebas y el Chalán.
 COMPACT_KPI_SLUGS = (
     "ingresos-mes", "egresos-mes", "utilidad-mes", "cxp-total",
     "tareas-vencidas-equipo", "valor-proyectos", "cxc-total", "cotizaciones-pendientes",
@@ -74,6 +76,14 @@ HERO_DEFS = (
     ("hero-ingresos", "Ingresos del mes", True),
     ("hero-utilidad", "Utilidad bruta del mes", True),
 )
+
+
+# La tarjeta grande que es el mismo número que un KPI del catálogo (su meta).
+HERO_KPI = {
+    "hero-proyectos-activos": "proyectos-activos",
+    "hero-ingresos": "ingresos-mes",
+    "hero-utilidad": "utilidad-mes",
+}
 
 
 def _safe(label: str, fn, default):
@@ -139,21 +149,38 @@ def _hero_kpis(user) -> list[dict]:
                            **_kpi_ingresos_mes(user)})
         candidatos.append({"slug": "hero-utilidad", "titulo": f"Utilidad bruta {mes}",
                            **_kpi_utilidad_mes(user)})
-    return [
-        {**c, "alerta": c.get("nota") == "alerta"}
-        for c in candidatos if c["slug"] not in ocultos
-    ]
+    # La zona grande también lleva la meta de su KPI (S-KPIs-V2).
+    from .kpi_valor import numero_del_resultado
+    from .metas import meta_para_tarjeta
+    from .tablero import configs, efectivo
+
+    cfgs = configs()
+    salida = []
+    for c in candidatos:
+        if c["slug"] in ocultos:
+            continue
+        item = {**c, "alerta": c.get("nota") == "alerta"}
+        kpi = kpi_por_slug(HERO_KPI.get(c["slug"], ""))
+        if kpi is not None:
+            with contextlib.suppress(Exception):
+                item["meta"] = meta_para_tarjeta(
+                    user, efectivo(kpi, cfgs), numero_del_resultado(c),
+                )
+        salida.append(item)
+    return salida
 
 
 def _compact_kpis(user) -> list[dict]:
-    """Los 8 KPIs compactos: default del render, filtrados por permiso, honrando
-    `PreferenciaKPI` (oculto + orden). Los 3 financieros llevan sparkline 6m."""
-    ocultos = set(
-        PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
-    )
-    ordenes = dict(
-        PreferenciaKPI.objects.filter(usuario=user).values_list("kpi_slug", "orden")
-    )
+    """«Tu tablero»: el tablero de los roles de `user` armado en La Gerencia,
+    con lo que la persona ocultó o agregó (S-KPIs-V2, `tablero.py`). Cada
+    tarjeta trae su formato, su semáforo y su meta; los 3 financieros, su
+    sparkline de 6 meses, y el resto, la de su foto diaria si ya tiene."""
+    from . import series
+    from .models import MetaKPI
+    from .tablero import configs, kpis_del_tablero, tarjeta
+
+    cfgs = configs()
+    metas = list(MetaKPI.objects.filter(activa=True))
 
     spark = {}
     if _puede_finanzas(user):
@@ -164,37 +191,23 @@ def _compact_kpis(user) -> list[dict]:
             spark = {}
 
     salida: list[dict] = []
-    # Candidatos = los 8 del render (orden 0..7) + KPIs custom del usuario
-    # (S2b.5, orden 100+i) para que la personalización siga apareciendo aquí.
-    from .kpis import _kpis_custom_para
-    candidatos: list[tuple[int, object]] = [
-        (i, kpi_por_slug(slug)) for i, slug in enumerate(COMPACT_KPI_SLUGS)
-    ]
-    candidatos += [(100 + i, kpi) for i, kpi in enumerate(_kpis_custom_para(user))]
-
-    for orden_default, kpi in candidatos:
-        if kpi is None or not kpi.visible_para(user) or kpi.slug in ocultos:
-            continue
+    for kpi in kpis_del_tablero(user):
         try:
             res = kpi.calcular(user)
         except Exception:  # noqa: BLE001 — un KPI roto no tumba el dashboard
             res = {"valor": "?", "nota": "error", "link": ""}
-        item = {
-            "slug": kpi.slug,
-            "titulo": kpi.titulo,
-            "valor": res.get("valor", "—"),
-            "nota": res.get("nota", ""),
-            "alerta": res.get("nota", "") == "alerta",
-            "link": res.get("link", ""),
-            "orden_default": orden_default,
-        }
+        historia = None
+        if kpi.slug not in SPARKLINE_FINANCIERO and not kpi.personal and not (
+            kpi.acotado and _solo_lo_suyo(user)
+        ):
+            with contextlib.suppress(Exception):
+                historia = [p["valor"] for p in series.serie(kpi.slug, dias=30)]
+        item = tarjeta(user, kpi, res, cfgs=cfgs, metas=metas, sparkline=historia)
         if kpi.slug in SPARKLINE_FINANCIERO and spark:
             clave, color = SPARKLINE_FINANCIERO[kpi.slug]
             item["sparkline_serie"] = json.dumps(spark.get(clave, []))
             item["sparkline_color"] = color
         salida.append(item)
-
-    salida.sort(key=lambda it: ordenes[it["slug"]] if ordenes.get(it["slug"]) is not None else 1000 + it["orden_default"])
     return salida
 
 
@@ -564,12 +577,12 @@ def home(request):
 @login_required
 def dashboard_preferencias(request):
     """Página de edición de KPIs visibles + sugerencias del Chalán."""
+    from .tablero import base_de, kpis_del_tablero
+
     user = request.user
     aplicables = kpis_aplicables(user)
-
-    ocultos = set(
-        PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
-    )
+    en_tablero = {k.slug for k in kpis_del_tablero(user)}
+    de_tu_rol = set(base_de(user))
 
     # Agrupar por categoría preservando el orden del catálogo CATEGORIAS.
     por_categoria: dict[str, list[dict]] = {cat: [] for cat, _ in CATEGORIAS}
@@ -580,7 +593,8 @@ def dashboard_preferencias(request):
             "slug": kpi.slug,
             "titulo": kpi.titulo,
             "descripcion": kpi.descripcion,
-            "visible": kpi.slug not in ocultos,
+            "visible": kpi.slug in en_tablero,
+            "de_tu_rol": kpi.slug in de_tu_rol,
             "estado_kpi": kpi.estado_kpi,
         })
 
@@ -612,13 +626,31 @@ def dashboard_preferencias(request):
 @login_required
 @require_http_methods(["POST"])
 def dashboard_guardar(request):
-    """Guarda visibles[] de la página de preferencias. Slugs no marcados → ocultos."""
+    """Guarda la página de preferencias: SÓLO lo que difiere del tablero del rol.
+
+    Marcado y en la base de su rol → sin fila (sigue al rol); desmarcado y en
+    la base → `visible=False`; marcado y fuera de la base → `visible=True`. Así
+    un cambio del tablero del rol en La Gerencia le llega a quien no lo tocó.
+    (Hasta S-KPIs-V2 escribía una fila por CADA KPI del catálogo.)"""
+    from .tablero import base_de
+
     user = request.user
     aplicables_slugs = {k.slug for k in kpis_aplicables(user)}
     marcados = set(request.POST.getlist("visible"))
+    base = set(base_de(user))
 
     for slug in aplicables_slugs:
         visible = slug in marcados
+        # Los KPIs del Chalán entran solos, como si fueran de la base.
+        en_base = slug in base or slug.startswith("custom-")
+        pref = PreferenciaKPI.objects.filter(usuario=user, kpi_slug=slug).first()
+        if visible == en_base:
+            if pref is not None and pref.orden is None:
+                pref.delete()
+            elif pref is not None and pref.visible != visible:
+                pref.visible = visible
+                pref.save(update_fields=["visible", "modificado_en"])
+            continue
         PreferenciaKPI.objects.update_or_create(
             usuario=user, kpi_slug=slug, defaults={"visible": visible, "origen": "manual"},
         )
@@ -647,16 +679,21 @@ def dashboard_reordenar(request):
     S-LC-Feedback-V3. Body: `slugs[]` lista ordenada de slugs visibles.
     Actualiza `PreferenciaKPI.orden` por usuario (0..N).
     """
+    from .tablero import kpis_del_tablero
+
     user = request.user
     slugs = request.POST.getlist("slugs")
     if not slugs:
         return JsonResponse({"ok": False, "error": "Vacío."}, status=400)
-    for i, slug in enumerate(slugs):
+    # Sólo se reordena lo que ya está en su tablero: un slug ajeno (o de un
+    # KPI que no puede ver) no se cuela como «visible».
+    suyos = {k.slug for k in kpis_del_tablero(user)}
+    validos = [s for s in slugs if s in suyos]
+    for i, slug in enumerate(validos):
         PreferenciaKPI.objects.update_or_create(
-            usuario=user, kpi_slug=slug,
-            defaults={"orden": i, "visible": True},
+            usuario=user, kpi_slug=slug, defaults={"orden": i},
         )
-    return JsonResponse({"ok": True, "n": len(slugs)})
+    return JsonResponse({"ok": True, "n": len(validos)})
 
 
 @login_required

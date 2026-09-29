@@ -234,12 +234,28 @@ def test_propone_metas_solo_con_historia(usuario_factory):
     from apps.taller_home.curaduria import proponer_metas
 
     assert proponer_metas() == []          # sin historia, nada que proponer
-    hoy = date.today()
-    for i in range(1, 15):
-        series.guardar("ingresos-mes", 100000, dia=hoy - timedelta(days=i))
+    # «Ingresos del mes» acumula: lo hecho es el CIERRE de cada mes anterior,
+    # no la mediana de sus fotos diarias (que sería la de medio mes).
+    inicio = date.today().replace(day=1)
+    fin_mes = inicio - timedelta(days=1)
+    for monto in (90000, 100000, 110000):
+        series.guardar("ingresos-mes", monto // 2, dia=fin_mes.replace(day=10))
+        series.guardar("ingresos-mes", monto, dia=fin_mes)
+        fin_mes = fin_mes.replace(day=1) - timedelta(days=1)
     props = {p["slug"]: p for p in proponer_metas()}
     assert "ingresos-mes" in props
+    assert props["ingresos-mes"]["tipico"] == 100000.0
     assert props["ingresos-mes"]["sugerida"] == 110000.0
+
+
+def test_meta_sugerida_de_un_kpi_que_baja_pide_menos():
+    from apps.taller_home import series
+
+    hoy = date.today()
+    for i in range(1, 15):
+        series.guardar("cxc-total", 50000, dia=hoy - timedelta(days=i))
+    m = series.meta_sugerida("cxc-total", direccion="baja")
+    assert m["sugerida"] == 45000.0
 
 
 def test_las_sugerencias_no_se_repiten(usuario_factory):

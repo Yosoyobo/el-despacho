@@ -374,6 +374,17 @@ COMANDOS_DICTADO: list[dict] = [
         "gating": "proyectos_editar",
     },
     {
+        # S-KPIs-V2 (2026-09-29). Lo mismo que La Gerencia → Ajustes → KPIs → Metas.
+        "tipo": "fijar_meta_kpi",
+        "titulo": "Fijar (o quitar) la meta de un KPI",
+        "ejemplo": ('Ponle meta de 250 mil a los ingresos del mes. O: "meta de 40 horas a la semana '
+                    'para @ana". O: "quítale la meta a los egresos del mes".'),
+        "payload": ("kpi_slug (usa listar_kpis), valor (número > 0; con «menos es mejor» es un tope), "
+                    "ambito? (despacho|persona|cliente, default despacho), usuario_email? (si persona), "
+                    "cliente_slug? (si cliente), quitar? (bool: true borra la meta)."),
+        "gating": "kpis",
+    },
+    {
         "tipo": "archivar_proyecto",
         "titulo": "Archivar (o restaurar) proyecto",
         "ejemplo": 'Archiva #lc-0001. O: "restaura #lc-0001".',
@@ -560,6 +571,8 @@ def _gating_checks():
     from lib import permisos
     return {
         "abierto": lambda u: True,
+        # S-KPIs-V2: poner/quitar metas de KPI (lo mismo que La Gerencia → KPIs).
+        "kpis": permisos.puede_configurar_kpis,
         # S-Chalan-Barrido: gating granular para crear entidades.
         # S-Deuda-Permisos: antes "admin" → `es_admin` (por rol). Los mismos
         # permisos que en pantalla: crear y duplicar, `proyectos.crear`; asignar,
@@ -675,6 +688,10 @@ COMANDOS_PROHIBIDOS: list[dict] = [
 # herramientas vetadas. Aquí se documentan para la UI de Los Chalanes.
 CONSULTAS_CHAT: list[dict] = [
     {"nombre": "listar_kpis / consultar_kpi", "que": "Indicadores del tablero (según el rol)."},
+    {"nombre": "mi_tablero_kpis", "que": "Lo que la persona ve en «Tu tablero» del Inicio: cada KPI con su valor, su semáforo y su meta. Pregunta: «¿cómo va mi tablero?»."},
+    {"nombre": "metas_kpi", "que": "Las metas de KPIs (del despacho, de una persona o de un cliente) y cómo van hoy: cumplida, en camino, en riesgo o se pasó, medidas proporcional al periodo. Pregunta: «¿qué metas van en riesgo?» o «¿cómo va la meta de ingresos?»."},
+    {"nombre": "configuracion_kpi", "que": "Cómo está configurado un KPI en La Gerencia: prendido o apagado, hacia dónde es mejor, umbrales, quién lo ve, sus metas y en qué tableros de rol está (requiere permiso de KPIs). Pregunta: «¿cómo está configurado el KPI de cuentas por cobrar?»."},
+    {"nombre": "fijar_meta_kpi (acción)", "que": "Poner o quitar la meta de un KPI por chat, con confirmación: «ponle meta de 250 mil a los ingresos del mes» (requiere permiso de KPIs). El catálogo, los tableros por rol y los umbrales se configuran en La Gerencia → Ajustes → KPIs; El Chalán sólo los consulta."},
     {"nombre": "consultar_metrica", "que": "Conteos/sumas acotadas (proyectos, tareas, clientes, ingresos/egresos)."},
     {"nombre": "buscar", "que": "Búsqueda libre por texto en proyectos, clientes, facturas y cotizaciones."},
     {"nombre": "buscar_catalogo", "que": "Busca productos y proveedores del Catálogo por nombre (precio, costo, margen, quién los surte). Requiere permiso de Productos. Pregunta: «busca el producto Playera» o «¿qué productos surte Telas del Norte?»."},
