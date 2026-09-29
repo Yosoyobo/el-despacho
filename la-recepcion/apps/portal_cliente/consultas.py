@@ -216,14 +216,9 @@ _TEXTO_FASE = {
 def _a_cotizacion(cot) -> CotizacionCliente:
     from apps.cotizaciones.embudo import fase_efectiva
 
+    # La fase la decide el sistema (con los slugs literales «rechazada» /
+    # «anulada» bien leídos aunque el catálogo no los tenga: `fase_de`).
     fase = fase_efectiva(cot)
-    # Un rechazo registrado manda aunque el catálogo de estados no tenga uno de
-    # fase «perdida» activo: `marcar_rechazada` cae entonces al slug literal
-    # «rechazada», que sin fila en el catálogo se lee como «armada» y —con su
-    # sello de envío— como «enviada». Sin esto la cotización rechazada volvería a
-    # salir «por responder» y se podría aprobar después de rechazarla.
-    if cot.rechazada_en and fase != "ganada":
-        fase = "perdida"
     texto, tono = _TEXTO_FASE.get(fase, ("Enviada", "azul"))
     try:
         total = Decimal(str(cot.calcular_totales()["total"]))
