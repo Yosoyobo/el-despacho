@@ -82,6 +82,8 @@
 
     btn.addEventListener("click", pedir);
     instr.addEventListener("keydown", (e) => {
+      // Enter a media letra confirma el acento; no le pide nada al Chalán.
+      if (window.despachoComponiendo ? window.despachoComponiendo(e) : (e.isComposing || e.keyCode === 229)) return;
       if (e.key === "Enter") { e.preventDefault(); pedir(); }
     });
   }

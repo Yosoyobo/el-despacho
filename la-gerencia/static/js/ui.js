@@ -6,6 +6,62 @@
 //   <aside data-ta-sidebar>…</aside>              elemento controlado
 //   <button data-ta-dropdown="#perfil">…</button> abre el panel #perfil
 //   <div id="perfil" data-ta-dropdown-panel>…</div>
+
+// ===========================================================================
+// El teclado: la ñ y los acentos, con las dos formas de escribir.
+// LC 2026-09-28 (Oscar): usa la tecla ñ directa (teclado ISO) y también
+// Option+n → n. La primera es una tecla más; la segunda —como el acento ´ + a—
+// es una COMPOSICIÓN: dos pulsaciones, y entre una y otra el navegador está
+// armando la letra. Cualquier cosa que en ese hueco reescriba el campo, mueva
+// su tamaño, le robe el foco o se trague el Enter/Esc corta la letra a medias.
+//
+// Regla para todo manejador de teclado del repo:
+//   · si ESCRIBE en el campo (value, tamaño, selección, foco), o reacciona a
+//     Enter/Tab/Esc, empieza con `if (window.despachoComponiendo(e)) return;`
+//   · si sólo LEE para filtrar o buscar, NO se detiene: en Android el teclado
+//     compone cada palabra completa, y pausar ahí congelaría los buscadores y
+//     el autocompletado de @/#/$ hasta el espacio.
+// Hay un candado que lo exige: tests/taller/test_teclado_sep28.py.
+//
+// Y la garantía que lo hace posible: al terminar la composición llega SIEMPRE
+// un `input` más. Chrome manda el último `input` todavía «componiendo» y luego
+// el `compositionend`, sin otro `input` después —quien se saltó el componiendo
+// nunca vería la ñ—; Safari y Firefox sí mandan uno ya sin componer. Aquí se
+// reparte uno sintético sólo cuando el navegador no lo mandó, para que cada
+// manejador procese la letra ya armada exactamente una vez más.
+// ===========================================================================
+(function () {
+  'use strict';
+  /* ¿Está el teclado a media letra? `isComposing` es lo estándar; `keyCode 229`
+     es cómo lo avisa un `keydown` en Chrome/Android; y la marca propia cubre a
+     Safari, que en algunas versiones no pone `isComposing` en las teclas
+     muertas. */
+  window.despachoComponiendo = function (e) {
+    if (!e) return false;
+    if (e.isComposing || e.keyCode === 229) return true;
+    var t = e.target;
+    return !!(t && t.__despachoComponiendo);
+  };
+  document.addEventListener('compositionstart', function (e) {
+    if (e.target) e.target.__despachoComponiendo = true;
+  }, true);
+  document.addEventListener('compositionend', function (e) {
+    var t = e.target;
+    if (!t) return;
+    t.__despachoComponiendo = false;
+    t.__despachoFaltaInput = true;
+    setTimeout(function () {
+      if (!t.__despachoFaltaInput) return;   // el navegador ya mandó el suyo
+      t.__despachoFaltaInput = false;
+      if (t.isConnected) t.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 0);
+  }, true);
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && !window.despachoComponiendo(e)) t.__despachoFaltaInput = false;
+  }, true);
+})();
+
 (function () {
   'use strict';
 
@@ -178,6 +234,8 @@
     dropdowns.forEach(function (d) { d.panel.classList.add('hidden'); });
   });
   document.addEventListener('keydown', function (e) {
+    // Esc a media letra cancela la tecla muerta, no cierra nada (El teclado).
+    if (window.despachoComponiendo(e)) return;
     if (e.key === 'Escape') {
       dropdowns.forEach(function (d) { d.panel.classList.add('hidden'); });
       cerrarSidebar();
@@ -227,6 +285,9 @@
     if (slot && e.target === slot.firstElementChild) cerrarSlotModal();  // backdrop
   });
   document.addEventListener('keydown', function (e) {
+    // Sin esto, Esc para cancelar un acento a medias vaciaba el modal y se
+    // llevaba lo escrito (El teclado).
+    if (window.despachoComponiendo(e)) return;
     if (e.key === 'Escape') cerrarSlotModal();
   });
   document.body.addEventListener('htmx:afterRequest', function (e) {
@@ -281,6 +342,8 @@
     if (!e.target.closest('[data-campo-color]')) _cerrarPopovers(null);
   });
   document.body.addEventListener('input', function (e) {
+    // Reescribe el cuadro (mayúsculas, «#»): nunca a media letra (El teclado).
+    if (window.despachoComponiendo(e)) return;
     var campo = e.target.closest('[data-campo-color]');
     if (!campo) return;
     if (e.target.matches('[data-color-input]') || e.target.matches('[data-color-wheel]')) {
@@ -536,6 +599,7 @@
     abrirLightbox(src, lb.getAttribute('data-lightbox-alt') || lb.getAttribute('alt'));
   });
   document.addEventListener('keydown', function (e) {
+    if (window.despachoComponiendo(e)) return;   // El teclado
     if (e.key === 'Escape') { cerrarLightbox(); cerrarPopovers(); }
   });
 })();
@@ -913,7 +977,7 @@ window.abrirRickroll = function () {
     var n = document.getElementById('rickroll-overlay');
     if (n) n.remove();
   }
-  function onKey(e) { if (e.key === 'Escape') cerrar(); }
+  function onKey(e) { if (window.despachoComponiendo(e)) return; if (e.key === 'Escape') cerrar(); }
   ov.querySelector('[data-rickroll-close]').addEventListener('click', cerrar);
   document.addEventListener('keydown', onKey);
   document.body.appendChild(ov);

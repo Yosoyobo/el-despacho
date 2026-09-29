@@ -67,7 +67,11 @@ nuevo mientras lo escribes, en vez de esperar a recargar la página.{% endcommen
         var campo = document.getElementById('{{ form.nombre.id_for_label|escapejs }}');
         var titulo = document.getElementById('titulo-proyecto');
         if (!campo || !titulo) return;
-        campo.addEventListener('input', function () {
+        campo.addEventListener('input', function (e) {
+            // A media letra (ñ con Option+n, ´ + a) no se toca el título: si
+            // cambia de renglones mueve el campo y corta la composición. Al
+            // terminar la letra llega otro `input` (ui.js lo garantiza).
+            if (window.despachoComponiendo && window.despachoComponiendo(e)) return;
             var nombre = campo.value.trim() || codigo;
             titulo.textContent = nombre;
             document.title = codigo + ' — ' + nombre;

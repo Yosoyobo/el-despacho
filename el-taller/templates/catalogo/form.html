@@ -477,6 +477,9 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
         if (vacio) vacio.classList.toggle('hidden', filas().length > 0);
     }
     function serializar() {
+        // teclado: no toca el campo que se escribe — sólo vuelca a un oculto,
+        // y hacerlo a media letra no corta nada (y al soltar el campo llega el
+        // `change` que asegura la última palabra antes de guardar).
         const arr = [];
         if (impProv && impProv.value) {
             arr.push({
@@ -700,7 +703,9 @@ el documento termine de parsearse.{% endcomment %}
         var campo = document.getElementById('{{ form.nombre.id_for_label|escapejs }}');
         var titulo = document.getElementById('titulo-producto');
         if (!campo || !titulo) return;
-        campo.addEventListener('input', function () {
+        campo.addEventListener('input', function (e) {
+            // A media letra no se toca el título (ver proyectos/detalle.html).
+            if (window.despachoComponiendo && window.despachoComponiendo(e)) return;
             var nombre = campo.value.trim() || 'Producto';
             titulo.textContent = nombre;
             document.title = nombre + ' — Productos';

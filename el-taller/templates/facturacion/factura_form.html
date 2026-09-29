@@ -593,7 +593,8 @@
             limpiarEstandar(); marcarOtro(true);
             if (otroInput) { otroInput.focus(); if (otroInput.value) { $porcentaje.value = otroInput.value; calcTotal(); } }
         });
-        if (otroInput) otroInput.addEventListener('input', function () {
+        if (otroInput) otroInput.addEventListener('input', function (e) {
+            if (window.despachoComponiendo && window.despachoComponiendo(e)) return;
             let v = parseFloat(otroInput.value);
             if (isNaN(v)) return;
             v = Math.max(1, Math.min(100, v));
