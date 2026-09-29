@@ -982,13 +982,11 @@ def sidebar_guardar(request):
 
 @requiere_permiso("ajustes", "acceder")
 def metas_kpi_panel(request):
-    # Importamos perezosamente para evitar cargar `apps.taller_home` en
-    # los tests de Gerencia (sus settings pueden no incluir esa app).
-    try:
-        from apps.taller_home.models.meta_kpi import MetaKPI
-        existentes = {m.kpi_slug: m for m in MetaKPI.objects.all()}
-    except Exception:
-        existentes = {}
+    # Sin `try`: un `except Exception` aquí escondió que la imagen de La
+    # Gerencia no traía `apps.taller_home` — el panel salía vacío en
+    # silencio y el guardado daba 500 (2026-09-29).
+    from apps.taller_home.models.meta_kpi import MetaKPI
+    existentes = {m.kpi_slug: m for m in MetaKPI.objects.all()}
     # Slugs sugeridos (los más comunes); el super_admin puede agregar más
     # escribiendo el slug en el form. Esto es lista guía, no un cerrado.
     slugs_sugeridos = [

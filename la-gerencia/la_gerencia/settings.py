@@ -109,6 +109,10 @@ INSTALLED_APPS = [
     # (es la única que corre `migrate`, Bug B §14) y (b) el CRUD de
     # HorarioLaboral + bandeja de correcciones espejo (E5).
     "apps.checador.apps.CheckadorConfig",
+    # Metas de KPI (Los Ajustes) y aprobación de KPIs custom (Los Chalanes)
+    # consultan MetaKPI / KPICustom, que viven en apps.taller_home. Sin
+    # registrarla, guardar las metas daba 500 en prod (2026-09-29).
+    "apps.taller_home.apps.TallerHomeConfig",
     # 3rd party
     "rest_framework",
     "drf_spectacular",
