@@ -86,6 +86,9 @@ URL_NAMES_SONDEO = frozenset({
     "checador:api_sync",
     # Este mismo sistema: el recuadro «Quién está conectado» se refresca solo.
     "directorio-en-linea",
+    # La ficha del proveedor pregunta cada 2 s si ya se ubicó el pin (se apaga
+    # sola al terminar; deuda Sep28).
+    "catalogo-proveedor-pin",
 })
 
 # Los paneles de El Vigía / El Site se nombran todos `site-vivo-*`; se cubren

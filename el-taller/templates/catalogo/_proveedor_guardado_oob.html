@@ -10,3 +10,6 @@ Refresca por OOB el indicador ✓/✕ y la marca de última actualización.{% en
 vuelve refrescado y sin aviso, para que el siguiente autoguardado de esta ventana
 no choque con lo que ella misma guardó.{% endcomment %}
 {% if ok and edicion %}{% include "edicion/_testigo.html" with edicion=edicion oob=True %}{% endif %}
+{% comment %}Deuda Sep28: si este guardado mandó a ubicar el pin, la ficha empieza a
+preguntar cuándo termina para mover el marcador sin recargar.{% endcomment %}
+{% if ok and pin_programado %}{% include "catalogo/_proveedor_pin_vigia.html" with activo=True oob=True %}{% endif %}

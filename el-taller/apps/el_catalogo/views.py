@@ -1194,6 +1194,7 @@ def proveedor_detalle(request, pk: int):
 
     choque = None
     ctx_edicion = None
+    pin_vigia_activo = False
     if request.method == "POST":
         if not puede_editar:
             return HttpResponseForbidden("Sin permiso para editar proveedores.")
@@ -1243,10 +1244,13 @@ def proveedor_detalle(request, pk: int):
         if ctx_edicion is None:
             ctx_edicion = edicion.contexto(request, testigo=ed_prov.testigo_para(request))
     else:
-        from .ubicacion import aviso_pendiente
+        from . import ubicacion
 
-        if aviso := aviso_pendiente(prov.pk):
+        if aviso := ubicacion.aviso_pendiente(prov.pk):
             messages.warning(request, aviso)
+        # Deuda Sep28: si el pin se está ubicando (alta o cambio de dirección
+        # recién guardados), la ficha pregunta hasta que termine.
+        pin_vigia_activo = puede_editar and ubicacion.pendiente(prov.pk)
         form = ProveedorForm(instance=prov, inline=True)
         if puede_editar:
             ctx_edicion = edicion.contexto(request, testigo=edicion.Edicion(prov, form).testigo())
@@ -1291,7 +1295,34 @@ def proveedor_detalle(request, pk: int):
         **contexto_ficha(request.user, prov),
         # El Testigo (S-Pendientes-Sep28 · Deploy 3).
         "edicion": ctx_edicion,
+        "pin_vigia_activo": pin_vigia_activo,
     }, status=409 if choque else 200)
+
+
+@require_http_methods(["GET"])
+def proveedor_pin(request, pk: int):
+    """GET /catalogo/proveedores/<pk>/pin/ — el sondeo de la ficha abierta
+    mientras el pin se ubica en el fondo (deuda Sep28).
+
+    204 mientras sigue (htmx no pinta nada y vuelve a preguntar). Al terminar,
+    286 —htmx deja de sondear— con el renglón que lo cuenta y, si el pin se
+    movió, el evento `proveedor-pin` (cabecera `HX-Trigger`) con el pin viejo,
+    el nuevo y el testigo con la huella del pin al día: la ficha mueve el
+    marcador sin autoguardar y su siguiente guardado no choca.
+    Mismo permiso que editar la ficha: sólo quien edita tiene el sondeo."""
+    if (r := _gate(request, "gestionar_categorias")) is not None:
+        return r
+    prov = get_object_or_404(Proveedor, pk=pk)
+    from . import ubicacion
+
+    info = ubicacion.para_ficha(prov, request.GET.get(edicion.CAMPO_TESTIGO) or "")
+    if info is None:
+        return HttpResponse(status=204)
+    resp = render(request, "catalogo/_proveedor_pin_vigia.html",
+                  {"proveedor": prov, "info": info, "activo": False}, status=286)
+    if info["pin"]:
+        resp["HX-Trigger"] = json.dumps({"proveedor-pin": info["pin"]})
+    return resp
 
 
 @require_http_methods(["GET", "POST"])

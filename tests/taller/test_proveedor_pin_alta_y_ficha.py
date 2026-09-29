@@ -1,4 +1,4 @@
-"""El pin del proveedor al dar de alta (deuda Sep28, segunda parte).
+"""El pin del proveedor: el alta y la ficha abierta (deuda Sep28, segunda parte).
 
 La primera parte (`test_proveedor_pin_sigue_direccion.py`) movía el pin al
 CAMBIAR la dirección. Faltaban dos cosas:
@@ -17,8 +17,12 @@ El buscador está simulado (Nominatim no existe en las pruebas).
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from django.test import Client
+
+from tests.taller.test_edicion_pisada_sep28 import _abrir, _con, _sueltos
 
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 
@@ -26,6 +30,8 @@ DIRECCION = "Calle Durango 250, Roma Norte, CDMX"
 PUNTO = (19.4180, -99.1650)
 VIEJA = "Av. Insurgentes Sur 100, CDMX"
 PUNTO_VIEJO = (19.4200, -99.1600)
+HTMX = {"HTTP_HX_REQUEST": "true"}
+AVISO_CHOQUE = "alguien más"
 
 
 @pytest.fixture
@@ -52,6 +58,24 @@ def _commit_inmediato(monkeypatch):
     from django.db import transaction
 
     monkeypatch.setattr(transaction, "on_commit", lambda fn, using=None, robust=False: fn())
+
+
+@pytest.fixture
+def fondo_despues(monkeypatch):
+    """Como en producción: el fondo termina DESPUÉS de que la respuesta del
+    autoguardado salió (con su testigo aún con el pin viejo). `correr()` lo suelta."""
+    from lib import tareas_fondo
+
+    cola = []
+    monkeypatch.setattr(tareas_fondo, "ejecutar_en_fondo",
+                        lambda fn, *a, **kw: cola.append((fn, a, kw)))
+
+    def correr():
+        while cola:
+            fn, a, kw = cola.pop(0)
+            fn(*a, **kw)
+
+    return correr
 
 
 @pytest.fixture
@@ -193,3 +217,201 @@ def test_el_chalan_con_buscador_caido_da_de_alta_igual(jefe, buscador):
 
     prov = Proveedor.objects.get(pk=accion.entidad_id)
     assert prov.direccion == DIRECCION and prov.lat is None
+
+
+# ── 2. La ficha abierta se entera ─────────────────────────────────────────
+
+
+def _proveedor(*, direccion=VIEJA, pin=PUNTO_VIEJO):
+    from apps.el_catalogo.models import Proveedor
+
+    lat, lng = pin if pin else (None, None)
+    return Proveedor.objects.create(razon_social="Bordados del Centro", direccion=direccion,
+                                    lat=lat, lng=lng, activo=True)
+
+
+def _sondeo_activo(html: str, prov) -> bool:
+    import re
+
+    etiqueta = re.search(r'<div id="prov-pin-vigia"[^>]*>', html)
+    return bool(etiqueta) and 'hx-trigger="every' in etiqueta.group(0) \
+        and _url_pin(prov) in etiqueta.group(0)
+
+
+def test_la_ficha_pregunta_mientras_el_pin_esta_pendiente(navegador):
+    from apps.el_catalogo import ubicacion
+
+    prov = _proveedor()
+    assert not _sondeo_activo(navegador.get(_ficha(prov)).content.decode(), prov)
+    ubicacion._poner_estado(prov.pk, {"estado": ubicacion.PENDIENTE}, 60)
+    assert _sondeo_activo(navegador.get(_ficha(prov)).content.decode(), prov)
+
+
+def test_el_sondeo_sigue_con_204_y_para_con_286(navegador, buscador):  # noqa: ARG001
+    from apps.el_catalogo import ubicacion
+
+    prov = _proveedor()
+    ubicacion._poner_estado(prov.pk, {"estado": ubicacion.PENDIENTE}, 60)
+    r = navegador.get(_url_pin(prov), **HTMX)
+    assert r.status_code == 204, "pendiente: no pinta nada y htmx vuelve a preguntar"
+    ubicacion._poner_estado(prov.pk, {"estado": "cambio_despues"}, 60)
+    r = navegador.get(_url_pin(prov), **HTMX)
+    assert r.status_code == 286, "terminado: htmx deja de sondear"
+    assert 'hx-trigger' not in r.content.decode(), "el reemplazo ya no sondea"
+    assert "HX-Trigger" not in r.headers
+
+
+def test_sin_estado_el_sondeo_se_apaga(navegador):
+    """Si el estado venció (el hilo murió sin avisar), el sondeo no sigue para siempre."""
+    prov = _proveedor()
+    assert navegador.get(_url_pin(prov), **HTMX).status_code == 286
+
+
+def test_el_autoguardado_que_cambia_la_direccion_prende_el_sondeo(navegador, buscador):  # noqa: ARG001
+    prov = _proveedor()
+    datos = _abrir(navegador, _ficha(prov))
+    r = navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX)
+    assert r.status_code == 200
+    assert _sondeo_activo(r.content.decode(), prov)
+    assert 'id="prov-pin-vigia" class="text-xs empty:hidden" hx-swap-oob="true"' in r.content.decode()
+
+
+def test_otro_autoguardado_no_prende_el_sondeo(navegador, buscador):  # noqa: ARG001
+    prov = _proveedor()
+    datos = _abrir(navegador, _ficha(prov))
+    r = navegador.post(_ficha(prov), _con(datos, telefono="555 000 1111"), **HTMX)
+    assert r.status_code == 200
+    assert "prov-pin-vigia" not in r.content.decode()
+
+
+def _evento(resp) -> dict:
+    return json.loads(resp.headers["HX-Trigger"])["proveedor-pin"]
+
+
+def test_la_ficha_recibe_el_pin_nuevo_y_el_testigo_al_dia(navegador, buscador, fondo_despues):  # noqa: ARG001
+    """La ventana abierta: guarda la dirección, el pin se mueve en el fondo, el
+    sondeo le trae el pin nuevo (para el marcador) y el testigo al día. Si luego
+    la persona ARRASTRA el pin, se guarda sin «choque»."""
+    prov = _proveedor()
+    datos = _abrir(navegador, _ficha(prov))
+    r1 = navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX)
+    testigo = _sueltos(r1.content.decode())["_edicion_testigo"][0]
+    assert _pin(prov) == PUNTO_VIEJO
+    assert navegador.get(_url_pin(prov), **HTMX).status_code == 204, "sigue en eso"
+    fondo_despues()
+    assert _pin(prov) == PUNTO
+
+    r = navegador.get(_url_pin(prov), {"_edicion_testigo": testigo}, **HTMX)
+    assert r.status_code == 286
+    ev = _evento(r)
+    assert ev["de"] == list(PUNTO_VIEJO) and ev["a"] == list(PUNTO)
+    assert ev["testigo"], "el testigo tenía el pin viejo: vuelve con la huella nueva"
+    assert "se acomodó" in r.content.decode()
+
+    # Sólo cambió la huella del pin; lo demás quedó como llegó.
+    viejo, nuevo = json.loads(testigo), json.loads(ev["testigo"])
+    assert {k for k in viejo["f"] if viejo["f"][k] != nuevo["f"][k]} == {"lat", "lng"}
+    assert viejo["w"] == nuevo["w"] and viejo["t"] == nuevo["t"]
+
+    # Lo que hace el JS: ocultos al pin nuevo y testigo al día. Luego arrastra.
+    r2 = navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION, lat="19.43", lng="-99.17",
+                                           _edicion_testigo=ev["testigo"]), **HTMX)
+    assert r2.status_code == 200, r2.content.decode()[:300]
+    assert AVISO_CHOQUE not in r2.content.decode()
+    assert _pin(prov) == (19.43, -99.17)
+
+
+def test_sin_el_testigo_al_dia_arrastrar_chocaria(navegador, buscador, fondo_despues):  # noqa: ARG001
+    """El contraste: con el testigo de antes del recálculo, arrastrar el pin se
+    toma por pisar a alguien. Por eso el sondeo lo trae al día."""
+    prov = _proveedor()
+    datos = _abrir(navegador, _ficha(prov))
+    r1 = navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX)
+    testigo = _sueltos(r1.content.decode())["_edicion_testigo"][0]
+    fondo_despues()
+    r2 = navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION, lat="19.43", lng="-99.17",
+                                           _edicion_testigo=testigo), **HTMX)
+    assert r2.status_code == 409
+
+
+def test_el_testigo_no_se_toca_si_ya_traia_otro_pin(navegador):
+    """Una ventana abierta con un pin que NO es el que se reemplazó: su huella
+    no se «arregla» — ese cambio sí es de alguien más."""
+    from apps.el_catalogo import ubicacion
+
+    prov = _proveedor(pin=(19.5, -99.2))
+    datos = _abrir(navegador, _ficha(prov))
+    testigo = datos["_edicion_testigo"][0]
+    # El recálculo movió el pin de PUNTO_VIEJO (no de 19.5) a PUNTO.
+    prov.lat, prov.lng = PUNTO
+    prov.save(update_fields=["lat", "lng"])
+    assert ubicacion.testigo_al_dia(testigo, prov, list(PUNTO_VIEJO)) == ""
+    ubicacion._poner_estado(prov.pk, {"estado": "movido", "de": list(PUNTO_VIEJO),
+                                      "a": list(PUNTO)}, 60)
+    assert _evento(navegador.get(_url_pin(prov), {"_edicion_testigo": testigo}, **HTMX))[
+        "testigo"] == ""
+
+
+def test_si_el_pin_cambio_despues_no_se_manda_el_evento(navegador):
+    from apps.el_catalogo import ubicacion
+
+    prov = _proveedor(pin=(19.6, -99.3))
+    ubicacion._poner_estado(prov.pk, {"estado": "movido", "de": list(PUNTO_VIEJO),
+                                      "a": list(PUNTO)}, 60)
+    r = navegador.get(_url_pin(prov), **HTMX)
+    assert r.status_code == 286
+    assert "HX-Trigger" not in r.headers, "el pin ya es otro: el marcador no se mueve"
+
+
+def test_el_sondeo_dice_el_aviso_y_la_ficha_no_lo_repite(navegador, buscador):
+    buscador["caido"] = True
+    prov = _proveedor(pin=None)
+    datos = _abrir(navegador, _ficha(prov))
+    navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX)
+    r = navegador.get(_url_pin(prov), **HTMX)
+    assert r.status_code == 286
+    assert "No se pudo ubicar la dirección nueva" in r.content.decode()
+    assert "No se pudo ubicar" not in navegador.get(_ficha(prov)).content.decode()
+
+
+def test_un_buscador_que_revienta_tambien_apaga_el_sondeo_y_avisa(navegador, monkeypatch):
+    from lib import geocoding
+
+    def _revienta(texto):
+        raise RuntimeError("Nominatim devolvió basura")
+
+    monkeypatch.setattr(geocoding, "primer_resultado", _revienta)
+    prov = _proveedor(pin=None)
+    datos = _abrir(navegador, _ficha(prov))
+    assert navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX).status_code == 200
+    r = navegador.get(_url_pin(prov), **HTMX)
+    assert r.status_code == 286
+    assert "No se pudo ubicar la dirección nueva" in r.content.decode()
+
+
+def test_el_sondeo_pide_permiso_de_editar(usuario_factory):
+    prov = _proveedor()
+    c = Client()
+    c.force_login(usuario_factory(rol="disenador"))
+    assert c.get(_url_pin(prov), **HTMX).status_code == 403
+    assert "prov-pin-vigia" not in c.get(_ficha(prov)).content.decode()
+
+
+def test_el_sondeo_no_cuenta_como_actividad():
+    from lib import presencia
+
+    assert "catalogo-proveedor-pin" in presencia.URL_NAMES_SONDEO
+
+
+def test_geo_picker_fija_sin_autoguardar_en_las_dos_apps():
+    """`geo:fijar` mueve el pin sin disparar input/change (no autoguarda).
+    Dual-copy §18: idéntico en El Taller y La Gerencia."""
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[2]
+    taller = (raiz / "el-taller/static/js/geo_picker.js").read_text()
+    gerencia = (raiz / "la-gerencia/static/js/geo_picker.js").read_text()
+    assert taller == gerencia
+    cuerpo = taller.split("function fijar(lat, lng) {", 1)[1].split("\n    }\n", 1)[0]
+    assert "dispatchEvent" not in cuerpo, "fijar no debe avisar al formulario"
+    assert 'addEventListener("geo:fijar"' in taller

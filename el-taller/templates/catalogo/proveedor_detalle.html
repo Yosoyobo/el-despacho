@@ -111,6 +111,7 @@ llevan sus propios <form> y no se pueden anidar.{% endcomment %}
                 <div class="space-y-4">
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion %}
                     {% include "_componentes_tailadmin/_geo_picker.html" with objetivo_texto="id_direccion" lat_id="id_lat" lng_id="id_lng" con_pois=False con_geoloc=False mapa_abierto=form.instance.lat alto="h-48" %}
+                    {% if puede_editar %}{% include "catalogo/_proveedor_pin_vigia.html" with activo=pin_vigia_activo %}{% endif %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=form.fiscal_igual %}
                     {% include "_componentes_tailadmin/_form_campo.html" with campo=form.direccion_fiscal %}
                 </div>
@@ -158,6 +159,36 @@ el formulario de autoguardado de arriba sin anidarse.{% endcomment %}
     form.addEventListener('input', function () {
         ind.textContent = '● Cambios sin guardar';
         ind.className = 'inline-flex items-center gap-1 text-xs font-medium text-warning-600 dark:text-warning-400';
+    });
+})();
+
+// Deuda Sep28: el pin se ubicó en el fondo (lo avisa el sondeo de
+// #prov-pin-vigia con el evento `proveedor-pin`). Se mueve el marcador y se
+// ponen los ocultos SIN disparar input/change: no es un cambio de la persona,
+// así que no autoguarda ni marca «sin guardar». Si la persona ya movió el pin
+// (los ocultos no traen el pin que se reemplazó), manda lo suyo y no se toca.
+// El testigo llega con la huella del pin al día: arrastrarlo después no choca.
+(function () {
+    function igual(input, v) {
+        var s = ((input && input.value) || '').trim();
+        if (v === null || v === undefined) return s === '';
+        return s !== '' && Math.abs(parseFloat(s) - Number(v)) < 1e-7;
+    }
+    document.addEventListener('proveedor-pin', function (e) {
+        var d = e.detail || {}, de = d.de || [null, null], a = d.a || [];
+        var latI = document.getElementById('id_lat'), lngI = document.getElementById('id_lng');
+        if (!latI || !lngI || a.length !== 2) return;
+        if (!(igual(latI, de[0]) && igual(lngI, de[1]))) return;
+        var picker = document.querySelector('.geo-picker[data-lat-input="id_lat"]');
+        if (picker) {
+            picker.dispatchEvent(new CustomEvent('geo:fijar', {detail: {lat: a[0], lng: a[1]}}));
+        } else {
+            latI.value = String(a[0]); lngI.value = String(a[1]);
+        }
+        if (d.testigo) {
+            var t = document.querySelector('#form-proveedor [name="_edicion_testigo"]');
+            if (t) t.value = d.testigo;
+        }
     });
 })();
 </script>
