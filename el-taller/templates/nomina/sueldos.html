@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Sueldos — Nómina{% endblock %}
+
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Sueldos" subtitulo="Lo que cobra cada quien por quincena. Un aumento se captura como un sueldo nuevo con su fecha: las quincenas ya cerradas no cambian." back_url="/nomina/" back_label="Nómina" %}
+
+<div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
+    <div class="flex justify-end"><a href="{% url 'nomina:sueldo_nuevo' %}" class="btn-primario">+ Sueldo o cambio de sueldo</a></div>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="overflow-x-auto">
+            <table data-tabla-movil class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
+                        <th class="py-2 pr-3 font-medium" data-movil="titulo">Persona</th>
+                        <th class="py-2 pr-3 text-right font-medium">Sueldo hoy</th>
+                        <th class="py-2 pr-3 font-medium">Desde</th>
+                        <th class="py-2 font-medium">Historial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3 font-medium text-gray-800 dark:text-gray-200">{% firstof f.u.nombre_completo f.u.email %}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums">
+                            {% if f.vigente and f.vigente.en_nomina %}<span class="font-semibold text-gray-900 dark:text-gray-100">{{ f.vigente.sueldo_quincenal|dinero }}</span>
+                            {% elif f.vigente %}<span class="text-xs text-gray-500">Baja</span>
+                            {% else %}<a href="{% url 'nomina:sueldo_nuevo' %}?usuario={{ f.u.pk }}" class="text-xs text-brand-600 hover:underline dark:text-brand-400">Sin sueldo · capturar</a>{% endif %}
+                        </td>
+                        <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">{% if f.vigente %}{{ f.vigente.vigente_desde|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                        <td class="py-2 text-xs">
+                            {% for s in f.historial %}
+                            <a href="{% url 'nomina:sueldo_editar' s.pk %}" class="mr-2 inline-block text-brand-600 hover:underline dark:text-brand-400">{% if s.en_nomina %}{{ s.sueldo_quincenal|dinero }}{% else %}baja{% endif %} · {{ s.vigente_desde|date:"d/m/y" }}</a>
+                            {% empty %}<span class="text-gray-400">—</span>{% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">El sueldo de una quincena es el que está vigente su último día. Si cambia a media quincena, el recibo lo avisa para que ajustes los días a mano. El Análisis usa este sueldo para costear la hora de cada quien (sueldo ÷ horas de su horario); quien no tiene sueldo se costea con la tarifa de su rol.</p>
+    </section>
+</div>
+{% endblock %}

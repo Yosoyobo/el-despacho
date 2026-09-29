@@ -10745,3 +10745,56 @@ en Los Ajustes.
 **Deuda**: devoluciones/contracargos de la pasarela no se procesan (se descartan en
 «por revisar»); payouts siguen a mano; cambiar `DJANGO_SECRET_KEY` invalida los links
 enviados.
+
+### S-Checador-V2 ✅ — VERSION 2026.09.10 (2026-09-29)
+
+Oscar: «Termina: el Checador V2, Roles.md, pruebas, .venv, arregla las pruebas
+locales. Déjalo como está y quita el pendiente de La Caja y el Portal.» Tres rondas de
+decisiones (ver abajo). **La Caja y el Portal salen de la deuda: se quedan como están
+por decisión de Oscar** (devoluciones/payouts de La Caja a mano; Google del portal
+apagado).
+
+**Decisiones de la nómina (literales)**: sueldo fijo; quincenal; sueldo por persona con
+vigencia; permiso para dirección y contador; las horas SÓLO informan; sin horas extra;
+conceptos: bonos/comisiones, préstamos/adelantos, reembolsos, deducciones libres; sin
+ISR/IMSS; registro al cerrar: **sólo reporte** (sin egresos ni asientos); recibo por
+pagar que se marca pagado; cada quien ve sólo su recibo; El Análisis costea con sueldo
+÷ horas del horario.
+
+**Entregado** (`tests/taller/test_nomina.py`, 45)
+- `checador/0009_nomina` (esquema) + `0010_seed_permisos_nomina` (datos, depende de
+  `cuentas/0051`): `SueldoPersona` (vigencia, «En nómina» para bajas — el 0 no es
+  centinela), `PeriodoNomina` (abierto → calculado → cerrado), `ReciboNomina` (copia
+  del sueldo aplicado, horas/retardos/faltas informativos, por pagar → pagado,
+  `quitados` para que recalcular no reponga lo que se quitó), `ConceptoRecibo`,
+  `PrestamoNomina` (saldo baja al CERRAR).
+- Aumento/alta a media quincena: aplica el sueldo vigente el último día; el recibo
+  avisa y guarda el anterior.
+- Reembolsos: entran como percepción; al marcar pagado se saldan con
+  `tesoreria.reembolsar_egreso` en la misma transacción (única escritura en
+  Tesorería); si ya se pagaron por otro lado, se sacan (antes de cerrar) o se avisa.
+- Pantallas en El Taller `/nomina/` (Finanzas → Nómina; el contador no tiene
+  `gerencia.acceder`), CSV, PDF por Gotenberg con respaldo imprimible, Mis recibos
+  (404 a quien no le toca). Permiso `nomina.ver/editar/cerrar/pagar/sueldos`.
+- `mano_obra.costo_hora_de`: sueldo quincenal ÷ horas del horario; sin sueldo, tarifa
+  del rol (equivalencia exacta sin sueldos capturados).
+- El Chalán/MCP: `nomina_quincena` (gating) y `mi_recibo` (lo propio); operar la
+  nómina está en `COMANDOS_PROHIBIDOS`. Eventos `nomina.periodo_cerrado`,
+  `nomina.recibo_pagado`.
+
+**Repo limpio**
+- `.venv` roto (Homebrew quitó python@3.13): rehecho con Python 3.12.13 (el del CI y
+  Dockerfiles) + `requirements-dev.txt` (ruff 0.8.4 del CI, playwright). README con
+  cómo crear el venv y correr la suite.
+- Suite portable: `test_portavoz_worker` y `test_aviso_deploy` por `REDIS_URL` con
+  marca `redis`; `tests/_arbol.archivos_del_repo()` para los tests que barren el árbol
+  (saltan `.claude/`, venvs, `node_modules`, `data/`, subrepos). Candado
+  `tests/test_suite_portable.py`. Resultado local: con Redis 0 fallas / 0 errores; sin
+  Redis, se saltan limpio.
+- `ROLES.md` reescrito al modelo granular; su tabla la genera
+  `infra/scripts/tabla_roles.py` y `tests/test_roles_md.py` exige que coincida.
+
+**Deuda**: vacaciones/permisos/incapacidades por persona no existen (sale falta
+informativa); no se reabre una quincena cerrada. Bug encontrado en la grilla de
+permisos de El Directorio (no mira `roles_extra`; guardar apaga lo que da un rol
+asignado) — en arreglo aparte.

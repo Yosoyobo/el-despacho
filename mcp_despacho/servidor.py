@@ -120,6 +120,22 @@ def links_de_pago(estado: str = "", limite: int = 20) -> dict[str, Any]:
     return herramientas.links_de_pago(estado, limite)
 
 
+@mcp.tool()
+def nomina_quincena(fecha: str = "") -> dict[str, Any]:
+    """La Nómina de una quincena (1–15 o 16–fin de mes): estado, total a pagar,
+    sueldos, percepciones, deducciones y neto de cada persona. Requiere permiso
+    de nómina. `fecha` es cualquier día de la quincena (AAAA-MM-DD); vacío = hoy.
+    Calcular, cerrar o pagar no se hace por aquí: son botones de Nómina."""
+    return herramientas.nomina_quincena(fecha)
+
+
+@mcp.tool()
+def mi_recibo(fecha: str = "") -> dict[str, Any]:
+    """Tu recibo de nómina de una quincena ya cerrada: sueldo, conceptos, neto
+    y si ya se depositó. Sólo el de quien opera esta conexión."""
+    return herramientas.mi_recibo(fecha)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

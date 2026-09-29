@@ -1,0 +1,2 @@
+{% comment %}Estado de una quincena o de un recibo. Params: estado, etiqueta.{% endcomment %}
+{% if estado == "cerrado" or estado == "pagado" %}<span class="badge badge-success">{{ etiqueta }}</span>{% elif estado == "calculado" %}<span class="badge badge-blue">{{ etiqueta }}</span>{% elif estado == "por_pagar" %}<span class="badge badge-warning">{{ etiqueta }}</span>{% else %}<span class="badge badge-orange">{{ etiqueta }}</span>{% endif %}

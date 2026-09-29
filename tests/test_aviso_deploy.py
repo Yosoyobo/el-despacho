@@ -29,6 +29,8 @@ def test_sin_flag_obtener_devuelve_none():
     assert obtener_deploy_en_curso() is None
 
 
+# Guarda y relee la clave en un Redis de verdad: sin él se salta (conftest).
+@pytest.mark.redis
 def test_marcar_setea_ttl():
     from lib.aviso_deploy import _client
     marcar_deploy_en_curso("abc123", ttl_segundos=300)
@@ -37,6 +39,8 @@ def test_marcar_setea_ttl():
     assert 0 < ttl <= 300
 
 
+# Guarda y relee la clave en un Redis de verdad: sin él se salta (conftest).
+@pytest.mark.redis
 def test_limpiar_borra_la_clave():
     marcar_deploy_en_curso("xyz")
     assert obtener_deploy_en_curso() == "xyz"
@@ -53,6 +57,8 @@ def test_redis_caido_no_rompe_obtener():
         assert obtener_deploy_en_curso() is None
 
 
+# Guarda y relee la clave en un Redis de verdad: sin él se salta (conftest).
+@pytest.mark.redis
 def test_context_processor_expone_flag():
     marcar_deploy_en_curso("sha-test")
     ctx = contexto_aviso_deploy(request=None)

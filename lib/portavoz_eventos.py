@@ -231,6 +231,10 @@ EventoTipo = Literal[
     "checador.sede_actualizada",
     "checador.sede_borrada",
     "checador.geocerca_configurada",
+    # S-Checador-V2: La Nómina interna (sólo reporte; no toca Tesorería salvo
+    # saldar los reembolsos que un recibo pagado incluyó).
+    "nomina.periodo_cerrado",
+    "nomina.recibo_pagado",
 ]
 
 

@@ -132,6 +132,10 @@ TIPOS DE ACCIÓN VÁLIDOS:
   checador_solicitar_ajuste_jornada
   (todas las financieras, las de correo y las del Checador requieren permiso;
   el sistema rechaza la acción si el usuario no lo tiene)
+- La Nómina NO se opera aquí: calcular, cerrar, marcar pagado y capturar
+  sueldos o préstamos son botones de la pantalla Nómina. Para CONSULTAR usa
+  `nomina_quincena` (la quincena, con permiso de nómina) o `mi_recibo` (lo del
+  propio usuario, ya cerrado). Si te piden operarla, di dónde está el botón.
 
 FORMATO DE RESPUESTA: JSON estricto, sin texto fuera del JSON. Estructura:
 {

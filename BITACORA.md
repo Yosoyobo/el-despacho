@@ -13543,3 +13543,11 @@ Portal de clientes (La Recepción) encendido sin invitar a nadie: enlace por cor
 proyectos, aprobar/rechazar cotizaciones, facturas y pagos, aislamiento por cliente.
 La Caja (Stripe + MercadoPago) terminada y apagada/invisible sin llaves — Oscar: es
 «nice to have». Arreglo: cotizaciones rechazadas/anuladas se leían como enviadas.
+
+## 2026-09-29 — S-Checador-V2 (VERSION 2026.09.10)
+
+Nómina interna quincenal de sueldo fijo en El Taller (Finanzas → Nómina), tras 3
+rondas de decisiones de Oscar: sólo reporte, sin impuestos, recibos por pagar que se
+marcan pagados, préstamos y reembolsos, Mis recibos, costeo por sueldo en El Análisis.
+Repo limpio: `.venv` 3.12, suite local en 0 fallas, `ROLES.md` generado del código.
+La Caja y el Portal salen de la deuda por decisión de Oscar.

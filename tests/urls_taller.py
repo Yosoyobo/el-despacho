@@ -26,6 +26,8 @@ urlpatterns = [
     path("", include("apps.el_pizarron.urls")),
     path("calendario/", include("apps.calendario.urls")),
     path("checador/", include("apps.checador.urls", namespace="checador")),
+    # S-Checador-V2: La Nómina interna (sueldo fijo quincenal).
+    path("nomina/", include("apps.checador.urls_nomina", namespace="nomina")),
     path("", include("apps.directorio.urls")),
     path("", include("apps.buzon_empleado.urls")),
     path("recados/", include("apps.recados.urls", namespace="recados")),

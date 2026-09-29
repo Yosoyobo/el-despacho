@@ -213,3 +213,20 @@ def links_de_pago(estado: str = "", limite: int = 20) -> dict[str, Any]:
     usuario = _usuario_actual()
     _exigir_permiso(usuario, "caja", "ver")
     return _h_links_de_pago({"estado": _texto(estado, 20), "limite": limite}, usuario)
+
+
+def nomina_quincena(fecha: str = "") -> dict[str, Any]:
+    """La Nómina de una quincena: estado, totales y neto por persona (nomina.ver)."""
+    from capacidades.lecturas_nomina import _h_nomina_quincena
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "nomina", "ver")
+    return _h_nomina_quincena({"fecha": _texto(fecha, 10)}, usuario)
+
+
+def mi_recibo(fecha: str = "") -> dict[str, Any]:
+    """El recibo de nómina de quien opera la conexión (sólo quincenas cerradas)."""
+    from capacidades.lecturas_nomina import _h_mi_recibo
+
+    usuario = _usuario_actual()
+    return _h_mi_recibo({"fecha": _texto(fecha, 10)}, usuario)

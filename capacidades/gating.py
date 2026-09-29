@@ -44,5 +44,7 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "recepcion": permisos.puede_ver_accesos_portal,
         # La Caja: links de pago y pagos en línea.
         "caja": permisos.puede_ver_caja,
+        # La Nómina: los montos de todos (`nomina.ver`). `mi_recibo` es abierto.
+        "nomina": permisos.puede_ver_nomina,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

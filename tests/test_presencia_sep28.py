@@ -30,6 +30,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests._arbol import archivos_del_repo
+
 RAIZ = Path(__file__).resolve().parents[1]
 
 UA_IPHONE = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 "
@@ -222,11 +224,11 @@ class TestElSondeoNoCuenta:
 
         etiqueta = re.compile(r'<(?:[^>"]|"[^"]*")*>', re.S)
         faltan = []
+        # `archivos_del_repo` ya poda worktrees, venvs, node_modules y data/.
         # Las partes se miran RELATIVAS a la raíz del repo: el repo puede vivir
         # dentro de un worktree (`.claude/worktrees/…`) y eso no lo descarta.
-        plantillas = [p for p in RAIZ.rglob("*.html")
-                      if not {"node_modules", "vendor", ".claude", ".git"}
-                      & set(p.relative_to(RAIZ).parts)
+        plantillas = [p for p in archivos_del_repo("*.html", RAIZ)
+                      if "vendor" not in p.relative_to(RAIZ).parts
                       and "templates" in p.relative_to(RAIZ).parts]
         assert plantillas, "no se encontró ninguna plantilla"
         for p in plantillas:

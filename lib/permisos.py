@@ -617,6 +617,44 @@ def puede_exportar_checador(user) -> bool:
     return puede(user, "checador", "exportar")
 
 
+# ── La Nómina interna (S-Checador-V2, 2026-09-29) ─────────────────────────────
+# Módulo `nomina`, sembrado «como hoy» por `checador/0010_seed_permisos_nomina`.
+# Nadie ve montos de otros sin `nomina.ver`; cada quien ve SUS recibos cerrados
+# (eso no pasa por aquí: lo decide `puede_ver_recibo`).
+
+
+def puede_ver_nomina(user) -> bool:
+    return es_super_admin(user) or puede(user, "nomina", "ver")
+
+
+def puede_editar_nomina(user) -> bool:
+    """Abrir, calcular y recalcular una quincena; editar recibos y préstamos."""
+    return es_super_admin(user) or puede(user, "nomina", "editar")
+
+
+def puede_cerrar_nomina(user) -> bool:
+    return es_super_admin(user) or puede(user, "nomina", "cerrar")
+
+
+def puede_pagar_nomina(user) -> bool:
+    """Marcar un recibo pagado (y saldar en Tesorería sus reembolsos)."""
+    return es_super_admin(user) or puede(user, "nomina", "pagar")
+
+
+def puede_capturar_sueldos(user) -> bool:
+    return es_super_admin(user) or puede(user, "nomina", "sueldos")
+
+
+def puede_ver_recibo(user, recibo) -> bool:
+    """El candado del recibo: quien lleva la nómina ve todos; la persona, sólo
+    los SUYOS y sólo cuando la quincena ya se cerró."""
+    if user is None or recibo is None or not getattr(user, "is_authenticated", False):
+        return False
+    if puede_ver_nomina(user):
+        return True
+    return recibo.usuario_id == user.pk and recibo.periodo.estado == "cerrado"
+
+
 def puede_ver_comentario(user, comentario) -> bool:
     """¿Este usuario lee este comentario de proyecto o tarea?
 
