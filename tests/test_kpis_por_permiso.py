@@ -175,10 +175,10 @@ def n_catalogo(u):
 
 
 def n_zona_compacta(u):
-    from apps.taller_home.kpis import kpi_por_slug
-    from apps.taller_home.views import COMPACT_KPI_SLUGS
+    """La función real del Inicio (sin los KPIs del Chalán, que no traen)."""
+    from apps.taller_home.views import COMPACT_KPI_SLUGS, _compact_kpis
 
-    return {s for s in COMPACT_KPI_SLUGS if kpi_por_slug(s).visible_para(u)}
+    return {it["slug"] for it in _compact_kpis(u)} & set(COMPACT_KPI_SLUGS)
 
 
 def n_hero_finanzas(u):
@@ -388,6 +388,21 @@ def _gana_por_runner(etiqueta, u, vieja, nueva):
             and vieja <= nueva and (nueva - vieja) <= RUNNER_GANA_KPIS)
 
 
+@pytest.fixture
+def kpis_baratos(monkeypatch):
+    """Aquí sólo importa QUIÉN ve cada KPI, no su número: 160 usuarios × 92
+    KPIs calculados de verdad tardan minutos. Mismos KPIs (y mismos
+    permisos), con un cálculo que no consulta nada."""
+    import dataclasses
+
+    from apps.taller_home import kpis, views
+
+    baratos = {k.slug: dataclasses.replace(k, calcular=lambda u: {"valor": 0}) for k in kpis.KPIS}
+    monkeypatch.setattr(kpis, "kpi_por_slug", baratos.get)
+    monkeypatch.setattr(views, "kpi_por_slug", baratos.get)
+
+
+@pytest.mark.usefixtures("kpis_baratos")
 class TestCombinaciones:
     def test_zonas_por_roles_efectivos(self, todos, monkeypatch):
         distintas = []
