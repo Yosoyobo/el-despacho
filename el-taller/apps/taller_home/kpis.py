@@ -793,65 +793,88 @@ CATEGORIAS = (
 )
 
 
+# La ventana de un KPI del constructor dice si su número vuelve a cero cada periodo.
+_ACUMULA_POR_VENTANA = {"esta_semana": "semana", "este_mes": "mes", "este_ano": "ano"}
+
+
+def kpi_de_custom(kpi_db) -> KPI | None:
+    """Un `KPICustom` (El Chalán o el constructor de La Gerencia) como `KPI`.
+
+    Desde S-KPIs-V2 · 2 lleva el permiso de SU dato (`kpi_dsl.permisos_de`):
+    antes (`permisos=()`) un KPI de ingresos aprobado para el equipo lo veía
+    cualquiera. También su dirección, formato y periodo, y —si agrupa por
+    persona o cliente— su desglose, para poder ponerle meta a cada quien.
+    Una definición que ya no valida no se ofrece (None)."""
+    from lib.kpi_dsl import ValidacionError, ejecutar, metadatos_de, permisos_de, validar
+
+    try:
+        definicion = validar(dict(kpi_db.definicion_json or {}))
+    except (ValidacionError, TypeError, ValueError):
+        return None
+    meta = metadatos_de(definicion)
+    agrupa = definicion.get("agrupar_por")
+    desgloses = (agrupa,) if agrupa in ("persona", "cliente") else ()
+
+    def _calc(usuario, _def=definicion):
+        return ejecutar(_def, usuario=usuario, validado=True)
+
+    def _desglose(ambito, _def=definicion):
+        if ambito not in desgloses:
+            return {}
+        from .metas import actor_despacho
+
+        res = ejecutar({**_def, "top": 50}, usuario=actor_despacho(), validado=True)
+        return {g["pk"]: float(g["valor"]) for g in res.get("grupos") or []
+                if g.get("pk") is not None and isinstance(g.get("valor"), int | float)}
+
+    return KPI(
+        slug=f"custom-{kpi_db.slug}",
+        titulo=kpi_db.titulo,
+        descripcion=kpi_db.descripcion or "KPI personalizado.",
+        categoria=kpi_db.categoria or "custom",
+        permisos=tuple(permisos_de(definicion)),
+        calcular=_calc,
+        origen="custom_chalan",
+        estado_kpi="activo",
+        direccion=meta["direccion"],
+        formato=meta["formato"],
+        acumula=_ACUMULA_POR_VENTANA.get(definicion.get("ventana_tiempo"), ""),
+        personal=definicion.get("alcance_usuario") == "mio" or kpi_db.alcance == "personal",
+        desglose=_desglose if desgloses else None,
+        desgloses=desgloses,
+    )
+
+
 def _kpis_custom_para(user) -> list[KPI]:
-    """KPIs generados por el Chalán (S2b.5) que aplican a `user`:
+    """KPIs del Chalán y del constructor (S2b.5 / S-KPIs-V2) que aplican a `user`:
     - personales del autor (alcance='personal', estado='activo')
     - de equipo aprobados (alcance='equipo', estado='activo')
-    """
-    from lib.kpi_dsl import ejecutar
-
+    Cada uno filtrado por el permiso de su dato."""
     from .models import KPICustom
 
-    qs = KPICustom.objects.filter(estado="activo").filter(
-        models_Q_personal_o_equipo(user)
-    )
+    qs = KPICustom.objects.filter(estado="activo").filter(models_Q_personal_o_equipo(user))
     salida: list[KPI] = []
     for kpi_db in qs.only(
         "slug", "titulo", "descripcion", "categoria", "definicion_json", "alcance", "autor_id",
     ):
-        definicion = dict(kpi_db.definicion_json)  # copia local para no mutar
-
-        def _calc(usuario, _def=definicion):
-            return ejecutar(_def, usuario=usuario)
-
-        salida.append(KPI(
-            slug=f"custom-{kpi_db.slug}",
-            titulo=kpi_db.titulo,
-            descripcion=kpi_db.descripcion or "KPI personalizado.",
-            categoria=kpi_db.categoria or "custom",
-            # Los hizo El Chalán para su autor o se aprobaron para el equipo: no
-            # llevan permiso propio (antes, «los cuatro roles», pero el catálogo
-            # los agregaba a todos sin mirar la tupla).
-            permisos=(),
-            calcular=_calc,
-            origen="custom_chalan",
-            estado_kpi="activo",
-        ))
+        kpi = kpi_de_custom(kpi_db)
+        if kpi is not None and kpi.visible_para(user):
+            salida.append(kpi)
     return salida
 
 
 def _kpis_custom_equipo() -> list[KPI]:
-    """Los KPIs del Chalán aprobados para el equipo: esos sí son números del
-    despacho y entran a la foto diaria (los personales no)."""
-    from lib.kpi_dsl import ejecutar
-
+    """Los KPIs del Chalán/constructor aprobados para el equipo: ésos sí son
+    números del despacho (foto diaria, catálogo de La Gerencia, tableros)."""
     from .models import KPICustom
 
     salida: list[KPI] = []
     for kpi_db in KPICustom.objects.filter(estado="activo", alcance="equipo").only(
-        "slug", "titulo", "descripcion", "categoria", "definicion_json",
+        "slug", "titulo", "descripcion", "categoria", "definicion_json", "alcance",
     ):
-        definicion = dict(kpi_db.definicion_json)
-
-        def _calc(usuario, _def=definicion):
-            return ejecutar(_def, usuario=usuario)
-
-        salida.append(KPI(
-            slug=f"custom-{kpi_db.slug}", titulo=kpi_db.titulo,
-            descripcion=kpi_db.descripcion or "KPI personalizado.",
-            categoria=kpi_db.categoria or "custom", permisos=(), calcular=_calc,
-            origen="custom_chalan",
-        ))
+        kpi = kpi_de_custom(kpi_db)
+        if kpi is not None:
+            salida.append(kpi)
     return salida
 
 
@@ -928,4 +951,14 @@ def kpis_visibles_para(user, *, incluir_ocultos: bool = False) -> list[tuple[KPI
 
 
 def kpi_por_slug(slug: str) -> KPI | None:
-    return next((k for k in KPIS if k.slug == slug), None)
+    """Un KPI del catálogo por su slug; los `custom-*` de equipo también
+    (así metas, tableros y la foto diaria los tratan como a los demás)."""
+    kpi = next((k for k in KPIS if k.slug == slug), None)
+    if kpi is None and slug.startswith("custom-"):
+        from .models import KPICustom
+
+        kpi_db = KPICustom.objects.filter(
+            slug=slug[len("custom-"):], estado="activo", alcance="equipo",
+        ).first()
+        kpi = kpi_de_custom(kpi_db) if kpi_db else None
+    return kpi

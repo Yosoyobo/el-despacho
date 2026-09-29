@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}KPIs · {% if kpi_db %}{{ kpi_db.titulo }}{% else %}Nuevo KPI{% endif %} — Ajustes{% endblock %}
+{% block contenido %}
+{% include "ajustes/kpis/_encabezado.html" %}
+
+<form method="post" action="{% if kpi_db %}{% url 'ajustes-kpis-constructor-guardar-uno' kpi_db.pk %}{% else %}{% url 'ajustes-kpis-constructor-guardar' %}{% endif %}"
+      class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    {% csrf_token %}
+    <div class="space-y-4">
+        <section class="rounded-2xl border border-brand-200 bg-brand-25 p-5 dark:border-brand-500/30 dark:bg-brand-500/5">
+            <h2 class="mb-2 text-sm font-semibold text-brand-700 dark:text-brand-300">Pídeselo a El Chalán (opcional)</h2>
+            <div class="campo-form flex flex-wrap gap-2">
+                <input type="text" id="chalan-texto" maxlength="600" placeholder="p. ej. «qué porcentaje de las tareas se cierra a tiempo, por persona»"
+                       class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <button type="button" id="chalan-llenar" class="btn-secundario">Llenar el formulario</button>
+            </div>
+            <p id="chalan-aviso" class="mt-1 text-xs text-gray-500 dark:text-gray-400" role="status">El Chalán sólo llena el formulario; lo que se guarda es lo que diga el formulario.</p>
+        </section>
+
+        <section class="campo-form grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[2fr_1fr]">
+            <label class="block text-sm">
+                <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Nombre del KPI</span>
+                <input type="text" name="titulo" id="kpi-titulo" required maxlength="100" value="{{ kpi_db.titulo|default:'' }}"
+                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+            </label>
+            <label class="block text-sm">
+                <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Grupo</span>
+                <select name="categoria" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                    {% for clave, etiqueta in categorias %}<option value="{{ clave }}" {% if kpi_db.categoria == clave %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="block text-sm md:col-span-2">
+                <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Para qué sirve (lo ve la gente en el catálogo)</span>
+                <input type="text" name="descripcion" maxlength="300" value="{{ kpi_db.descripcion|default:'' }}"
+                       class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+            </label>
+        </section>
+
+        <div id="constructor-kpi" class="campo-form space-y-4"
+             data-preview="{% url 'ajustes-kpis-constructor-preview' %}" data-chalan="{% url 'ajustes-kpis-constructor-chalan' %}">
+            <noscript><p class="text-sm text-error-600">El constructor necesita JavaScript.</p></noscript>
+        </div>
+        <textarea name="definicion_json" id="definicion_json" hidden></textarea>
+    </div>
+
+    <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Vista previa (con los datos de hoy)</h2>
+            <div id="constructor-preview" aria-live="polite"><p class="text-sm text-gray-400">Arma el KPI y aquí verás su número.</p></div>
+        </section>
+        <div class="flex gap-2">
+            <button type="submit" class="btn-primario">{% if kpi_db %}Guardar cambios{% else %}Crear KPI{% endif %}</button>
+            <a href="{% url 'ajustes-kpis-constructor' %}" class="btn-secundario">Cancelar</a>
+        </div>
+    </aside>
+</form>
+
+{{ esquema|json_script:"esquema-kpi" }}
+{{ definicion|json_script:"definicion-kpi" }}
+<script src="{% static 'js/constructor_kpi.js' %}" defer></script>
+{% endblock %}

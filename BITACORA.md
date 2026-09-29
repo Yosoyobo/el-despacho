@@ -13628,3 +13628,11 @@ proyecto, y comprobante de reembolso. Una sola vista en El Taller con el permiso
 cada módulo; botones en ingreso, gasto, cliente y proyecto. Se cerró una fuga: la
 vista previa de La Gerencia ya sólo ofrece documentos de los módulos que la persona
 ve. El Chalán da el enlace de todos. Tercer deploy de 4.
+
+## 2026-09-29 — S-KPIs-V2 · 2 (VERSION 2026.09.19)
+
+Constructor de KPIs en La Gerencia sobre el DSL v2: qué contar/sumar, condiciones,
+periodo, reparto por persona/cliente, porcentajes, duraciones y comparación, con vista
+previa en vivo y El Chalán que llena el formulario. Los KPIs custom ya llevan el permiso
+de su dato y entran al catálogo, tableros y metas. Probado también en Chromium.
+Cierra la ronda de KPIs (fases 1, 2 y 3).
