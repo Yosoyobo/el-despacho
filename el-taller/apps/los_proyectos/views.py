@@ -573,7 +573,7 @@ def detalle(request, pk):
     puede_ed = puede_editar_proyecto(request.user, proyecto)
     es_htmx = _es_htmx(request)
 
-    from .testigo import edicion_proyecto
+    from .testigo import CAMPO_VERSION, contexto_version, edicion_proyecto, edicion_version
     estado_http = 200
     ctx_edicion = None
     if request.method == "POST" and puede_ed:
@@ -584,17 +584,21 @@ def detalle(request, pk):
         # guardar pisaría lo que alguien más cambió desde que se abrió la
         # pantalla. Si sí, no se guarda nada y se avisa.
         ed_proyecto = edicion_proyecto(proyecto, form, formset)
-        choque = ed_proyecto.revisar(request)
         # S-Ajustes-Ago12-B: si hay una pestaña de versión abierta, sus tarjetas
         # viajan en el MISMO POST (prefijo `ppv`) y se guardan con el mismo
         # autoguardado — así «Guardado» nunca miente.
         cot_version = None
         formset_version = None
+        piezas = [ed_proyecto]
         if "ppv-TOTAL_FORMS" in request.POST:
             cot_version = _cotizacion_del_proyecto(
                 proyecto, request.POST.get("ppv_cotizacion") or 0)
             if cot_version is not None:
                 formset_version = _formset_version(cot_version, request.POST)
+                # La pestaña lleva su propio testigo (se carga después de la
+                # página). Se revisan juntas: el guardado es uno solo.
+                piezas.append(edicion_version(cot_version, formset_version))
+        choque = edicion.revisar_juntas(request, piezas)
         if choque is not None:
             ctx_edicion = edicion.contexto(request, testigo=choque.testigo, choque=choque)
             if es_htmx:
@@ -623,6 +627,10 @@ def detalle(request, pk):
                 # las líneas de venta). **El PDF de una cotización ya enviada
                 # cambia** — decisión de Oscar, tomada sabiéndolo.
                 services_version.sincronizar_items(cot_version)
+                # Su firma va en la cotización: si alguien más choca con esta
+                # pestaña (o con la pantalla de la cotización), se sabe quién.
+                edicion.firmar(cot_version, request.user,
+                               edicion.ventana_posteada(request, CAMPO_VERSION))
                 emitir(EventoPortavoz(
                     tipo="cotizacion.version_editada",
                     actor_id=request.user.pk, actor_email=request.user.email,
@@ -669,6 +677,13 @@ def detalle(request, pk):
                 ctx["edicion"] = edicion.contexto(
                     request,
                     testigo=edicion_proyecto(proyecto, ctx["form"], fs_fresco).testigo(ventana=ventana))
+                if formset_version is not None:
+                    # Igual con la pestaña de la versión: su testigo nuevo, con
+                    # la ventana de la pestaña.
+                    ctx["edicion_version"] = contexto_version(
+                        cot_version,
+                        edicion_version(cot_version, _formset_version(cot_version)).testigo(
+                            ventana=edicion.ventana_posteada(request, CAMPO_VERSION)))
                 return render(request, "proyectos/_guardado_oob.html", ctx)
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
@@ -1698,9 +1713,13 @@ def productos_version(request, pk, cot_pk):
         raise Http404("Esa versión no es de este proyecto.")
     formset = _formset_version(cot)
     from . import services_version
+    from .testigo import contexto_version, edicion_version
     services_version.anotar_procesos(formset)
-    return render(request, "proyectos/_productos_version.html",
-                  _ctx_version(proyecto, cot, formset))
+    ctx = _ctx_version(proyecto, cot, formset)
+    # El Testigo de la pestaña: lo que tenía la foto al abrirla (el del
+    # proyecto se pintó con la página, antes de que la pestaña existiera).
+    ctx["edicion_version"] = contexto_version(cot, edicion_version(cot, formset).testigo())
+    return render(request, "proyectos/_productos_version.html", ctx)
 
 
 @login_required

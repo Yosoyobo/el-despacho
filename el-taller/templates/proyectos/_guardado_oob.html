@@ -18,6 +18,7 @@ vuelve refrescado —y sin aviso— para que el siguiente autoguardado de esta
 misma ventana no choque consigo mismo. Sólo viaja en el `ok`: si el guardado
 falló por validación, el de la página sigue siendo el bueno.{% endcomment %}
 {% if ok and edicion %}{% include "edicion/_testigo.html" with edicion=edicion oob=True %}{% endif %}
+{% if ok and edicion_version %}{% include "edicion/_testigo_pieza.html" with edicion=edicion_version oob=True %}{% endif %}
 {% comment %}V6 Bloque 5: error legible del autosave — antes el fallo era un
 "✕" mudo y el usuario creía que su cambio (p.ej. el toggle de incluir) quedó
 guardado.{% endcomment %}
