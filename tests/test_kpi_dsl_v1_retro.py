@@ -145,3 +145,12 @@ def test_v1_link_de_la_entidad(datos):
     from lib.kpi_dsl import ejecutar
     assert ejecutar({"entidad": "egreso"})["link"] == "/tesoreria/egresos/"
     assert ejecutar({"entidad": "tarea"})["link"] == "/tareas/"
+
+
+def test_v1_valor_raro_en_filtro_viejo_sigue_validando():
+    """v1 no revisaba el tipo del valor: una definición guardada con un valor
+    «raro» en un filtro viejo tiene que seguir validando igual."""
+    from lib.kpi_dsl import validar
+    raro = {"entidad": "proyecto", "filtros": [{"campo": "archivado", "op": "eq", "valor": "no"},
+                                               {"campo": "estado", "op": "in", "valor": []}]}
+    assert validar(raro)["filtros"] == raro["filtros"]

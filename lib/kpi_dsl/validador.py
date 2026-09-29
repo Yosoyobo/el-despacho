@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any
 
 from .schema import (
+    _OPS_V1,
     AGREGACIONES,
     AGREGACIONES_DURACION,
     ALCANCES_USUARIO,
@@ -159,6 +160,14 @@ def _validar_filtros(entidad: str, filtros_raw: Any, *, nombre: str = "filtros")
             continue
 
         f_valor = f.get("valor")
+        if f_op in _OPS_V1.get(entidad, {}).get(f_campo, ()):
+            # Filtro que ya existía en v1: su valor pasa como pasaba entonces
+            # (sin revisar tipo), para que ninguna definición guardada deje de
+            # validar. El ORM hace la misma coerción que hacía.
+            if f_op == "in" and not isinstance(f_valor, list):
+                raise ValidacionError("Op 'in' requiere `valor` como lista.")
+            filtros.append({"campo": f_campo, "op": f_op, "valor": f_valor})
+            continue
         if f_op == "vacio":
             f_valor = _como_bool(True if f_valor is None else f_valor, donde)
         elif f_op == "in":

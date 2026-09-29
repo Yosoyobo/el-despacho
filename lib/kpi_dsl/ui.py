@@ -255,8 +255,12 @@ def describir(definicion: Any) -> str:
 def resumen_para_prompt() -> str:
     """El esquema v2 en texto compacto para el prompt que traduce una pregunta
     a una definición. Generado del schema: nunca se desincroniza."""
+    from .ejecutor import entidad_disponible
+
     lineas: list[str] = []
     for clave, cfg in ENTIDADES.items():
+        if not entidad_disponible(clave):
+            continue
         campos = []
         for c, spec in cfg["campos"].items():
             opciones = _opciones(clave, c, spec) or []
