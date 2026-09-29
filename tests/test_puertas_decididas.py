@@ -398,6 +398,14 @@ class TestAlexLeeComentarios:
         filas.update({(u, m, a): activo for u, m, a, activo in plan})
         assert _migracion_0048().planear_comentarios(usuarios, roles, filas) == []
 
+    def test_no_toca_a_quien_ya_leia_por_su_rol_primario(self):
+        """Un contador de primario con Director asignado ya leía por la regla
+        vieja: si alguien le apagó los comentarios, esa fila no es de la 0048."""
+        roles = [{"id": 1, "clave": "dueno"}]
+        usuarios = [{"id": 7, "rol": "contador", "roles": [1]}]
+        filas = {(7, "pizarron", "ver_comentarios"): False, (7, "pizarron", "ver_internos"): False}
+        assert _migracion_0048().planear_comentarios(usuarios, roles, filas) == []
+
     def test_enciende_aunque_la_grilla_la_haya_guardado_apagada(self, foto):
         """La grilla de El Directorio escribe una fila por acción al guardarse:
         una fila apagada no es una decisión. La 0048 gana."""
@@ -526,6 +534,9 @@ class TestProyectosComoHoy:
         u.roles_extra.add(dis)
         casos["dueño con editar revocado"] = u = usuario_factory(rol="dueno")
         fila(u, "editar", False)
+        casos["Director asignado con editar revocado"] = u = usuario_factory(rol="miembro")
+        u.roles_extra.add(Rol.objects.get(clave="dueno"))
+        fila(u, "editar", False)
         casos["contador con Director asignado"] = u = usuario_factory(rol="contador")
         u.roles_extra.add(Rol.objects.get(clave="dueno"))
         casos["super_admin con todo revocado"] = u = usuario_factory(rol="super_admin")
@@ -548,6 +559,7 @@ class TestProyectosComoHoy:
             "rol raro con asignar": False,
             "diseñador asignado (JSON con crear)": False,
             "dueño con editar revocado": False,
+            "Director asignado con editar revocado": False,
             "contador con Director asignado": True,
             "super_admin con todo revocado": True,
         }
