@@ -824,6 +824,31 @@ def _kpis_custom_para(user) -> list[KPI]:
     return salida
 
 
+def _kpis_custom_equipo() -> list[KPI]:
+    """Los KPIs del Chalán aprobados para el equipo: esos sí son números del
+    despacho y entran a la foto diaria (los personales no)."""
+    from lib.kpi_dsl import ejecutar
+
+    from .models import KPICustom
+
+    salida: list[KPI] = []
+    for kpi_db in KPICustom.objects.filter(estado="activo", alcance="equipo").only(
+        "slug", "titulo", "descripcion", "categoria", "definicion_json",
+    ):
+        definicion = dict(kpi_db.definicion_json)
+
+        def _calc(usuario, _def=definicion):
+            return ejecutar(_def, usuario=usuario)
+
+        salida.append(KPI(
+            slug=f"custom-{kpi_db.slug}", titulo=kpi_db.titulo,
+            descripcion=kpi_db.descripcion or "KPI personalizado.",
+            categoria=kpi_db.categoria or "custom", permisos=(), calcular=_calc,
+            origen="custom_chalan",
+        ))
+    return salida
+
+
 def models_Q_personal_o_equipo(user):
     """Q: (alcance='personal' AND autor=user) OR alcance='equipo'."""
     from django.db.models import Q
@@ -832,8 +857,17 @@ def models_Q_personal_o_equipo(user):
 
 def kpis_aplicables(user) -> list[KPI]:
     """El catálogo que `user` puede ver —por sus permisos (§4 #20)— más sus
-    KPIs del Chalán (S2b.5)."""
-    return [k for k in KPIS if k.visible_para(user)] + _kpis_custom_para(user)
+    KPIs del Chalán (S2b.5), sin los que La Gerencia apagó (S-KPIs-V2) y con
+    la dirección que La Gerencia haya elegido."""
+    from .tablero import apagados, configs, efectivo
+
+    cfgs = configs()
+    fuera = apagados(cfgs)
+    return [
+        efectivo(k, cfgs)
+        for k in [*[k for k in KPIS if k.visible_para(user)], *_kpis_custom_para(user)]
+        if k.slug not in fuera
+    ]
 
 
 def kpis_aplicables_a_rol(rol: str, *, user=None) -> list[KPI]:

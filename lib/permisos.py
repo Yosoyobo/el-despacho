@@ -923,3 +923,13 @@ def requiere_permiso(modulo: str, accion: str) -> Callable:
             return HttpResponseForbidden("Sin permisos para esta acción.")
         return inner
     return wrap
+
+
+# ── Los KPIs (S-KPIs-V2, 2026-09-29) ────────────────────────────────────────
+
+
+def puede_configurar_kpis(user) -> bool:
+    """La Gerencia → Ajustes → KPIs: catálogo, tableros por rol, metas y
+    constructor. También decide a quién le llega el aviso de una meta del
+    despacho en riesgo."""
+    return es_super_admin(user) or puede(user, "kpis", "configurar")

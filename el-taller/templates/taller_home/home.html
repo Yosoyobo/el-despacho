@@ -254,7 +254,7 @@ alguien salga «en línea». Gateado por (equipo, ver_actividad).{% endcomment %
 {% if hero_kpis %}
 <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
     {% for k in hero_kpis %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link valor_alerta=k.alerta %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link valor_alerta=k.alerta meta=k.meta semaforo=k.semaforo %}
     {% endfor %}
 </section>
 {% endif %}
@@ -323,7 +323,7 @@ alguien salga «en línea». Gateado por (equipo, ver_actividad).{% endcomment %
          data-arr-orden-campo="slugs">
     {% for k in compact_kpis %}
     <div data-arr-item="{{ k.slug }}" class="kpi-card">
-        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link sparkline_id=k.slug sparkline_serie=k.sparkline_serie sparkline_color=k.sparkline_color sparkline_formato="moneda" valor_alerta=k.alerta %}
+        {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor link=k.link sparkline_id=k.slug sparkline_serie=k.sparkline_serie sparkline_color=k.sparkline_color sparkline_formato=k.sparkline_formato valor_alerta=k.alerta meta=k.meta semaforo=k.semaforo subtexto=k.nota %}
     </div>
     {% empty %}
     <div class="ta-card col-span-full text-center">

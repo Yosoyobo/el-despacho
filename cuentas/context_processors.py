@@ -38,6 +38,7 @@ ACCION_VISIBLE_POR_MODULO = {
     "comunicacion": "enviar_correo",
     # S-LC-Feedback-V10: áreas administrativas con gating granular delegable.
     "ajustes": "acceder",
+    "kpis": "configurar",
     "directorio": "ver",
     "chalanes": "ver",
     "site": "ver",
@@ -56,7 +57,7 @@ MODULOS_VISIBLES = (
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "caja", "chalan", "analisis", "checador", "nomina", "comunicacion", "runner",
     "rutas", "papeleo", "equipo", "recepcion",
-    "directorio", "ajustes", "chalanes", "site",
+    "directorio", "ajustes", "kpis", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",
 )

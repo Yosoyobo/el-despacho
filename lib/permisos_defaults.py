@@ -108,6 +108,10 @@ TODO_PAPELEO = ["ver", "ligar", "subir"]
 # rol. `dueno` mantiene lo que ya alcanzaba (directorio básico, site, interfón,
 # lectura de Chalanes); las acciones que eran solo-super_admin se quedan así.
 TODO_AJUSTES = ["acceder"]
+# S-KPIs-V2 (2026-09-29): La Gerencia → Ajustes → KPIs (catálogo, tableros por
+# rol, metas y constructor). Nace «como hoy»: lo tenía quien abría Los Ajustes
+# (super_admin), y se delega por persona desde El Directorio.
+TODO_KPIS = ["configurar"]
 # `ver` lista · `gestionar` alta/edición básica (lo que el dueño ya tenía) ·
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
@@ -190,6 +194,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
         "ajustes": list(TODO_AJUSTES),
+        "kpis": list(TODO_KPIS),
         "directorio": list(TODO_DIRECTORIO),
         "chalanes": list(TODO_CHALANES),
         "site": list(TODO_SITE),
@@ -329,6 +334,7 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "gerencia": ["acceder"],
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),
+    "kpis": list(TODO_KPIS),
     "directorio": list(TODO_DIRECTORIO),
     "chalanes": list(TODO_CHALANES),
     "site": list(TODO_SITE),
