@@ -23,14 +23,35 @@ from . import proactivo
 logger = logging.getLogger(__name__)
 
 
+# A quién le escribe cada scout: a quien tiene el permiso del DATO (§4 #20),
+# nunca a un rol. Con los defaults, las mismas personas de antes —lo prueba
+# `tests/test_kpis_por_permiso.py`—.
+
 def _cobranza_users():
-    from lib.permisos import usuarios_con_rol
-    return list(usuarios_con_rol("super_admin", "dueno", "contador"))
+    """Facturas vencidas: quien ve el dinero (antes super_admin/dueño/contador)."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso("tesoreria", "ver")
 
 
-def _admins():
-    from lib.permisos import usuarios_con_rol
-    return list(usuarios_con_rol("super_admin", "dueno"))
+def _gestores():
+    """Proyectos estancados: quien gestiona proyectos (antes super_admin/dueño)."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso("proyectos", "editar")
+
+
+def _supervisores_de_mandados():
+    """Un mandado sin runner que avance: quien ve los mandados de todo el
+    equipo (antes super_admin/dueño)."""
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso("pizarron", "ver_todos_mandados")
+
+
+def _destinatarios_digest():
+    """El resumen del día trae proyectos, tareas y mandados del equipo Y dinero
+    (facturas vencidas, CxC): a quien gestiona proyectos y ve el dinero (antes
+    super_admin/dueño; el contador ve el dinero pero no gestiona proyectos)."""
+    from lib.permisos import puede
+    return [u for u in _gestores() if puede(u, "tesoreria", "ver")]
 
 
 def scout_facturas_vencidas(*, dry_run: bool = False) -> int:
@@ -64,10 +85,10 @@ def scout_facturas_vencidas(*, dry_run: bool = False) -> int:
 
 
 def scout_proyectos_estancados(*, dry_run: bool = False) -> int:
-    """Proyectos en diseño/producción sin movimiento >14 días. → admins."""
+    """Proyectos en diseño/producción sin movimiento >14 días. → quien los gestiona."""
     from apps.los_proyectos.models import Proyecto
 
-    destinatarios = _admins()
+    destinatarios = _gestores()
     if not destinatarios:
         return 0
     limite = timezone.now() - timedelta(days=14)
@@ -92,10 +113,11 @@ def scout_proyectos_estancados(*, dry_run: bool = False) -> int:
 
 
 def scout_mandados_sin_avance(*, dry_run: bool = False) -> int:
-    """Mandados asignados/en camino sin avance >2 días. → runner (o admins)."""
+    """Mandados asignados/en camino sin avance >2 días. → runner (o quien
+    supervisa los mandados)."""
     from apps.el_pizarron.models import Mandado
 
-    admins = _admins()
+    admins = _supervisores_de_mandados()
     limite = timezone.now() - timedelta(days=2)
     qs = Mandado.objects.filter(
         estado__in=("asignado", "en_camino"), actualizado_en__lt=limite,
@@ -217,14 +239,14 @@ def hechos_digest() -> str:
 
 
 def correr_digest(*, dry_run: bool = False) -> int:
-    """Genera el digest matutino (sin acciones) para cada admin. Idempotente por
+    """Genera el digest matutino (sin acciones) para quien dirige. Idempotente por
     día (`digest:YYYY-MM-DD:<usuario>`)."""
     hechos = hechos_digest()
     if not hechos:
         return 0
     hoy = date.today().isoformat()
     hechas = 0
-    for u in _admins():
+    for u in _destinatarios_digest():
         if dry_run:
             logger.info("[dry] digest → u=%s\n%s", u.pk, hechos)
             hechas += 1
