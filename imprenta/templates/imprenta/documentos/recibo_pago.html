@@ -1,0 +1,34 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers %}
+{% comment %}Recibo de pago (La Imprenta): sale de un ingreso de La Tesorería. Una
+tabla de dos columnas, rótulo · valor, sin líneas — la entiende también Google.{% endcomment %}
+{% block cuerpo %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin:6pt 0 12pt 0;">
+  <tr>
+    <td style="{{ e.th }} text-align:center; padding:8pt; font-size:{{ e.titulo_pt|add:6 }}pt; font-weight:bold; {{ e.total }}">
+      {{ ing.monto|dinero }} {{ ing.moneda }}
+    </td>
+  </tr>
+  {% if b.letra %}<tr><td style="{{ e.td }} text-align:center; font-size:{{ e.tabla_pt }}pt;">{{ monto_letra }}</td></tr>{% endif %}
+</table>
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:{{ e.tabla_pt }}pt;">
+  <tr><td style="border:none; width:30%; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_recibimos }}</td>
+      <td style="border:none; padding:3pt 0; font-weight:bold;">{% firstof ing.cliente.razon_social "—" %}</td></tr>
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_cantidad }}</td>
+      <td style="border:none; padding:3pt 0;">{{ ing.monto|dinero }} {{ ing.moneda }}</td></tr>
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_concepto }}</td>
+      <td style="border:none; padding:3pt 0;">{{ ing.descripcion }}</td></tr>
+  {% if b.factura and ing.factura %}
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_factura }}</td>
+      <td style="border:none; padding:3pt 0;">{% firstof ing.factura.folio ing.factura.codigo %}</td></tr>
+  {% endif %}
+  {% if b.proyecto and ing.proyecto %}
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">Proyecto</td>
+      <td style="border:none; padding:3pt 0;">{% firstof ing.proyecto.nombre ing.proyecto.codigo %}</td></tr>
+  {% endif %}
+  {% if b.metodo %}
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_metodo }}</td>
+      <td style="border:none; padding:3pt 0;">{{ metodo }}{% if ing.referencia_externa %} · Ref. {{ ing.referencia_externa }}{% endif %}</td></tr>
+  {% endif %}
+</table>
+{% endblock %}

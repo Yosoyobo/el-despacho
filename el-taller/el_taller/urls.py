@@ -53,6 +53,8 @@ urlpatterns = [
     path("", include("papeleo.urls")),
     # La Recepción (S5): invitar y revocar el acceso de un cliente al portal.
     path("", include("portal.urls_taller")),
+    # La Imprenta: los documentos nuevos (recibo, estado de cuenta, remisión…).
+    path("documentos/", include("imprenta.urls_taller")),
 ]
 
 handler404 = _err.handler404

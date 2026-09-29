@@ -11137,3 +11137,34 @@ Decisiones durables:
 
 Deuda / siguiente (S-KPIs-V2 · 2): el constructor en La Gerencia sobre el DSL v2; los
 KPICustom aún se ven por todos (`permisos=()`): se arregla con `permisos_de()` del DSL v2.
+
+### S-Imprenta · Deploy 3 ✅ — VERSION 2026.09.18 (2026-09-29)
+
+Los documentos nuevos. (El Deploy 2 salió a producción dentro de la 2026.09.17 de
+la otra sesión, que mezcló `main` antes de desplegar.)
+- **Base común**: `imprenta/documentos/base.py` (`Documento`: definición,
+  plantilla, `obtener`, `puede(usuario, objeto)`, `contexto`, `piezas`,
+  `ejemplos`, `titulo`, `fecha`, `marca`; `dibujar`/`pagina`/`pdf`/`nombre_archivo`)
+  + plantilla madre `imprenta/documento.html` (`{% block cuerpo %}`,
+  `{% block derecha %}`). Registrar un documento = un `Documento` en
+  `imprenta/documentos/*.py` + su plantilla; `tipos.DOCUMENTOS` lo lleva a La
+  Gerencia (pestaña, vista previa) y a El Taller.
+- **Una sola vista en El Taller**: `imprenta/urls_taller.py` → `/documentos/<tipo>/<pk>/`
+  (ver) y `/pdf/` (Gotenberg; sin motor, redirige a ver). Permiso del módulo del
+  documento; 404 sin revelar.
+- **Documentos**: `recibo_pago` (Ingreso; `imprenta/letras.py` monto en letra con
+  apócope — «VEINTIÚN MIL», «UN MILLÓN DE PESOS»; PDF/A; marca ANULADO),
+  `estado_cuenta` (Cliente; facturas `facturada_de_verdad` con saldo + pagadas y
+  pagos de 90 días; vencido resaltado), `remision` y `orden_trabajo` (Proyecto,
+  permiso por objeto `puede_ver_proyecto`; remisión sin precios de fábrica, OT sin
+  venta ni costo de fábrica), `reembolso` (Egreso con `es_reembolso`, marca POR PAGAR).
+- Botones (`imprenta/_botones_documento.html`) en detalle y edición del ingreso,
+  del egreso de reembolso, ficha del cliente y aside del proyecto
+  (`proyectos/_documentos_panel.html`).
+- **Arreglo de fuga**: la vista previa de La Gerencia enseñaba documentos reales a
+  quien tenía `documentos.ver` sin el permiso del módulo; `Adaptador.puede` +
+  `tipos.ejemplos(usuario=)` los filtran (también cotización y factura).
+- El Chalán/MCP: `enlace_documento` alcanza los 5 nuevos; sin permiso responde
+  igual que «no existe».
+
+**Deuda**: el recibo de nómina conserva su plantilla propia (no está en La Imprenta).

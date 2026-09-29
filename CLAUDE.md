@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.17` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.18` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.18 | S-Imprenta · 3 | Recibo de pago, estado de cuenta, remisión, orden de trabajo y reembolso en PDF (una vista `/documentos/<tipo>/<pk>/`, permiso del módulo); la vista previa filtra por permiso |
 | 2026.09.17 | S-KPIs-V2 · 1 | Ajustes → KPIs (catálogo, tableros por rol, metas por despacho/persona/cliente proporcionales con aviso); 45 KPIs nuevos; la foto diaria por fin guarda el dinero; `kpis.configurar` |
 | 2026.09.16 | S-Imprenta · 2 | Notas editables (globales + por cotización, permiso propio), firma/aceptación, folio/vigencia/QR, marcas por estado, patrón de nombre, PDF/A; la factura en La Imprenta con PDF comercial |
 | 2026.09.15 | S-Imprenta · 1 | La Imprenta: marca, tablas, datos del despacho y bloques/rótulos por tipo con vista previa en vivo, PDF de prueba e historial; permiso `documentos` |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.11 | S-Grilla-Permisos | La grilla de El Directorio reconoce el rol asignado; guardarla ya no quita permisos |
 | 2026.09.10 | S-Checador-V2 | Nómina quincenal de sueldo fijo (recibos, préstamos, reembolsos, Mis recibos, costeo por sueldo); `.venv` 3.12 + suite portable; `ROLES.md` generado |
 | 2026.09.09 | S-Recepcion-Caja | Portal de clientes encendido (enlace por correo, aprobar cotizaciones, facturas); La Caja apagada sin llaves |
-| 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -455,6 +455,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Crear en bloque (importar, sembrar) sin `lib.carga_masiva.carga_masiva()` dispara los correos automáticos a clientes (pago, bienvenida) y difiere los asientos a `on_commit`.
 - Plantillas de PDF viven en `imprenta/templates/` (las ven Taller y Gerencia): estilos por
   `e.*` de `imprenta.config`, nunca CSS escrito a mano — si no, La Gerencia no lo puede cambiar.
+  Documento nuevo = un `Documento` en `imprenta/documentos/` (con su `puede`) + plantilla que extiende `imprenta/documento.html`.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
   al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).
 

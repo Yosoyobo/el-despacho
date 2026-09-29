@@ -1,0 +1,47 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers imprenta %}
+{% comment %}Remisión / nota de entrega (La Imprenta): qué se le entrega al cliente
+y cuánto; con precios o sin ellos. Firma de quien entrega y de quien recibe.{% endcomment %}
+{% block cuerpo %}
+{% if b.cliente or b.proyecto %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="border:none; vertical-align:top;">
+      {% if b.cliente %}<div style="{{ e.suave_css }}">{{ r.rotulo_entrega }}</div>
+      <div style="font-weight:bold;">{{ p.cliente.razon_social }}</div>
+      {% if direccion %}<div style="white-space:pre-line;">{{ direccion }}</div>{% endif %}{% endif %}
+    </td>
+    <td style="border:none; vertical-align:top; text-align:right;">
+      {% if b.proyecto %}<div>Proyecto: {% firstof p.nombre p.codigo %}</div>{% endif %}
+      <div>Entrega: {{ entrega|date:"d/m/Y" }}</div>
+    </td>
+  </tr>
+</table>
+{% endif %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="{{ e.th }} width:10%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+    <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.descripcion }}</td>
+    {% if b.precios %}<td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.precio }}</td>
+    <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.importe }}</td>{% endif %}
+  </tr>
+  {% for x in filas %}
+  <tr style="{{ e|rayado:forloop.counter }}">
+    <td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.cantidad }}</td>
+    <td style="{{ e.td }} text-align:left; vertical-align:top;">
+      {% if x.foto %}<img src="{{ x.foto }}" alt="" height="36" style="height:36pt; width:auto; float:right; margin-left:6pt;">{% endif %}
+      {{ x.pp.nombre_visible }}
+      {% if b.notas and x.pp.nota %}<div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }} white-space:pre-line;">{{ x.pp.nota }}</div>{% endif %}
+    </td>
+    {% if b.precios %}<td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.precio_unitario|dinero }}</td>
+    <td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.importe|dinero }}</td>{% endif %}
+  </tr>
+  {% empty %}
+  <tr><td colspan="4" style="{{ e.td }} {{ e.suave_css }}">Sin productos.</td></tr>
+  {% endfor %}
+  {% if b.precios and filas %}
+  <tr><td colspan="3" style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">Total (sin impuestos)</td>
+      <td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ total|dinero }}</td></tr>
+  {% endif %}
+</table>
+{% endblock %}

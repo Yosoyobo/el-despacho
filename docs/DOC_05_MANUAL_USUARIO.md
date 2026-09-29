@@ -5,6 +5,35 @@
 
 ---
 
+## Novedades — Recibos de pago, estados de cuenta, remisiones, órdenes de trabajo y comprobantes de reembolso (29 de septiembre de 2026)
+
+**Cinco documentos nuevos en PDF**, todos con tu logotipo, tu letra y tus
+colores de Gerencia → Ajustes → Documentos, y cada uno con su pestaña para
+decidir qué lleva.
+
+**Recibo de pago.** En cada ingreso de la Tesorería: a quién se le recibió, la
+cantidad con número y con letra, el concepto, la factura a la que se aplica y la
+forma de pago, con tu firma.
+
+**Estado de cuenta.** En la ficha de cada cliente: sus facturas con lo que
+pagó y lo que debe, lo vencido resaltado, los pagos recientes y el saldo a hoy.
+
+**Remisión.** En el proyecto: qué se entrega y cuánto, con la firma de «recibí
+de conformidad». Sin precios, salvo que los enciendas.
+
+**Orden de trabajo.** En el proyecto, para el taller: cada producto con su
+cantidad, merma, proveedor, procesos y notas, y la fecha de entrega. No lleva
+precios de venta.
+
+**Comprobante de reembolso.** En los gastos que alguien pagó de su bolsa: a
+quién se le devuelve, cuánto y por qué, con las dos firmas.
+
+Cada uno se ve con «Ver» y se baja con «Bajar PDF». Sólo lo ve quien ya puede ver
+ese dinero o ese proyecto.
+
+Con El Chalán: «pásame el recibo del ingreso ING-2026-0031», «la remisión del
+proyecto LC-0042» o «el estado de cuenta de Heladería Sur».
+
 ## Novedades — Tu tablero lo arma La Gerencia, metas que avisan y 45 indicadores nuevos (29 de septiembre de 2026)
 
 **«Tu tablero» del Inicio ya no es fijo.** En La Gerencia → **KPIs** se decide qué
@@ -7580,12 +7609,14 @@ conforme lleguen, los demás documentos). La pantalla tiene pestañas:
 | **Marca y tablas** | Tu logotipo (PNG, JPG o WebP; si no subes uno sale el de Learning Center), su alto y si va a la izquierda, al centro o a la derecha; la letra del documento y la de los títulos; el color del texto, del título y el total; los tamaños de letra; y las tablas: color y grosor de las líneas, fondo y letra del encabezado, renglones alternados y el aire de cada celda. |
 | **Datos y firma** | Nombre, razón social, RFC, dirección, teléfono, correo, sitio web, banco, titular, cuenta, CLABE e instrucciones de pago; y la firma (imagen, nombre y cargo). |
 | **Cotización** y **Factura** | Qué partes lleva, cómo se llama cada columna y rótulo, el título (acepta `{folio}`, `{cliente}`, `{proyecto}` y `{fecha}`), qué datos del despacho enseña, un texto de entrada y uno de cierre, **las notas** (sólo la cotización), **firma y aceptación**, **folio, vigencia y QR**, **marcas de agua por estado**, **el nombre del archivo** y **PDF/A**, y una hoja propia si la necesita (vacío = la de la hoja general). |
+| **Recibo de pago**, **Estado de cuenta**, **Remisión**, **Orden de trabajo** y **Reembolso** | Lo mismo que los demás: qué partes lleva cada uno, sus rótulos, textos, firma, folio, QR, marcas y archivo. |
 | **Historial** | Cada guardado, con quién, cuándo y qué cambió. «Volver a esta versión» deja todo como estaba en ese momento. |
 
 **Todo nace igual que el documento de siempre**: si nadie toca nada, la
 cotización sale exactamente como salía.
 
-**La vista previa** de la derecha usa una cotización real (la eliges de la lista)
+**La vista previa** de la derecha usa un documento real (lo eliges de la lista;
+sólo aparecen los de los módulos que tú puedes ver)
 y se redibuja mientras cambias, **sin guardar**. Es una hoja continua; los cortes
 de página exactos se ven con **«PDF de prueba»**, que lo arma el motor de verdad
 con lo que tienes en pantalla. Una imagen nueva (logotipo o firma) se ve después
@@ -7601,6 +7632,21 @@ reescribirías; puedes recargar para ver lo suyo o guardar lo tuyo de todos modo
 **Si el PDF lo acaba armando Google** (el motor propio no contesta), sale con el
 formato de siempre —Google no respeta letras ni colores— pero con tus textos,
 rótulos y datos.
+
+**Los documentos y dónde están.**
+
+| Documento | Dónde se saca | Qué dice | Quién lo ve |
+|---|---|---|---|
+| Cotización | La cotización | La propuesta | Quien ve cotizaciones |
+| Factura (comercial) | La factura → «Documento comercial» | Conceptos, totales y datos para pagar. No es un CFDI | Quien ve facturación |
+| Recibo de pago | El ingreso (Tesorería) | Recibimos de…, la cantidad con letra, el concepto y la factura | Quien ve finanzas |
+| Estado de cuenta | La ficha del cliente | Facturas, lo pagado, lo que debe, lo vencido y los pagos de los últimos 90 días | Quien ve facturación |
+| Remisión | El proyecto → «Documentos» | Qué se entrega y cuánto; «recibí de conformidad». Con precios si los enciendes | Quien ve el proyecto |
+| Orden de trabajo | El proyecto → «Documentos» | Producto, cantidad, merma, proveedor, procesos y fecha de entrega. Sin precios | Quien ve el proyecto |
+| Comprobante de reembolso | El gasto pagado con tarjeta o efectivo personal | A quién se le devuelve, cuánto y por qué; dos firmas | Quien ve finanzas |
+
+En cada uno, **«Ver»** abre la hoja en pantalla y **«Bajar PDF»** la baja. Si el
+motor de PDF no contesta, «Bajar PDF» te lleva a la versión imprimible.
 
 **Las notas.** Se editan en la pestaña del documento: cambias el texto, las
 reordenas con ↑/↓, la casilla apaga una sin borrarla, ✕ la quita y «+ Agregar

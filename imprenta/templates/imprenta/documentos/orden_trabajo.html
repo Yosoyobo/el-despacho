@@ -1,0 +1,44 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers imprenta %}
+{% comment %}Orden de trabajo (La Imprenta): interna, para el taller y la maquila.
+Qué se produce, cuánto (con merma), con qué proveedor y procesos, y para cuándo.
+Nunca lleva precios de venta; los costos, sólo si se encienden.{% endcomment %}
+{% block cuerpo %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="border:none; vertical-align:top;">
+      {% if b.cliente %}<div>Cliente: <strong>{{ p.cliente.razon_social }}</strong></div>{% endif %}
+      {% if b.responsables and responsables %}<div>{{ r.rotulo_responsables }}: {{ responsables|join:", " }}</div>{% endif %}
+    </td>
+    <td style="border:none; vertical-align:top; text-align:right;">
+      {% if b.compromiso and p.fecha_compromiso %}<div style="font-weight:bold; {{ e.total }}">{{ r.rotulo_compromiso }} {{ p.fecha_compromiso|date:"d/m/Y" }}</div>{% endif %}
+    </td>
+  </tr>
+</table>
+{% if b.descripcion and p.descripcion %}<p style="margin:0 0 8pt 0; white-space:pre-line;">{{ p.descripcion }}</p>{% endif %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.producto }}</td>
+    <td style="{{ e.th }} width:9%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+    {% if b.merma %}<td style="{{ e.th }} width:9%; text-align:right; {{ e.th_letra }}">{{ r.merma }}</td>{% endif %}
+    {% if b.proveedores %}<td style="{{ e.th }} width:22%; text-align:left; {{ e.th_letra }}">{{ r.proveedor }}</td>{% endif %}
+    {% if b.costos %}<td style="{{ e.th }} width:13%; text-align:right; {{ e.th_letra }}">{{ r.costo }}</td>{% endif %}
+  </tr>
+  {% for x in filas %}
+  <tr style="{{ e|rayado:forloop.counter }}">
+    <td style="{{ e.td }} text-align:left; vertical-align:top;">
+      {% if x.foto %}<img src="{{ x.foto }}" alt="" height="44" style="height:44pt; width:auto; float:right; margin-left:6pt;">{% endif %}
+      <strong>{{ x.pp.nombre_visible }}</strong>
+      {% for pr in x.procesos %}<div style="font-size:{{ e.notas_pt }}pt;">· {{ pr.get_tipo_display }}{% if pr.descripcion %}: {{ pr.descripcion }}{% endif %}{% if pr.proveedor %} ({{ pr.proveedor.razon_social }}){% endif %}</div>{% endfor %}
+      {% if b.notas and x.pp.nota %}<div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }} white-space:pre-line;">{{ x.pp.nota }}</div>{% endif %}
+    </td>
+    <td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.cantidad }}</td>
+    {% if b.merma %}<td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.merma }}</td>{% endif %}
+    {% if b.proveedores %}<td style="{{ e.td }} text-align:left; vertical-align:top;">{% if x.pp.proveedor %}{{ x.pp.proveedor.razon_social }}{% else %}—{% endif %}</td>{% endif %}
+    {% if b.costos %}<td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.costo_unitario|dinero }}</td>{% endif %}
+  </tr>
+  {% empty %}
+  <tr><td colspan="5" style="{{ e.td }} {{ e.suave_css }}">Sin productos.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% load forms_helpers imprenta %}<!DOCTYPE html>
+{% comment %}
+La plantilla madre de los documentos de La Imprenta (recibo de pago, estado de
+cuenta, remisión, orden de trabajo, reembolso, orden de compra…).
+
+Mismo lenguaje que la cotización: tablas con estilos en línea y todo lo visual
+por `e.*`, para que La Gerencia lo cambie y Google lo entienda de respaldo. Cada
+documento llena `{% block cuerpo %}` y, si quiere, `{% block derecha %}` (lo de
+arriba a la derecha: el tipo y el folio).
+{% endcomment %}
+<html lang="es">
+<head><meta charset="utf-8"><title>{{ titulo_documento }}</title>
+{{ e.fuentes_css|safe }}
+{% if preview %}{% include "imprenta/_pantalla.html" %}{% endif %}
+</head>
+<body style="{{ e.cuerpo }}">
+{% if preview %}
+{% if url_descargar and not sin_barra %}
+<div class="lc-barra">
+  <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
+  <span>
+    <a class="lc-btn" href="{{ url_descargar }}" download="{{ nombre_archivo }}.pdf">&#11015; Bajar PDF</a>
+    <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
+  </span>
+</div>
+{% endif %}
+<div class="lc-hoja">
+{% endif %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">
+    <tr>
+      <td style="border:none; width:33%; vertical-align:top; text-align:left;">
+        {% if b.logo and logo_url and e.logo_alinea == "left" %}{% include "imprenta/_logo.html" with alinea="left" %}{% endif %}
+        {% if b.fecha and fecha_documento %}{{ fecha_documento|date:"j" }} {{ fecha_documento|date:"F"|capfirst }} {{ fecha_documento|date:"Y" }}{% endif %}
+      </td>
+      <td style="border:none; width:34%; vertical-align:top;">
+        {% if b.logo and logo_url and e.logo_alinea == "center" %}{% include "imprenta/_logo.html" with alinea="center" %}{% endif %}
+      </td>
+      <td style="border:none; width:33%; vertical-align:top; text-align:right;">
+        {% if b.logo and logo_url and e.logo_alinea == "right" %}{% include "imprenta/_logo.html" with alinea="right" %}{% endif %}
+        {% block derecha %}
+        <div style="font-weight:bold; {{ e.total }}">{{ rotulo_tipo }}</div>
+        {% if folio %}<div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">{{ folio }}</div>{% endif %}
+        {% endblock %}
+      </td>
+    </tr>
+  </table>
+  {% include "imprenta/_datos_despacho.html" %}
+  <p style="{{ e.titulo }} margin:0 0 8pt 0;">{{ titulo_documento }}</p>
+  {% include "imprenta/_folio.html" %}
+  {% if texto_intro %}<p style="margin:0 0 8pt 0;">{{ texto_intro }}</p>{% endif %}
+  {% block cuerpo %}{% endblock %}
+  {% if texto_cierre %}<p style="margin:0 0 8pt 0;">{{ texto_cierre }}</p>{% endif %}
+  {% include "imprenta/_firmas.html" %}
+{% if preview %}</div>{% endif %}
+</body>
+</html>

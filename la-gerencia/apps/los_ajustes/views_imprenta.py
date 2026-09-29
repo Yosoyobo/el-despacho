@@ -230,7 +230,7 @@ def _pintar(request, pestana: str, *, choque=None, status: int = 200, enviados=N
     # Qué documento se previsualiza: el de la pestaña, o la cotización.
     tipo_vista = pestana if tipos.definicion(pestana) else next(iter(tipos.TIPOS))
     contexto["tipo_vista"] = tipo_vista
-    contexto["ejemplos"] = tipos.ejemplos(tipo_vista)
+    contexto["ejemplos"] = tipos.ejemplos(tipo_vista, usuario=request.user)
     contexto["nombre_tipo_vista"] = tipos.definicion(tipo_vista).nombre
 
     if pestana == "general":
@@ -298,7 +298,7 @@ def _ejemplo(request, tipo: str) -> int | None:
     from imprenta import tipos
 
     crudo = request.POST.get("ejemplo") or ""
-    validos = {pk for pk, _ in tipos.ejemplos(tipo, limite=50)}
+    validos = {pk for pk, _ in tipos.ejemplos(tipo, limite=50, usuario=request.user)}
     if crudo.isdigit() and int(crudo) in validos:
         return int(crudo)
     return next(iter(validos), None) if validos else None
@@ -355,9 +355,9 @@ def documentos_vista_pdf(request):
 
 
 def _sin_ejemplos(nombre: str) -> str:
-    return ("<p style='font-family:sans-serif;padding:2rem;color:#667085'>Todavía no hay "
-            f"ningún documento de tipo «{nombre}» para previsualizar. En cuanto exista uno, "
-            "aparece aquí.</p>")
+    return ("<p style='font-family:sans-serif;padding:2rem;color:#667085'>No hay "
+            f"ningún documento de tipo «{nombre}» que puedas previsualizar: o todavía no "
+            "existe uno, o tu permiso no alcanza para ver ese módulo.</p>")
 
 
 @requiere_permiso("documentos", "ver")
