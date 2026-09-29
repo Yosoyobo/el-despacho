@@ -13467,3 +13467,16 @@ n8n 1.70.1 → 2.40.7 (ensayado sobre copia de la base), puerto a 127.0.0.1 + `t
 ## 2026-09-28 — S-Pendientes-Sep28 · Deploy 1 (VERSION 2026.09.01)
 
 Deploy 1 del plan de 9 rondas: «Otros responsables» de las tareas ya se guardan (faltaba `save_m2m` en 3 vistas), el dinero del proyecto se memoiza por petición (231→151 consultas con 8 líneas), `puede_ver_catalogo` corregido y `analisis.ver` delegable, `_emitir_noop` robusto, Portavoz en pausa sin destino (`portavoz:sin_destino`), arranque del NUC que espera al tailnet + alarma de servicios esperados, tarifas oficiales de Grok/MiMo. La sesión anterior se cortó con 8 agentes a medias; al retomarla se encontraron **3 mutaciones de prueba aplicadas** (carpeta temporal compartida) y se restauraron. Deploys 2 y 3 quedan en sus ramas con commit `wip:` (tabla en `docs/HISTORIAL_SESIONES.md`). Pendiente operativo: vaciar `portavoz:cola` al respaldo.
+
+## 2026-09-28 — S-Pendientes-Sep28 · Deploy 2 (VERSION 2026.09.02)
+
+Oscar pidió desplegar todo lo pendiente. Relevo de 7 agentes (uno por worktree, con
+carpeta temporal y Redis propios) terminó los 6 frentes del Deploy 2 y la edición
+pisada; un octavo construyó la app Android. Integración en `agent/deploy2-sep28`:
+producto (★, color, HEIC, @persona, plegado), tablas→tarjetas en móvil + teclado,
+8 comandos del Chalán, CFDI recibidos y egreso de proveedor, Papeleo (aviso, ligado
+cada 15 min, unir, convertir) + anexos de cotización, usuarios en línea, y el arreglo
+de 8 fechas que se veían en blanco. Hallazgo: el `wip:` del Chalán era una mutación
+commiteada (renombres de proveedor perdidos) — quitada. Migraciones: proyectos/0038,
+facturacion/0013, tesoreria/0009, cotizaciones/0020, cuentas/0045-0046. Cron nuevo:
+`papeleo_ligar_pendientes` cada 15 min. Detalle en `docs/HISTORIAL_SESIONES.md`.

@@ -10303,3 +10303,89 @@ del sprint sigue vigente para cuando se retome.
 
 **Paso operativo pendiente tras el deploy:** vaciar `portavoz:cola` (≈2,192) al
 respaldo — ver BITACORA.
+
+### S-Pendientes-Sep28 · Deploy 2 ✅ — VERSION 2026.09.02 (2026-09-28)
+
+Oscar: «despliega todo lo pendiente». Los 6 frentes del Deploy 2 se terminaron con
+**agentes de relevo** (uno por worktree, carpeta temporal y base de Redis propias,
+commit antes de mutar), rebasados sobre `main` y fusionados en `agent/deploy2-sep28`.
+Cada relevo barrió su diff buscando sabotaje de mutaciones: **el `wip:` del Chalán
+era una mutación commiteada por accidente** (el prompt enseñaba `razon_social?` en
+vez de `razon_social_nueva`, con lo que un renombre se perdía en silencio) — se
+quitó. Suite completa integrada verde (sólo las 4 fallas locales de
+`test_portavoz_worker`).
+
+**Entregado**
+- **Producto** (`tests/taller/test_producto_sep28.py`): proveedor ★ nuevo → modal
+  «¿también en estos proyectos?» (elegibles: vivo, sin egreso de la línea, sin
+  cotización pagada, con el principal ANTERIOR; principal capturado antes de
+  `is_valid`, evento `catalogo.proveedor_propagado`); color de tarjeta sólo de
+  alias + catálogo (Python y JS espejo, `proyectos/0038_recolorear_sin_descripcion`
+  sólo RunPython); HEIC→JPEG con `pillow-heif`; `@persona`+Enter en la tarjeta de
+  producto crea la tarea directa (sin IA, sin `name` en el campo, parser de
+  fechas); plegado móvil de ficha de cliente y de producto (sólo al editar; recuadro
+  con error nace abierto; `_ubicacion`/`papeleo/_recuadro` pliegan sólo si se pide).
+- **Tablas → tarjetas en móvil** (`test_tablas_movil_sep28.py`): MÓDULO
+  `data-tabla-movil` en la `<table>` + `ui.js` pone `data-label` desde el `<th>`
+  (load, `htmx:afterSwap`, MutationObserver) + CSS `<md` en `input.css` (dual-copy).
+  58 tablas en 50 plantillas; exentas con razón escrita en el candado (3 del Vigía
+  `table-fixed`, balance, resultados, conciliación, tablero de Mandados). Medido a
+  390 px en 54 pantallas: tablas más anchas que la pantalla 52→0, controles fuera
+  276→0. **Candado: toda `<table>` nueva nace con la marca.**
+- **Teclado** (`test_teclado_sep28.py`): guardas de `isComposing`/229 en todos los
+  handlers; Enter y Esc que confirman/cancelan un acento ya no envían ni cierran el
+  modal; los tokens `@#$` aceptan acentos y ñ.
+- **8 comandos del Chalán** (`test_chalan_olas_sep28.py`): `crear_factura_desde_cotizacion`,
+  `cancelar_factura`, `duplicar_factura`, `ligar_factura_proyecto` (se extrajo
+  `facturacion.services.ligar_a_proyecto` y la vista lo usa), `anular_cotizacion`,
+  `anular_asiento`, `actualizar_proveedor` (gating `catalogo_proveedores` →
+  `gestionar_categorias`, igual que la pantalla), `actualizar_variacion`. Gatings
+  nuevos `facturacion_cancelar`, `cotizaciones_anular`, `contaduria_anular`,
+  `catalogo_proveedores` sobre acciones que YA existían. Factura con cobros no se
+  cancela por dictado (el error nombra los ingresos).
+- **CFDI recibidos** (`test_cfdi_proveedor_sep28.py`): pantalla en Tesorería →
+  CFDI recibidos (pendientes con motivo; ligar a factura, asignar proveedor,
+  ignorar); CFDI de proveedor → «Crear egreso» prellenado o **ligar** al egreso que
+  casa (proveedor, ±$1, ±15 días, sin CFDI); la base del egreso sale del desglose del
+  XML, no de ÷1.16 (retenciones); la ingesta ahora guarda de verdad XML, desglose y
+  PDF. Migraciones `facturacion/0013_cfdi_egreso_proveedor` y
+  `tesoreria/0009_egreso_origen_cfdi` (sólo esquema). Chalán: lectura
+  `cfdi_pendientes` + propuestas `registrar_egreso_desde_cfdi` (pide
+  `tesoreria.capturar_egreso`) y `ligar_cfdi_a_factura`.
+- **Papeleo + anexos** (`test_papeleo_sep28.py`, `test_anexos_cotizacion_sep28.py`):
+  aviso por Interfón a quien tiene `papeleo.ver` (categoría opt-out, respeta
+  `avisar_al_entrar`); command `papeleo_ligar_pendientes` cada 15 min (48 h, sin
+  dueño, ligado cobarde) al final de `infra/cron/el-despacho.cron`; unir PDFs
+  (`papeleo.ver` para unir, `papeleo.subir` para archivar; el unido sólo lo baja
+  quien lo unió); Word/Excel→PDF al subir (`lib/a_pdf.preparar`); `CotizacionAnexo`
+  (`cotizaciones/0020`) pegados al final del PDF ANTES de Drive, heredados a la
+  versión siguiente y al duplicar. Chalán: `anexar_a_cotizacion`; se arregló
+  `convertir_a_pdf` que leía `clave` en vez de `id`. Unir/convertir declarados como
+  NO disponibles por chat en `CONSULTAS_CHAT`.
+- **Usuarios en línea** (`tests/test_presencia_sep28.py`): middleware compartido en
+  `cuentas/` con tope de escritura 1/min (caché `add` + campos `actividad_*` en
+  `Usuario`, `cuentas/0045` esquema + `0046` seed); el polling NO cuenta (lista por
+  `url_name`, prefijo `site-vivo`, rutas, cabecera `X-Despacho-Sondeo`, 4xx/5xx; un
+  test falla si aparece un `hx-trigger="every"` no cubierto); «pantalla exacta» se
+  arma al mostrar. Permiso `equipo.ver_actividad` en `PERMISOS_UNIVERSALES` (nace
+  para todos). 4 lugares: Directorio, El Site + El Vigía a la par (`_equipo.html`),
+  Equipo, Dashboard. Chalán: `quien_esta_en_linea`.
+- **Fechas en blanco** (`test_fechas_iso_sep28.py`, hallazgo del relevo de edición
+  pisada): 8 `DateInput(type=date)` sin `format="%Y-%m-%d"` pintaban «28/09/2026» y
+  el navegador mostraba el campo vacío (p. ej. fecha de emisión de la cotización).
+  Candado que barre todo `DateInput` de tipo fecha.
+
+**Decisiones durables**
+- Tablas en móvil son UN módulo (`data-tabla-movil`), no HTML por lista.
+- La presencia la marca sólo la actividad real; todo sondeo nuevo debe entrar a la
+  lista de exclusión o mandar `X-Despacho-Sondeo: 1` (el candado lo exige).
+- Un CFDI de proveedor NUNCA crea egreso solo: propone y confirma una persona.
+
+**Deuda**
+- La pared del Vigía (sin sesión) muestra la pantalla exacta de cada quien —
+  confirmar con Oscar si basta la sección.
+- Un rol creado después de `cuentas/0046` no trae `equipo.ver_actividad` en su JSON
+  (sólo afecta «ver como rol»).
+- PDFs unidos en El Almacén sin limpieza; PDF de CFDI por JSON tope ~750 KB.
+- Vistas nuevas de proyecto gatean con `puede_editar_proyecto` (por dentro es
+  `es_admin`), igual que el resto del módulo.

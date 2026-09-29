@@ -375,9 +375,9 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.09.01` (+ n8n 2.40.7 con MCP
-nativo en el NUC, PR #111). El Deploy 2 y 3 del sprint de pendientes quedaron
-WIP en ramas `worktree-agent-*` (tabla en el historial → S-Pendientes-Sep28). Stack: apps + Postgres + Redis + El Mostrador +
+**Estado al 2026-09-28:** producción en `VERSION 2026.09.02` (+ n8n 2.40.7 con MCP
+nativo en el NUC, PR #111). Deploy 2 del sprint de pendientes entregado; el Deploy 3
+(edición pisada, pestañas, app Android) va detrás. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
 sólo la VENTANA (El Portero/Caddy, TLS + `reverse_proxy` por tailnet). Deploy:
 el CI salta por La Sede al NUC (`infra/scripts/deploy_nuc.sh`).
@@ -387,6 +387,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
 | 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
 | 2026.08.50 | S-Ajustes-Ago28 · 3 | Vista previa de cotización: genera de verdad y deshace (evento con `on_commit` dentro del `atomic`) |
 | 2026.08.48 | S-Ajustes-Ago28 · 2 | `Tarea.producto`; buscador del Inicio abarca clientes/productos/proveedores |
@@ -396,7 +397,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.08.44 | S-Latencia-Ago24 | Push fuera de la petición, permisos memoizados, context processors perezosos |
 | 2026.08.43 | S-NUC-Cierre | Pantalla de automatizaciones n8n; El Chalán alcanza las 4 piezas del NUC |
 | 2026.08.42 | S-OSRM-GUI / S-Papeleo-V1 | Perillas de OSRM + tabla única; Paperless ligado a entidades |
-| 2026.08.33 | S-NUC-Servicios | Regla §4 #23 (aviso de mantenimiento); Gotenberg, OSRM, n8n, Paperless |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -414,7 +414,7 @@ renglones, el más viejo sale al entrar uno nuevo):
   `hx-swap="none"` + 204 hace que un error se vea como «no hace nada».
 - `django.shortcuts.render()` no acepta `headers=`: setearlos sobre la respuesta.
 - Cambiar el widget de un `ModelChoiceField` → re-asignar el `queryset` (si no, choices vacíos).
-- Date inputs: `DateInput(format="%Y-%m-%d")`; valores que parsea JS → `|unlocalize` (es-mx localiza).
+- Date inputs: `DateInput(format="%Y-%m-%d")` (candado `test_fechas_iso_sep28`); valores que parsea JS → `|unlocalize` (es-mx localiza).
 - `hfmt` y todo filtro de hora: `expects_localtime=True` (bug +6h).
 - Un campo renderizado dos veces en el HTML se guarda VACÍO en silencio (Django toma el último).
 - `SimpleLazyObject` no compara ni suma → `lazy(fn, int)` para contadores.
@@ -435,6 +435,7 @@ renglones, el más viejo sale al entrar uno nuevo):
   producción (footer de `/acerca/`), no la conclusión del job. Nunca `docker run` sobre
   un servicio del compose (§14 Bug J).
 - Dos sesiones en el mismo working tree se pisan: la segunda va en `git worktree`.
+- Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
   al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).
 

@@ -5,6 +5,70 @@
 
 ---
 
+## Novedades — Las listas caben en el celular, las facturas de proveedores se vuelven gasto y ves quién está conectado (28 de septiembre de 2026)
+
+**En el celular, las listas se leen como tarjetas.** Proyectos, clientes,
+tareas, facturas, cotizaciones, tesorería, contabilidad y los catálogos de La
+Gerencia ya no se salen de la pantalla: cada renglón es una tarjeta con el
+nombre de cada dato arriba, y los botones Ver, Editar y Guardar quedan a la
+mano. En la computadora todo se ve igual que antes.
+
+**La ficha del cliente y la del producto abren plegadas en el celular.** Las
+secciones de consulta (cotizaciones, facturas, ubicación, papeleo; imagen,
+proveedores, historial) se abren con un toque.
+
+**La ñ y los acentos ya no se pierden en ningún campo**, ni con la tecla ñ ni con
+Option+n. Y al escribir @, # o $ con acento («@toñ») las sugerencias siguen
+saliendo.
+
+**Las fechas ya no se ven en blanco al editar.** La fecha de emisión de una
+cotización y otras fechas (cobros, movimientos, asientos, entregas) aparecían
+vacías al abrir el formulario aunque sí estaban guardadas.
+
+**Al cambiar el proveedor principal de un producto**, el sistema pregunta en qué
+proyectos abiertos también cambiarlo. Vienen todos marcados; desmarca los que no.
+
+**El color de la tarjeta de producto** sale sólo de su nombre en el proyecto y del
+nombre del catálogo; lo que escribas en la descripción ya no lo cambia.
+
+**Las fotos del iPhone (HEIC)** se guardan como JPEG y se ven en todos lados.
+
+**Tareas con @persona en la tarjeta del producto.** Escribe «@Ana cortar
+muestras el viernes», da Enter y la tarea queda creada y ligada al producto. Sin
+fecha, toma la entrega del proyecto.
+
+**Las facturas de proveedores se vuelven gasto.** En Tesorería → CFDI recibidos
+están las facturas que llegaron por correo y no se acomodaron solas, con el
+porqué. Para las de proveedor, «Crear egreso» abre el formulario ya lleno
+(proveedor, total con IVA, fecha, concepto y el comprobante); tú lo revisas y lo
+guardas. Si ese gasto ya lo habías capturado, te lo muestra para ligarlo y no
+contarlo dos veces.
+
+**Papeleo:** te llega un aviso cuando entra un documento nuevo (si Gerencia lo
+prende; se silencia en tus notificaciones). Lo que entra se liga solo a su
+cliente, proyecto o proveedor minutos después, cuando ya se leyó. Puedes marcar
+varios documentos y **unirlos en un solo PDF**, y los Word y Excel se guardan ya
+como PDF.
+
+**Anexos en la cotización.** Un recuadro «Anexos» para agregar fichas técnicas:
+van pegadas al final del PDF que se descarga y se manda por correo, y pasan solas
+a la versión siguiente.
+
+**Quién está conectado.** En línea si movió algo en los últimos 5 minutos,
+ausente de 5 a 30, y desconectado con la hora de su última vez. Lo ves en Equipo
+(un puntito junto a cada persona y en qué pantalla anda), en el Dashboard («Quién
+está conectado»), en El Directorio y en El Site. Tener la pestaña abierta sin
+usarla no cuenta.
+
+**El Chalán hace más cosas**, siempre como propuesta que tú confirmas: facturar
+una cotización, cancelar, duplicar o ligar una factura a un proyecto («liga la
+factura F-106 al proyecto LC-0044»), anular una cotización o un movimiento
+contable capturado a mano, editar un proveedor o una variación, registrar el
+egreso de una factura de proveedor, anexar a una cotización un documento del
+papeleo, y contestarte «¿quién está en línea?» o «¿qué facturas de proveedores
+faltan por registrar?». Una factura con cobros no se cancela: te dice qué cobros
+anular primero.
+
 ## Novedades — Los responsables de una tarea ya no se pierden, y el proyecto abre más rápido (28 de septiembre de 2026)
 
 **Los «Otros responsables» de una tarea se guardan.** Al crear una tarea desde
@@ -5168,6 +5232,11 @@ Además, el super admin puede:
 
 Toda la operación del negocio vive en **El Taller**. La Gerencia es para configurar el sistema y ver el tablero ejecutivo.
 
+**En el celular.** Las listas anchas se leen como tarjetas: una por renglón, con
+el nombre de cada dato arriba y los botones al alcance; los encabezados que
+ordenan la lista aparecen como botoncitos arriba. La ficha del cliente y la del
+producto abren con sus secciones de consulta plegadas.
+
 ### Lo que ves en el menú de El Taller
 
 | Sección | Para qué sirve |
@@ -5266,6 +5335,13 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
 - **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
 
 ---
+
+**Quién está conectado.** Un recuadro chico con quién está en línea (movió algo en
+los últimos 5 minutos), ausente (5 a 30) o desconectado (con la hora). Lo mismo
+se ve en Equipo (puntito en cada persona; al abrirla, en qué sección y pantalla
+anda y desde qué aparato), en El Directorio (columna «Última actividad») y en El
+Site. Tener una pestaña abierta sin usarla no cuenta. Con El Chalán: «¿quién está
+en línea?» o «¿qué está haciendo Jorge?».
 
 ## Clientes
 
@@ -5578,6 +5654,15 @@ enseña su calculadora de costos. El mismo buscador está en el atajo de la vent
 "Agregar producto" y en el del formulario de la cotización.
 
 ---
+
+**Tareas con @persona en la tarjeta del producto.** En el campo de tareas de la
+tarjeta escribe `@` y elige a la persona, luego qué hay que hacer y, si quieres,
+cuándo («mañana», «el viernes», «15/10»). Al dar Enter la tarea se crea al
+instante, ligada a ese producto, sin pasar por El Chalán. Sin fecha, toma la
+entrega del proyecto. Si el nombre coincide con dos personas, te pide elegir.
+
+**El color de la tarjeta** sale del nombre del producto en el proyecto (su alias)
+o del nombre del catálogo. La descripción ya no lo decide.
 
 ## Tareas (Pizarrón)
 
@@ -5931,6 +6016,11 @@ sigue. Y si dejaste cualquier cambio sin guardar, el navegador te avisa antes de
 salirte. (En la tarjeta del proyecto y en el historial de usos no hay botón de
 guardar, así que ahí el cambio es inmediato.)
 
+**Fotos del iPhone.** Las fotos HEIC se convierten a JPEG al subirlas, así que
+se ven en la ficha, en el proyecto y en los PDF. En el celular, la ficha del
+producto (al editarla) abre con Imagen, Descripción, Proveedores, Impresión e
+Historial plegados; un toque los abre.
+
 ### Impresión y procesos adicionales del producto
 
 En la ficha del producto, el recuadro **"🖨️ Impresión y procesos adicionales"**
@@ -5995,6 +6085,12 @@ Si prefieres preguntarle a El Chalán: «háblame de Simil Cuero Plymouth» o «
 
 Desde el form de un producto puedes crear un proveedor nuevo sin salir: panel "+ Nuevo proveedor", lo creas y queda marcado como pastilla. También hay un acceso directo "Nuevo proveedor" en el Dashboard.
 
+**Cambiar el proveedor principal (★) de un producto.** Al guardar, si hay
+proyectos abiertos que usan ese producto con el proveedor anterior, sin gasto
+registrado de esa línea y sin cotización pagada, sale «¿También en estos
+proyectos?» con todos marcados. Desmarca los que deban quedarse como están y
+confirma. Si no hay ninguno, no sale nada.
+
 ### Categorías
 
 Listas de referencia que sólo super admin gestiona (Gerencia → Catálogos).
@@ -6031,6 +6127,10 @@ no tiene permiso de ver papeleo no lo ve, aunque sepa el número del documento.
 Si un documento acaba de entrar y no aparece al buscarlo, es normal: su lectura
 tarda unos minutos. Aparece primero y se vuelve buscable después.
 
+**Unir varios en un PDF.** Marca las casillas de los documentos en el orden que
+quieras y pica «Unir en un PDF». Se descarga el resultado y puedes guardarlo en
+el archivo (con permiso de subir). Lo que no es PDF se salta y se dice.
+
 ### Cómo entra un documento
 
 Tres caminos:
@@ -6044,6 +6144,18 @@ Tres caminos:
 **Los CFDI no van aquí.** Ésos entran por Facturación, que los liga a su factura
 y les saca el UUID. Si un XML de CFDI llega al papeleo, se rechaza y se dice a
 dónde va.
+
+**Word y Excel entran como PDF.** Un .doc, .docx, .xls, .xlsx, .odt u .ods se
+convierte a PDF al subirlo, con su mismo nombre. Si el convertidor no responde,
+se guarda el original y se avisa.
+
+**Aviso de papeleo nuevo.** Si Gerencia prende «avisar al entrar», quien puede ver
+el Papeleo recibe un aviso cuando llega un documento por el buzón. Se silencia en
+Notificaciones → Papeleo.
+
+**Se liga solo después de leerse.** Cada 15 minutos el sistema repasa lo que llegó
+en las últimas 48 horas y sigue sin dueño, y lo liga a su cliente, proyecto o
+proveedor cuando no hay duda. Si la hay, lo deja para que alguien decida.
 
 ### De quién es cada documento
 
@@ -6122,6 +6234,12 @@ Abajo, una sección "Qué pueden hacer Los Chalanes" lista las acciones que el C
 - **Armar el PDF de una cotización · Convertir un Word o Excel a PDF · Mandar un
   documento al archivo buscable**
 - **Prender, apagar, quitar y crear automatizaciones** (siempre nacen apagadas)
+- **Facturar una cotización · Cancelar, duplicar o ligar una factura a un
+  proyecto** (una factura con cobros no se cancela: te dice qué cobros anular)
+- **Anular una cotización · Anular un asiento capturado a mano**
+- **Editar un proveedor · Editar una variación** (sólo sus datos, nunca borrar)
+- **Registrar el egreso de un CFDI de proveedor · Ligar un CFDI a su factura**
+- **Anexar a una cotización un documento del papeleo**
 
 Y sin cambiar nada, sólo para contestar:
 
@@ -6433,6 +6551,13 @@ Cuando una cotización está aprobada y tiene anticipo, aparece un botón **"Gen
 
 **El Chalán te ayuda:** botón **🤖 Redactar** junto a **Notas** y **Términos**, y **🤖 Sugerir** en cada línea para proponer el precio (ver *Chalanes (IA)*).
 
+**Anexos.** En el detalle de la cotización, el recuadro «Anexos» guarda fichas
+técnicas (PDF, o Word/Excel que se convierten). Se ordenan con ↑/↓ y se pegan al
+final del PDF de la cotización: el que se descarga y el que se manda por correo.
+Pasan solos a la versión siguiente y al duplicar. Si no se pueden unir, el PDF sale
+sin ellos y te avisa. Con El Chalán: «anéxale a la COT-2026-0044 la ficha técnica
+del papeleo #45».
+
 ### Crear producto desde la cotización
 
 Mismo patrón que en Proyectos: panel desplegable "+ Crear producto nuevo" abajo de las líneas. Crea el producto en el catálogo y lo agrega como línea de la cotización en un solo paso.
@@ -6540,6 +6665,16 @@ clic y estás en él.
 - **Reembolsar:** botón "Reembolsar" en cada egreso pendiente — captura método y banco, baja el saldo, crea el asiento contable.
 - **Reportes mensuales** con Estado de Resultados.
 - **Exports CSV** para mandárselos al contador externo.
+
+**CFDI recibidos (Tesorería → CFDI recibidos).** Las facturas electrónicas que
+llegan por correo y no se acomodaron solas esperan aquí, cada una con el motivo.
+Se pueden ligar a su factura, asignar a su proveedor o ignorar. Para una factura
+de **proveedor**, «Crear egreso» abre el formulario de egreso ya lleno (proveedor
+por su RFC, total con IVA, fecha, concepto y el XML/PDF como comprobante): nada se
+guarda hasta que tú lo confirmas. Si ya existe un egreso que casa (mismo
+proveedor, monto parecido, fecha cercana), te ofrece **ligarlo** en vez de
+duplicarlo. Si el proveedor no existe, el alta rápida trae su nombre y RFC. Con El
+Chalán: «¿qué facturas de proveedores faltan por registrar?».
 
 ### Stripe y MercadoPago
 
