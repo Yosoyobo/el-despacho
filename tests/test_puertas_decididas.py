@@ -770,3 +770,57 @@ class TestContaduriaPorElFailsafe:
         for rol in ("super_admin", "dueno", "contador", "disenador", "miembro"):
             u = usuario_factory(rol=rol)
             assert filtro_es_super_admin(u) == permisos.es_super_admin(u) == (rol == "super_admin")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Búsqueda inversa: el mismo candado que el autocompletar
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _referencia_a(tipo, **ids):
+    from referencias.models import Referencia
+
+    return Referencia.objects.create(contenedor_tipo="recado", contenedor_id=1, tipo=tipo,
+                                     token_original="x", posicion_inicio=0, posicion_fin=1, **ids)
+
+
+class TestBusquedaInversa:
+    def _total(self, client, u, ruta):
+        client.force_login(u)
+        r = client.get(ruta)
+        assert r.status_code == 200
+        return r.json()["total"]
+
+    def test_proyectos_por_los_dos_lados(self, client, usuario_factory, proyecto_factory):
+        from apps.los_proyectos.models import ProyectoAsignacion
+
+        propio, ajeno = proyecto_factory(), proyecto_factory()
+        for p in (propio, ajeno):
+            _referencia_a("proyecto", proyecto_id=p.pk)
+        todos = _solo(usuario_factory)                         # ver + ver_todos
+        asignado = _solo(usuario_factory, ver_todos=False)     # sólo ver
+        ProyectoAsignacion.objects.create(proyecto=propio, usuario=asignado)
+        nadie = usuario_factory(rol="miembro")                 # ni ver ni ver_todos
+        tabla = {
+            nombre: (self._total(client, u, f"/api/referencias/proyectos/{propio.pk}"),
+                     self._total(client, u, f"/api/referencias/proyectos/{ajeno.pk}"))
+            for nombre, u in (("ver_todos", todos), ("asignado", asignado), ("nada", nadie))
+        }
+        assert tabla == {"ver_todos": (1, 1), "asignado": (1, 0), "nada": (0, 0)}
+        # Un id que no existe contesta igual que uno ajeno.
+        assert self._total(client, todos, "/api/referencias/proyectos/999999") == 0
+
+    def test_clientes_por_los_dos_lados(self, client, usuario_factory, cliente_factory):
+        from cuentas.models.permiso_usuario import PermisoUsuario
+
+        c = cliente_factory()
+        _referencia_a("cliente", cliente_id=c.pk)
+        con, sin = usuario_factory(rol="miembro"), usuario_factory(rol="miembro")
+        PermisoUsuario.objects.create(usuario=con, modulo="cartera", permiso="ver", activo=True)
+        permisos.invalidar_cache_permisos()
+        assert self._total(client, con, f"/api/referencias/clientes/{c.pk}") == 1
+        assert self._total(client, sin, f"/api/referencias/clientes/{c.pk}") == 0
+
+    def test_personas_abiertas_a_todos(self, client, usuario_factory):
+        otro = usuario_factory(rol="miembro")
+        _referencia_a("usuario", usuario=otro)
+        assert self._total(client, usuario_factory(rol="miembro"), f"/api/referencias/usuarios/{otro.pk}") == 1

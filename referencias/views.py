@@ -159,13 +159,29 @@ def _busqueda_inversa(request, tipo: str, entidad_id: int):
     })
 
 
+# Las búsquedas inversas llevan el mismo candado que su autocompletar: a quien
+# no puede ver la entidad se le contesta la respuesta vacía fija (ni 403 ni 404,
+# para no confirmar que existe).
+_VACIA = {"total": 0, "pagina": 1, "tam": 20, "items": []}
+
+
 @login_required
 def busqueda_inversa_usuarios(request, usuario_id: int):
+    # Personas: abierto a cualquiera con sesión, igual que `@` (ningún permiso
+    # de ver esconde al equipo).
     return _busqueda_inversa(request, "usuario", usuario_id)
 
 
 @login_required
 def busqueda_inversa_proyectos(request, proyecto_id: int):
+    from apps.los_proyectos.models.proyecto import Proyecto
+
+    from lib.permisos import puede_ver_proyecto
+
+    # Mismo criterio que `#`: todos con `ver_todos`, sus asignados con `ver`.
+    proyecto = Proyecto.objects.filter(pk=proyecto_id).first()
+    if proyecto is None or not puede_ver_proyecto(request.user, proyecto):
+        return JsonResponse(_VACIA)
     return _busqueda_inversa(request, "proyecto", proyecto_id)
 
 
@@ -175,5 +191,5 @@ def busqueda_inversa_clientes(request, cliente_id: int):
 
     # Mismo permiso que el autocompletar de clientes (antes: rol primario).
     if not puede_ver_cartera(request.user):
-        return JsonResponse({"total": 0, "pagina": 1, "tam": 20, "items": []})
+        return JsonResponse(_VACIA)
     return _busqueda_inversa(request, "cliente", cliente_id)
