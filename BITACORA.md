@@ -13566,3 +13566,12 @@ El nombre viaja en una cabecera que gunicorn escribe en su log y El Portero quit
 antes del navegador. Pantallas: Mi actividad (El Taller), Actividad en El Directorio
 y en la ficha de Equipo, CSV; El Chalán y MCP `historial_de_actividad`; purga nocturna;
 aviso de privacidad actualizado. Worktree propio (había otra sesión en el árbol).
+
+## 2026-09-29 — S-KPIs-Guardar (VERSION 2026.09.13)
+
+Guardar las metas de KPI en La Gerencia daba 500 y el panel salía vacío: la imagen de
+Gerencia no traía `apps.taller_home`. Se copia y se registra; también revive la
+aprobación de KPIs de equipo en Los Chalanes. Candado que compara los imports de
+Gerencia contra su Dockerfile/INSTALLED_APPS, prueba de punta a punta del formulario,
+y tres campos inexistentes del DSL de KPIs custom corregidos (con su candado).
+Siguiente: ronda de preguntas sobre KPIs nuevos configurables desde La Gerencia.
