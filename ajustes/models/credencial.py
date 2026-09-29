@@ -59,12 +59,14 @@ GRUPOS_CREDENCIAL: list[tuple[str, str, list[tuple[str, str, str]]]] = [
         ("do_api_token", "DigitalOcean — API Token (dop_v1_...)", "Token para que El Site lea specs y bandwidth del Droplet."),
      ]),
     ("Cobros en línea",
-     "Todavía sin usar: La Caja no existe, así que llenarlos no habilita nada.",
+     "La Caja (links de pago en El Taller). Cada pasarela se enciende con su llave Y el "
+     "secreto de su webhook; con una sola de las dos no se ofrece. Llaves de prueba "
+     "(sk_test_… / TEST-…) = modo prueba, con aviso.",
      [
-        ("stripe_secret_key", "Stripe — Secret Key (sk_...)", "Llave secreta del modo correspondiente."),
-        ("stripe_webhook_secret", "Stripe — Webhook Secret (whsec_...)", "Validación de webhooks entrantes."),
-        ("mercadopago_access_token", "MercadoPago — Access Token", "Token de la cuenta vendedor."),
-        ("mercadopago_webhook_secret", "MercadoPago — Webhook Secret", "Validación de notificaciones."),
+        ("stripe_secret_key", "Stripe — Secret Key (sk_...)", "Llave secreta: sk_live_… cobra de verdad, sk_test_… es modo prueba."),
+        ("stripe_webhook_secret", "Stripe — Webhook Secret (whsec_...)", "Sale al registrar en Stripe el webhook https://taller.learningcenter.mx/caja/webhook/stripe/ (eventos checkout.session.*). Sin él, Stripe no se ofrece."),
+        ("mercadopago_access_token", "MercadoPago — Access Token", "Token de la cuenta vendedor (APP_USR-… en producción, TEST-… de prueba)."),
+        ("mercadopago_webhook_secret", "MercadoPago — Webhook Secret", "La «clave secreta» que da MercadoPago al configurar el webhook https://taller.learningcenter.mx/caja/webhook/mercadopago/ (evento Pagos). Sin ella, MercadoPago no se ofrece."),
      ]),
 ]
 
