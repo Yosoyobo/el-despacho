@@ -5,6 +5,32 @@
 
 ---
 
+## Novedades — Ya hay nómina (29 de septiembre de 2026)
+
+**Nueva pantalla Nómina** (Finanzas → Nómina): abres la quincena, la calculas,
+revisas el recibo de cada persona, la cierras y marcas cada pago con la fecha real
+del depósito.
+
+**Cada quien tiene su sueldo por quincena, con fecha.** Un aumento no cambia las
+quincenas ya cerradas.
+
+**El recibo muestra horas, retardos y faltas sólo para informar**: el sueldo no se
+mueve solo. Si hay que ajustar, se agrega un concepto a mano.
+
+**Préstamos y adelantos** se descuentan solos cada quincena hasta saldarse, y se ve
+el saldo. **Los reembolsos pendientes** de Tesorería entran solos al recibo y quedan
+pagados al marcarlo pagado, para no pagarlos dos veces.
+
+**Cada persona ve sus propios recibos** en El Checador → Mis recibos, y los descarga
+en PDF. Nadie ve los de otro.
+
+**El Análisis ya usa el sueldo real** para saber cuánto cuesta la hora de cada
+persona en los proyectos. A quien no tenga sueldo capturado se le sigue costeando con
+la tarifa de su rol.
+
+La nómina **no calcula impuestos ni timbra**: eso lo sigue haciendo el contador. Si
+te pasa retenciones, se capturan como deducción.
+
 ## Novedades — Ya hay portal de clientes (29 de septiembre de 2026)
 
 **Tus clientes ya pueden ver sus cosas en recepcion.learningcenter.mx.** Ven cómo
@@ -5305,7 +5331,7 @@ Cosas que cambiamos en el camino porque resultó mejor así:
 
 ### 🚧 Lo que falta (roadmap)
 
-1. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
+Nada grande pendiente: la nómina (El Checador V2) ya está lista (ver «Nómina»).
 
 > **Portal de clientes y cobros en línea: listos.** La Recepción ya está encendida
 > (ver «Portal de clientes») y La Caja existe apagada hasta que se pongan llaves
@@ -6144,6 +6170,39 @@ ese cliente, y entender qué lo **amarra** si quieres eliminarlo.
   que lo abras y decidas. Las cotizaciones anuladas se eliminan desde su propia
   página; los registros de **campañas de correo** ya no bloquean (se conservan con
   el nombre del cliente como texto).
+
+### Nómina (Finanzas → Nómina)
+
+Para quien tiene el permiso de nómina (dirección y contador por default; se delega en
+El Directorio).
+
+1. **Captura los sueldos**: Nómina → Sueldos → «+ Sueldo o cambio de sueldo»
+   (persona, sueldo por quincena, desde qué día). Para una baja, apaga «En nómina».
+2. **Abre la quincena**: escribe un día de la quincena, pica «Abrir quincena» y luego
+   «Calcular». Sale un recibo por cada persona con sueldo.
+3. **Revisa cada recibo**: agrega bonos, comisiones, deducciones o ajustes
+   (Percepción o Deducción) y guarda. Los abonos a préstamos y los reembolsos los pone
+   el cálculo: puedes cambiar el abono o quitar la línea, y lo que quitaste no vuelve.
+4. **«Recalcular»** actualiza sueldos y horas sin perder lo capturado a mano. Sólo
+   antes de cerrar.
+5. **«Cerrar quincena»** deja los recibos fijos y baja el saldo de los préstamos.
+6. **«Marcar pagado»** en cada recibo, con la fecha del depósito; sus reembolsos
+   quedan pagados en Tesorería.
+7. Hay **CSV** de la quincena y **PDF** de cada recibo (si el PDF no sale, se abre una
+   versión para imprimir).
+
+Si el sueldo cambió a media quincena, el recibo avisa: se paga con el nuevo y, si
+corresponde, ajustas los días a mano. Las horas, retardos y faltas sólo informan; las
+vacaciones o incapacidades aún no se registran por persona, así que un día así sale
+como falta informativa y se ajusta a mano. La nómina es interna: **no calcula
+impuestos ni timbra** (lo hace el contador).
+
+**Mis recibos**: cada persona ve en El Checador sus recibos cerrados y los descarga en
+PDF.
+
+**Con El Chalán**: «¿cuánto es la nómina de esta quincena?» (con permiso de nómina) o
+«¿cuánto me pagaron la quincena pasada?» (cualquiera, sólo lo suyo). Calcular, cerrar
+y pagar se hacen con los botones, no por chat.
 
 ## Productos (Catálogo)
 
