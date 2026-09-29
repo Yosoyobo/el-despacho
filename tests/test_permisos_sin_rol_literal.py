@@ -648,9 +648,10 @@ DEUDA = {
 }
 
 # Puertas por rol PRIMARIO que quedaron sin convertir: su versión granular SÍ
-# cambiaría a alguien de hoy, así que las decide Oscar (ver el reporte).
+# cambiaría a alguien de hoy, así que las decide Oscar. Las que ya decidió
+# salieron de aquí y su CAMBIO está fijado en `tests/test_puertas_decididas.py`
+# (la sesión de La Gerencia, 2026-09-28).
 DEUDA_PUERTAS_PRIMARIO = {
-    "lib/middleware.py": (2, "La Gerencia echa al Taller a primario contador/diseñador"),
     "auth_google/views.py": (1, "SSO a La Gerencia sólo para primario super_admin/dueño"),
     "referencias/views.py": (3, "autocompletar @# acota al primario diseñador"),
 }
