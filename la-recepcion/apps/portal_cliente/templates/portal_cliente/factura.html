@@ -59,6 +59,38 @@
             <a href="{{ url_pago }}" class="btn-primario mt-4 w-full" rel="noopener">Pagar {{ f.saldo|dinero_exacto }}</a>
         </div>
         {% endif %}
+        {% if documentos_activo %}
+        <div class="tarjeta">
+            <h2 class="font-semibold text-gray-900 dark:text-white">¿Pagaste por transferencia o depósito?</h2>
+            {% if f.saldo > 0 %}
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Súbenos tu comprobante y lo registramos. El saldo se actualiza cuando el equipo lo confirma.</p>
+            <form method="post" action="{% url 'recepcion-documento-subir' %}" enctype="multipart/form-data" class="mt-3 space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="tipo" value="comprobante_pago">
+                <input type="hidden" name="factura" value="{{ f.pk }}">
+                <input type="hidden" name="volver" value="factura">
+                <label for="archivo-pago" class="sr-only">Comprobante</label>
+                <input id="archivo-pago" name="archivo" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" class="campo text-sm">
+                <label for="nota-pago" class="sr-only">Nota</label>
+                <input id="nota-pago" name="nota" type="text" maxlength="2000" class="campo" placeholder="Nota (opcional): fecha y monto">
+                <button type="submit" class="btn-secundario w-full">Subir comprobante</button>
+            </form>
+            {% endif %}
+            {% if comprobantes %}
+            <ul class="mt-3 space-y-2 text-sm">
+                {% for c in comprobantes %}
+                <li class="flex items-center justify-between gap-2">
+                    <span class="min-w-0 truncate text-gray-700 dark:text-gray-200">{{ c.d.creado_en|date:"d M Y" }} · {{ c.d.nombre_archivo }}</span>
+                    <span class="chip {{ c.tono|tono }} shrink-0">{{ c.estado }}</span>
+                </li>
+                {% if c.d.estado == "rechazado" and c.d.motivo_rechazo %}<li class="text-xs text-error-600 dark:text-error-400">{{ c.d.motivo_rechazo }}</li>{% endif %}
+                {% endfor %}
+            </ul>
+            {% elif f.saldo <= 0 %}
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Esta factura ya está pagada.</p>
+            {% endif %}
+        </div>
+        {% endif %}
         <div class="tarjeta">
             <h2 class="font-semibold text-gray-900 dark:text-white">Documentos</h2>
             {% if f.tiene_pdf or f.tiene_xml %}

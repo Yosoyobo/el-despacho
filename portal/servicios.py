@@ -7,25 +7,28 @@
 
 Nada de esto toca `cuentas.Usuario`: un cliente no es un usuario del equipo.
 
-**Por qué el enlace se canjea con un POST y no al abrirlo.** Los filtros de
-correo (Outlook «Safe Links», los antivirus corporativos, la vista previa de
-algunos clientes) abren los enlaces de un correo ANTES que la persona. Si el
-GET gastara el enlace, a la persona le llegaría ya usado. Por eso el GET sólo
-muestra un botón «Entrar» y el canje va en el POST.
+**La llave no caduca ni se gasta** (Oscar, 2026-09-29; el porqué completo en
+`models/enlace.py`). Cada persona tiene UNA llave viva; invitar, reenviar y
+«pedir mi enlace» mandan esa misma. Lo que la protege es el correo: el GET del
+enlace sólo pinta la pantalla, y el POST abre la sesión únicamente si trae el
+correo al que se mandó. Que el GET no haga nada sigue importando: los filtros de
+correo (Outlook «Safe Links», antivirus corporativos) abren los enlaces antes que
+la persona.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import os
 import secrets
 from dataclasses import dataclass
-from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
 from .models import (
@@ -37,11 +40,6 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
-
-#: Cuánto vive un enlace que pide la persona en La Recepción.
-TTL_ENTRADA = timedelta(minutes=20)
-#: Cuánto vive el enlace de una invitación (ver `models/enlace.py`).
-TTL_INVITACION = timedelta(hours=72)
 
 #: Llaves de la sesión de La Recepción. Nada más se guarda ahí.
 SESION_ACCESO = "portal_acceso"
@@ -119,23 +117,64 @@ def _emitir(tipo: str, acceso, actor=None, extra: dict | None = None) -> None:
         logger.warning("portal: no se pudo emitir %s", tipo, exc_info=True)
 
 
-def _crear_enlace(acceso, motivo: str, ip: str = "") -> str:
-    """Crea el enlace y devuelve el token EN CLARO (sólo existe en este momento).
+def _cifrar(token: str) -> str:
+    try:
+        from lib.boveda import cifrar
 
-    Sólo el ÚLTIMO enlace de cada persona sirve: los que tuviera pendientes se
-    vencen aquí. Un correo viejo reenviado o olvidado en otra bandeja no abre
-    nada.
+        return cifrar(token)
+    except Exception:  # noqa: BLE001 — sin cifrar la llave sirve igual; sólo no se puede reenviar
+        logger.warning("portal: no se pudo cifrar la llave", exc_info=True)
+        return ""
+
+
+def _descifrar(blob: str) -> str:
+    if not blob:
+        return ""
+    try:
+        from lib.boveda import descifrar
+
+        return descifrar(blob)
+    except Exception:  # noqa: BLE001 — manipulado o de otra llave maestra
+        logger.warning("portal: no se pudo descifrar una llave", exc_info=True)
+        return ""
+
+
+def _anular_vivos(acceso, ahora=None) -> int:
+    ahora = ahora or timezone.now()
+    return EnlaceAcceso.objects.filter(acceso=acceso, anulado_en__isnull=True).update(anulado_en=ahora)
+
+
+def _crear_enlace(acceso, motivo: str, ip: str = "") -> str:
+    """Crea una llave NUEVA y devuelve el token en claro.
+
+    Sólo una llave vive por persona: las anteriores se anulan aquí. No caduca.
     """
     token = secrets.token_urlsafe(32)
-    ttl = TTL_INVITACION if motivo == MOTIVO_INVITACION else TTL_ENTRADA
     ahora = timezone.now()
-    EnlaceAcceso.objects.filter(acceso=acceso, usado_en__isnull=True,
-                                expira_en__gt=ahora).update(expira_en=ahora)
+    _anular_vivos(acceso, ahora)
     EnlaceAcceso.objects.create(
-        acceso=acceso, token_hash=hash_token(token), motivo=motivo,
-        expira_en=timezone.now() + ttl, ip_solicitud=(ip or "")[:64],
+        acceso=acceso, token_hash=hash_token(token), token_cifrado=_cifrar(token),
+        motivo=motivo, creado_en=ahora, expira_en=None, ip_solicitud=(ip or "")[:64],
     )
     return token
+
+
+def llave_viva(acceso) -> EnlaceAcceso | None:
+    ahora = timezone.now()
+    return (EnlaceAcceso.objects.filter(acceso=acceso, anulado_en__isnull=True)
+            .filter(Q(expira_en__isnull=True) | Q(expira_en__gt=ahora))
+            .order_by("-creado_en").first())
+
+
+def llave_de(acceso, motivo: str = MOTIVO_ENTRADA, ip: str = "") -> str:
+    """El token de la llave viva de la persona; si no tiene (o es de antes y no
+    se puede reenviar), una nueva. Siempre devuelve un token que abre."""
+    viva = llave_viva(acceso)
+    if viva is not None:
+        token = _descifrar(viva.token_cifrado)
+        if token and hash_token(token) == viva.token_hash:
+            return token
+    return _crear_enlace(acceso, motivo, ip)
 
 
 def url_de_enlace(token: str) -> str:
@@ -246,7 +285,7 @@ def invitar(cliente, email: str, actor, request=None) -> ResultadoInvitacion:
             acceso.revocado_en = None
             acceso.revocado_por = None
             acceso.save()
-            token = _crear_enlace(acceso, MOTIVO_INVITACION, _ip(request))
+            token = llave_de(acceso, MOTIVO_INVITACION, _ip(request))
     except IntegrityError as exc:  # carrera contra otra invitación del mismo correo
         raise ErrorPortal("Ese correo ya tiene un acceso activo en otro cliente.") from exc
 
@@ -270,8 +309,7 @@ def revocar(acceso: AccesoCliente, actor, request=None) -> AccesoCliente:
         acceso.revocado_en = ahora
         acceso.revocado_por = actor if getattr(actor, "is_authenticated", False) else None
         acceso.save()
-        EnlaceAcceso.objects.filter(acceso=acceso, usado_en__isnull=True,
-                                    expira_en__gt=ahora).update(expira_en=ahora)
+        _anular_vivos(acceso, ahora)
     registrar_evento(acceso, "revocado",
                      f"por {getattr(actor, 'email', '') or 'el sistema'}", request)
     _emitir("portal.acceso_revocado", acceso, actor)
@@ -281,7 +319,7 @@ def revocar(acceso: AccesoCliente, actor, request=None) -> AccesoCliente:
 # ── Correo ───────────────────────────────────────────────────────────────────
 
 
-def _mandar_correo(acceso: AccesoCliente, token: str, *, invitacion: bool):
+def _mandar_correo(acceso: AccesoCliente, token: str, *, invitacion: bool, cambiado: bool = False):
     """Arma y manda el correo del enlace por El Cartero. Nunca lanza.
 
     La plantilla es de ARCHIVO y no editable en Gerencia a propósito: este
@@ -292,18 +330,22 @@ def _mandar_correo(acceso: AccesoCliente, token: str, *, invitacion: bool):
 
     from lib import cartero
 
-    horas = int(TTL_INVITACION.total_seconds() // 3600)
-    minutos = int(TTL_ENTRADA.total_seconds() // 60)
     contexto = {
         "nombre": acceso.nombre_visible,
         "empresa": acceso.cliente.razon_social,
+        # El correo NO va en el cuerpo: es lo que se pide al abrir la llave, y un
+        # correo reenviado lo llevaría junto con ella.
         "enlace": url_de_enlace(token),
         "portal": url_recepcion(),
         "invitacion": invitacion,
-        "vigencia": f"{horas} horas" if invitacion else f"{minutos} minutos",
+        "cambiado": cambiado,
     }
-    asunto = ("Te invitamos al portal de clientes de Learning Center" if invitacion
-              else "Tu enlace para entrar a Learning Center")
+    if invitacion:
+        asunto = "Te invitamos al portal de clientes de Learning Center"
+    elif cambiado:
+        asunto = "Tu nuevo enlace para entrar a Learning Center"
+    else:
+        asunto = "Tu enlace para entrar a Learning Center"
     try:
         html = render_to_string("portal/correo_enlace.html", contexto)
     except Exception as exc:  # noqa: BLE001
@@ -324,7 +366,7 @@ def acceso_activo_por_email(email: str) -> AccesoCliente | None:
 
 
 def pedir_enlace(email: str, request=None) -> None:
-    """Si el correo tiene acceso, le manda un enlace de entrada. Si no, nada.
+    """Si el correo tiene acceso, le reenvía SU llave (la misma). Si no, nada.
 
     **No devuelve nada a propósito**: quien llama responde lo mismo en los dos
     casos, así que nadie puede preguntar a La Recepción quién es cliente. El
@@ -334,7 +376,7 @@ def pedir_enlace(email: str, request=None) -> None:
     acceso = acceso_activo_por_email(email)
     if acceso is None:
         return
-    token = _crear_enlace(acceso, MOTIVO_ENTRADA, _ip(request))
+    token = llave_de(acceso, MOTIVO_ENTRADA, _ip(request))
     registrar_evento(acceso, "enlace", "", request)
 
     from lib.tareas_fondo import ejecutar_en_fondo
@@ -351,11 +393,12 @@ def pedir_enlace(email: str, request=None) -> None:
 
 
 # Por qué no se pudo canjear un enlace. Van a la pantalla: la persona que tiene
-# el enlace en la mano sí puede saber si ya lo usó o si caducó.
+# el enlace en la mano sí puede saber si se cambió o si su acceso se quitó.
 CANJE_INVALIDO = "invalido"
-CANJE_USADO = "usado"
+CANJE_ANULADO = "anulado"
 CANJE_EXPIRADO = "expirado"
 CANJE_SIN_ACCESO = "sin_acceso"
+CANJE_CORREO = "correo"
 
 
 def buscar_enlace(token: str) -> tuple[EnlaceAcceso | None, str]:
@@ -366,37 +409,74 @@ def buscar_enlace(token: str) -> tuple[EnlaceAcceso | None, str]:
               .select_related("acceso", "acceso__cliente").first())
     if enlace is None:
         return None, CANJE_INVALIDO
-    if enlace.usado_en is not None:
-        return enlace, CANJE_USADO
-    if enlace.expira_en <= timezone.now():
-        return enlace, CANJE_EXPIRADO
     if not enlace.acceso.activo or not enlace.acceso.cliente.activo:
         return enlace, CANJE_SIN_ACCESO
+    if enlace.anulado_en is not None:
+        return enlace, CANJE_ANULADO
+    if enlace.expira_en is not None and enlace.expira_en <= timezone.now():
+        return enlace, CANJE_EXPIRADO
     return enlace, ""
 
 
-def canjear(token: str, request=None) -> tuple[AccesoCliente | None, str]:
-    """Gasta el enlace. (acceso, "") si abre sesión; (None, motivo) si no.
+def correo_coincide(acceso: AccesoCliente, email: str) -> bool:
+    """En tiempo constante: la respuesta no delata cuántas letras acertó."""
+    return hmac.compare_digest(normalizar_email(email).encode("utf-8"),
+                               normalizar_email(acceso.email).encode("utf-8"))
 
-    Con `select_for_update` dentro de la transacción: dos clics simultáneos con
-    el mismo enlace no abren dos sesiones.
+
+def canjear(token: str, email: str, request=None) -> tuple[AccesoCliente | None, str]:
+    """Abre la sesión con la llave si `email` es el correo al que se mandó.
+
+    (acceso, "") si abre; (None, motivo) si no. La llave NO se gasta: sirve la
+    próxima vez. Una llave de antes de 2026-09-29 (sólo hash) se cifra aquí,
+    porque es el único momento en que el token viaja en claro, y desde entonces
+    se puede reenviar.
     """
-    with transaction.atomic():
-        enlace, motivo = buscar_enlace(token)
-        if motivo:
-            return None, motivo
-        enlace = EnlaceAcceso.objects.select_for_update().get(pk=enlace.pk)
-        if enlace.usado_en is not None:
-            return None, CANJE_USADO
-        ahora = timezone.now()
-        enlace.usado_en = ahora
-        enlace.ip_uso = _ip(request)
-        enlace.save(update_fields=["usado_en", "ip_uso"])
-        acceso = enlace.acceso
-        acceso.ultima_entrada_en = ahora
-        acceso.save(update_fields=["ultima_entrada_en", "actualizado_en"])
-    registrar_evento(acceso, "entrada", f"enlace de {enlace.get_motivo_display().lower()}", request)
+    enlace, motivo = buscar_enlace(token)
+    if motivo:
+        return None, motivo
+    acceso = enlace.acceso
+    if not correo_coincide(acceso, email):
+        registrar_evento(acceso, "correo_mal", "", request)
+        return None, CANJE_CORREO
+    ahora = timezone.now()
+    cambios = {"usos": F("usos") + 1, "ultimo_uso_en": ahora, "ip_uso": _ip(request)[:64]}
+    if enlace.usado_en is None:
+        cambios["usado_en"] = ahora
+    if not enlace.token_cifrado:
+        cifrado = _cifrar(token)
+        if cifrado:
+            cambios["token_cifrado"] = cifrado
+    EnlaceAcceso.objects.filter(pk=enlace.pk).update(**cambios)
+    acceso.ultima_entrada_en = ahora
+    acceso.save(update_fields=["ultima_entrada_en", "actualizado_en"])
+    registrar_evento(acceso, "entrada", "con su enlace", request)
     return acceso, ""
+
+
+# ── La llave desde El Taller: reenviar, copiar, cambiar ─────────────────────
+
+
+def enlace_para_copiar(acceso: AccesoCliente, actor, request=None) -> str:
+    """La URL de su llave, para mandarla por WhatsApp. Queda en la bitácora."""
+    if not acceso.activo:
+        raise ErrorPortal("Ese acceso está revocado: vuelve a invitarlo.")
+    token = llave_de(acceso, MOTIVO_INVITACION, _ip(request))
+    registrar_evento(acceso, "copiado", f"por {getattr(actor, 'email', '') or 'el sistema'}", request)
+    return url_de_enlace(token)
+
+
+def cambiar_enlace(acceso: AccesoCliente, actor, request=None) -> ResultadoInvitacion:
+    """Llave nueva (la anterior deja de abrir) y se la manda por correo. Para
+    cuando la llave se filtró. La sesión abierta NO se cierra: para eso está
+    revocar."""
+    if not acceso.activo:
+        raise ErrorPortal("Ese acceso está revocado: vuelve a invitarlo.")
+    token = _crear_enlace(acceso, MOTIVO_INVITACION, _ip(request))
+    registrar_evento(acceso, "cambiado", f"por {getattr(actor, 'email', '') or 'el sistema'}", request)
+    _emitir("portal.enlace_cambiado", acceso, actor)
+    res = _mandar_correo(acceso, token, invitacion=False, cambiado=True)
+    return ResultadoInvitacion(acceso=acceso, correo_ok=res.ok, error_correo=res.error)
 
 
 def marcar_entrada(acceso: AccesoCliente, request=None, via: str = "") -> None:
@@ -433,13 +513,12 @@ def acceso_de_sesion(session) -> AccesoCliente | None:
 
 
 __all__ = [
+    "CANJE_ANULADO",
+    "CANJE_CORREO",
     "CANJE_EXPIRADO",
     "CANJE_INVALIDO",
     "CANJE_SIN_ACCESO",
-    "CANJE_USADO",
     "DURACION_SESION_SEG",
-    "TTL_ENTRADA",
-    "TTL_INVITACION",
     "ErrorPortal",
     "Invitable",
     "ResultadoInvitacion",
@@ -448,11 +527,16 @@ __all__ = [
     "acceso_de_sesion",
     "accesos_de",
     "buscar_enlace",
+    "cambiar_enlace",
     "canjear",
     "cerrar_sesion",
+    "correo_coincide",
+    "enlace_para_copiar",
     "hash_token",
     "invitables_de",
     "invitar",
+    "llave_de",
+    "llave_viva",
     "marcar_entrada",
     "pedir_enlace",
     "registrar_evento",

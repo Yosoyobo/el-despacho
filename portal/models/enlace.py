@@ -1,18 +1,29 @@
-"""EnlaceAcceso — el enlace de UN SOLO USO que abre la sesión de un cliente.
+"""EnlaceAcceso — la llave personal con la que un cliente entra a La Recepción.
 
-Sólo se guarda el **hash** (SHA-256) del token: quien lea la base —un respaldo,
-un volcado para depurar— no puede entrar con lo que ve. El token en claro vive
-únicamente en el correo que se le mandó a la persona.
+**No caduca y no se gasta** (decisión de Oscar, 2026-09-29: «los links expiran
+una vez que entras, debemos hacer que no expiren; siempre pide el correo al que
+se envió el registro y que picar el botón te lleve»). Hasta esa fecha el enlace
+servía una sola vez y vencía en minutos u horas; el cliente guardaba el correo,
+volvía otro día y el botón ya no abría nada.
 
-Dos sabores, que sólo difieren en cuánto viven:
+Lo que ahora protege la llave:
 
-- **entrada** (lo pide la persona en La Recepción): 20 minutos. Es el caso del
-  encargo — «expira pronto».
-- **invitación** (la manda el despacho desde la ficha del cliente): 72 horas.
-  Una invitación que caduca a la media hora la abre el cliente al día siguiente
-  y ya no sirve; como es de un solo uso y la manda alguien del despacho a un
-  correo que el despacho escogió, alargarla no abre nada nuevo. Si caduca, la
-  pantalla ofrece pedir uno de entrada con el correo ya escrito.
+- **El correo.** Abrir el enlace no basta: la pantalla pide el correo al que se
+  mandó y sólo abre si coincide. Un enlace reenviado, pegado en un chat o que
+  un filtro de correo abrió no entra solo. Con rate-limit por enlace y por IP.
+- **Una viva por persona.** Cambiarla (desde la ficha del cliente) anula la
+  anterior (`anulado_en`). Revocar el acceso las anula todas y además corta la
+  sesión abierta (ver `AccesoCliente.generacion`).
+
+Se guarda el **hash** (SHA-256) para buscarla y una copia **cifrada con La
+Bóveda** para poder reenviar LA MISMA llave («Reenviar su enlace», «Copiar
+enlace», «pedir mi enlace» en La Recepción). Quien lea un respaldo de la base
+sin la llave maestra no puede entrar con lo que ve. Las llaves de antes de este
+cambio sólo tienen el hash: se cifran la primera vez que alguien entra con ellas
+(el token viaja en esa petición).
+
+`expira_en` queda por compatibilidad: vacío = no caduca, que es lo que se crea
+hoy. `usado_en` es la PRIMERA entrada y `ultimo_uso_en` la más reciente.
 """
 
 from __future__ import annotations
@@ -23,7 +34,7 @@ from django.utils import timezone
 MOTIVO_ENTRADA = "entrada"
 MOTIVO_INVITACION = "invitacion"
 MOTIVOS = (
-    (MOTIVO_ENTRADA, "Entrada pedida por la persona"),
+    (MOTIVO_ENTRADA, "Pedido por la persona"),
     (MOTIVO_INVITACION, "Invitación del despacho"),
 )
 
@@ -33,10 +44,17 @@ class EnlaceAcceso(models.Model):
         "portal.AccesoCliente", on_delete=models.CASCADE, related_name="enlaces",
     )
     token_hash = models.CharField(max_length=64, unique=True)
+    # La Bóveda (AES-256-GCM). Vacío en las llaves de antes de 2026-09-29.
+    token_cifrado = models.TextField(blank=True, default="")
     motivo = models.CharField(max_length=12, choices=MOTIVOS, default=MOTIVO_ENTRADA)
     creado_en = models.DateTimeField(default=timezone.now)
-    expira_en = models.DateTimeField()
+    # Vacío = no caduca (todas las de hoy en adelante).
+    expira_en = models.DateTimeField(null=True, blank=True)
+    # Se cambió por otra o se revocó el acceso: ya no abre.
+    anulado_en = models.DateTimeField(null=True, blank=True)
     usado_en = models.DateTimeField(null=True, blank=True)
+    ultimo_uso_en = models.DateTimeField(null=True, blank=True)
+    usos = models.PositiveIntegerField(default=0)
     ip_solicitud = models.CharField(max_length=64, blank=True, default="")
     ip_uso = models.CharField(max_length=64, blank=True, default="")
 
@@ -51,4 +69,6 @@ class EnlaceAcceso(models.Model):
 
     @property
     def vigente(self) -> bool:
-        return self.usado_en is None and self.expira_en > timezone.now()
+        if self.anulado_en is not None:
+            return False
+        return self.expira_en is None or self.expira_en > timezone.now()

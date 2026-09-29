@@ -5,6 +5,45 @@
 
 ---
 
+## Novedades — El enlace del portal ya no caduca y los clientes suben sus documentos (29 de septiembre de 2026)
+
+**El enlace del portal ya no se vence.** Antes, el botón que le llegaba al cliente
+servía una sola vez y caducaba; si volvía otro día, ya no abría. Ahora cada persona
+tiene **su enlace fijo**: le pide el correo al que se le mandó y, si coincide, entra.
+Puede usarlo las veces que quiera. Los correos que tus clientes ya tienen **vuelven
+a servir**.
+
+**En la ficha del cliente, dos botones nuevos** en «Portal de clientes»: **Copiar
+enlace**, para mandárselo por WhatsApp, y **Cambiar enlace**, por si llegó a quien no
+debía (el anterior deja de abrir y le llega uno nuevo). Quitar el acceso sigue
+cerrándolo todo al instante.
+
+**Tus clientes ya pueden subir su papelería** en la nueva sección **Documentos** del
+portal: comprobantes de pago, Constancia de Situación Fiscal, cédula del RFC, acta
+constitutiva, poderes, identificaciones y comprobantes de domicilio. En cada factura
+por pagar hay un botón **«Subir comprobante»**.
+
+**Lo revisas en la ficha del cliente**, en el recuadro nuevo «Documentos del
+cliente»: lo abres, lo marcas como revisado o lo rechazas escribiendo qué tiene que
+corregir, y el cliente ve ese motivo para volver a subirlo. También puedes subir un
+documento en su nombre si te lo mandó por otro lado. Te llega un aviso cada vez que
+un cliente sube algo; los comprobantes de pago también le llegan a quien cobra.
+**Un comprobante no registra el pago solo**: regístralo en la factura.
+
+**El Chalán lee la constancia fiscal**: propone el RFC, la razón social, el régimen
+y el código postal para la ficha, y revisa que no sea vieja. Nada cambia hasta que
+picas **«Aplicar a la ficha»**. Si la constancia tiene más días de los permitidos,
+el cliente ve el aviso para subir una nueva.
+
+**En La Gerencia → Los Ajustes → Portal de clientes** escoges qué documentos se le
+piden a todo cliente (el portal le dice qué le falta) y cuántos días puede tener la
+constancia fiscal (30 de inicio).
+
+**Las razones sociales de la ficha ahora guardan régimen fiscal y código postal**,
+los datos que pide la factura electrónica.
+
+Con El Chalán: «¿qué documentos le faltan a $Optimist?», «¿hay comprobantes de pago
+por revisar?».
 ## Novedades — Las metas de KPIs ya se guardan (29 de septiembre de 2026)
 
 **En La Gerencia → Ajustes → KPIs, «Guardar» ya funciona.** Antes daba un error y
@@ -5659,7 +5698,7 @@ Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 - **Eliminar archivados:** en la sección de clientes archivados hay una **✕** para borrar un cliente **permanentemente** (solo super admin; bloqueado si tiene proyectos o facturas ligadas).
 - **Nuevo cliente:** nombre, contacto, email y teléfono.
 - **Nombre vs. Razón social:** el **"Nombre"** es con el que operas día a día; las **razones sociales** son los nombres legales para el CFDI.
-- **Datos de facturación (varias razones sociales):** al editar el cliente hay una sección donde agregas **todas las razones sociales con las que factura**, cada una con **su RFC en la misma línea**. Marca una como **Principal**: es la que se usa por default y la que aparece en su ficha. Una misma razón social puede aplicar para **dos clientes distintos** (el caso de Grupo Lazanto con Cueva y Kari Kari) — el sistema ya no lo bloquea.
+- **Datos de facturación (varias razones sociales):** al editar el cliente hay una sección donde agregas **todas las razones sociales con las que factura**, cada una con **su RFC en la misma línea**, y su **régimen fiscal** y **código postal fiscal** (los pide la factura electrónica; El Chalán puede llenarlos desde la constancia fiscal que sube el cliente, ver «Documentos del cliente»). Marca una como **Principal**: es la que se usa por default y la que aparece en su ficha. Una misma razón social puede aplicar para **dos clientes distintos** (el caso de Grupo Lazanto con Cueva y Kari Kari) — el sistema ya no lo bloquea.
 - **Detalle:** ves todos sus proyectos (con el **nombre en azul** para abrir y el **código** en gris) y el recuadro **"Identificación"** con **todas** sus razones sociales y RFC, más su **Referencia** (`$slug`: el nombre con el que se le menciona a El Chalán y con `$` en los textos). Desde aquí editas datos o lo archivas (no se borra, solo desaparece de las listas activas).
 - **Ubicación y dirección fiscal:** el detalle muestra la **última ubicación** del cliente (tomada de las visitas del Checador, con botón 📍 al mapa) y su **dirección**. Al editar hay una casilla **"la dirección fiscal es la misma"**; si la destildas, capturas la **dirección fiscal** por separado.
 - **Arrancarle un proyecto:** en el detalle, el recuadro **Proyectos** trae el botón **"+ Nuevo proyecto"**, que abre el alta con **este cliente ya puesto**. Si todavía no tiene ninguno, el botón aparece en grande debajo del aviso «Sin proyectos todavía».
@@ -6225,17 +6264,25 @@ Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar
 En la ficha del cliente, el recuadro **«Portal de clientes»**:
 
 - **Invitar**: elige un contacto con correo (el de la ficha o de sus contactos). Le
-  llega un correo con un botón para entrar; la invitación vale 72 horas. Después,
-  cada vez que quiera entrar, escribe su correo en recepcion.learningcenter.mx y le
-  llega un botón nuevo (vale 20 minutos y sirve una sola vez). No hay contraseñas.
-- **Reenviar** la invitación o **Quitar acceso** (le cierra la sesión en ese momento).
+  llega un correo con **su enlace personal**. No hay contraseñas.
+- **El enlace no caduca y sirve las veces que quiera.** Al abrirlo, el portal le pide
+  el correo al que se le mandó; si coincide, entra. Si ya tenía la sesión abierta en
+  ese teléfono o computadora, entra directo. Si pierde el correo, escribe su correo
+  en recepcion.learningcenter.mx y le volvemos a mandar el mismo enlace.
+- **Reenviar invitación**: le vuelve a mandar su mismo enlace.
+- **Copiar enlace**: te enseña su enlace para mandárselo por WhatsApp u otro lado.
+  Queda anotado quién lo copió.
+- **Cambiar enlace**: úsalo si el enlace llegó a alguien que no debía. El anterior
+  deja de abrir y le llega uno nuevo por correo.
+- **Revocar acceso**: le quita la entrada y le cierra la sesión en ese momento.
 - Ves quién tiene acceso y cuándo entró por última vez.
 
 **Qué ve el cliente:** sus proyectos vivos con su estado y fecha de entrega, sus
 cotizaciones enviadas (con el PDF, y los botones **Aprobar** / **Rechazar** con su
-nombre en la última versión vigente), y sus facturas con saldo, pagos y documentos.
-Cualquier contacto invitado ve todo lo de su empresa y nada de otra. **No** ve
-costos, proveedores, utilidad, notas ni comentarios internos, ni hay chat.
+nombre en la última versión vigente), sus facturas con saldo, pagos y documentos, y
+la sección **Documentos** (ver abajo). Cualquier contacto invitado ve todo lo de su
+empresa y nada de otra. **No** ve costos, proveedores, utilidad, notas ni
+comentarios internos, ni hay chat.
 
 Cuando un cliente aprueba o rechaza, te llega el aviso y la cotización queda con su
 nombre y la fecha. «Entrar con Google» está apagado; se prende en La Gerencia → Los
@@ -6244,6 +6291,53 @@ Google Cloud Console).
 
 Con El Chalán: «invita al portal a Ana de $Optimist», «¿quién tiene acceso al portal
 de Optimist?».
+
+### Documentos del cliente
+
+**Para qué sirve:** que el cliente te entregue su papelería sin correos sueltos:
+comprobantes de pago, Constancia de Situación Fiscal (CSF), cédula del RFC, acta
+constitutiva, poder del representante legal, identificación, comprobante de
+domicilio, contrato firmado u otro.
+
+**El cliente, en su portal → Documentos:** elige qué documento es, sube el archivo
+(PDF o foto, hasta 25 MB; desde el celular puede tomarle foto) y, si quiere, deja
+una nota. Ve lo que ya entregó y en qué va: *En revisión*, *Recibido ✓* o *Hay que
+volver a subirlo*, con el motivo. Arriba ve **lo que le pedimos** y qué le falta. En
+cada factura con saldo tiene un botón **«Subir comprobante»** que lo deja ligado a
+esa factura.
+
+**Tú, en la ficha del cliente → «Documentos del cliente»:**
+
+- Arriba, lo que se le pide a todo cliente y cómo va (✓ listo, ✗ falta).
+- Cada documento con quién lo subió y cuándo. **Ver** lo abre; **Marcar revisado**
+  lo da por bueno; **Rechazar…** pide el motivo, que el cliente ve para corregirlo.
+- **Subir un documento en su nombre**, si te lo mandó por WhatsApp o en papel.
+- **Un comprobante de pago no registra el cobro.** Revísalo y registra el pago en la
+  factura, como siempre; el saldo del cliente cambia hasta entonces.
+
+**La constancia fiscal la lee El Chalán** (🤖): propone RFC, razón social, régimen
+fiscal y código postal, con qué tan seguro está, y te dice si la constancia es
+reciente. Lo que no aparece en el PDF lo descarta, para que no invente. Si la ficha
+tiene otros datos, te enseña qué cambiaría y el botón **«Aplicar a la ficha»**
+(requiere poder editar la cartera). Nada cambia hasta que lo picas. Si El Chalán no
+la pudo leer (por ejemplo, un escaneo sin texto), revísala a mano; **«Volver a
+leer»** le pide que lo intente de nuevo.
+
+**Avisos:** te llega una notificación cada vez que un cliente sube algo (los
+comprobantes de pago también le llegan a quien cobra facturas). Se silencia en tu
+perfil → Notificaciones → «Documentos que suben los clientes».
+
+**En La Gerencia → Los Ajustes → Portal de clientes:** prender o apagar la sección
+Documentos, escoger qué se le pide a todo cliente y cuántos días puede tener la
+constancia fiscal (30 de inicio). Ahí mismo se ve si El Chalán está listo para leer
+constancias.
+
+**Quién lo usa:** quien tiene el permiso «Documentos del portal» (se da en El
+Directorio → permisos, módulo *recepcion*, acción *documentos*).
+
+Con El Chalán: «¿qué documentos le faltan a $Optimist?», «¿hay comprobantes de pago
+por revisar?», «¿la constancia de Kari Kari está vigente?». Revisar, rechazar y
+aplicar se hace en la ficha, no por chat.
 
 ### Todo lo que un cliente tiene ligado
 

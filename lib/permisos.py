@@ -528,6 +528,12 @@ def puede_invitar_portal(user) -> bool:
 def puede_revocar_portal(user) -> bool:
     """Quitarle a alguien el acceso a La Recepción (cierra su sesión viva)."""
     return puede(user, "recepcion", "revocar")
+
+
+def puede_documentos_portal(user) -> bool:
+    """Ver, subir y revisar la papelería que entregan los clientes (comprobantes,
+    constancia fiscal, actas). Es delicada: un acta trae datos de los socios."""
+    return puede(user, "recepcion", "documentos")
 def puede_ver_caja(user) -> bool:
     """La Caja: links de pago y los pagos que llegaron por Stripe/MercadoPago."""
     return puede(user, "caja", "ver")

@@ -10912,3 +10912,72 @@ desde La Gerencia (el panel de metas tiene 6 slugs fijos en código; la curadur�
 propone metas para otros 8 que no se pueden capturar; el tablero compacto pinta 8
 slugs fijos aunque las preferencias ofrezcan ~90; la foto diaria guarda KPIs
 personales como si fueran del despacho).
+
+### S-Portal-Llave-Documentos ✅ — VERSION 2026.09.14 (2026-09-29)
+
+Oscar, dos pedidos sobre La Recepción: «los links expiran una vez que entras, debemos
+hacer que no expiren, siempre pide el correo al que se envió el registro y que picar
+el botón te lleve» y «que el cliente pueda subir documentación: comprobante de
+depósito, RFC, CSF, acta constitutiva, etc.». Plan enseñado antes de construir;
+decisiones (literales): **revivir el último enlace de cada quien**; el comprobante
+**sólo avisa** (no registra cobro); El Chalán lee la CSF y propone **«y además verifica
+que esté en rango de tiempo. Ese tiempo es configurable en la gerencia»**; lista de
+documentos pedidos configurable.
+
+**La llave** (`portal/models/enlace.py`, `portal/servicios.py`)
+- `EnlaceAcceso` ya no caduca (`expira_en` vacío) ni se gasta: `anulado_en`,
+  `token_cifrado` (La Bóveda, para reenviar LA MISMA), `usos`, `ultimo_uso_en`. Una viva
+  por persona; `llave_de()` la devuelve o crea. Invitar / reenviar / «pedir mi enlace»
+  mandan la misma; `cambiar_enlace()` anula y manda otra; revocar anula todas + sube la
+  `generacion` (corta la sesión como antes).
+- `canjear(token, email)`: GET pinta la pantalla (sigue sin abrir nada: filtros de
+  correo), POST exige el correo (`hmac.compare_digest`), rate-limit 20/IP y **5 por
+  enlace** (`LIMITE_POR_ENLACE`); con la sesión de esa persona abierta, el GET entra
+  derecho. La pantalla y el correo **no muestran el correo** (es lo que pide la llave;
+  un correo reenviado lo llevaría junto). Evento `correo_mal` en la bitácora.
+- Llaves de antes (sólo hash): se cifran la primera vez que alguien entra con ellas.
+- Ficha: «Copiar enlace» (evento `copiado`) y «Cambiar enlace» (Portavoz
+  `portal.enlace_cambiado`), permiso `recepcion.invitar`.
+- Migraciones: `portal/0004` esquema (+ documentos), `0005_revivir_ultima_llave`
+  (datos: la última de cada acceso activo sin caducidad, las demás anuladas).
+
+**Documentos** (`portal/models/documento.py`, `portal/documentos.py`, `portal/csf.py`)
+- `DocumentoCliente` (tipo, archivo en El Almacén + espejo Drive, nota, factura
+  opcional para comprobantes, estado recibido/aprobado/rechazado + motivo, `ia` +
+  `ia_estado`, aplicado_por/en). Se valida **por los primeros bytes** (PDF, JPEG, PNG,
+  WebP, HEIC), no por el `content_type`; 25 MB; nombre saneado.
+- La Recepción: `/documentos/` (subir, lo que se pide, lo entregado con estado y
+  motivo, descargar lo propio), «Subir comprobante» en la factura con saldo, aviso
+  «Nos falta papelería» en Inicio. Rate-limit 20 subidas/15 min por acceso. Todo por
+  `request.cliente`.
+- El Taller: recuadro «Documentos del cliente» en la ficha (`contexto_documentos`):
+  pendientes, ver (inline con `nosniff`; imágenes con CSP `sandbox`, PDFs sin él
+  porque Chrome no los pinta), revisar/rechazar con motivo, subir en nombre del
+  cliente, aplicar CSF (pide además `cartera.editar`), volver a leer.
+- Avisos: Interfón categoría nueva `portal_documentos` a `recepcion.documentos`; el
+  comprobante también a `facturacion.cobrar`. Sólo si lo subió el cliente. Portavoz
+  `portal.documento_subido` / `portal.documento_revisado`.
+- **CSF con El Chalán**: estación `documento_cliente` (visión, `chalanes/0022`),
+  texto del PDF con **`pypdf`** (dependencia nueva, Python puro) o la foto por visión.
+  Sólo propone; **cada dato tiene que aparecer en el texto del PDF** (RFC con forma
+  SAT, CP, fecha de emisión) o se descarta; se lee una vez en el fondo tras el commit.
+  Vigencia contra `ConfiguracionPortal.csf_vigencia_dias` (30 por default, 1–730); el
+  cliente ve el aviso si está vieja. `aplicar()` actualiza o crea la
+  `ClienteRazonSocial` del RFC y espeja la principal.
+- `ClienteRazonSocial.regimen_fiscal` + `codigo_postal` (`cartera/0009`, datos del
+  receptor CFDI 4.0) en el formulario y la ficha.
+- La Gerencia → Portal de clientes: interruptor de Documentos, lo que se pide
+  (`documentos_requeridos`, CSF por default), días de la CSF, e indicador real de si
+  la estación tiene un Chalán con llaves.
+- La Recepción ahora instala `chalanes` (+ `COPY chalanes/`) y monta `./data/media`.
+- Permiso `recepcion.documentos` (`portal/0006`, a quien tiene `recepcion.ver`, por
+  rol y por persona). Chalán/MCP: lectura `documentos_del_cliente` (gating
+  `recepcion_documentos`).
+- Pruebas: `tests/recepcion/test_documentos.py`, `tests/taller/test_documentos_cliente.py`,
+  `tests/gerencia/test_portal_documentos_ui.py`, `test_entrar.py` reescrito; 7 mutantes
+  de los candados (correo, aislamiento, tipo real, RFC inventado, llave de un uso,
+  aplicar sin cartera, aviso) verificados como caídos.
+
+**Deuda**: Paperless no recibe estos documentos (viven en El Almacén + Drive y en la
+ficha); la vigencia sólo se revisa al subir (una CSF aprobada no «vence» después);
+la foto de una CSF no se valida contra texto (no hay OCR propio), sólo por forma.

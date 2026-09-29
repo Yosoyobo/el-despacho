@@ -52,6 +52,10 @@ CATEGORIAS = [
     ("portal", "Respuestas en el portal de clientes",
      "Push cuando un cliente aprueba o rechaza una cotización desde La Recepción.",
      ("cotizaciones", "ver")),
+    ("portal_documentos", "Documentos que suben los clientes",
+     "Push cuando un cliente sube un documento en el portal (comprobante de pago, constancia fiscal, acta…). "
+     "Los comprobantes de pago también le llegan a quien cobra facturas.",
+     ("recepcion", "documentos")),
 ]
 
 

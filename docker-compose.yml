@@ -142,6 +142,9 @@ services:
     volumes:
       - ./data/credenciales:/data/credenciales
       - ./data/staticfiles-recepcion:/app/staticfiles
+      # El Almacén: aquí quedan los documentos que sube el cliente (comprobantes,
+      # constancias, actas). La misma carpeta que El Taller, que los revisa.
+      - ./data/media:/app/medios
     expose:
       - "8002"
     healthcheck:
