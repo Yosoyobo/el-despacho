@@ -1345,3 +1345,150 @@ window.abrirRickroll = function () {
   // Al entrar y al salir, nunca mientras se teclea — ver la nota de arriba.
   // Crecer conforme se escribe lo hace `field-sizing: content` en `input.css`.
 })();
+
+// ===========================================================================
+// Tablas anchas → tarjetas en el celular (LC 2026-09-28, Oscar).
+// «Tarjetas en móvil, todas; en escritorio no cambia nada.» La forma la da
+// `input.css` (bloque «las tablas anchas se leen como TARJETAS»); aquí sólo se
+// le dice a cada celda qué etiqueta lleva y qué papel juega en la tarjeta.
+//
+//   <table data-tabla-movil>            etiquetas del <thead>
+//   <table data-tabla-movil="A|B|C">    tabla sin <thead>: etiquetas en orden
+//   data-movil="titulo|acciones|ancho|sin-etiqueta|oculta|asa|casilla"
+//                                       en el <th> (toda la columna) o en el <td>
+//
+// No toca el contenido de ninguna celda: sólo le pone atributos. Así los
+// formularios, los botones y los scripts de cada lista siguen siendo los mismos
+// en escritorio y en el celular — nada se duplica.
+// ===========================================================================
+(function () {
+  'use strict';
+  var SEL = 'table[data-tabla-movil]';
+  var FLECHAS = /[↑↓↕⇅]/g;            // ↑ ↓ ↕ del orden
+  var CONTROL = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
+  var PICABLE = 'a[href], button, input:not([type="hidden"]), select, textarea, [data-dropdown]';
+  var LARGO = 28;   // caracteres: más que esto no cabe en media tarjeta
+
+  function texto(el) {
+    return (el.textContent || '').replace(FLECHAS, '').replace(/\s+/g, ' ').trim();
+  }
+  function sinNombre(t) { return !t || /^[\s—–\-·.]*$/.test(t); }
+
+  function columnas(tabla) {
+    var cols = [];
+    var cab = tabla.tHead;
+    if (cab && cab.rows.length) {
+      var fila = cab.rows[cab.rows.length - 1], n = 0;
+      Array.prototype.forEach.call(fila.cells, function (th) {
+        var et = th.hasAttribute('data-label') ? th.getAttribute('data-label') : texto(th);
+        var info = { etiqueta: sinNombre(et) ? '' : et, papel: th.getAttribute('data-movil') || '' };
+        for (var k = 0; k < (th.colSpan || 1); k++) cols[n++] = info;
+      });
+    } else {
+      (tabla.getAttribute('data-tabla-movil') || '').split('|').forEach(function (et, n) {
+        cols[n] = { etiqueta: et.trim(), papel: '' };
+      });
+    }
+    return cols;
+  }
+
+  // La manija y la casilla se reconocen por lo que ES la celda, no por su
+  // encabezado: la columna de la manija suele traer un «Ordenar» escondido para
+  // los lectores de pantalla, y no por eso es el título de la tarjeta.
+  function esAsa(celda) {
+    return !!celda.querySelector('[data-arr-asa]') &&
+      sinNombre(texto(celda).replace(/[\u2800-\u28FF]/g, ''));   // ⠿
+  }
+  function esCasilla(celda) {
+    return !!celda.querySelector('input[type="checkbox"]') &&
+      !celda.querySelector(CONTROL) && sinNombre(texto(celda));
+  }
+  // Papeles que no ocupan el lugar del título: la tarjeta sigue buscándolo.
+  var NO_TITULO = ['asa', 'casilla', 'acciones', 'oculta', 'sin-etiqueta'];
+
+  // El papel que la celda no trae escrito se adivina por lo que contiene.
+  function adivinar(celda, info, puedeSerTitulo) {
+    if (info.papel) return info.papel;
+    if (esAsa(celda)) return 'asa';
+    if (esCasilla(celda)) return 'casilla';
+    if (!info.etiqueta) return celda.querySelector(PICABLE) ? 'acciones' : 'sin-etiqueta';
+    if (/^acci[oó]n(es)?$/i.test(info.etiqueta) && celda.querySelector(PICABLE)) return 'acciones';
+    if (puedeSerTitulo && !celda.querySelector(CONTROL)) return 'titulo';
+    // La primera columna es un campo de captura (la edición rápida, las líneas
+    // de una factura): va a lo ancho, que en media tarjeta el nombre se corta.
+    if (puedeSerTitulo) return 'ancho';
+    if (celda.querySelector('textarea') || texto(celda).length > LARGO) return 'ancho';
+    return '';
+  }
+
+  function preparar(tabla) {
+    var cols = columnas(tabla);
+    // El título lo pone la plantilla (data-movil="titulo") o, si no dijo nada,
+    // la primera celda con nombre de cada renglón.
+    var tituloAuto = !tabla.hasAttribute('data-movil-sin-titulo') &&
+      !cols.some(function (c) { return c && c.papel === 'titulo'; });
+    var secciones = Array.prototype.slice.call(tabla.tBodies);
+    if (tabla.tFoot) secciones.push(tabla.tFoot);
+    secciones.forEach(function (sec) {
+      Array.prototype.forEach.call(sec.rows, function (tr) {
+        var unica = tr.cells.length === 1 && cols.length > 1;
+        var tituloLibre = tituloAuto;
+        var col = 0;
+        Array.prototype.forEach.call(tr.cells, function (celda) {
+          var span = celda.colSpan || 1;
+          var i = col;
+          col += span;
+          if (celda.hasAttribute('data-movil-listo')) return;
+          celda.setAttribute('data-movil-listo', '');
+          if (unica) { celda.setAttribute('data-movil-fila', ''); return; }
+          if (span > 1) {   // un aviso que abarca varias columnas: sin etiqueta
+            if (!celda.hasAttribute('data-movil')) celda.setAttribute('data-movil', 'ancho');
+            return;
+          }
+          var info = cols[i] || { etiqueta: '', papel: '' };
+          var papel = celda.getAttribute('data-movil') || adivinar(celda, info, tituloLibre);
+          // La primera celda con nombre decide: si trae un campo de captura, ese
+          // renglón se queda sin título (no se salta a la segunda columna).
+          if (info.etiqueta && NO_TITULO.indexOf(papel) === -1) tituloLibre = false;
+          if (papel && !celda.hasAttribute('data-movil')) celda.setAttribute('data-movil', papel);
+          if ((!papel || papel === 'ancho') && info.etiqueta &&
+              !celda.hasAttribute('data-label') && !celda.hasAttribute('data-sin-etiqueta')) {
+            celda.setAttribute('data-label', info.etiqueta);
+          }
+        });
+      });
+    });
+  }
+
+  // Los renglones que llegan después (HTMX, «+ Agregar línea», el arrastre) se
+  // preparan solos: cada tabla se vigila a sí misma.
+  var pendientes = [];
+  var programado = false;
+  function encolar(tabla) {
+    if (pendientes.indexOf(tabla) === -1) pendientes.push(tabla);
+    if (programado) return;
+    programado = true;
+    requestAnimationFrame(function () {
+      programado = false;
+      var lote = pendientes;
+      pendientes = [];
+      lote.forEach(preparar);
+    });
+  }
+  function vigilar(tabla) {
+    if (tabla.__tablaMovil || !window.MutationObserver) return;
+    tabla.__tablaMovil = new MutationObserver(function () { encolar(tabla); });
+    tabla.__tablaMovil.observe(tabla, { childList: true, subtree: true });
+  }
+  function escanear() {
+    document.querySelectorAll(SEL).forEach(function (t) { preparar(t); vigilar(t); });
+  }
+  window.tablaMovilPreparar = escanear;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', escanear);
+  } else {
+    escanear();
+  }
+  document.body.addEventListener('htmx:afterSettle', escanear);
+})();

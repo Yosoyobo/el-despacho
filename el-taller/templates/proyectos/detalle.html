@@ -431,7 +431,7 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
         <section class="order-5 xl:order-none">
             <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Productos involucrados</h2>
             <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-                <table class="min-w-[480px] text-sm md:min-w-full">
+                <table data-tabla-movil class="min-w-[480px] text-sm md:min-w-full">
                     <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400"><tr><th class="px-4 py-3 text-left">Producto</th><th class="px-4 py-3 text-right">Cant.</th><th class="px-4 py-3 text-right">Subtotal</th></tr></thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                         {% for pp in proyecto.productos.all %}

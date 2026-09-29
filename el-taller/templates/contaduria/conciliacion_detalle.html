@@ -24,9 +24,9 @@
 
 {% if puede_capturar %}
 <div class="mb-6 flex flex-wrap items-center gap-3">
-    <form method="post" action="{% url 'contaduria:conciliacion-importar' conc.pk %}" enctype="multipart/form-data" class="flex items-center gap-2">
+    <form method="post" action="{% url 'contaduria:conciliacion-importar' conc.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
         {% csrf_token %}
-        <input type="file" name="archivo" accept=".csv,text/csv" class="text-sm" required>
+        <input type="file" name="archivo" accept=".csv,text/csv" class="max-w-full text-sm" required>
         <button type="submit" class="btn-secundario">Importar estado de cuenta (CSV)</button>
     </form>
     <form method="post" action="{% url 'contaduria:conciliacion-automatch' conc.pk %}">
