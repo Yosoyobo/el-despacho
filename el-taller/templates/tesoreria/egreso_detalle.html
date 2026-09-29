@@ -30,6 +30,7 @@
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Clasificación" items=info_clasificacion %}
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Pago" items=info_pago %}
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Captura" items=info_captura %}
+        {% if info_cfdi %}{% include "_componentes_tailadmin/_info_card.html" with titulo="CFDI del proveedor" items=info_cfdi %}{% endif %}
     </aside>
 </div>
 

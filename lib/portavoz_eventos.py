@@ -74,6 +74,11 @@ EventoTipo = Literal[
     "factura.vencida",
     "factura.pdf_generado",
     "factura.cfdi_almacenado",
+    # S-Pendientes-Sep28: resolver los CFDI que llegaron por correo.
+    "cfdi.proveedor_asignado",
+    "cfdi.ligado_egreso",
+    "cfdi.ligado_factura",
+    "cfdi.ignorado",
     "factura.eliminada",
     "pago.recibido",
     "pago.recordatorio",
