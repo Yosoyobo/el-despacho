@@ -462,14 +462,20 @@ class TestWebhookStripe:
                                      "estado", "monto", "moneda", "referencia"}
 
     def test_el_mismo_evento_dos_veces_no_duplica(self, client, llaves, cliente, jefe):
+        from apps.caja.models import PagoRecibido
         from apps.caja.services import link_para
         from apps.tesoreria.models import Ingreso
         llaves()
         link = link_para(_factura(cliente, jefe))
         cuerpo = _evento_stripe(link)
         assert _post_stripe(client, cuerpo).status_code == 200
+        pago = PagoRecibido.objects.get()
         assert _post_stripe(client, cuerpo).status_code == 200
         assert Ingreso.objects.count() == 1
+        # El segundo aviso ni siquiera toca la fila: sigue registrada, con su ingreso.
+        repetido = PagoRecibido.objects.get()
+        assert repetido.estado == "registrado" and repetido.ingreso_id == pago.ingreso_id
+        assert repetido.actualizado_en == pago.actualizado_en
 
     def test_monto_que_no_cuadra_queda_por_revisar(self, client, llaves, cliente, jefe):
         from apps.caja.models import PagoRecibido
@@ -929,12 +935,21 @@ class TestChalan:
     def test_ejecutor(self, llaves, cliente, jefe, usuario_factory):
         from apps.caja.models import LinkPago
         from apps.el_dictado.ejecutores import EJECUTORES
+
+        from cuentas.models.permiso_usuario import PermisoUsuario
+        from lib.permisos import invalidar_cache_permisos
         llaves()
         fac = _factura(cliente, jefe)
         r = EJECUTORES["crear_link_pago"]({"factura": fac.codigo}, jefe)
         assert r["entidad_tipo"] == "link_pago" and LinkPago.objects.get(pk=r["entidad_id"]).factura == fac
         with pytest.raises(ValueError, match="permiso"):
             EJECUTORES["crear_link_pago"]({"factura": fac.codigo}, usuario_factory(rol="disenador"))
+        # Ve la factura pero no puede hacer links: la puerta es la de La Caja.
+        contador = usuario_factory(rol="contador")
+        PermisoUsuario.objects.filter(usuario=contador, modulo="caja", permiso="crear_link").update(activo=False)
+        invalidar_cache_permisos()
+        with pytest.raises(ValueError, match="links de pago"):
+            EJECUTORES["crear_link_pago"]({"factura": fac.codigo}, contador)
         r = EJECUTORES["crear_link_pago"]({"cliente_slug": cliente.slug, "monto": "300",
                                            "concepto": "Muestras"}, jefe)
         assert LinkPago.objects.get(pk=r["entidad_id"]).tipo == "libre"
