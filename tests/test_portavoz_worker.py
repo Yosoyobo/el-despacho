@@ -1,6 +1,12 @@
-"""Tests del Portavoz worker: contador de intentos + descarte a DLQ."""
+"""Tests del Portavoz worker: contador de intentos + descarte a DLQ.
+
+Usan el Redis de `REDIS_URL`, como el resto de los tests `redis`: conftest los
+salta si ese Redis no contesta. Antes iban a `localhost:6379` fijo y en una Mac
+con el Redis de pruebas en otro puerto daban ERROR en vez de saltarse.
+"""
 
 import json
+import os
 
 import pytest
 
@@ -13,7 +19,7 @@ pytestmark = pytest.mark.redis
 def r_limpio():
     import redis
 
-    cli = redis.Redis.from_url("redis://localhost:6379/15", decode_responses=True)
+    cli = redis.Redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
     cli.delete(pw.COLA, pw.DLQ)
     yield cli
     cli.delete(pw.COLA, pw.DLQ)

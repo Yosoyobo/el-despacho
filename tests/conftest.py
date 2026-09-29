@@ -1,6 +1,7 @@
 """Bootstrap de tests: garantiza BOVEDA_MASTER_KEY antes de cualquier import de lib."""
 
 import os
+import re
 import secrets
 import sys
 
@@ -25,8 +26,15 @@ def _redis_disponible() -> bool:
 REDIS_OK = _redis_disponible()
 
 
+def razon_sin_redis(url: str) -> str:
+    """La razón del salto nombra a dónde se intentó (sin la contraseña, si la URL
+    trae una): «no disponible» a secas no dice si falta el Redis o sobra un
+    puerto viejo."""
+    return "Redis no contesta en REDIS_URL=" + re.sub(r"//[^@/]*@", "//", url)
+
+
 def pytest_collection_modifyitems(config, items):
-    skip_redis = pytest.mark.skip(reason="Redis no disponible en REDIS_URL")
+    skip_redis = pytest.mark.skip(reason=razon_sin_redis(os.environ["REDIS_URL"]))
     for item in items:
         if "redis" in item.keywords and not REDIS_OK:
             item.add_marker(skip_redis)

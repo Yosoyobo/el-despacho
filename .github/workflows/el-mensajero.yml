@@ -46,7 +46,7 @@ jobs:
       #
       # `--dist loadfile` reparte por ARCHIVO, no por test, y eso NO es un detalle:
       # los tests marcados `redis` sí comparten estado real —los 4 de
-      # `test_portavoz_worker.py` borran las mismas claves `COLA`/`DLQ` de la db 15,
+      # `test_portavoz_worker.py` borran las mismas claves `COLA`/`DLQ` de `REDIS_URL`,
       # y otro tanto hacen `test_ratelimit.py` y `test_aviso_deploy.py`—. Repartidos
       # por test podrían correr a la vez en workers distintos y pisarse; repartidos
       # por archivo es imposible por construcción. Cada archivo usa claves distintas

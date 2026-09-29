@@ -310,12 +310,48 @@ En HAL los puertos de Caddy están remapeados a `18080/18443` porque macOS reser
 `80/443`. Para probar dominios reales sin DNS, agrega entries en `/etc/hosts` o
 golpea los contenedores directamente (`curl http://localhost:8001/ping`).
 
-## Tests
+## Tests (desarrollo local)
+
+### El `.venv`
+
+Se arma con **Python 3.12**, la misma versión del CI y de los Dockerfiles
+(`tests/test_requirements_dev.py` lo comprueba). Vive en la raíz del repo y está
+fuera de git:
 
 ```bash
-pip install -r requirements.txt
-pytest -q tests/
+python3.12 -m venv .venv          # en la Mac: /usr/local/opt/python@3.12/bin/python3.12
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
+
+`requirements-dev.txt` trae `requirements.txt` (Django, pytest, pytest-django,
+pytest-xdist, openpyxl…) más `ruff` con la versión exacta del job de lint y
+`playwright` para medir pantallas en Chrome.
+
+**Si el `.venv` deja de arrancar** (`.venv/bin/python: no such file or
+directory`), casi siempre es que Homebrew quitó la versión de Python con que se
+creó: el venv guarda un enlace a ese intérprete y queda colgando. No se repara:
+se borra y se vuelve a crear con los tres comandos de arriba. Crearlo con el
+Python de `/usr/local/opt/python@3.12` (y no con el de `Cellar/…`) aguanta las
+actualizaciones de parche.
+
+### Correr la suite
+
+```bash
+# Redis desechable para los tests marcados `redis` (cola del Portavoz, rate-limit…)
+docker run -d --name redis-pruebas -p 127.0.0.1:56390:6379 redis:7-alpine --save ""
+export REDIS_URL=redis://127.0.0.1:56390/0
+
+.venv/bin/python -m pytest -q tests/ -n 3 --dist loadfile
+.venv/bin/python -m ruff check .
+```
+
+- Si no hay Redis en `REDIS_URL` (sin la variable se prueba `localhost:6379/15`),
+  los tests `redis` **se saltan** con la razón a la vista; el resto corre igual.
+- `--dist loadfile` no es opcional con `-n`: reparte por archivo, y los tests
+  `redis` de un mismo archivo comparten claves.
+- Si corres varias sesiones a la vez, cada una con su propia base
+  (`…/56390/1`, `…/56390/2`…) para que no se borren las colas entre sí.
 
 GitHub Actions corre los mismos tests + ruff en cada push/PR (**El Mensajero**).
 

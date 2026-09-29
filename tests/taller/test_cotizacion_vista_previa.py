@@ -478,12 +478,14 @@ def test_hay_un_solo_documento_de_cotizacion(entorno):
     partial compartido (LC 2026-08-23): dos copias no divergen el primer día,
     divergen en tres meses, y para entonces el preview miente.
     """
-    from pathlib import Path
+    from tests._arbol import RAIZ as raiz
+    from tests._arbol import archivos_del_repo
 
-    raiz = Path(__file__).resolve().parents[2]
+    # Sin `rglob` a secas: los worktrees de `.claude/` son copias del repo y
+    # harían ver cuatro plantillas donde hay una.
     copias = sorted(
         p.relative_to(raiz).as_posix()
-        for p in raiz.rglob("templates/cotizaciones/*.html")
+        for p in archivos_del_repo("templates/cotizaciones/*.html", raiz)
         if p.name.startswith("pdf") or "documento_pdf" in p.name
     )
 
