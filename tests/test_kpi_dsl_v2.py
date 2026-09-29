@@ -635,6 +635,8 @@ def test_esquema_para_ui_respeta_permisos(usuario_factory):
       "ventana_tiempo": "este_trimestre", "comparar": True},
      "Promedio de días para que la aprueben de las cotizaciones de este trimestre, comparado con "
      "el periodo anterior."),
+    ({"entidad": "tarea", "filtros": [{"campo": "archivada", "op": "eq", "valor": False}]},
+     "Número de tareas no marcadas como «archivada»."),
     ({"entidad": "egreso", "filtros": [{"campo": "estado_pago", "op": "in", "valor": ["pendiente", "por_reembolsar"]}]},
      "Número de egresos con estado de pago que es alguno de «pendiente», «por_reembolsar»."),
 ])
@@ -654,3 +656,29 @@ def test_el_prompt_del_chalan_sale_del_esquema():
             assert d in prompt
     for clave in ("filtros_numerador", "agrupar_por", "duracion", "comparar", "campo_ref", "hace_N_dias"):
         assert clave in prompt
+
+
+def test_app_sin_el_modelo_no_lo_ofrece_ni_truena(monkeypatch):
+    """La Gerencia no instala `recados`: el constructor no ofrece la entidad y
+    un KPI viejo de recados sale «—» con nota de error, no un 500."""
+    from lib.kpi_dsl import ejecutar, esquema_para_ui, resumen_para_prompt
+    from lib.kpi_dsl import ejecutor as ej
+
+    original = ej._modelo_django
+
+    def sin_recados(entidad):
+        if entidad == "recado":
+            raise LookupError("No installed app with label 'recados'.")
+        return original(entidad)
+
+    monkeypatch.setattr(ej, "_modelo_django", sin_recados)
+    assert "recado" not in {e["clave"] for e in esquema_para_ui()["entidades"]}
+    assert "- recado (" not in resumen_para_prompt()
+    res = ejecutar({"entidad": "recado"})
+    assert (res["valor"], res["nota"]) == ("—", "error")
+
+
+def test_ejecutar_acepta_usuario_posicional(usuario_factory):
+    from lib.kpi_dsl import ejecutar
+    u = usuario_factory(rol="disenador")
+    assert ejecutar({"entidad": "egreso"}, u)["nota"] == "sin permiso"

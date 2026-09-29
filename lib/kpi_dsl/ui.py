@@ -177,7 +177,9 @@ def _frase_filtro(entidad: str, f: dict) -> str:
     if op == "vacio":
         return f"sin {nombre}" if f["valor"] else f"con {nombre}"
     if spec["tipo"] == "booleano" and op == "eq":
-        return f"que sí son «{nombre}»" if f["valor"] else f"que no son «{nombre}»"
+        marcados = "marcadas" if ENTIDADES[entidad]["genero"] == "f" else "marcados"
+        no = "" if f["valor"] is True or f["valor"] in ("true", "1", 1) else "no "
+        return f"{no}{marcados} como «{nombre}»"
     etiquetas = ETIQUETAS_OPS_FECHA if spec["tipo"] == "fecha" else ETIQUETAS_OPS
     verbo = etiquetas.get(op, ETIQUETAS_OPS[op])
     if "campo_ref" in f:
