@@ -274,10 +274,13 @@ def test_las_fuentes_viajan_pegadas_a_la_conversion(monkeypatch):
 
     monkeypatch.setattr(gotenberg, "_postear", _postear)
     gotenberg.html_a_pdf("<html><body>x</body></html>",
-                         pagina={"fuentes": ["Lato-Regular.ttf", "../../etc/passwd"], "pdfa": True})
+                         pagina={"fuentes": ["Lato-Regular.ttf", "../../../../lib/gotenberg.py"],
+                                 "pdfa": True})
     nombres = [p[1] for p in enviado["partes"]]
     assert "Lato-Regular.ttf" in nombres
-    assert not any("passwd" in n for n in nombres), "una ruta con ../ salió del directorio"
+    # La ruta con ../ apunta a un archivo que SÍ existe fuera del directorio de
+    # las fuentes: si se siguiera, viajaría código del servidor a la conversión.
+    assert not any("gotenberg" in n for n in nombres), "una ruta con ../ salió del directorio"
     assert enviado["campos"]["pdfa"] == "PDF/A-2b"
 
 
