@@ -5,6 +5,14 @@
 
 ---
 
+## Novedades — El proyecto vuelve a verse en su orden (28 de septiembre de 2026)
+
+**El detalle del proyecto (y los formularios de proyecto, cliente, producto y
+cotización) vuelve a acomodarse como siempre:** el contenido principal a la
+izquierda y Notas con el resumen de dinero a la derecha. Con la actualización
+anterior la pantalla se había recorrido: dejaba un hueco arriba a la izquierda y
+mandaba Notas hasta abajo. No se perdió nada de lo capturado.
+
 ## Novedades — Varias pantallas en pestañas, aviso si alguien más editó lo mismo, y la app para Android (28 de septiembre de 2026)
 
 **Pestañas dentro de El Taller (en la computadora).** Puedes tener hasta seis

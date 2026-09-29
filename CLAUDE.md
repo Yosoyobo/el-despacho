@@ -375,7 +375,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.09.03` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-28:** producción en `VERSION 2026.09.04` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -387,6 +387,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda de los formularios en retícula |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
 | 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
 | 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
@@ -396,7 +397,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.08.46 | S-Rutas-Descuadre | Reconciliar paradas con dueño ajeno; reactivar repartos cancelados |
 | 2026.08.45 | S-Papeleo-Visor | El papeleo de Paperless se ve dentro de El Taller (proxy con permiso) |
 | 2026.08.44 | S-Latencia-Ago24 | Push fuera de la petición, permisos memoizados, context processors perezosos |
-| 2026.08.43 | S-NUC-Cierre | Pantalla de automatizaciones n8n; El Chalán alcanza las 4 piezas del NUC |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -436,6 +436,7 @@ renglones, el más viejo sale al entrar uno nuevo):
   un servicio del compose (§14 Bug J).
 - Dos sesiones en el mismo working tree se pisan: la segunda va en `git worktree`.
 - Formulario principal nuevo de un modelo editable → testigo de `lib/edicion.py` (si no, el último guardado pisa sin avisar).
+- Un envoltorio «invisible» (inputs ocultos, contenedor OOB) como hijo directo de un `grid` se come una celda: `class="contents"`, no `hidden` si adentro va algo que debe verse.
 - Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
   al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).

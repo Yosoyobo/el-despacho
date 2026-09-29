@@ -13489,3 +13489,9 @@ desplegar el Deploy 2 se descubrió que `deploy_nuc.sh` nunca abría la ventana 
 mantenimiento (se perdió en la mudanza al NUC): ahora la abre y la cierra solo, con
 `trap`. Pendiente manual: instalar el APK en los teléfonos y pasar la contraseña de
 la llave al gestor de Oscar. Detalle en `docs/HISTORIAL_SESIONES.md`.
+
+## 2026-09-28 — S-Pendientes-Sep28 · hotfix (VERSION 2026.09.04)
+
+El detalle del proyecto (y 4 formularios más en retícula) quedó recorrido tras el
+Deploy 3: el contenedor del testigo de edición pisada ocupaba la primera celda.
+Ahora es `display: contents`; verificado en Chrome antes/después y con candado.

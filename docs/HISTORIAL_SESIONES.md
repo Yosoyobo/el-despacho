@@ -10446,3 +10446,20 @@ encima del Deploy 2.
 - App Android: falta instalar en los teléfonos y verificar sin barra de URL, push
   con la app cerrada, GPS del Checador, cámara del OCR. Las actualizaciones del APK
   se reparten a mano.
+
+### S-Pendientes-Sep28 · hotfix ✅ — VERSION 2026.09.04 (2026-09-28)
+
+Oscar: «rompiste el orden de la pantalla dentro del proyecto». No eran las
+pestañas: el contenedor del testigo de edición pisada (`edicion/_testigo.html`,
+`<div data-edicion>`) es **hijo directo** de las retículas `grid xl:grid-cols-3`
+(detalle y editar del proyecto, cliente, producto, cotización) y, aunque vacío,
+**ocupaba la primera celda**: el contenido principal se recorría a la segunda
+columna y Notas + resumen bajaban a la primera del renglón siguiente. Medido en
+Chrome a 1600 px antes/después: el testigo era la celda x=320 w=400; ahora el
+principal (w=824) y el `aside` (w=400) comparten renglón. Arreglo: el contenedor
+es `display: contents` (no genera caja; el aviso ya es `fixed`). `hidden` no
+servía: escondería el aviso. Candado en `test_edicion_pisada_sep28.py` por los 8
+formularios, con y sin choque (16 caen con el código viejo).
+
+**Lección:** la suite renderiza HTML pero no mide layout — un envoltorio «que no
+se ve» metido en una retícula pasa todas las pruebas. Se cazó sólo mirando.

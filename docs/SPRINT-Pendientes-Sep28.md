@@ -98,11 +98,10 @@ https, puerto a 127.0.0.1). Este sprint no toca `lib/n8n.py`,
 
 Cualquier otra migración se pregunta antes de crearla.
 
-## Estado al cerrar la sesión (2026-09-28)
+## Estado al cerrar (2026-09-28)
 
-**Desplegado: sólo el Deploy 1** (VERSION 2026.09.01). Oscar: «terminamos en
-productivo, pero hasta esta fase». El detalle y la tabla de lo que quedó en cada
-rama están en `docs/HISTORIAL_SESIONES.md` → *S-Pendientes-Sep28 · Deploy 1*. Para retomar el
-Deploy 2 o 3: partir de la rama de cada frente (su último commit es `wip:`),
-rebasar sobre `main`, terminar, probar y verificar por mutación con **una carpeta
-temporal por agente**.
+**Los tres deploys están en producción**: Deploy 1 (2026.09.01), Deploy 2
+(2026.09.02, PR #114), Deploy 3 (2026.09.03, PR #115) y un hotfix de la retícula
+(2026.09.04). Detalle en `docs/HISTORIAL_SESIONES.md` → S-Pendientes-Sep28.
+Ramas y worktrees del sprint ya limpios. Queda manual: instalar el APK en los
+teléfonos (ver `envoltorio/README.md`).
