@@ -6,8 +6,8 @@ from . import (
     views_avatar,
     views_impersonar,
     views_kpi_custom,
-    views_resumen,
     views_pestanas,
+    views_resumen,
     views_sidebar,
 )
 
