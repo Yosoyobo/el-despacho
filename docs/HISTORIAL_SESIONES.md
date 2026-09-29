@@ -11223,6 +11223,12 @@ Cierre del arco de La Imprenta. (El Deploy 3 salió a producción dentro de la
 - El Chalán/MCP: `ordenes_de_compra` (gating `compras`) y `enlace_documento`
   tipo `orden_compra`; crear/cambiar declarado fuera del chat.
 
+- **Arreglo reportado por Oscar** («ninguna de las pestañas funciona»): el
+  partial `_tabs.html` arma `?tab=<clave>` con `url|default:'?tab='|add:clave`; al
+  pasarle `url` la clave se duplicaba (`?tab=marcamarca`) y todo caía en la
+  primera pestaña. Las pruebas abrían cada pestaña por URL armada a mano; la nueva
+  sigue los enlaces DIBUJADOS.
+
 **Deuda del arco**: el recibo de nómina conserva su plantilla propia; el PDF
 comercial de la factura se arma al pedirlo (no se guarda); la vista previa es hoja
 continua; una imagen nueva se ve al guardarla.

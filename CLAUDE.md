@@ -431,6 +431,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - `Proveedor.Meta.ordering` es alfabético: «el primero marcado» viaja en un hidden.
 - Handlers de `input` no tocan layout durante `isComposing` (se comen acentos/ñ).
 - Nunca `not in resp.content` con un literal corto (el token CSRF lo genera por azar).
+- `_tabs.html`: pasarle `url` Y `clave` duplica la clave (`?tab=xx`); pasa sólo `clave`. Prueba las pestañas siguiendo los `href` dibujados.
 - `|dinero` recorta los `.00` (`$195`, no `195.00`): una aserción de «no sale el precio» con el literal `195.00` pasa siempre.
 - Medir consultas: armar el formset DENTRO de la medición (el `_result_cache` esconde el N+1).
 - `{% static %}` a un archivo inexistente = 500 en prod (no lo caza la suite). Los settings de prueba NO sirven `la-gerencia/static`: una prueba de navegador (live_server) tiene que ponerlo en `STATICFILES_DIRS` y limpiar `finders.get_finder`.

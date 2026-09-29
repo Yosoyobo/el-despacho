@@ -7,6 +7,10 @@
 
 ## Novedades — Órdenes de compra a proveedores y portada para las cotizaciones (29 de septiembre de 2026)
 
+**Las pestañas de Gerencia → Ajustes → Documentos ya abren.** Al picar Marca y
+tablas, Datos y firma, Factura o cualquier otra, la pantalla regresaba a «Hoja y
+motor». Ya abre la que eliges.
+
 **Ya hay órdenes de compra.** En Finanzas → Compras capturas qué le pides a un
 proveedor, cuánto, a qué precio y para cuándo, ligado a un proyecto si quieres.
 Cada una tiene su folio (OC-2026-0001) y su PDF con tu formato, para mandárselo
