@@ -11,7 +11,7 @@ ENTIDADES: dict[str, dict] = {
         "campos_numericos": ("monto_cotizado",),
         "campos_filtrables": {
             "estado": ("eq", "in"),
-            "tipo": ("eq", "in"),
+            "archivado": ("eq",),
         },
         "campo_fecha": "creado_en",
         "link_default": "/proyectos/",
@@ -27,14 +27,15 @@ ENTIDADES: dict[str, dict] = {
         },
         "campo_fecha": "creado_en",
         "link_default": "/tareas/",
-        "campo_autor": "creada_por",
+        "campo_autor": "creado_por",
         "campo_asignado": "asignada_a",
     },
     "cliente": {
         "modelo": "cartera.Cliente",
         "campos_numericos": (),
         "campos_filtrables": {
-            "archivado": ("eq",),
+            "activo": ("eq",),
+            "estado": ("eq", "in"),
         },
         "campo_fecha": "creado_en",
         "link_default": "/cartera/",

@@ -5,6 +5,19 @@
 
 ---
 
+## Novedades — Las metas de KPIs ya se guardan (29 de septiembre de 2026)
+
+**En La Gerencia → Ajustes → KPIs, «Guardar» ya funciona.** Antes daba un error y
+la pantalla salía siempre vacía, aunque ya hubiera metas capturadas. Ahora cada
+meta que guardas vuelve a aparecer al abrir la pantalla; dejar el valor vacío la
+borra.
+
+**Aprobar o rechazar los KPIs que alguien propone para todo el equipo** (La Gerencia
+→ Los Chalanes → KPIs pendientes) también dejó de dar error.
+
+**Los KPIs que le pides en palabras a El Chalán** ya no fallan cuando hablan de «mis
+tareas», de clientes activos o de proyectos archivados.
+
 ## Novedades — Tu historial de actividad y quién hace cada petición (29 de septiembre de 2026)
 
 **Ahora queda un historial de lo que hace cada quien.** Además de ver quién está

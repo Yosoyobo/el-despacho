@@ -10882,3 +10882,33 @@ Peticiones en vivo con **nombre y además IP**.
   y un SELECT si la caché no tiene el último renglón); repetirla dentro del minuto,
   cero. Un test que compare consultas entre dos GET debe calentar antes (se ajustó
   `test_ajustes_ago12::test_las_fichas_no_hacen_una_consulta_por_producto`).
+
+### S-KPIs-Guardar ✅ — VERSION 2026.09.13 (2026-09-29)
+
+Oscar: «los KPIs me dan error 500 al guardar». Causa: `la-gerencia/Dockerfile` no
+copiaba `el-taller/apps/taller_home/` ni estaba en `INSTALLED_APPS`, y La Gerencia
+importa `MetaKPI` (Los Ajustes → KPIs) y `KPICustom` (Los Chalanes → KPIs pendientes).
+El panel de metas lo importaba dentro de `try/except Exception` → salía vacío en
+silencio; el guardado y las tres vistas de aprobación → `ModuleNotFoundError` → 500.
+La suite no lo veía porque `tests/django_settings.py` instala todo junto (§14 Bug A).
+
+Entregado:
+- `COPY el-taller/apps/taller_home/` + `apps.taller_home` en `INSTALLED_APPS` de
+  Gerencia (sus modelos sólo dependen de `AUTH_USER_MODEL` y `chalanes`; las
+  migraciones ya las corría El Taller). Se quitó el `try/except` del panel.
+- Candado estático `tests/gerencia/test_gerencia_trae_lo_que_importa.py`: toda app
+  `apps.<x>` que importe `la-gerencia/` y no viva ahí debe tener su `COPY` y estar en
+  `INSTALLED_APPS`. Se vio fallar antes del arreglo.
+- `tests/gerencia/test_metas_kpi.py`: guardar → persistir → el panel lo muestra; vacío borra.
+- `lib/kpi_dsl/schema.py` nombraba campos inexistentes (FieldError al previsualizar):
+  `tarea.campo_autor=creada_por` → `creado_por`; `proyecto.tipo` → `archivado`;
+  `cliente.archivado` → `activo` (+ `estado`). Candado
+  `tests/test_kpi_dsl_campos_existen.py` resuelve cada campo contra el modelo real.
+- Verificado con la imagen de Gerencia simulada (árbol armado con los `COPY` del
+  Dockerfile): `manage.py check` limpio y la ruta de guardado resuelve.
+
+Deuda / siguiente: ronda de preguntas con Oscar sobre KPIs nuevos y configurarlos
+desde La Gerencia (el panel de metas tiene 6 slugs fijos en código; la curaduría
+propone metas para otros 8 que no se pueden capturar; el tablero compacto pinta 8
+slugs fijos aunque las preferencias ofrezcan ~90; la foto diaria guarda KPIs
+personales como si fueran del despacho).
