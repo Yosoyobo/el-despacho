@@ -116,11 +116,23 @@ def test_el_estado_de_cuenta(client, jefe, cliente, factura):
 
     Factura.objects.create(cliente=cliente, titulo="Cancelada", creado_por=jefe,
                            estado="cancelada", folio_numero=13)
+    # Un borrador sin CFDI todavía no se le facturó a nadie: no se cobra.
+    Factura.objects.create(cliente=cliente, titulo="Borrador", creado_por=jefe,
+                           estado="borrador", folio_numero=14)
     client.force_login(jefe)
     html = _ver(client, "estado_cuenta", cliente.pk).content.decode()
     assert "ESTADO DE CUENTA" in html and "F12" in html
     assert "F13" not in html, "una factura cancelada no se le cobra a nadie"
+    assert "F14" not in html, "un borrador sin CFDI no se le ha facturado"
     assert "Vencido" in html, "la F12 venció hace cinco días"
+
+
+def test_la_remision_con_precios_si_se_encienden(client, jefe, proyecto):
+    from imprenta.models import AjusteImprenta
+
+    AjusteImprenta.objects.create(ambito="remision", valores={"bloque_precios": True})
+    client.force_login(jefe)
+    assert "$195" in _ver(client, "remision", proyecto.pk).content.decode()
 
 
 def test_la_remision_sin_precios_de_fabrica(client, jefe, proyecto):
@@ -129,7 +141,8 @@ def test_la_remision_sin_precios_de_fabrica(client, jefe, proyecto):
     assert "REMISIÓN" in html and "Tote Bag" in html and ">70<" in html
     assert "Av. Juárez 10" in html
     assert "Recibí de conformidad." in html
-    assert "195.00" not in html, "de fábrica la remisión no lleva precios"
+    # `|dinero` recorta los .00: el precio se imprimiría «$195».
+    assert "$195" not in html, "de fábrica la remisión no lleva precios"
 
 
 def test_la_orden_de_trabajo_no_lleva_precio_de_venta(client, jefe, proyecto):
@@ -137,7 +150,7 @@ def test_la_orden_de_trabajo_no_lleva_precio_de_venta(client, jefe, proyecto):
     html = _ver(client, "orden_trabajo", proyecto.pk).content.decode()
     assert "ORDEN DE TRABAJO" in html and "Tote Bag" in html
     assert "Crea Blanks" in html and "Tinta blanca" in html
-    assert "195.00" not in html and "80.00" not in html, "ni venta ni costo de fábrica"
+    assert "$195" not in html and "$80" not in html, "ni venta ni costo de fábrica"
 
 
 def test_el_comprobante_de_reembolso(client, jefe, egreso):
