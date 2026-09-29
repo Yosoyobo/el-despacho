@@ -67,10 +67,17 @@ def test_sincronizar_rol_primario_deriva_de_roles(usuario_factory):
 
 
 def test_rol_miembro_sin_defaults_de_permisos(usuario_factory):
-    """'miembro' es neutro: el signal de seed no le da ningún permiso."""
+    """'miembro' es neutro: el signal de seed no le da ningún permiso de su rol.
+
+    Sólo trae los UNIVERSALES — los que todo usuario tiene desde que nace
+    (2026-09-28, Oscar: ver quién está en línea es «para todos»)."""
     from cuentas.models.permiso_usuario import PermisoUsuario
+    from lib.permisos_defaults import PERMISOS_UNIVERSALES
     u = usuario_factory(rol="miembro")
-    assert PermisoUsuario.objects.filter(usuario=u, activo=True).count() == 0
+    activos = set(PermisoUsuario.objects.filter(usuario=u, activo=True)
+                  .values_list("modulo", "permiso"))
+    universales = {(m, a) for m, acciones in PERMISOS_UNIVERSALES.items() for a in acciones}
+    assert activos == universales
 
 
 def test_migracion_0024_dueno_a_miembro(usuario_factory):
