@@ -4,8 +4,9 @@ El SSO de Google vive en la app raíz `auth_google` (compartida con El Taller
 y andamio en La Recepción). El context processor `google_oauth_configurado`
 inyecta el flag al template para mostrar/ocultar el botón.
 
-Solo entran roles admin (super_admin/dueno); contador y diseñador se
-loguean en El Taller.
+Entra quien tiene `gerencia.acceder` (super_admin siempre): la misma puerta
+que el SSO de Google y el middleware de La Gerencia, que saca a quien la pierde
+con la sesión abierta. Los demás entran por El Taller.
 """
 
 from __future__ import annotations
