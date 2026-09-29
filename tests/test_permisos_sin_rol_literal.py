@@ -106,8 +106,13 @@ def v_sa_o_dueno(u):
 
 # (nombre, vieja, nueva) — puertas que no dependen del proyecto ni del comentario.
 PUERTAS = [
-    ("editar_proyecto (y crear, asignar, dictar)", v_es_admin,
+    ("editar_proyecto (y dictar)", v_es_admin,
      lambda u: permisos.puede_editar_proyecto(u, None)),
+    # Hasta 2026-09-28 crear/asignar/cambiar de estado pedían `editar`; ahora
+    # cada uno tiene su acción, sembrada «como hoy» (cuentas/0048).
+    ("crear proyecto (alta, duplicar)", v_es_admin, permisos.puede_crear_proyecto),
+    ("asignar a un proyecto", v_es_admin, permisos.puede_asignar_proyecto),
+    ("cambiar el estado de un proyecto", v_es_admin, permisos.puede_cambiar_estado_proyecto),
     ("gestionar_proyectos / actividad de todos", v_es_admin, permisos.puede_gestionar_proyectos),
     ("archivar_proyecto", v_es_admin, permisos.puede_archivar_proyecto),
     ("ver_cartera", v_finanzas, permisos.puede_ver_cartera),

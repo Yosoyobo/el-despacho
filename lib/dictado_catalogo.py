@@ -37,7 +37,7 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Crear proyecto",
         "ejemplo": 'Crea un proyecto "branding" para $noko-devs.',
         "payload": "nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?",
-        "gating": "proyectos_editar",
+        "gating": "proyectos_crear",
     },
     {
         "tipo": "actualizar_proyecto",
@@ -51,7 +51,7 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Asignar usuario a proyecto",
         "ejemplo": "Asigna a @ana como líder de #lc-0001.",
         "payload": "proyecto_slug, usuario_slug, rol_en_proyecto? (lider|disenador|produccion|revisor)",
-        "gating": "proyectos_editar",
+        "gating": "proyectos_asignar",
     },
     {
         "tipo": "agregar_producto_proyecto",
@@ -354,7 +354,7 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Duplicar proyecto",
         "ejemplo": 'Duplica #lc-0001 como "Campaña 2".',
         "payload": "proyecto_slug, nombre? (del duplicado)",
-        "gating": "proyectos_editar",
+        "gating": "proyectos_crear",
     },
     {
         "tipo": "quitar_producto_proyecto",
@@ -540,9 +540,13 @@ def _gating_checks():
     return {
         "abierto": lambda u: True,
         # S-Chalan-Barrido: gating granular para crear entidades.
-        # S-Deuda-Permisos: antes "admin" → `es_admin` (por rol). Crear, editar,
-        # asignar y duplicar proyectos es `proyectos.editar`; archivar,
-        # `proyectos.archivar` — los mismos permisos que en pantalla.
+        # S-Deuda-Permisos: antes "admin" → `es_admin` (por rol). Los mismos
+        # permisos que en pantalla: crear y duplicar, `proyectos.crear`; asignar,
+        # `proyectos.asignar`; actualizar, `proyectos.editar` (y si trae un
+        # `estado`, el ejecutor pide además `proyectos.cambiar_estado`);
+        # archivar, `proyectos.archivar`.
+        "proyectos_crear": permisos.puede_crear_proyecto,
+        "proyectos_asignar": permisos.puede_asignar_proyecto,
         "proyectos_editar": permisos.puede_gestionar_proyectos,
         "proyectos_archivar": permisos.puede_archivar_proyecto,
         "cartera": permisos.puede_editar_cartera,

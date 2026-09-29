@@ -455,3 +455,264 @@ class TestAlexLeeComentarios:
         for primario, extra in cambiaron:
             assert (primario not in todos and extra & todos) or (primario not in fin and extra & fin), \
                 (primario, extra)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 5. proyectos.crear / asignar / cambiar_estado: conectadas «como hoy»
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Aquí sí es equivalencia: hasta hoy las tres pedían `proyectos.editar`
+# (`puede_gestionar_proyectos`), y la 0048 las sembró a exactamente quien lo
+# tenía. El recorrido de las 160 combinaciones está en el candado
+# (`PUERTAS` de `tests/test_permisos_sin_rol_literal.py`).
+
+NUEVAS = {
+    "crear": permisos.puede_crear_proyecto,
+    "asignar": permisos.puede_asignar_proyecto,
+    "cambiar_estado": permisos.puede_cambiar_estado_proyecto,
+}
+
+
+def _gestionar_de_antes(u):
+    """La puerta de antes de las tres: `puede_gestionar_proyectos` (`editar`)."""
+    return permisos.puede_gestionar_proyectos(u)
+
+
+class TestProyectosComoHoy:
+    def test_en_la_foto_nadie_gana_ni_pierde(self, foto):
+        for nombre, nueva in NUEVAS.items():
+            assert _tabla(foto, _gestionar_de_antes, nueva) == {
+                1: (True, True), 3: (True, True), 4: (True, True), 5: (False, False),
+            }, nombre
+
+    def test_en_la_foto_la_0048_no_escribe_nada_de_proyectos(self):
+        from tests.test_permisos_sin_rol_literal import _migracion
+
+        roles = [{"id": rid, "clave": c, "permisos": p} for rid, (c, _n, p) in FOTO_ROLES.items()]
+        usuarios = [{"id": uid, "rol": d["rol"], "roles": d["roles"]} for uid, d in FOTO_USUARIOS.items()]
+        filas = _filas_de_la_foto()
+        json_0047, filas_0047 = _migracion().planear(usuarios, roles, filas)
+        filas.update({(u, m, a): activo for u, m, a, activo in filas_0047})
+        roles = [{**r, "permisos": json_0047.get(r["id"], r["permisos"])} for r in roles]
+        assert _migracion_0048().planear_proyectos(usuarios, roles, filas) == ({}, [])
+
+    def test_casos_raros_quedan_igual_que_editar(self, usuario_factory):
+        """Los casos en que las tres acciones decían otra cosa que `editar` —y no
+        importaba porque nadie las leía—. Tras la 0048 dicen lo mismo."""
+        from django.apps import apps as django_apps
+
+        from cuentas.models.permiso_usuario import PermisoUsuario as PU
+        from cuentas.models.rol import Rol
+
+        def fila(u, accion, activo):
+            PU.objects.update_or_create(usuario=u, modulo="proyectos", permiso=accion,
+                                        defaults={"activo": activo})
+
+        # El JSON del diseñador (rol del sistema) trae `crear` sin `editar`.
+        dis = Rol.objects.get(clave="disenador")
+        dis.permisos = {**dis.permisos, "proyectos": ["crear", "ver"]}
+        dis.save()
+        # Un rol personalizado que da `asignar` sin `editar`.
+        raro = Rol.objects.create(clave="raro", nombre="Raro", permisos={"proyectos": ["asignar", "ver"]})
+
+        casos = {}
+        casos["fila editar, sin las otras"] = u = usuario_factory(rol="miembro")
+        fila(u, "editar", True)
+        casos["fila crear, sin editar"] = u = usuario_factory(rol="miembro")
+        fila(u, "crear", True)
+        casos["rol raro con asignar"] = u = usuario_factory(rol="miembro")
+        u.roles_extra.add(raro)
+        casos["diseñador asignado (JSON con crear)"] = u = usuario_factory(rol="miembro")
+        u.roles_extra.add(dis)
+        casos["dueño con editar revocado"] = u = usuario_factory(rol="dueno")
+        fila(u, "editar", False)
+        casos["contador con Director asignado"] = u = usuario_factory(rol="contador")
+        u.roles_extra.add(Rol.objects.get(clave="dueno"))
+        casos["super_admin con todo revocado"] = u = usuario_factory(rol="super_admin")
+        for a in ("editar", *NUEVAS):
+            fila(u, a, False)
+        permisos.invalidar_cache_permisos()
+
+        antes = {n: _gestionar_de_antes(u) for n, u in casos.items()}
+        # Sin la 0048, varios casos dirían otra cosa (la prueba no es de adorno).
+        assert any(nueva(u) != antes[n] for n, u in casos.items() for nueva in NUEVAS.values())
+
+        _migracion_0048().aplicar(django_apps, None)
+        permisos.invalidar_cache_permisos()
+        distintos = [f"{n}: {a}" for n, u in casos.items() for a, nueva in NUEVAS.items()
+                     if nueva(u) != antes[n]]
+        assert not distintos, distintos
+        assert antes == {
+            "fila editar, sin las otras": True,
+            "fila crear, sin editar": False,
+            "rol raro con asignar": False,
+            "diseñador asignado (JSON con crear)": False,
+            "dueño con editar revocado": False,
+            "contador con Director asignado": True,
+            "super_admin con todo revocado": True,
+        }
+        # El JSON del diseñador quedó parejo con `editar`; el personalizado, intacto.
+        dis.refresh_from_db()
+        raro.refresh_from_db()
+        assert dis.permisos["proyectos"] == ["ver"]
+        assert raro.permisos == {"proyectos": ["asignar", "ver"]}
+        # Idempotente.
+        filas = PU.objects.count()
+        _migracion_0048().aplicar(django_apps, None)
+        assert PU.objects.count() == filas
+
+    @pytest.mark.parametrize("simulado", ["super_admin", "dueno", "contador", "disenador"])
+    def test_ver_como_rol_decide_igual(self, usuario_factory, simulado):
+        """«Ver como rol» lee sólo el JSON del rol: las tres van con `editar`."""
+        sa = usuario_factory(rol="super_admin")
+        sa._rol_simulado = simulado
+        for nombre, nueva in NUEVAS.items():
+            assert nueva(sa) == permisos.puede(sa, "proyectos", "editar"), (simulado, nombre)
+
+
+def _solo(usuario_factory, **acciones):
+    """Un `miembro` (sin defaults de proyectos) con exactamente estas acciones
+    de proyectos encendidas —más `ver_todos` para llegar a cualquiera—."""
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    u = usuario_factory(rol="miembro")
+    for accion, activo in {"ver": True, "ver_todos": True, **acciones}.items():
+        PermisoUsuario.objects.update_or_create(usuario=u, modulo="proyectos", permiso=accion,
+                                                defaults={"activo": activo})
+    permisos.invalidar_cache_permisos()
+    return u
+
+
+class TestCadaPantallaPreguntaPorSuAccion:
+    """Que las tres acciones de verdad estén conectadas: con `editar` a secas
+    ya no se crea, asigna ni cambia de estado, y con la acción sola sí."""
+
+    def test_crear(self, client, usuario_factory, proyecto_factory):
+        p = proyecto_factory()
+        client.force_login(_solo(usuario_factory, editar=True))
+        assert client.get("/proyectos/nuevo").status_code == 403
+        assert client.get(f"/proyectos/{p.pk}/duplicar").status_code == 403
+        assert "+ Nuevo proyecto" not in client.get("/proyectos/").content.decode()
+        client.force_login(_solo(usuario_factory, crear=True))
+        assert client.get("/proyectos/nuevo").status_code == 200
+        assert client.get(f"/proyectos/{p.pk}/duplicar").status_code == 200
+        assert "+ Nuevo proyecto" in client.get("/proyectos/").content.decode()
+
+    def test_asignar(self, client, usuario_factory, proyecto_factory):
+        p = proyecto_factory()
+        client.force_login(_solo(usuario_factory, editar=True))
+        assert client.get(f"/proyectos/{p.pk}/asignar").status_code == 403
+        client.force_login(_solo(usuario_factory, asignar=True))
+        assert client.get(f"/proyectos/{p.pk}/asignar").status_code == 200
+
+    def test_cambiar_estado(self, client, usuario_factory, proyecto_factory):
+        from apps.los_proyectos.models import Proyecto
+
+        p = proyecto_factory(estado="por_cotizar")
+        client.force_login(_solo(usuario_factory, editar=True))
+        assert client.post(f"/proyectos/{p.pk}/cambiar-estado", {"estado": "esperando_respuesta"},
+                           HTTP_HX_REQUEST="true").status_code == 403
+        assert client.get(f"/proyectos/{p.pk}/motivo-cancelacion").status_code == 403
+        client.force_login(_solo(usuario_factory, cambiar_estado=True))
+        r = client.post(f"/proyectos/{p.pk}/cambiar-estado", {"estado": "esperando_respuesta"},
+                        HTTP_HX_REQUEST="true")
+        assert r.status_code == 200
+        assert Proyecto.objects.get(pk=p.pk).estado == "esperando_respuesta"
+
+    def test_el_autoguardado_del_detalle_no_se_salta_estado_ni_equipo(
+            self, client, usuario_factory, proyecto_factory):
+        """El detalle manda estado (oculto) y equipo en el mismo POST que el
+        resto: con `editar` sin las otras dos, se guarda lo demás y esos no."""
+        from apps.los_proyectos.models import Proyecto, ProyectoAsignacion
+
+        p = proyecto_factory(estado="por_cotizar", descripcion="antes")
+        otro = usuario_factory(rol="miembro")
+        u = _solo(usuario_factory, editar=True)
+        client.force_login(u)
+        pagina = client.get(f"/proyectos/{p.pk}/").content.decode()
+        assert 'name="estado"' in pagina and "disabled" in pagina
+        datos = _post_del_detalle(client, p, descripcion="después", estado="esperando_respuesta",
+                                  **{"equipo__lider": str(otro.pk)})
+        r = client.post(f"/proyectos/{p.pk}/", datos)
+        assert r.status_code in (200, 302), r.status_code
+        p = Proyecto.objects.get(pk=p.pk)
+        assert p.descripcion == "después"
+        assert p.estado == "por_cotizar"
+        assert not ProyectoAsignacion.objects.filter(proyecto=p, usuario=otro).exists()
+        # Control: el mismo POST con las tres acciones sí mueve estado y equipo
+        # (si no, lo de arriba pasaría por un POST mal armado).
+        client.force_login(_solo(usuario_factory, editar=True, asignar=True, cambiar_estado=True))
+        datos = _post_del_detalle(client, p, estado="esperando_respuesta",
+                                  **{"equipo__lider": str(otro.pk)})
+        assert client.post(f"/proyectos/{p.pk}/", datos).status_code in (200, 302)
+        assert Proyecto.objects.get(pk=p.pk).estado == "esperando_respuesta"
+        assert ProyectoAsignacion.objects.filter(proyecto=p, usuario=otro).exists()
+
+    def test_chalan(self, usuario_factory, proyecto_factory):
+        from apps.el_dictado.ejecutores.basicos import (
+            actualizar_proyecto,
+            asignar_usuario_proyecto,
+            crear_proyecto,
+        )
+        from apps.el_dictado.ejecutores.cui_v1 import duplicar_proyecto
+
+        from lib.dictado_catalogo import comandos_para
+
+        p = proyecto_factory(estado="por_cotizar")
+
+        def accion(**payload):
+            return SimpleNamespace(payload=payload, entidad_tipo=None, entidad_id=None)
+
+        def falla_por_permiso(fn, u, **payload):
+            try:
+                fn(accion(**payload), u)
+            except ValueError as exc:
+                return str(exc).startswith("No tienes permiso")
+            return False
+
+        solo_editar = _solo(usuario_factory, editar=True)
+        for fn in (crear_proyecto, duplicar_proyecto, asignar_usuario_proyecto):
+            assert falla_por_permiso(fn, solo_editar), fn.__name__
+        assert falla_por_permiso(actualizar_proyecto, solo_editar, proyecto_slug=p.slug,
+                                 estado="esperando_respuesta")
+        # …pero sin `estado`, `editar` basta.
+        actualizar_proyecto(accion(proyecto_slug=p.slug, descripcion="nueva"), solo_editar)
+        tipos = {c["tipo"] for c in comandos_para(solo_editar)}
+        assert "actualizar_proyecto" in tipos
+        assert not tipos & {"crear_proyecto", "duplicar_proyecto", "asignar_usuario_proyecto"}
+
+        cada_una = _solo(usuario_factory, crear=True, asignar=True, cambiar_estado=True)
+        for fn in (crear_proyecto, duplicar_proyecto, asignar_usuario_proyecto):
+            assert not falla_por_permiso(fn, cada_una), fn.__name__
+        tipos = {c["tipo"] for c in comandos_para(cada_una)}
+        assert {"crear_proyecto", "duplicar_proyecto", "asignar_usuario_proyecto"} <= tipos
+
+
+def _post_del_detalle(client, proyecto, **cambios):
+    """Lo que manda el autoguardado del detalle: el form tal como se pintó,
+    con `cambios` encima."""
+    import re
+
+    html = client.get(f"/proyectos/{proyecto.pk}/").content.decode()
+    form = html[html.index('id="form-proyecto"'):]
+    form = form[:form.index("</form>")]
+    datos = {}
+    for m in re.finditer(r"<input[^>]*>", form):
+        tag = m.group(0)
+        nombre = re.search(r'name="([^"]+)"', tag)
+        if not nombre or "disabled" in tag:
+            continue
+        tipo = (re.search(r'type="([^"]+)"', tag) or [None, "text"])[1]
+        if tipo == "checkbox" and "checked" not in tag:
+            continue
+        valor = re.search(r'value="([^"]*)"', tag)
+        datos[nombre.group(1)] = valor.group(1) if valor else ("on" if tipo == "checkbox" else "")
+    for m in re.finditer(r'<select[^>]*name="([^"]+)"[^>]*>(.*?)</select>', form, re.S):
+        if "disabled" in m.group(0)[:m.group(0).index(">")]:
+            continue
+        sel = re.search(r'<option[^>]*value="([^"]*)"[^>]*selected', m.group(2))
+        datos[m.group(1)] = sel.group(1) if sel else ""
+    for m in re.finditer(r'<textarea[^>]*name="([^"]+)"[^>]*>(.*?)</textarea>', form, re.S):
+        datos[m.group(1)] = m.group(2)
+    datos.update(cambios)
+    return datos
