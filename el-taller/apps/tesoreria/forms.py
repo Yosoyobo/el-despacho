@@ -59,7 +59,7 @@ class IngresoForm(forms.ModelForm):
             "cliente", "proyecto", "metodo", "referencia_externa",
         ]
         widgets = {
-            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "descripcion": forms.TextInput(attrs={"maxlength": 300}),
         }
 
@@ -132,7 +132,7 @@ class EgresoForm(forms.ModelForm):
             "estado_pago", "metodo",
         ]
         widgets = {
-            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "descripcion": forms.TextInput(attrs={"maxlength": 300}),
         }
 
@@ -244,7 +244,7 @@ class ReembolsarEgresoForm(forms.Form):
     )
     fecha = forms.DateField(
         initial=date.today,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         label="Fecha del pago",
     )
 

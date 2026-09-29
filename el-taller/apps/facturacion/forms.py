@@ -183,7 +183,7 @@ class CancelarForm(forms.Form):
 
 class RegistrarCobroForm(forms.Form):
     monto = forms.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
-    fecha = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    fecha = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     metodo = forms.ChoiceField(choices=METODOS_INGRESO)
     banco_o_caja = forms.ChoiceField(
         choices=(("banco", "Banco"), ("caja", "Caja")),

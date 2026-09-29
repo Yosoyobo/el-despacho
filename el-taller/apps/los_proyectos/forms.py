@@ -146,7 +146,7 @@ def _choices_estado_activos():
 
 class CambiarEstadoForm(forms.Form):
     estado = forms.ChoiceField(choices=[])
-    fecha_real_entrega = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    fecha_real_entrega = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -676,7 +676,7 @@ class RegistrarAnticipoForm(forms.Form):
         widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
     )
     fecha = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date"}), label="Fecha",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"), label="Fecha",
     )
     metodo = forms.ChoiceField(choices=METODOS_INGRESO, initial="transferencia", label="Método")
     banco_o_caja = forms.ChoiceField(

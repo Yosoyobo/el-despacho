@@ -12,7 +12,7 @@ class AsientoForm(forms.ModelForm):
         model = Asiento
         fields = ["fecha", "descripcion", "referencia_externa"]
         widgets = {
-            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "descripcion": forms.TextInput(attrs={"maxlength": 300}),
         }
 

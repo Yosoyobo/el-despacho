@@ -21,7 +21,7 @@ class CotizacionForm(forms.ModelForm):
             "notas", "terminos",
         ]
         widgets = {
-            "fecha_emision": forms.DateInput(attrs={"type": "date"}),
+            "fecha_emision": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "regimen_fiscal": forms.RadioSelect(attrs={"class": "sr-only"}),
             "notas": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
             "terminos": forms.Textarea(attrs={"data-referencias": "1", "rows": 3}),
