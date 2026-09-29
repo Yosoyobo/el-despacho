@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load forms_helpers l10n %}
+{% block title %}Documentos — Ajustes{% endblock %}
+
+{% comment %}
+La Imprenta: cómo se arman los documentos PDF (ver apps/los_ajustes/views_imprenta.py).
+Cada pestaña es un formulario propio; la vista previa de la derecha se redibuja
+con lo que hay en el formulario, sin guardar, y «PDF de prueba» lo arma el motor
+de verdad. Los campos salen del esquema (`imprenta.esquema`), así que un ajuste
+nuevo aparece aquí solo.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Documentos" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Documentos" subtitulo="Cómo se ven y qué llevan las cotizaciones y los demás documentos en PDF" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+{% include "_componentes_tailadmin/_tabs.html" with tabs=tabs activo=pestana %}
+
+{% if choque %}
+<div class="mb-5 rounded-xl border border-warning-300 bg-warning-50 p-4 text-sm text-warning-800 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-300" role="alert">
+    <p class="font-medium">
+        {% if choque.version.usuario %}{{ choque.version.usuario.nombre_completo|default:choque.version.usuario.email }}{% else %}Alguien más{% endif %}
+        guardó cambios a las {{ choque.version.creado_en|date:"H:i" }} mientras tenías esta pantalla abierta.
+    </p>
+    <p class="mt-1">Guardar lo tuyo reescribiría: {{ choque.campos|join:", " }}.</p>
+    <p class="mt-1">Recarga la página para ver lo que guardó, o guarda lo tuyo de todos modos con el botón de abajo.</p>
+</div>
+{% endif %}
+
+{% if pestana == "historial" %}
+{# ── Historial ────────────────────────────────────────────────────────── #}
+<section class="max-w-4xl rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">Historial</h2>
+    <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+        Cada vez que alguien guarda queda aquí lo que cambió. «Volver a esta versión»
+        deja todo como estaba en ese momento, y también queda anotado, así que siempre
+        se puede regresar.
+    </p>
+    {% if versiones %}
+    <ol class="space-y-4">
+        {% for v in versiones %}
+        <li class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ v.motivo|default:"Cambio" }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ v.creado_en|date:"d/m/Y H:i" }} ·
+                        {% if v.usuario %}{{ v.usuario.nombre_completo|default:v.usuario.email }}{% else %}cómo estaba al empezar{% endif %}
+                        {% if forloop.first %}· <strong class="text-success-600 dark:text-success-400">la de ahora</strong>{% endif %}
+                    </p>
+                </div>
+                {% if puede_restaurar and not forloop.first %}
+                <form method="post" action="{% url 'ajustes-documentos-restaurar' v.pk %}"
+                      onsubmit="return confirm('¿Dejar todos los documentos como estaban en esta versión?');">
+                    {% csrf_token %}
+                    <button type="submit" class="min-h-[44px] rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5">
+                        Volver a esta versión
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% if v.resumen %}
+            <ul class="mt-3 list-disc space-y-0.5 pl-5 text-sm text-gray-600 dark:text-gray-400">
+                {% for linea in v.resumen|slice:":12" %}<li>{{ linea }}</li>{% endfor %}
+                {% if v.resumen|length > 12 %}<li>y {{ v.resumen|length|add:"-12" }} más</li>{% endif %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="text-sm text-gray-500 dark:text-gray-400">Todavía nadie ha cambiado nada: los documentos salen con el formato de siempre.</p>
+    {% endif %}
+</section>
+
+{% else %}
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    {# ── El formulario ──────────────────────────────────────────────────── #}
+    <form method="post" enctype="multipart/form-data" id="imprenta-form" class="campo-form min-w-0 space-y-6"
+          data-vista="{% url 'ajustes-documentos-vista' %}">
+        {% csrf_token %}
+        <input type="hidden" name="seccion" value="{{ pestana }}">
+        <input type="hidden" name="base" value="{{ base }}">
+        <input type="hidden" name="tipo" value="{{ tipo_vista }}">
+        {% if choque %}<input type="hidden" name="forzar" value="1">{% endif %}
+
+        {% if not puede_guardar %}
+        <p class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-white/5 dark:text-gray-400">
+            Puedes ver y probar estos ajustes, pero no guardarlos: pídele a quien administra el despacho el permiso para esta parte.
+        </p>
+        {% endif %}
+
+        {% if pestana == "general" %}
+            {% include "ajustes/imprenta/_hoja_general.html" %}
+        {% else %}
+            {% for g in grupos %}
+            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+                <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">{{ g.seccion.titulo }}</h2>
+                {% if g.seccion.ayuda %}<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">{{ g.seccion.ayuda }}</p>{% endif %}
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {% for f in g.campos %}{% include "ajustes/imprenta/_campo.html" %}{% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        {% endif %}
+
+        <div class="flex flex-wrap items-center gap-3">
+            {% if puede_guardar %}
+            <button type="submit" class="min-h-[44px] rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600">
+                {% if choque %}Guardar lo mío de todos modos{% else %}Guardar {{ titulo_pestana|lower }}{% endif %}
+            </button>
+            {% endif %}
+            <button type="submit" formaction="{% url 'ajustes-documentos-vista-pdf' %}" formtarget="_blank"
+                    class="min-h-[44px] rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5">
+                PDF de prueba
+            </button>
+            <span class="text-xs text-gray-500 dark:text-gray-400">El PDF de prueba usa lo que tienes en pantalla, sin guardarlo.</span>
+        </div>
+    </form>
+
+    {# ── La vista previa ────────────────────────────────────────────────── #}
+    <aside class="min-w-0 xl:sticky xl:top-24 xl:self-start">
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-sm font-medium text-gray-800 dark:text-white/90">Vista previa · {{ nombre_tipo_vista }}</h2>
+                <span id="imprenta-estado" class="text-xs text-gray-400" aria-live="polite"></span>
+            </div>
+            {% if ejemplos %}
+            <label for="imprenta-ejemplo" class="sr-only">Documento de ejemplo</label>
+            <select id="imprenta-ejemplo" name="ejemplo" form="imprenta-form" class="mb-3 w-full">
+                {% for pk, etiqueta in ejemplos %}<option value="{{ pk }}">{{ etiqueta }}</option>{% endfor %}
+            </select>
+            {% endif %}
+            <iframe id="imprenta-vista" title="Vista previa del documento" sandbox="allow-same-origin"
+                    class="h-[70vh] w-full rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-800"></iframe>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Se actualiza al cambiar cualquier ajuste. Es una hoja continua: los cortes de página exactos se ven en el PDF de prueba.
+                {% if pestana == "marca" or pestana == "despacho" %}Una imagen nueva se ve aquí después de guardarla.{% endif %}
+            </p>
+        </div>
+    </aside>
+</div>
+
+<script>
+(function () {
+  // Vista previa en vivo: manda el formulario (sin guardar) y pinta la respuesta.
+  var form = document.getElementById('imprenta-form');
+  var marco = document.getElementById('imprenta-vista');
+  var estado = document.getElementById('imprenta-estado');
+  if (!form || !marco) return;
+  var url = form.getAttribute('data-vista');
+  var espera = null, pedido = null;
+  function refrescar() {
+    if (pedido) pedido.abort();
+    pedido = new AbortController();
+    estado.textContent = 'Actualizando…';
+    var datos = new FormData(form);
+    // Los archivos no viajan a la vista previa: se ven al guardarlos.
+    var archivos = [];
+    datos.forEach(function (v, k) { if (v instanceof File) archivos.push(k); });
+    archivos.forEach(function (k) { datos.delete(k); });
+    fetch(url, { method: 'POST', body: datos, credentials: 'same-origin', signal: pedido.signal })
+      .then(function (r) { return r.text(); })
+      .then(function (html) { marco.srcdoc = html; estado.textContent = ''; })
+      .catch(function (e) { if (e.name !== 'AbortError') estado.textContent = 'No se pudo actualizar'; });
+  }
+  function pronto(ev) {
+    // Mientras se compone una letra (acentos, ñ) no se hace nada.
+    if (ev && ev.isComposing) return;
+    clearTimeout(espera);
+    espera = setTimeout(refrescar, 450);
+  }
+  form.addEventListener('input', pronto);
+  form.addEventListener('change', pronto);
+  var ejemplo = document.getElementById('imprenta-ejemplo');
+  if (ejemplo) ejemplo.addEventListener('change', refrescar);
+  refrescar();
+})();
+</script>
+{% endif %}
+{% endblock %}

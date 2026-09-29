@@ -44,9 +44,14 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "equipo_actividad": permisos.puede_ver_actividad_equipo,
         # La Recepción: quién de un cliente entra al portal (`recepcion.ver`).
         "recepcion": permisos.puede_ver_accesos_portal,
+        # La papelería de los clientes (`recepcion.documentos`): un acta trae
+        # datos de los socios, no la ve quien sólo ve los accesos.
+        "recepcion_documentos": permisos.puede_documentos_portal,
         # La Caja: links de pago y pagos en línea.
         "caja": permisos.puede_ver_caja,
         # La Nómina: los montos de todos (`nomina.ver`). `mi_recibo` es abierto.
         "nomina": permisos.puede_ver_nomina,
+        # La Imprenta: cómo están configurados los PDF (`documentos.ver`).
+        "documentos": permisos.puede_ver_documentos,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

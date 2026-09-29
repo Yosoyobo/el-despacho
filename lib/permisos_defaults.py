@@ -112,6 +112,16 @@ TODO_AJUSTES = ["acceder"]
 # rol, metas y constructor). Nace «como hoy»: lo tenía quien abría Los Ajustes
 # (super_admin), y se delega por persona desde El Directorio.
 TODO_KPIS = ["configurar"]
+# La Imprenta (2026-09-29): cómo se arman los documentos PDF. Se separa en
+# cuatro porque no es la misma responsabilidad cambiar un color que las
+# condiciones que acepta el cliente o la CLABE a la que deposita:
+#   ver           → abrir la pantalla y la vista previa
+#   editar_estilo → hoja, motor, marca, tablas, bloques, rótulos, textos
+#   editar_notas  → las notas de los documentos (lo que el cliente acepta)
+#   editar_datos  → datos del despacho, bancarios y firma
+# «Como hoy»: nace para quien hoy entra a Ajustes (la pantalla de Documentos
+# vivía ahí) — lo siembra `imprenta/0002_seed_permisos_documentos`.
+TODO_DOCUMENTOS = ["ver", "editar_estilo", "editar_notas", "editar_datos"]
 # `ver` lista · `gestionar` alta/edición básica (lo que el dueño ya tenía) ·
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
@@ -140,7 +150,10 @@ HISTORIAL_EQUIPO = "ver_historial"
 # cliente, quién lo invita y quién le quita el acceso. «Como hoy»: lo trae quien
 # edita la cartera (super_admin y dueño por default; la migración
 # `portal/0002` lo siembra por persona a quien hoy tiene `cartera.editar`).
-TODO_RECEPCION = ["ver", "invitar", "revocar"]
+#   documentos → ver, subir y revisar la papelería que entregan los clientes
+#                (comprobantes, CSF, actas). Lo siembra `portal/0006` a quien
+#                ya tiene `recepcion.ver`.
+TODO_RECEPCION = ["ver", "invitar", "revocar", "documentos"]
 # La Caja (links de pago con Stripe y MercadoPago, 2026-09-29). «Como hoy»: la
 # recibe quien ya ve el dinero (`tesoreria.ver`) o cobra facturas
 # (`facturacion.cobrar`) — la migración `caja/0002_seed_permisos_caja` la siembra.
@@ -195,6 +208,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # S-LC-Feedback-V10: áreas administrativas (super_admin = todo).
         "ajustes": list(TODO_AJUSTES),
         "kpis": list(TODO_KPIS),
+        "documentos": list(TODO_DOCUMENTOS),
         "directorio": list(TODO_DIRECTORIO),
         "chalanes": list(TODO_CHALANES),
         "site": list(TODO_SITE),
@@ -335,6 +349,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     # S-LC-Feedback-V10: áreas administrativas de La Gerencia, delegables.
     "ajustes": list(TODO_AJUSTES),
     "kpis": list(TODO_KPIS),
+    # La Imprenta: los documentos PDF (estilo, notas, datos del despacho).
+    "documentos": list(TODO_DOCUMENTOS),
     "directorio": list(TODO_DIRECTORIO),
     "chalanes": list(TODO_CHALANES),
     "site": list(TODO_SITE),

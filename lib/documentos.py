@@ -131,6 +131,7 @@ def _con_anexos(pdf_bytes: bytes, anexos: list[bytes] | None) -> tuple[bytes, li
 def generar_pdf(
     *, html: str, nombre: str, subcarpeta: str | None = None,
     pagina: dict | None = None, anexos: list[bytes] | None = None,
+    html_google=None,
 ) -> ResultadoPdf:
     """Genera un PDF desde `html` y lo guarda en Drive. Fallback gracioso.
 
@@ -143,6 +144,11 @@ def generar_pdf(
     `anexos` (opcional, Sep28): PDFs que se pegan AL FINAL, en ese orden — las
     fichas técnicas de la cotización. Se pegan ANTES de guardar en Drive, así la
     copia guardada es la misma que se descarga y se manda por correo.
+
+    `html_google` (opcional, La Imprenta): el HTML que se le da a Google si es
+    Google quien acaba armando el documento — el de «formato de siempre», sin
+    los ajustes visuales que Google no respeta. Puede ser el texto o una función
+    que lo devuelve, para no dibujarlo dos veces cuando Chromium contesta.
     """
     from lib import gotenberg
     from lib.google_drive import NoConfiguradoError, drive
@@ -186,6 +192,13 @@ def generar_pdf(
             ok=False,
             error="Google Drive no está conectado (Ajustes → Conectar Google Drive).",
         )
+    if html_google is not None:
+        try:
+            html = html_google() if callable(html_google) else html_google
+        except Exception as exc:  # noqa: BLE001 — se usa el mismo HTML
+            logger.warning("documentos: no se pudo armar la versión para Google: %s", exc)
+        # Las fuentes pegadas no le sirven a Google (baja el HTML solo).
+        pagina = {k: v for k, v in (pagina or {}).items() if k != "fuentes"}
     try:
         carpeta_id = drive.obtener_o_crear_subcarpeta(subcarpeta) if subcarpeta else None
         meta = drive.html_a_pdf(

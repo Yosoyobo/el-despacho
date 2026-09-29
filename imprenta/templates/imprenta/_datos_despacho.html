@@ -1,0 +1,14 @@
+{% comment %}Los datos del despacho que este tipo de documento enseña (La Imprenta).
+Van chicos y en el color secundario, en una tabla de dos columnas sin líneas: así
+los entiende también la conversión de Google. Vacío = no se pinta nada, que es el
+documento de siempre.{% endcomment %}
+{% with filas=c.datos_visibles %}{% if filas %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin:0 0 8pt 0; font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">
+  {% for rotulo, valor in filas %}
+  <tr>
+    <td style="border:none; padding:0; width:26%; vertical-align:top;">{{ rotulo }}</td>
+    <td style="border:none; padding:0; vertical-align:top; white-space:pre-line;">{{ valor }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}{% endwith %}

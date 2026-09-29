@@ -196,6 +196,15 @@ def accesos_portal(cliente: str) -> dict[str, Any]:
     return _h_accesos_portal({"cliente": cliente}, usuario)
 
 
+def documentos_del_cliente(cliente: str = "") -> dict[str, Any]:
+    """La papelería que entregan los clientes por el portal."""
+    from capacidades.lecturas import _h_documentos_del_cliente
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "recepcion", "documentos")
+    return _h_documentos_del_cliente({"cliente": cliente}, usuario)
+
+
 def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
     """La Caja: pagos que llegaron por Stripe/MercadoPago (registrados, por
     revisar, pendientes) y lo cobrado en línea este mes."""
@@ -222,6 +231,15 @@ def nomina_quincena(fecha: str = "") -> dict[str, Any]:
     usuario = _usuario_actual()
     _exigir_permiso(usuario, "nomina", "ver")
     return _h_nomina_quincena({"fecha": _texto(fecha, 10)}, usuario)
+
+
+def formato_documentos() -> dict[str, Any]:
+    """La Imprenta: cómo están configurados los PDF (documentos.ver)."""
+    from capacidades.lecturas_imprenta import _h_formato_documentos
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "documentos", "ver")
+    return _h_formato_documentos({}, usuario)
 
 
 def mi_recibo(fecha: str = "") -> dict[str, Any]:

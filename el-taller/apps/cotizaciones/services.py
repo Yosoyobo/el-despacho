@@ -51,6 +51,8 @@ def construir_html_pdf(
     csrf_token: str = "",
     descargable: bool = True,
     aviso: str = "",
+    config=None,
+    sin_barra: bool = False,
 ) -> str:
     """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
 
@@ -80,12 +82,20 @@ def construir_html_pdf(
       una cotización guardada. En la vista previa esa cotización se deshace al
       terminar, así que el botón daría 404 — se apaga.
     - `aviso`: reemplaza el rótulo de la barra para decir qué se está mirando.
+
+    `config` (La Imprenta, 2026-09-29): con qué ajustes se dibuja — marca,
+    tablas, bloques, rótulos. Sin él, los guardados en La Gerencia; la vista
+    previa de La Gerencia manda los del formulario sin guardar, y el camino de
+    Google manda los «básicos» (el formato de siempre).
     """
     from django.template.loader import render_to_string
 
+    from imprenta import config as imprenta
     from lib import almacen
 
     from .notas import notas_para
+
+    cfg = config or imprenta.resolver("cotizacion", destino="pantalla" if preview else "motor")
 
     items = list(cot.items.select_related("servicio", "unidad_fk").all())
     fotos_vivas = _fotos_vivas_del_proyecto(cot)
@@ -102,13 +112,17 @@ def construir_html_pdf(
         if it.agrupado and filas:
             filas[-1]["extras"].append(it)
             continue
-        file_id = _foto_del_item(it, fotos_vivas)
+        # La Imprenta: la foto y las especificaciones se pueden apagar desde La
+        # Gerencia. Apagadas, el bloque queda como si no las tuviera — y el
+        # estimador de la hoja las cuenta igual de ausentes.
+        file_id = _foto_del_item(it, fotos_vivas) if cfg.bloque("fotos") else ""
         ancho, alto = _medida_foto(almacen.proporcion(file_id))
         filas.append({
             "it": it,
+            "lineas": list(it.detalle_lineas or []) if cfg.bloque("descripcion") else [],
             # La foto: la del uso en el proyecto si le pusieron una propia, si no
             # la congelada con la versión (ver `_foto_del_item`).
-            "imagen": almacen.url(file_id, "w1000", absoluta=True),
+            "imagen": almacen.url(file_id, "w1000", absoluta=True) if file_id else "",
             # Medida FIJA con la que va en el documento (ver `_medida_foto`): el
             # template las pinta como atributos, así que ninguna foto puede
             # descuadrar la hoja por más alta que sea.
@@ -117,7 +131,7 @@ def construir_html_pdf(
             "extras": [],
         })
     totales = cot.calcular_totales()
-    notas = notas_para(cot)
+    notas = notas_para(cot) if cfg.bloque("notas") else []
     # El «Desglose de Elementos» es lo que se está comprando, así que las
     # ALTERNATIVAS de volumen no van (si fueran, la lista no cuadraría con el
     # subtotal de abajo). Se leen en la tabla de montos de su producto.
@@ -125,8 +139,25 @@ def construir_html_pdf(
     # El plan de las notas decide TRES cosas de golpe: el hueco que las empuja al
     # pie, si el documento va apretado y si arrancan a dos renglones de una hoja
     # nueva (LC 2026-08-18, ver `_plan_notas`).
-    plan_notas = _plan_notas(cot, filas, items_desglose, notas)
+    texto_cierre = (cfg.doc.get("texto_cierre") or "").strip()
+    plan_notas = _plan_notas(cot, filas, items_desglose, notas, cfg=cfg,
+                             extra_pt=_alto_texto(texto_cierre))
+    pagina = imprenta.pagina(cfg, default=PAGINA_DOCUMENTO)
     return render_to_string("cotizaciones/pdf.html", {
+        # La Imprenta: la configuración, sus trozos de estilo, qué bloques van y
+        # cómo se llama cada columna. Ver `imprenta.config`.
+        "c": cfg,
+        "e": cfg.e,
+        "b": {bl.clave: cfg.bloque(bl.clave) for bl in _definicion().bloques},
+        "r": {col.clave: cfg.rotulo(col.clave, col.default) for col in _definicion().columnas},
+        "titulo_documento": cfg.titulo(
+            cot.titulo_documento, folio=cot.codigo,
+            cliente=getattr(cot.cliente, "razon_social", ""),
+            proyecto=getattr(cot.proyecto, "nombre", "") if cot.proyecto_id else "",
+            fecha=cot.fecha_emision.strftime("%d/%m/%Y") if cot.fecha_emision else ""),
+        "texto_intro": (cfg.doc.get("texto_intro") or "").strip(),
+        "texto_cierre": texto_cierre,
+        "hoja_css": _hoja_css(pagina),
         "cot": cot,
         "items": items,
         "items_desglose": items_desglose,
@@ -145,7 +176,7 @@ def construir_html_pdf(
             for imp in totales.get("impuestos_detalle", [])
         ],
         "notas": notas,
-        "logo_url": f"{almacen.base_publica()}/static/branding/Logo_LC-256.png",
+        "logo_url": cfg.e.logo_url,
         "espacio_notas_pt": plan_notas["espacio_pt"],
         "apretado": plan_notas["apretado"],
         "brs_notas": plan_notas["brs"],
@@ -154,10 +185,48 @@ def construir_html_pdf(
         "acciones": acciones or [],
         "csrf_token": csrf_token,
         "aviso": aviso,
+        # La vista previa de La Gerencia enseña la hoja sin la barra de acciones
+        # (no hay nada que bajar ni imprimir de un documento sin guardar).
+        "sin_barra": sin_barra,
         "nombre_archivo": cot.nombre_pdf,
         # Sólo lo pinta la vista previa: en el PDF el pie lo pone la API de Docs.
         "pie_documento": PIE_DOCUMENTO,
     })
+
+
+def _definicion():
+    from imprenta.tipos import COTIZACION
+
+    return COTIZACION
+
+
+def _alto_texto(texto: str) -> int:
+    """Alto estimado (pt) de un texto libre del documento: 13pt por renglón de
+    ~95 caracteres. Sirve para que el hueco de las notas cuente el texto de
+    cierre que se haya escrito en La Gerencia."""
+    if not texto:
+        return 0
+    renglones = sum(max(1, -(-len(r) // 95)) for r in texto.splitlines() or [texto])
+    return 8 + renglones * 13
+
+
+def _hoja_css(pagina: dict) -> dict:
+    """Las medidas de la hoja de la vista previa, en pulgadas (el CSS las pide así).
+
+    Salen de la MISMA página que se le manda al motor, así la vista previa no
+    puede quedarse con otros márgenes cuando alguien los cambia en La Gerencia.
+    """
+    def pulgadas(clave, default_pt):
+        valor = pagina.get(clave)
+        return round((default_pt if valor is None else valor) / 72, 3)
+
+    return {
+        "ancho": pagina.get("ancho_in") or 8.5,
+        "arriba": pulgadas("margen_superior_pt", _MARGEN_SUPERIOR_PT),
+        "abajo": pulgadas("margen_inferior_pt", _MARGEN_INFERIOR_PT),
+        "izquierda": pulgadas("margen_izquierdo_pt", 72),
+        "derecha": pulgadas("margen_derecho_pt", 72),
+    }
 
 
 def _url_descargar(cot: Cotizacion) -> str:
@@ -227,7 +296,7 @@ PAGINA_DOCUMENTO = {
 }
 
 
-def pagina_documento(cot=None) -> dict:
+def pagina_documento(cot=None, *, config=None) -> dict:
     """Lo que se le pide al generador: lo del GUI, o esto de arriba.
 
     `PAGINA_DOCUMENTO` deja de ser la última palabra y pasa a ser el **valor
@@ -236,9 +305,14 @@ def pagina_documento(cot=None) -> dict:
     posible de los PDFs en el GUI»). Si nadie ha tocado nada, o si la tabla
     todavía no existe, sale exactamente lo de siempre.
     """
-    from lib.documentos import pagina_configurada
+    if config is not None:
+        from imprenta.config import pagina as _pagina
 
-    pagina = pagina_configurada(default=PAGINA_DOCUMENTO)
+        pagina = _pagina(config, default=PAGINA_DOCUMENTO)
+    else:
+        from lib.documentos import pagina_configurada
+
+        pagina = pagina_configurada(default=PAGINA_DOCUMENTO)
     if cot is None:
         return pagina
 
@@ -258,7 +332,7 @@ def pagina_documento(cot=None) -> dict:
     cliente = getattr(cot, "cliente", None)
     pagina = {**pagina, "metadatos": {
         "Title": getattr(cot, "titulo_documento", "") or "Cotización",
-        "Author": "Learning Center",
+        "Author": (getattr(config, "despacho", None) or {}).get("nombre") or "Learning Center",
         "Subject": getattr(proyecto, "nombre", "") or getattr(cliente, "razon_social", "") or "",
         "Keywords": getattr(cot, "codigo", "") or "",
     }}
@@ -371,7 +445,8 @@ def _alto_bloque(fila) -> int:
     (`_OVERHEAD_BLOQUE_PT`). Es una **estimación** — la paginación real la hace
     Google."""
     cuerpo = 0
-    renglones = len(getattr(fila["it"], "detalle_lineas", []) or [])
+    lineas = fila["lineas"] if "lineas" in fila else getattr(fila["it"], "detalle_lineas", [])
+    renglones = len(lineas or [])
     if renglones:
         cuerpo = renglones * 13
     if fila.get("imagen"):
@@ -415,7 +490,7 @@ def _alto_desglose(cot, items, con_tabla: bool = True) -> int:
     return alto + _OVERHEAD_BLOQUE_PT
 
 
-def _paginar(cot, filas, items, *, apretado: bool = False) -> dict:
+def _paginar(cot, filas, items, *, apretado: bool = False, alto_util: int | None = None) -> dict:
     """Simula la paginación del documento por BLOQUES ATÓMICOS.
 
     Cada bloque de producto (y el desglose, y las notas) viaja dentro de una
@@ -431,24 +506,25 @@ def _paginar(cot, filas, items, *, apretado: bool = False) -> dict:
     algo cuyo peor caso son unos milímetros: ver `_TOPE_HUECO_NOTAS_PT`.
     """
     ahorro = _AHORRO_APRETADO_PT if apretado else 0
+    util = alto_util or _ALTO_UTIL_PT
     usado = _ALTO_ENCABEZADO_PT
     for fila in filas:
         alto = _alto_bloque(fila) - ahorro
-        if usado > _ALTO_ENCABEZADO_PT and usado + alto > _ALTO_UTIL_PT:
+        if usado > _ALTO_ENCABEZADO_PT and usado + alto > util:
             usado = alto          # el bloque arranca hoja nueva
         else:
             usado += alto
     if cot.incluir_desglose:
         alto = _alto_desglose(cot, items, con_tabla=_mostrar_desglose(cot, filas)) - ahorro
-        usado = alto if usado + alto > _ALTO_UTIL_PT else usado + alto
+        usado = alto if usado + alto > util else usado + alto
     # La cola del documento (el párrafo que Google agrega al cerrar el cuerpo) se
     # descuenta siempre: lo que sobra de verdad es menos que lo que sobra en el
     # HTML.
-    libre = _ALTO_UTIL_PT - min(usado, _ALTO_UTIL_PT) - _COLA_DOCUMENTO_PT
+    libre = util - min(usado, util) - _COLA_DOCUMENTO_PT
     return {"libre": max(0, libre)}
 
 
-def _plan_notas(cot, filas, items, notas) -> dict:
+def _plan_notas(cot, filas, items, notas, *, cfg=None, extra_pt: int = 0) -> dict:
     """Dónde quedan las notas y cuánto aire lleva el documento.
 
     Devuelve `{"apretado": bool, "espacio_pt": int, "brs": int}`.
@@ -476,12 +552,13 @@ def _plan_notas(cot, filas, items, notas) -> dict:
     """
     # LC 2026-08-04: bajan con el interlineado del documento (las notas van a
     # 9pt con `line-height:1.0` y padding 0).
-    alto_notas = 18 + len(notas) * 13
-    if getattr(cot, "terminos", ""):
+    alto_notas = (18 + len(notas) * 13 if notas else 0) + extra_pt
+    if getattr(cot, "terminos", "") and (cfg is None or cfg.bloque("condiciones")):
         alto_notas += 20 + len(cot.terminos.splitlines()) * 11
+    util = _alto_util_de(cfg)
 
     for apretado in (False, True):
-        libre = _paginar(cot, filas, items, apretado=apretado)["libre"]
+        libre = _paginar(cot, filas, items, apretado=apretado, alto_util=util)["libre"]
         hueco = libre - alto_notas - _MARGEN_SEGURIDAD_PT
         if hueco > 0:
             return {"apretado": apretado,
@@ -492,10 +569,30 @@ def _plan_notas(cot, filas, items, notas) -> dict:
     # se equivocó, el peor caso es el mismo que el escalón 4 —Google las manda
     # enteras a la hoja siguiente, porque el bloque viaja en una fila con
     # `preventOverflow`—, sólo que sin los dos renglones de arriba.
-    libre = _paginar(cot, filas, items, apretado=True)["libre"]
+    libre = _paginar(cot, filas, items, apretado=True, alto_util=util)["libre"]
     if libre - alto_notas >= _COLCHON_MINIMO_NOTAS_PT:
         return {"apretado": True, "espacio_pt": 0, "brs": 0}
     return {"apretado": True, "espacio_pt": 0, "brs": 2}
+
+
+def _alto_util_de(cfg) -> int:
+    """El alto útil con la hoja que eligieron en La Gerencia.
+
+    El estimador se calibró contra el documento de siempre (`_ALTO_UTIL_PT`,
+    que cuenta el margen superior que aplica Google). Lo que se mueve aquí es
+    sólo la DIFERENCIA contra la hoja de fábrica: con carta y los márgenes de
+    siempre sale exactamente lo mismo; con oficio, 216pt más.
+    """
+    if cfg is None:
+        return _ALTO_UTIL_PT
+    from imprenta.config import alto_util_pt
+
+    fabrica = _ALTO_HOJA_PT - _MARGEN_SUPERIOR_PT - _MARGEN_INFERIOR_PT
+    try:
+        elegido = alto_util_pt(cfg, fabrica)
+    except Exception:  # noqa: BLE001 — sin hoja legible, la de siempre
+        return _ALTO_UTIL_PT
+    return _ALTO_UTIL_PT + (elegido - fabrica)
 
 
 def _espacio_antes_de_notas(cot, filas, items, notas) -> int:
@@ -628,12 +725,14 @@ def generar_pdf(cot: Cotizacion, actor):
     """Genera (o regenera) el PDF de la cotización vía Google Docs y lo guarda
     en Drive. Devuelve `lib.documentos.ResultadoPdf`. Borra el PDF anterior si
     lo había. Fallback gracioso (nunca lanza)."""
+    from imprenta import config as imprenta
     from lib.documentos import generar_pdf as _gen
     from lib.google_drive import drive
 
     # El precalentado vive dentro de `construir_html_pdf` (ahí se MIDEN las fotos
     # para acotarlas), así que aquí ya no se repite.
-    html = construir_html_pdf(cot)
+    cfg = imprenta.resolver("cotizacion")
+    html = construir_html_pdf(cot, config=cfg)
     # Sep28: las fichas técnicas anexadas se pegan AL FINAL, antes de guardar en
     # Drive — así lo guardado es lo mismo que se descarga y se manda por correo.
     # Un anexo que no se pueda leer se salta con aviso: el documento sale igual.
@@ -641,8 +740,12 @@ def generar_pdf(cot: Cotizacion, actor):
 
     pdfs_anexos, avisos_anexos = _anexos.pdfs_para_documento(cot)
     kwargs = {"anexos": pdfs_anexos} if pdfs_anexos else {}
+    # Si acaba armándolo Google, va con el formato de siempre (decisión de
+    # Oscar): se dibuja sólo si hace falta.
+    kwargs["html_google"] = lambda: construir_html_pdf(
+        cot, config=imprenta.resolver("cotizacion", basico=True))
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
-               pagina=pagina_documento(cot), **kwargs)
+               pagina=pagina_documento(cot, config=cfg), **kwargs)
     if avisos_anexos:
         import contextlib
 

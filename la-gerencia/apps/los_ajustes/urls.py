@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_kpis
+from . import views, views_imprenta, views_kpis
 
 urlpatterns = [
     path("", views.panel, name="ajustes-panel"),
@@ -64,7 +64,13 @@ urlpatterns = [
     path("papeleo/", views.papeleo_panel, name="ajustes-papeleo"),
     # La Recepción (portal de clientes): «Entrar con Google», apagado por default.
     path("portal/", views.portal_panel, name="ajustes-portal"),
-    path("documentos/", views.documentos_panel, name="ajustes-documentos"),
+    # La Imprenta: los documentos PDF (hoja, marca, datos, cada tipo, historial).
+    path("documentos/", views_imprenta.documentos_panel, name="ajustes-documentos"),
+    path("documentos/vista/", views_imprenta.documentos_vista, name="ajustes-documentos-vista"),
+    path("documentos/vista/pdf/", views_imprenta.documentos_vista_pdf,
+         name="ajustes-documentos-vista-pdf"),
+    path("documentos/restaurar/<int:pk>/", views_imprenta.documentos_restaurar,
+         name="ajustes-documentos-restaurar"),
     path("servicios/", views.servicios_panel, name="ajustes-servicios"),
     path("cfdi/", views.cfdi_panel, name="ajustes-cfdi"),
     path("automatizaciones/", views.automatizaciones_panel, name="ajustes-automatizaciones"),

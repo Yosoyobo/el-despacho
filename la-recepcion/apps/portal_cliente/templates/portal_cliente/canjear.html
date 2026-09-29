@@ -4,13 +4,22 @@
 <div class="mx-auto max-w-md">
     <div class="tarjeta p-6 sm:p-8">
         <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Hola, {{ nombre }}</h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Vas a entrar al portal de <strong class="text-gray-900 dark:text-white">{{ empresa }}</strong>.</p>
-        {% comment %}El enlace se gasta con este POST y no al abrirlo: los filtros de
-        correo abren los enlaces antes que la persona (ver portal/servicios.py).{% endcomment %}
-        <form method="post" class="mt-6">
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Vas a entrar al portal de <strong class="text-gray-900 dark:text-white">{{ empresa }}</strong>. Para confirmar que eres tú, escribe el correo en el que recibiste este enlace.</p>
+        {% if error %}
+        <p role="alert" class="mt-4 rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ error }}</p>
+        {% endif %}
+        {% comment %}La sesión se abre con este POST y no al abrir el enlace: los
+        filtros de correo abren los enlaces antes que la persona (ver portal/servicios.py).{% endcomment %}
+        <form method="post" class="mt-6 space-y-4">
             {% csrf_token %}
+            <div>
+                <label for="email" class="etiqueta">Tu correo</label>
+                <input id="email" name="email" type="email" required autocomplete="email" inputmode="email"
+                       autocapitalize="none" spellcheck="false" value="{{ email }}" class="campo" placeholder="nombre@tuempresa.com">
+            </div>
             <button type="submit" class="btn-primario w-full">Entrar al portal</button>
         </form>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Este enlace es tu llave personal y no caduca: guárdalo para la próxima vez.</p>
     </div>
 </div>
 {% endblock %}

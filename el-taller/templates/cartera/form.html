@@ -63,6 +63,14 @@
                         <label class="mb-1 block text-xs font-medium text-gray-500">RFC</label>{{ rf.rfc }}
                         {% if rf.rfc.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ rf.rfc.errors|join:" " }}</p>{% endif %}
                     </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-500">Régimen fiscal</label>{{ rf.regimen_fiscal }}
+                        {% if rf.regimen_fiscal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ rf.regimen_fiscal.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-500">CP fiscal</label>{{ rf.codigo_postal }}
+                        {% if rf.codigo_postal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ rf.codigo_postal.errors|join:" " }}</p>{% endif %}
+                    </div>
                     <div class="flex items-center justify-between gap-3 sm:col-span-2">
                         <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">{{ rf.principal }} Principal</label>
                         {% if rf.instance.pk %}<label class="flex items-center gap-2 text-sm text-error-600 dark:text-error-400">{{ rf.DELETE }} Quitar</label>{% endif %}
@@ -74,6 +82,8 @@
                 <div class="razon-row grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-[1fr_180px] dark:border-gray-700 dark:bg-gray-800/40">
                     <div><label class="mb-1 block text-xs font-medium text-gray-500">Razón social</label><input type="text" name="__prefix__-razon_social" maxlength="200" placeholder="NOMBRE LEGAL DEL CFDI" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
                     <div><label class="mb-1 block text-xs font-medium text-gray-500">RFC</label><input type="text" name="__prefix__-rfc" maxlength="13" placeholder="XAXX010101000" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">Régimen fiscal</label><input type="text" name="__prefix__-regimen_fiscal" maxlength="120" placeholder="601 · General de Ley Personas Morales" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
+                    <div><label class="mb-1 block text-xs font-medium text-gray-500">CP fiscal</label><input type="text" name="__prefix__-codigo_postal" maxlength="5" inputmode="numeric" placeholder="06600" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"></div>
                     <div class="sm:col-span-2"><label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="__prefix__-principal" class="h-4 w-4 rounded border-gray-300 text-brand-600"> Principal</label></div>
                 </div>
             </template>

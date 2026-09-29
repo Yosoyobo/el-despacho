@@ -29,7 +29,7 @@ pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 TPL_CARD = Path("el-taller/templates/proyectos/_producto_card.html")
 TPL_ESCALA = Path("el-taller/templates/proyectos/_escala_fila.html")
 TPL_JS = Path("el-taller/templates/proyectos/_form_productos_js.html")
-TPL_PDF = Path("el-taller/templates/cotizaciones/pdf.html")
+TPL_PDF = Path("imprenta/templates/cotizaciones/pdf.html")
 
 BASE_FORMSET = {
     "productos-TOTAL_FORMS": "0", "productos-INITIAL_FORMS": "0",
@@ -594,18 +594,29 @@ def test_los_margenes_que_se_le_piden_al_documento():
     assert services._MARGEN_PIE_PT < services._MARGEN_INFERIOR_PT
 
 
-def test_el_logotipo_crecio_cinco_por_ciento():
-    tpl = TPL_PDF.read_text(encoding="utf-8")
-    assert 'width="50" height="50"' in tpl
-    assert "width:50pt; height:50pt" in tpl
-    assert "48pt" not in tpl
+def test_el_logotipo_crecio_cinco_por_ciento(entorno):
+    """Desde La Imprenta el alto sale de La Gerencia; DE FÁBRICA sigue en 50pt.
+
+    Se revisa el documento DIBUJADO y no el fuente: el número ya no está escrito
+    en la plantilla, y lo que importa es con qué sale el PDF de quien no tocó nada.
+    """
+    from apps.cotizaciones import services
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    html = services.construir_html_pdf(cot)
+    assert 'width="50" height="50"' in html
+    assert "width:50pt; height:50pt" in html
+    assert "48pt" not in TPL_PDF.read_text(encoding="utf-8")
 
 
-def test_la_hoja_de_la_vista_previa_espeja_los_margenes():
-    tpl = TPL_PDF.read_text(encoding="utf-8")
-    assert "padding: 0.5in 1in 0.6in" in tpl
+def test_la_hoja_de_la_vista_previa_espeja_los_margenes(entorno):
+    """La hoja de la vista previa lleva los MISMOS márgenes que el PDF: salen de
+    la configuración de la hoja (36pt arriba, 72 a los lados, 43 abajo)."""
+    from apps.cotizaciones import services
+    cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
+    html = services.construir_html_pdf(cot, preview=True)
+    assert "padding: 0.5in 1.0in 0.597in 1.0in" in html
     # Y pinta el «1/1» para que se vea lo que llevará el PDF.
-    assert "{{ pie_documento }}" in tpl
+    assert "{{ pie_documento }}" in TPL_PDF.read_text(encoding="utf-8")
 
 
 def test_generar_pdf_le_pasa_los_margenes_a_drive(monkeypatch, entorno):

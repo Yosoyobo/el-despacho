@@ -31,6 +31,9 @@ google-auth==2.36.0
 # S-Carga-Contable: genera la plantilla de carga contable y lee la llena y los
 # estados de cuenta en Excel. Python puro, sin paquetes del sistema.
 openpyxl==3.1.5
+# Portal de clientes (2026-09-29): saca el texto de la Constancia de Situación
+# Fiscal en PDF para que El Chalán la lea. Python puro, sin paquetes del sistema.
+pypdf==6.19.0
 # Tests
 pytest==8.3.4
 pytest-django==4.9.0

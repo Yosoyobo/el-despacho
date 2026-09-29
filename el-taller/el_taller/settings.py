@@ -66,6 +66,10 @@ INSTALLED_APPS = [
     # Campañas de correo masivo: app raíz compartida; la UI/operación vive aquí.
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Imprenta (2026-09-29): los ajustes de los PDF, su historial y las
+    # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
+    # que configura y previsualiza).
+    "imprenta.apps.ImprentaConfig",
     # La Recepción (S5): desde la ficha del cliente se invita y se revoca.
     "portal.apps.PortalConfig",
     # La Caja: links de pago con Stripe y MercadoPago (2026-09-29).

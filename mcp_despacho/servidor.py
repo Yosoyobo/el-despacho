@@ -106,6 +106,14 @@ def accesos_portal(cliente: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def documentos_del_cliente(cliente: str = "") -> dict[str, Any]:
+    """La papelería que entregan los clientes por el portal (comprobantes de pago,
+    constancia fiscal, acta…): qué falta, qué subieron, su estado y lo que El
+    Chalán leyó de la constancia. Sin cliente, lo que está por revisar en todos."""
+    return herramientas.documentos_del_cliente(cliente)
+
+
+@mcp.tool()
 def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
     """La Caja: pagos que llegaron por Stripe o MercadoPago —registrados solos,
     por revisar (con el motivo) o por acreditar— y lo cobrado en línea este mes.
@@ -127,6 +135,16 @@ def nomina_quincena(fecha: str = "") -> dict[str, Any]:
     de nómina. `fecha` es cualquier día de la quincena (AAAA-MM-DD); vacío = hoy.
     Calcular, cerrar o pagar no se hace por aquí: son botones de Nómina."""
     return herramientas.nomina_quincena(fecha)
+
+
+@mcp.tool()
+def formato_documentos() -> dict[str, Any]:
+    """Cómo están configurados los documentos PDF: quién los arma, la hoja, la
+    marca, los datos del despacho (bancarios enmascarados) y, por tipo de
+    documento, qué partes van apagadas y qué rótulos cambiaron. Requiere permiso
+    de documentos. Cambiar el formato no se hace por aquí: es la pantalla
+    Ajustes → Documentos de La Gerencia."""
+    return herramientas.formato_documentos()
 
 
 @mcp.tool()

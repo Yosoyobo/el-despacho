@@ -2,13 +2,15 @@
 <p>Hola {{ nombre }}:</p>
 {% if invitacion %}
 <p>Learning Center te dio acceso a su <strong>portal de clientes</strong> para {{ empresa }}. Ahí puedes ver cómo van tus proyectos, revisar y aprobar tus cotizaciones, y consultar tus facturas y pagos.</p>
-<p>Para entrar la primera vez, abre este botón:</p>
+<p>Para entrar, abre este botón:</p>
+{% elif cambiado %}
+<p>Te mandamos un <strong>enlace nuevo</strong> para entrar al portal de clientes de Learning Center. El que tenías antes ya no funciona: usa este.</p>
 {% else %}
-<p>Pediste entrar al portal de clientes de Learning Center. Abre este botón para entrar:</p>
+<p>Este es tu enlace para entrar al portal de clientes de Learning Center:</p>
 {% endif %}
 <p style="margin:24px 0;"><a href="{{ enlace }}" style="display:inline-block;background:#465fff;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;">Entrar al portal</a></p>
-<p style="color:#475467;font-size:13px;">El botón sirve <strong>una sola vez</strong> y vence en {{ vigencia }}. No necesitas contraseña: cada vez que quieras entrar, escribe tu correo en <a href="{{ portal }}" style="color:#465fff;">{{ portal }}</a> y te mandamos un botón nuevo.</p>
-<p style="color:#475467;font-size:13px;">Si no esperabas este correo, ignóralo: sin el botón nadie puede entrar.</p>
+<p style="color:#475467;font-size:13px;"><strong>Guarda este correo:</strong> el botón es tu llave personal y no caduca. No necesitas contraseña: cada vez que lo abras te pediremos el correo al que te llegó este mensaje, para confirmar que eres tú.</p>
+<p style="color:#475467;font-size:13px;">Si lo pierdes, escribe tu correo en <a href="{{ portal }}" style="color:#465fff;">{{ portal }}</a> y te lo volvemos a mandar. No lo reenvíes a nadie; si alguien más del equipo necesita entrar, pídele a tu contacto en Learning Center que lo invite.</p>
 <p style="color:#475467;">Learning Center<br><span style="font-size:12px;color:#98a2b3;">Diseño · Maquila · Imagen corporativa</span></p>
 <p style="color:#98a2b3;font-size:11px;margin-top:24px;">Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener" style="color:#98a2b3;">NoKo Devs</a></p>
 </div>

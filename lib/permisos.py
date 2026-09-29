@@ -528,6 +528,12 @@ def puede_invitar_portal(user) -> bool:
 def puede_revocar_portal(user) -> bool:
     """Quitarle a alguien el acceso a La Recepción (cierra su sesión viva)."""
     return puede(user, "recepcion", "revocar")
+
+
+def puede_documentos_portal(user) -> bool:
+    """Ver, subir y revisar la papelería que entregan los clientes (comprobantes,
+    constancia fiscal, actas). Es delicada: un acta trae datos de los socios."""
+    return puede(user, "recepcion", "documentos")
 def puede_ver_caja(user) -> bool:
     """La Caja: links de pago y los pagos que llegaron por Stripe/MercadoPago."""
     return puede(user, "caja", "ver")
@@ -633,6 +639,25 @@ def puede_exportar_checador(user) -> bool:
 
 
 # ── La Nómina interna (S-Checador-V2, 2026-09-29) ─────────────────────────────
+# Módulo `documentos` (La Imprenta), sembrado «como hoy» por
+# `imprenta/0002_seed_permisos_documentos`: quien entraba a Ajustes → Documentos.
+
+def puede_ver_documentos(user) -> bool:
+    return es_super_admin(user) or puede(user, "documentos", "ver")
+
+
+def puede_editar_estilo_documentos(user) -> bool:
+    return es_super_admin(user) or puede(user, "documentos", "editar_estilo")
+
+
+def puede_editar_notas_documentos(user) -> bool:
+    return es_super_admin(user) or puede(user, "documentos", "editar_notas")
+
+
+def puede_editar_datos_documentos(user) -> bool:
+    return es_super_admin(user) or puede(user, "documentos", "editar_datos")
+
+
 # Módulo `nomina`, sembrado «como hoy» por `checador/0010_seed_permisos_nomina`.
 # Nadie ve montos de otros sin `nomina.ver`; cada quien ve SUS recibos cerrados
 # (eso no pasa por aquí: lo decide `puede_ver_recibo`).

@@ -1690,6 +1690,54 @@ def _h_accesos_portal(args: dict, usuario) -> dict:  # noqa: ARG001
     }
 
 
+def _h_documentos_del_cliente(args: dict, usuario) -> dict:  # noqa: ARG001
+    """La papelería que entregan los clientes. Con `cliente`, la de ese cliente
+    (qué falta, qué hay y lo que El Chalán leyó de su CSF); sin él, lo que está
+    por revisar en todos."""
+    from portal import documentos as docs
+    from portal.models import DocumentoCliente
+
+    def _fila(d):
+        fila = {"tipo": d.tipo_nombre, "archivo": d.nombre_archivo,
+                "subido": d.creado_en.date().isoformat(), "quien": d.quien_subio,
+                "por_portal": bool(d.acceso_id), "estado": d.get_estado_display()}
+        if d.factura_id:
+            fila["factura"] = d.factura.folio or d.factura.codigo
+        if d.estado == "rechazado":
+            fila["motivo_rechazo"] = d.motivo_rechazo
+        if d.tipo == "csf" and d.ia_estado == "lista":
+            fila["lectura_chalan"] = {**d.csf, "vigencia": d.vigencia,
+                                      "aplicado_a_la_ficha": bool(d.aplicado_en)}
+        return fila
+
+    texto = str(args.get("cliente") or "").strip()
+    if not texto:
+        pendientes = (DocumentoCliente.objects.filter(estado="recibido")
+                      .select_related("cliente", "acceso", "subido_por", "factura")
+                      .order_by("creado_en")[:50])
+        return {
+            "por_revisar": [{"cliente": d.cliente.razon_social, "ficha": f"/cartera/{d.cliente_id}/",
+                             **_fila(d)} for d in pendientes],
+            "nota": "Se revisan en la ficha de cada cliente (recuadro «Documentos del cliente»).",
+        }
+    c = _cliente_por_texto(texto)
+    if c is None:
+        return {"error": "no_encontrado",
+                "nota": "No encontré ese cliente. Dame su nombre o su referencia con $."}
+    lista = docs.documentos_de(c, limite=30)
+    return {
+        "cliente": c.razon_social,
+        "lo_que_se_pide": [{"documento": p.nombre, "estado": {"falta": "falta", "revision": "por revisar",
+                                                              "rechazado": "rechazado, falta volver a subirlo",
+                                                              "listo": "listo"}[p.estado]}
+                           for p in docs.pendientes_de(c, lista)],
+        "documentos": [_fila(d) for d in lista],
+        "ficha": f"/cartera/{c.pk}/",
+        "nota": ("Revisar, rechazar y aplicar los datos de la constancia a la ficha se hace en la "
+                 "ficha del cliente. Un comprobante de pago NO registra el cobro: se registra en la factura."),
+    }
+
+
 _LECTURAS: dict[str, Capacidad] = {
     "cfdi_pendientes": Capacidad(
         nombre="cfdi_pendientes",
@@ -1767,6 +1815,18 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={"cliente": {"tipo": "str", "requerido": True}},
         gating="recepcion", fn=_h_accesos_portal,
+    ),
+    "documentos_del_cliente": Capacidad(
+        nombre="documentos_del_cliente",
+        descripcion=(
+            "La papelería que entregan los clientes por el portal (comprobantes de "
+            "pago, constancia fiscal, acta constitutiva…): qué le falta de lo que "
+            "se pide, qué subió, en qué estado va y lo que El Chalán leyó de su "
+            "constancia (RFC, régimen, CP, si está vigente). Arg: cliente (nombre "
+            "o referencia $); sin cliente, lo que está por revisar en todos."
+        ),
+        args_schema={"cliente": {"tipo": "str", "requerido": False}},
+        gating="recepcion_documentos", fn=_h_documentos_del_cliente,
     ),
     "listar_automatizaciones": Capacidad(
         nombre="listar_automatizaciones",

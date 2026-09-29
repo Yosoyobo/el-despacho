@@ -47,8 +47,8 @@ def test_el_modulo_recepcion_esta_en_el_catalogo_y_se_puede_delegar():
     from cuentas.context_processors import MODULOS_VISIBLES
     from lib.permisos_defaults import CATALOGO_PERMISOS, DEFAULTS_POR_ROL
 
-    assert CATALOGO_PERMISOS["recepcion"] == ["ver", "invitar", "revocar"]
-    assert set(DEFAULTS_POR_ROL["super_admin"]["recepcion"]) == {"ver", "invitar", "revocar"}
+    assert CATALOGO_PERMISOS["recepcion"] == ["ver", "invitar", "revocar", "documentos"]
+    assert set(DEFAULTS_POR_ROL["super_admin"]["recepcion"]) == {"ver", "invitar", "revocar", "documentos"}
     # «Como hoy»: lo trae quien edita la cartera.
     for rol, mods in DEFAULTS_POR_ROL.items():
         edita_cartera = "editar" in mods.get("cartera", [])

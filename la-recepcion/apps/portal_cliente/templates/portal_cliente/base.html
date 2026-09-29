@@ -73,6 +73,7 @@
         <a href="{% url 'recepcion-proyectos' %}" class="pestana {% if seccion == 'proyectos' %}pestana-activa{% endif %}"{% if seccion == 'proyectos' %} aria-current="page"{% endif %}>Proyectos</a>
         <a href="{% url 'recepcion-cotizaciones' %}" class="pestana {% if seccion == 'cotizaciones' %}pestana-activa{% endif %}"{% if seccion == 'cotizaciones' %} aria-current="page"{% endif %}>Cotizaciones</a>
         <a href="{% url 'recepcion-facturas' %}" class="pestana {% if seccion == 'facturas' %}pestana-activa{% endif %}"{% if seccion == 'facturas' %} aria-current="page"{% endif %}>Facturas</a>
+        {% if documentos_portal %}<a href="{% url 'recepcion-documentos' %}" class="pestana {% if seccion == 'documentos' %}pestana-activa{% endif %}"{% if seccion == 'documentos' %} aria-current="page"{% endif %}>Documentos</a>{% endif %}
     </nav>
     {% endif %}
 </header>

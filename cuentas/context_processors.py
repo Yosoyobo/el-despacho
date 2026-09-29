@@ -57,7 +57,7 @@ MODULOS_VISIBLES = (
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
     "facturacion", "caja", "chalan", "analisis", "checador", "nomina", "comunicacion", "runner",
     "rutas", "papeleo", "equipo", "recepcion",
-    "directorio", "ajustes", "kpis", "chalanes", "site",
+    "directorio", "ajustes", "kpis", "documentos", "chalanes", "site",
     "catalogos", "interfono",
     "gerencia",
 )

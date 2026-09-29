@@ -489,4 +489,4 @@ def test_hay_un_solo_documento_de_cotizacion(entorno):
         if p.name.startswith("pdf") or "documento_pdf" in p.name
     )
 
-    assert copias == ["el-taller/templates/cotizaciones/pdf.html"], copias
+    assert copias == ["imprenta/templates/cotizaciones/pdf.html"], copias

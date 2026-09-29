@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def _pie_html(texto: str) -> str:
     )
 
 
-def _marca_agua_css(texto: str) -> str:
+def _marca_agua_css(texto: str, color: str = "#d92d20") -> str:
     """CSS que estampa una marca en TODAS las hojas.
 
     Se hace con CSS y no con un módulo del servicio porque `position: fixed`
@@ -124,6 +125,10 @@ def _marca_agua_css(texto: str) -> str:
     """
     if not texto:
         return ""
+    import re
+
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", color or ""):
+        color = "#d92d20"   # nunca se mete al CSS algo que no sea un color
     seguro = (texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
     return (
         "<style>"
@@ -131,7 +136,7 @@ def _marca_agua_css(texto: str) -> str:
         "    position: fixed; top: 45%; left: 0; right: 0;"
         "    text-align: center; z-index: -1; pointer-events: none;"
         "    font-family: Arial, Helvetica, sans-serif; font-weight: bold;"
-        "    font-size: 90pt; color: #d92d20; opacity: .10;"
+        f"    font-size: 90pt; color: {color}; opacity: .10;"
         "    transform: rotate(-30deg); letter-spacing: .1em;"
         "  }"
         "</style>"
@@ -166,6 +171,24 @@ def _encabezado_html(texto: str) -> str:
     )
 
 
+#: Dónde viven las fuentes de La Imprenta. `lib/` y `imprenta/` son hermanas
+#: tanto en el repo como en `/app` dentro de las imágenes.
+DIR_FUENTES = Path(__file__).resolve().parents[1] / "imprenta" / "static" / "imprenta" / "fuentes"
+
+
+def _archivos_fuente(nombres: list[str]) -> list[tuple[str, str, bytes, str]]:
+    """Las partes multipart de las fuentes pedidas. Una que falte se salta: sin
+    ella el documento sale con la letra de respaldo, no deja de salir."""
+    partes = []
+    for nombre in nombres:
+        ruta = DIR_FUENTES / Path(nombre).name
+        try:
+            partes.append(("files", ruta.name, ruta.read_bytes(), "font/ttf"))
+        except OSError:
+            logger.warning("gotenberg: no encontré la fuente %s", ruta)
+    return partes
+
+
 def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
     """Convierte `html` y devuelve los bytes del PDF. **Lanza** si falla.
 
@@ -182,11 +205,15 @@ def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
     # hojas y no depende de que el servicio traiga la capacidad.
     marca = (pagina.get("marca_agua") or "").strip()
     if marca:
-        html = _inyectar(html, _marca_agua_css(marca))
+        html = _inyectar(html, _marca_agua_css(marca, pagina.get("marca_color") or "#d92d20"))
 
     partes: list[tuple[str, str, bytes, str]] = [
         ("files", "index.html", html.encode("utf-8"), "text/html"),
     ]
+    # Las fuentes de La Imprenta viajan PEGADAS al HTML: el `@font-face` las pide
+    # por nombre de archivo, y Gotenberg sirve los archivos de la misma petición
+    # junto al index.html. Así Chromium no sale a internet a buscarlas.
+    partes.extend(_archivos_fuente(pagina.get("fuentes") or []))
 
     campos = {
         # El tamaño sale del ajuste de La Gerencia; carta si nadie lo cambió.
@@ -202,6 +229,12 @@ def html_a_pdf(html: str, *, pagina: dict | None = None) -> bytes:
         # Que el CSS no dependa de si Chromium se cree pantalla o papel.
         "emulatedMediaType": "print",
     }
+
+    # PDF/A: el formato para archivar (facturas, recibos). Lo convierte el mismo
+    # servicio al final; si una versión de Gotenberg no lo trae, el campo se
+    # ignora y sale el PDF normal.
+    if pagina.get("pdfa"):
+        campos["pdfa"] = "PDF/A-2b"
 
     pie = (pagina.get("pie_texto") or "").strip()
     if pie or pagina.get("numerar_paginas", True):
