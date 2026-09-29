@@ -44,7 +44,7 @@
                 <p class="mt-0.5 break-all font-mono text-[11px] text-gray-400">{{ p.id_externo }}</p>
             </div>
             {% if puede_revisar %}
-            <form method="post" action="{% url 'caja:pago-revisar' p.pk %}" class="campo-form flex w-full shrink-0 flex-col gap-2 lg:w-80">
+            <form method="post" action="{% url 'caja:pago-revisar' p.pk %}" data-sin-guardar-flotante class="campo-form flex w-full shrink-0 flex-col gap-2 lg:w-80">
                 {% csrf_token %}
                 <input type="text" name="nota" maxlength="200" placeholder="Nota (obligatoria para descartar)">
                 <div class="flex gap-2">
