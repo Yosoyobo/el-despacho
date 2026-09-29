@@ -41,14 +41,14 @@ MENU = (
 # (etiqueta que se ve en el menú, ruta a la que lleva)
 RENGLONES = [
     ("Cartero", "/ajustes/cartero/"),
-    ("KPIs", "/ajustes/metas-kpi/"),
+    ("KPIs", "/ajustes/kpis/"),
     ("Rutas", "/ajustes/rutas/"),
     ("Cobranza", "/ajustes/cobranza/"),
 ]
 
 TODOS_LOS_MODULOS = {
     "directorio": True, "site": True, "interfono": True,
-    "chalanes": True, "ajustes": True, "catalogos": True,
+    "chalanes": True, "ajustes": True, "kpis": True, "catalogos": True,
 }
 
 
@@ -88,7 +88,7 @@ def test_el_renglon_lleva_a_una_pagina_que_abre(client, usuario_factory, etiquet
 @pytest.mark.parametrize("etiqueta,ruta", RENGLONES)
 def test_sin_el_permiso_de_ajustes_no_se_ofrece(usuario_factory, etiqueta, ruta):
     """Mismo gate que la página: quien no puede entrar tampoco lo ve ofrecido."""
-    sin_ajustes = dict(TODOS_LOS_MODULOS, ajustes=False)
+    sin_ajustes = dict(TODOS_LOS_MODULOS, ajustes=False, kpis=False)
     menu = _pintar(usuario_factory(rol="disenador"), "/", permisos=sin_ajustes)
     assert f'href="{ruta}"' not in menu
 

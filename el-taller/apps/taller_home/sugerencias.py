@@ -88,12 +88,11 @@ def evaluar_y_persistir(user) -> int:
     Idempotente: si la sugerencia ya existe (en cualquier estado), no se duplica.
     Retorna número de sugerencias nuevas creadas.
     """
-    from .models import PreferenciaKPI, SugerenciaKPI
+    from .models import SugerenciaKPI
+    from .tablero import kpis_del_tablero
 
     creadas = 0
-    pref_ocultas = set(
-        PreferenciaKPI.objects.filter(usuario=user, visible=False).values_list("kpi_slug", flat=True)
-    )
+    en_tablero = {k.slug for k in kpis_del_tablero(user)}
 
     for regla in REGLAS:
         slug = regla["slug"]
@@ -103,8 +102,9 @@ def evaluar_y_persistir(user) -> int:
         # Se sugiere sólo lo que el usuario puede ver (y lo que la regla pide).
         if not kpi.visible_para(user) or not puede_ver(user, regla.get("permisos", ())):
             continue
-        # Si el usuario ya lo tiene visible explícitamente o lo descartó como sugerencia, skip.
-        if slug not in pref_ocultas and PreferenciaKPI.objects.filter(usuario=user, kpi_slug=slug, visible=True).exists():
+        # Si ya está en su tablero (por su rol o porque lo agregó), no se le
+        # sugiere: el mensaje «no lo estás viendo» sería falso (S-KPIs-V2).
+        if slug in en_tablero:
             continue
         if SugerenciaKPI.objects.filter(usuario=user, kpi_slug=slug).exists():
             continue

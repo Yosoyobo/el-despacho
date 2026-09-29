@@ -64,10 +64,38 @@ class KPI:
     calcular: Callable[[Any], dict[str, Any]]
     origen: str = "manual"
     estado_kpi: str = "activo"
+    # Cómo se juzga (ver `kpi_meta.py`). Los del catálogo original los toman de
+    # `kpi_meta.metadatos_de()` al registrarse; los nuevos los declaran aquí.
+    direccion: str = "sube"
+    acumula: str = ""
+    personal: bool = False
+    acotado: bool = False
+    formato: str = "numero"
+    # El mismo número repartido: `desglose("persona")` → `{usuario_pk: n}`,
+    # `desglose("cliente")` → `{cliente_pk: n}`. Es lo que permite ponerle
+    # meta a una persona o a un cliente. `desgloses` dice cuáles sabe dar.
+    desglose: Callable[[str], dict[int, float]] | None = None
+    desgloses: tuple[str, ...] = ()
 
     def visible_para(self, user) -> bool:
         """¿`user` puede ver este KPI? (sus permisos; super_admin siempre)."""
         return puede_ver(user, self.permisos)
+
+    def admite_meta(self, ambito: str) -> bool:
+        """¿Se le puede poner meta de este ámbito (`despacho|persona|cliente`)?
+
+        Una meta del despacho necesita un número del despacho (no «mis
+        tareas»); una por persona, un KPI personal o que se reparta por
+        persona; una por cliente, que se reparta por cliente."""
+        if self.direccion == "neutro":
+            return False
+        if ambito == "despacho":
+            return not self.personal
+        if ambito == "persona":
+            return self.personal or "persona" in self.desgloses
+        if ambito == "cliente":
+            return "cliente" in self.desgloses
+        return False
 
 
 # ── Helpers de cálculo (mantienen las queries simples y legibles) ───────────
@@ -728,6 +756,18 @@ KPIS += [
     for slug, titulo, descripcion, categoria, permisos, fn in catalogo_bi()
 ]
 
+# Cómo se juzga cada KPI del catálogo original (dirección, periodo, formato).
+from dataclasses import replace as _replace  # noqa: E402
+
+from .kpi_meta import metadatos_de  # noqa: E402
+
+KPIS = [_replace(k, **metadatos_de(k.slug)) for k in KPIS]
+
+# Los de desempeño declaran sus propios metadatos: van después del `replace`.
+from .kpis_desempeno import catalogo_desempeno  # noqa: E402
+
+KPIS += catalogo_desempeno()
+
 
 CATEGORIAS = (
     ("operacion", "🏗 Operación"),
@@ -744,6 +784,12 @@ CATEGORIAS = (
     ("dinero", "💰 Dinero"),
     ("checador", "🕐 Checador"),
     ("gente", "🧑‍🔧 La gente"),
+    # Los de desempeño (2026-09-29, `kpis_desempeno.py`).
+    ("ventas", "📈 Ventas y cobranza"),
+    ("entregas", "🎯 Entregas y equipo"),
+    ("rentabilidad", "📊 Rentabilidad"),
+    ("control", "🧾 Control y papeleo"),
+    ("rutas", "🗺 Rutas"),
 )
 
 
@@ -784,6 +830,31 @@ def _kpis_custom_para(user) -> list[KPI]:
     return salida
 
 
+def _kpis_custom_equipo() -> list[KPI]:
+    """Los KPIs del Chalán aprobados para el equipo: esos sí son números del
+    despacho y entran a la foto diaria (los personales no)."""
+    from lib.kpi_dsl import ejecutar
+
+    from .models import KPICustom
+
+    salida: list[KPI] = []
+    for kpi_db in KPICustom.objects.filter(estado="activo", alcance="equipo").only(
+        "slug", "titulo", "descripcion", "categoria", "definicion_json",
+    ):
+        definicion = dict(kpi_db.definicion_json)
+
+        def _calc(usuario, _def=definicion):
+            return ejecutar(_def, usuario=usuario)
+
+        salida.append(KPI(
+            slug=f"custom-{kpi_db.slug}", titulo=kpi_db.titulo,
+            descripcion=kpi_db.descripcion or "KPI personalizado.",
+            categoria=kpi_db.categoria or "custom", permisos=(), calcular=_calc,
+            origen="custom_chalan",
+        ))
+    return salida
+
+
 def models_Q_personal_o_equipo(user):
     """Q: (alcance='personal' AND autor=user) OR alcance='equipo'."""
     from django.db.models import Q
@@ -792,8 +863,17 @@ def models_Q_personal_o_equipo(user):
 
 def kpis_aplicables(user) -> list[KPI]:
     """El catálogo que `user` puede ver —por sus permisos (§4 #20)— más sus
-    KPIs del Chalán (S2b.5)."""
-    return [k for k in KPIS if k.visible_para(user)] + _kpis_custom_para(user)
+    KPIs del Chalán (S2b.5), sin los que La Gerencia apagó (S-KPIs-V2) y con
+    la dirección que La Gerencia haya elegido."""
+    from .tablero import apagados, configs, efectivo
+
+    cfgs = configs()
+    fuera = apagados(cfgs)
+    return [
+        efectivo(k, cfgs)
+        for k in [*[k for k in KPIS if k.visible_para(user)], *_kpis_custom_para(user)]
+        if k.slug not in fuera
+    ]
 
 
 def kpis_aplicables_a_rol(rol: str, *, user=None) -> list[KPI]:

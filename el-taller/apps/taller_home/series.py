@@ -179,28 +179,127 @@ def es_raro(kpi_slug: str, valor_hoy, *, dias: int = 30) -> dict:
     }
 
 
-def meta_sugerida(kpi_slug: str, *, dias: int = 90) -> dict:
+def _cierres(kpi_slug: str, acumula: str, *, periodos: int = 3) -> list[Decimal]:
+    """El último valor anotado de cada uno de los `periodos` anteriores.
+
+    Un KPI que acumula («ingresos del mes») vale lo que marcó el último día de
+    cada periodo; la mediana de sus fotos diarias sería la de medio mes."""
+    from apps.taller_home.models import SnapshotKPI
+
+    hoy = date.today()
+    inicio_actual = _inicio_periodo(acumula, hoy)
+    filas = SnapshotKPI.objects.filter(
+        kpi_slug=kpi_slug, fecha__lt=inicio_actual,
+        fecha__gte=inicio_actual - timedelta(days=_largo(acumula) * (periodos + 1)),
+    ).order_by("fecha").values_list("fecha", "valor")
+    ultimo: dict = {}
+    for fecha, valor in filas:
+        ultimo[_inicio_periodo(acumula, fecha)] = valor
+    return [ultimo[k] for k in sorted(ultimo)][-periodos:]
+
+
+def _inicio_periodo(acumula: str, dia: date) -> date:
+    if acumula == "semana":
+        return dia - timedelta(days=dia.weekday())
+    if acumula == "mes":
+        return dia.replace(day=1)
+    if acumula == "ano":
+        return dia.replace(month=1, day=1)
+    return dia
+
+
+def _largo(acumula: str) -> int:
+    return {"dia": 1, "semana": 7, "mes": 31, "ano": 366}.get(acumula, 30)
+
+
+def meta_sugerida(kpi_slug: str, *, dias: int = 90, acumula: str = "",
+                  direccion: str = "sube") -> dict:
     """Una meta realista a partir de lo que de verdad se ha hecho.
 
-    Se apoya en la mediana de los últimos meses y le pide un poco más (10%).
-    Es un punto de partida para que alguien decida, no una imposición: la meta
-    la aprueba una persona.
+    Se apoya en la mediana de lo hecho y pide un poco más (10%); si el KPI
+    mejora bajando, un 10% menos. Para un KPI que acumula, «lo hecho» es el
+    cierre de cada periodo anterior. Es un punto de partida para que alguien
+    decida, no una imposición: la meta la aprueba una persona.
     """
     hoy = date.today()
-    historia = _valores(kpi_slug, hoy - timedelta(days=dias), hoy)
-    if len(historia) < MINIMO_PARA_JUZGAR:
+    if acumula:
+        historia = _cierres(kpi_slug, acumula)
+        minimo = 2
+    else:
+        historia = _valores(kpi_slug, hoy - timedelta(days=dias), hoy)
+        minimo = MINIMO_PARA_JUZGAR
+    if len(historia) < minimo:
         return {"hay_datos": False, "muestras": len(historia)}
     base = _mediana(historia)
     if base is None:
         return {"hay_datos": False, "muestras": len(historia)}
+    factor = Decimal("0.90") if direccion == "baja" else Decimal("1.10")
     return {
         "hay_datos": True,
         "muestras": len(historia),
         "tipico": float(base),
-        "sugerida": float((base * Decimal("1.10")).quantize(Decimal("0.01"))),
-        "mejor": float(max(historia)),
-        "peor": float(min(historia)),
+        "sugerida": float((base * factor).quantize(Decimal("0.01"))),
+        "mejor": float(min(historia) if direccion == "baja" else max(historia)),
+        "peor": float(max(historia) if direccion == "baja" else min(historia)),
     }
+
+
+def _mes_anterior(dia: date) -> date:
+    import calendar
+
+    anio, mes = (dia.year, dia.month - 1) if dia.month > 1 else (dia.year - 1, 12)
+    return dia.replace(year=anio, month=mes, day=min(dia.day, calendar.monthrange(anio, mes)[1]))
+
+
+def comparar_mismo_punto(kpi_slug: str, acumula: str, valor_hoy=None) -> dict:
+    """Un KPI que acumula, contra el MISMO punto del periodo anterior.
+
+    «Ingresos del mes» al día 15 contra lo que llevaba el 15 del mes pasado.
+    Comparar contra la mediana de 30 días mezclaría inicios y cierres de mes.
+    """
+    from apps.taller_home.models import SnapshotKPI
+
+    hoy = date.today()
+    if acumula == "mes":
+        antes = _mes_anterior(hoy)
+    elif acumula == "ano":
+        antes = hoy.replace(year=hoy.year - 1) if not (hoy.month == 2 and hoy.day == 29) \
+            else hoy.replace(year=hoy.year - 1, day=28)
+    else:
+        antes = hoy - timedelta(days=_largo(acumula))
+    fila = SnapshotKPI.objects.filter(kpi_slug=kpi_slug, fecha=antes).first()
+    if valor_hoy is None:
+        hoy_fila = SnapshotKPI.objects.filter(kpi_slug=kpi_slug, fecha=hoy).first()
+        valor_hoy = hoy_fila.valor if hoy_fila else None
+    if fila is None or valor_hoy is None:
+        return {"hay_datos": False, "actual": None, "anterior": None,
+                "cambio_pct": None, "direccion": "sin_datos", "contra": antes.isoformat()}
+    a, p = Decimal(str(valor_hoy)), fila.valor
+    if p == 0:
+        return {"hay_datos": True, "actual": float(a), "anterior": 0.0,
+                "cambio_pct": None, "direccion": "sin_base", "contra": antes.isoformat()}
+    cambio = (a - p) / abs(p) * 100
+    return {
+        "hay_datos": True, "actual": float(a), "anterior": float(p),
+        "cambio_pct": round(float(cambio), 1),
+        "direccion": "subio" if cambio > 0 else ("bajo" if cambio < 0 else "igual"),
+        "contra": antes.isoformat(),
+    }
+
+
+def juzgar(kpi, valor_hoy) -> dict:
+    """Comparación y rareza del KPI con el criterio que le toca.
+
+    - Acumula → contra el mismo punto del periodo anterior, y sin «rareza»:
+      su número se reinicia cada periodo y la mediana diaria lo marcaría raro
+      cada vez que empieza el mes. A esos los juzga su meta.
+    - Saldo → contra el periodo anterior y contra su mediana.
+    """
+    if kpi.acumula:
+        return {"comparacion": comparar_mismo_punto(kpi.slug, kpi.acumula, valor_hoy),
+                "anomalia": {"raro": False, "motivo": "acumulado"}}
+    return {"comparacion": comparar(kpi.slug),
+            "anomalia": es_raro(kpi.slug, valor_hoy)}
 
 
 def resumen(kpi_slug: str, valor_actual=None) -> dict:

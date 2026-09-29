@@ -977,76 +977,7 @@ def sidebar_guardar(request):
     return redirect("ajustes-sidebar")
 
 
-# ── S-LC-Feedback-V5 c8: metas KPI ────────────────────────────────
-
-
-@requiere_permiso("ajustes", "acceder")
-def metas_kpi_panel(request):
-    # Sin `try`: un `except Exception` aquí escondió que la imagen de La
-    # Gerencia no traía `apps.taller_home` — el panel salía vacío en
-    # silencio y el guardado daba 500 (2026-09-29).
-    from apps.taller_home.models.meta_kpi import MetaKPI
-    existentes = {m.kpi_slug: m for m in MetaKPI.objects.all()}
-    # Slugs sugeridos (los más comunes); el super_admin puede agregar más
-    # escribiendo el slug en el form. Esto es lista guía, no un cerrado.
-    slugs_sugeridos = [
-        ("ingresos-mes", "Ingresos del mes"),
-        ("egresos-mes", "Egresos del mes"),
-        ("utilidad-mes", "Utilidad del mes"),
-        ("facturado-mes", "Facturado del mes"),
-        ("cxc-total", "Cuentas por cobrar (objetivo: bajar)"),
-        ("contaduria-utilidad-neta-mes", "Utilidad neta contable mes"),
-    ]
-    filas = []
-    for slug, label in slugs_sugeridos:
-        m = existentes.get(slug)
-        filas.append({
-            "slug": slug, "label": label,
-            "valor": m.valor if m else "",
-            "periodo": m.periodo if m else "mes",
-            "activa": m.activa if m else True,
-        })
-    return render(request, "ajustes/metas_kpi_panel.html", {"filas": filas})
-
-
-@requiere_permiso("ajustes", "acceder")
-@require_http_methods(["POST"])
-def metas_kpi_guardar(request):
-    from decimal import Decimal, InvalidOperation
-
-    from apps.taller_home.models.meta_kpi import MetaKPI
-    cambios = 0
-    for key in request.POST:
-        if not key.startswith("valor__"):
-            continue
-        slug = key[len("valor__"):]
-        valor_raw = (request.POST.get(key) or "").strip()
-        if not valor_raw:
-            # Vacío = borrar meta.
-            MetaKPI.objects.filter(kpi_slug=slug).delete()
-            cambios += 1
-            continue
-        try:
-            valor = Decimal(valor_raw.replace(",", ""))
-        except InvalidOperation:
-            continue
-        periodo = request.POST.get(f"periodo__{slug}", "mes")
-        activa = request.POST.get(f"activa__{slug}") == "1"
-        MetaKPI.objects.update_or_create(
-            kpi_slug=slug,
-            defaults={
-                "valor": valor, "periodo": periodo, "activa": activa,
-                "actualizado_por": request.user,
-            },
-        )
-        cambios += 1
-    emitir(EventoPortavoz(
-        tipo="meta_kpi.actualizada",
-        actor_id=request.user.pk, actor_email=request.user.email,
-        payload={"metas_actualizadas": cambios},
-    ))
-    messages.success(request, f"Metas de KPI guardadas ({cambios}).")
-    return redirect("ajustes-metas-kpi")
+# S-LC-Feedback-V5 c8 → S-KPIs-V2: las metas de KPI viven en `views_kpis.py`.
 
 
 # ── Configuración Fiscal (figuras fiscales editables) ────────────────────

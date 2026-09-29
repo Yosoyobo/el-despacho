@@ -11078,3 +11078,62 @@ Contenido de los documentos + la factura en La Imprenta.
   documento) y `formato_documentos` suma notas, firma, QR y nombre de archivo.
 
 **Deuda**: el PDF comercial de la factura no se guarda (se arma al pedirlo).
+### S-KPIs-V2 · 1 ✅ — VERSION 2026.09.17 (2026-09-29)
+
+Ronda de KPIs con Oscar (tras arreglar el 500 de metas, 2026.09.13). Sus respuestas:
+las cuatro familias de KPIs nuevos «y lo que sea que me falte y no esté viendo»;
+**catálogo + constructor** en La Gerencia; **«Gerencia arma, cada quien ajusta»**; metas
+**proporcionales**, con **dirección**, **por persona o cliente** y **aviso si van en
+riesgo**; el aviso a la persona de la meta o a quien configura KPIs; orden 1 → 2 → 3.
+«Arráncate … hazlos todos de jalón, no me molestes». Este deploy lleva las fases 1 y 2;
+el constructor (fase 3) va en el siguiente.
+
+Entregado:
+- **Cada KPI sabe cómo se juzga** (`kpis.KPI`): `direccion` (sube/baja/neutro),
+  `acumula` (dia/semana/mes/ano o saldo), `personal`, `acotado`, `formato`, y
+  `desglose(ambito)` + `desgloses` para repartir por persona/cliente. Los 92 del
+  catálogo original los toman de `kpi_meta.metadatos_de()` (candado: todo slug de
+  esas listas existe). `kpi_valor.numero_de()` saca el número de «$12,345» / «32%».
+- **Bug grande que se destapó:** la foto diaria se saltaba todo valor de texto → los KPIs
+  de dinero NUNCA tuvieron historia (tendencias, comparación, metas propuestas del dinero
+  no funcionaban). Ahora usa `numero_del_resultado`, se salta los personales y los
+  apagados, y fotografía los KPIs del Chalán de equipo.
+- **Modelos** (`taller_home` 0006 esquema / 0007 datos, Bug I): `ConfigKPI` (activo,
+  dirección, umbrales), `TableroKPI` (rol FK o `None` = por omisión, sembrado con los 8
+  de `COMPACT_KPI_SLUGS`), `MetaKPI` con `ambito`/`usuario`/`cliente`/`avisado_periodo`
+  y constraints condicionales. La 0007 borra las `PreferenciaKPI(visible=True, manual)`
+  que escribía el «guardar todo» (conserva ocultas, hero-*, custom-*, sugeridas y los 8).
+- **Tablero** (`tablero.py`): base = tableros de los roles (`roles_extra`, respeta «ver
+  como rol») o el por omisión − ocultos + agregados + KPIs del Chalán, filtrado por
+  permiso y apagados. El Inicio lo pinta con formato, semáforo, meta y sparkline de la
+  foto diaria. Perfil → Tablero guarda SÓLO diferencias con la base; reordenar valida.
+  Las sugerencias ya no ofrecen lo que ya está en el tablero.
+- **Metas** (`metas.py`): `evaluar()` pura — proporcional al avance del periodo (no se
+  juzga antes del 20%), tolerancia 15%, con «baja» como tope/presupuesto; estados
+  cumplida/en_camino/en_riesgo/excedida. `kpi_metas_avisar` (cron 07:03) avisa por El
+  Interfón (`categoria="metas_kpi"`) una vez por periodo y emite `meta_kpi.en_riesgo`.
+- **Series/curaduría:** los que acumulan se comparan contra el MISMO día del periodo
+  anterior y no se marcan «raros» (los juzga su meta); `meta_sugerida` usa el cierre de
+  periodos pasados y pide −10% si baja; `proponer_metas` ya no tiene 6 slugs fijos. La
+  curaduría pesa semáforo rojo y metas en riesgo y dice si un cambio «va mejor/peor».
+- **La Gerencia → Ajustes → KPIs** (`los_ajustes/views_kpis.py`): Catálogo (HTMX por
+  renglón), Tableros por rol (↑/↓, copiar el por omisión, vaciar, aviso si el rol no
+  tiene el permiso del dato) y Metas (con propuestas del Chalán). Permiso nuevo
+  **`kpis.configurar`** sembrado «como hoy» (`cuentas/0054`: quien tenía `ajustes.acceder`
+  por fila o por rol + super_admin; respeta revocaciones). Renglón propio en el menú
+  (también para quien sólo tiene KPIs). `/ajustes/metas-kpi/` redirige.
+- **45 KPIs nuevos** (`kpis_desempeno.py`, agente en paralelo): ventas y cobranza,
+  entregas y equipo, rentabilidad, control y papeleo, rutas/mandados/campañas/catálogo/
+  visitas/cartera; con desglose por persona o cliente donde el dato lo permite.
+- **El Chalán / MCP:** `metas_kpi`, `mi_tablero_kpis`, `configuracion_kpi` (gating
+  `kpis`) y la acción `fijar_meta_kpi`. **Hueco cerrado:** `serie_kpi`, `comparar_kpi` y
+  `serie_indicador` (MCP) entregaban la historia de cualquier KPI sin mirar permiso.
+
+Decisiones durables:
+- Un umbral o una meta vacíos no juzgan; 0 es un valor (regla «vacío hereda»).
+- La dirección elegida en Gerencia igual a la del catálogo no se guarda (sigue al código).
+- `kpis_aplicables()` ya aplica apagados y dirección: todo consumidor la hereda.
+- Meta de persona: KPI personal → su propio cálculo; si no, su parte del `desglose`.
+
+Deuda / siguiente (S-KPIs-V2 · 2): el constructor en La Gerencia sobre el DSL v2; los
+KPICustom aún se ven por todos (`permisos=()`): se arregla con `permisos_de()` del DSL v2.

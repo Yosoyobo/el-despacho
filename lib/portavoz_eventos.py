@@ -158,6 +158,10 @@ EventoTipo = Literal[
     "presupuesto_ia.rebasado",
     "presupuesto_ia.topado",
     "meta_kpi.actualizada",
+    # S-KPIs-V2: una meta de KPI entró en riesgo (una vez por periodo).
+    "meta_kpi.en_riesgo",
+    # S-KPIs-V2: La Gerencia cambió el catálogo o un tablero de KPIs.
+    "kpi.configuracion_actualizada",
     "buzon.nuevo_mensaje",
     "buzon.estado_cambiado",
     "buzon.respondido",

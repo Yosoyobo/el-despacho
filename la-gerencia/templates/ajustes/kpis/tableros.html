@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}KPIs · Tableros por rol — Ajustes{% endblock %}
+{% block contenido %}
+{% include "ajustes/kpis/_encabezado.html" %}
+
+<section class="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <p class="text-sm text-gray-600 dark:text-gray-300">
+        Lo que cada rol ve en <strong>«Tu tablero»</strong> del Inicio de El Taller, en este orden. Quien tiene varios roles ve la suma de sus tableros;
+        quien no tiene ningún rol con tablero ve el <strong>por omisión</strong>. Cada persona puede quitar o agregar KPIs desde Perfil → Tablero,
+        y siempre ve sólo lo que su permiso le deja ver.
+    </p>
+    <form method="get" class="campo-form mt-4 flex flex-wrap items-end gap-3">
+        <label class="block text-sm">
+            <span class="mb-1 block text-xs text-gray-500 dark:text-gray-400">Tablero de</span>
+            <select name="rol" onchange="this.form.submit()" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                <option value="omision" {% if not rol %}selected{% endif %}>Por omisión (quien no tiene tablero de su rol)</option>
+                {% for r in roles %}<option value="{{ r.pk }}" {% if rol and rol.pk == r.pk %}selected{% endif %}>{{ r.nombre }}</option>{% endfor %}
+            </select>
+        </label>
+        <noscript><button type="submit" class="btn-secundario">Ver</button></noscript>
+    </form>
+</section>
+
+<div id="tablero-rol">{% include "ajustes/kpis/_tablero.html" %}</div>
+{% endblock %}

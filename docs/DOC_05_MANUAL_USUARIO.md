@@ -5,6 +5,30 @@
 
 ---
 
+## Novedades — Tu tablero lo arma La Gerencia, metas que avisan y 45 indicadores nuevos (29 de septiembre de 2026)
+
+**«Tu tablero» del Inicio ya no es fijo.** En La Gerencia → **KPIs** se decide qué
+indicadores ve cada rol y en qué orden. Tú puedes quitar o agregar desde «Editar
+tablero»: ahora sí, lo que marcas aparece (antes sólo se veían ocho, marcaras lo que
+marcaras). Quien no tiene tablero de su rol ve el de siempre.
+
+**Metas que se miden bien.** Se le puede poner meta a cualquier indicador, para todo el
+despacho, para una persona o para un cliente. Se mide **proporcional al mes**: el día 15,
+llevar la mitad es ir bien, y la barra marca dónde deberías ir hoy. En lo que **mejor
+baja** (deudas, gastos, vencidos) la meta es un tope. Si una meta va en riesgo, **te llega
+un aviso una sola vez** por periodo.
+
+**Semáforo.** En La Gerencia se le pueden poner umbrales amarillo y rojo a cada
+indicador; en tu tablero se ve un punto de color junto al título.
+
+**45 indicadores nuevos** que el sistema ya sabía medir: cuántos días tarda en aprobarse
+una cotización y en cobrarse una factura, proyectos y tareas a tiempo, horas extra, margen
+y cobrado por cliente, gastos sin comprobante, banco sin conciliar, rutas, campañas y más.
+Y los indicadores de dinero **por fin guardan su historia** (antes no), así que ya se ve
+cómo vienen contra el mes pasado.
+
+**Con El Chalán:** «¿cómo va mi tablero?», «¿qué metas van en riesgo?» o «ponle meta de
+250 mil a los ingresos del mes».
 ## Novedades — Las notas se editan, la factura sale en PDF y los documentos llevan firma, folio y QR (29 de septiembre de 2026)
 
 **Las notas de la cotización ya se editan.** En Gerencia → Ajustes → Documentos
@@ -5681,6 +5705,100 @@ Todo lo de esta pantalla se le puede preguntar en el chat, con tus palabras:
 
 ---
 
+## Los KPIs: tablero, metas y umbrales
+
+**Para qué sirve.** Un KPI es un número que dice cómo va algo del despacho: ingresos
+del mes, cotizaciones pendientes, días que tarda en cobrarse una factura. El sistema
+mide más de 130. En La Gerencia se decide cuáles ve cada rol, hacia dónde es mejor
+cada uno, a qué meta se apunta y cuándo se pinta de amarillo o rojo.
+
+**Dónde:** La Gerencia → **KPIs** (en el menú, dentro de Los Ajustes). Hace falta el
+permiso **kpis · configurar**, que de entrada tiene quien ya abría Los Ajustes; se le
+puede dar a cualquiera desde El Directorio → Permisos.
+
+### Catálogo
+
+Todos los KPIs agrupados por tema, con un buscador. En cada uno:
+
+- **Prendido / apagado.** Apagar uno lo quita para todos: de los tableros, de
+  "Editar tablero" y de El Chalán. Su historia no se borra.
+- **Lo ve quien tiene.** El permiso del dato: el KPI de ingresos lo ve quien puede
+  ver La Tesorería. Ese permiso se da o se quita en El Directorio.
+- **Hacia dónde es mejor.** «Más es mejor» (ingresos), «Menos es mejor» (vencidos,
+  deudas, gastos) o «Sólo informa». Viene puesto; se puede cambiar.
+- **Umbrales amarillo y rojo.** Con «Más es mejor» son pisos: por debajo se pinta.
+  Con «Menos es mejor» son techos: por encima se pinta. Vacío = sin umbral (un 0 es
+  un umbral de verdad). En el Inicio se ve un punto de color junto al título.
+- **Último valor.** Lo que anotó la foto de las 7:00 de la mañana.
+
+### Tableros por rol
+
+Eliges un rol y armas su tablero: agregas KPIs de la lista (sólo salen los que ese
+rol puede ver) y los acomodas con **↑ ↓**. Quien tiene varios roles ve la suma de sus
+tableros, sin repetir. El **tablero por omisión** es el de quien no tiene ningún rol
+con tablero. Cada persona puede ajustar el suyo desde "Editar tablero" en su Inicio:
+lo que quita o agrega se respeta, y lo que no tocó sigue a lo que decida La Gerencia.
+
+### Metas
+
+Una meta se pone a **todo el despacho**, a **una persona** o a **un cliente**. Las de
+persona y cliente sólo se pueden en los KPIs que se reparten así (por ejemplo
+«Vendido este mes» por persona, o «Facturado por cliente»).
+
+- **Proporcional al periodo.** En un KPI que vuelve a cero cada mes («… del mes»),
+  el día 15 de un mes de 30 llevar la mitad es ir bien. La barra marca con una
+  rayita dónde deberías ir hoy. Un saldo («Cuentas por cobrar») se mide al corte.
+- **Con «Menos es mejor» la meta es un tope.** «Gastos del mes ≤ 80 mil»: gastar el
+  80% el día 5 ya es ir mal.
+- **Estados:** Cumplida · En camino · En riesgo · Se pasó.
+- **Aviso.** Cada mañana, si una meta va en riesgo, El Interfón avisa **una sola vez
+  por periodo**: a la persona de la meta, o si es del despacho o de un cliente, a
+  quien configura los KPIs. Cada quien puede apagar ese aviso en su perfil
+  (Notificaciones → «Metas de KPIs en riesgo»).
+- **Metas que propone El Chalán.** Salen de lo que de verdad se ha hecho (el cierre
+  de los meses anteriores) pidiendo un 10% más, o un 10% menos si menos es mejor.
+  Con «Usar» se llena el formulario; ninguna se activa sola.
+
+### Los KPIs nuevos (29 de septiembre de 2026)
+
+Se agregaron 45 indicadores que el sistema ya podía medir y nadie medía:
+
+- **Ventas y cobranza:** días en aprobarse y en mandarse una cotización, cotizaciones
+  que terminan facturadas, días en cobrar una factura, descuento promedio, rechazadas
+  del mes, por vencer en 7 días, vendido del mes por persona, ticket promedio,
+  facturado que ya se cobró, facturado por cliente.
+- **Entregas y equipo:** proyectos entregados a tiempo y su duración, tareas a tiempo
+  y abiertas por persona, horas extra del mes (contra el horario de cada quien),
+  correcciones del checador pendientes, checadas sin ubicación o fuera de línea,
+  horas del equipo del mes.
+- **Rentabilidad:** cobrado y margen por cliente, gasto ligado a proyecto, gasto por
+  cliente, horas por cliente, dependencia del mayor proveedor.
+- **Control y papeleo:** CFDI recibidos pendientes, líneas del banco sin conciliar,
+  gastos sin comprobante, meses sin cerrar, días en pagar un reembolso, facturas
+  canceladas, clientes sin RFC, proyectos sin documentos, gastos capturados con foto
+  y lecturas que hubo que corregir.
+- **Lo demás:** kilómetros de rutas, paradas puntuales, rutas sin cerrar, minutos en
+  asignar un repartidor, mandados cancelados, fallos de campañas, productos sin uso
+  en 90 días, visitas con resumen, prospectos en la cartera.
+
+Salen en el catálogo, en "Editar tablero" y en El Chalán como cualquier otro.
+
+### Cómo se usa con El Chalán
+
+- «¿cómo va mi tablero?» → *mi_tablero_kpis*
+- «¿qué metas van en riesgo?» o «¿cómo va la meta de ingresos?» → *metas_kpi*
+- «¿cómo está configurado el KPI de cuentas por cobrar?» → *configuracion_kpi*
+  (con el permiso de KPIs)
+- «ponle meta de 250 mil a los ingresos del mes» o «meta de 40 horas a la semana para
+  Ana» → te propone la acción y la aplicas con un clic (con el permiso de KPIs)
+- «¿qué debo ver hoy?» → *kpis_a_mirar_hoy*: ahora también cuenta las metas en
+  riesgo y los KPIs en rojo según sus umbrales.
+
+El catálogo, los tableros y los umbrales se cambian sólo en La Gerencia; El Chalán
+los consulta.
+
+---
+
 ## Dashboard (página de inicio)
 
 Lo primero que ves al entrar, ordenado de arriba hacia abajo:
@@ -5696,7 +5814,7 @@ Lo primero que ves al entrar, ordenado de arriba hacia abajo:
   - **Lo que buscas y ya no está en el tablero:** si tu búsqueda encuentra proyectos **fuera** de esas cuatro columnas, aparece abajo un segundo tablero, **«Fuera del tablero»**, con las otras cuatro columnas (**En pausa, Entregado, Cerrado, Cancelado**) y su contador cada una — así ves de un vistazo "0, 0, 1 y 0". Son resultados de búsqueda: se pican para abrirlos, pero no se arrastran ni cambian de estado desde ahí.
   - **Y no sólo proyectos:** debajo de ese tablero salen también **Clientes**, **Productos** y **Proveedores** que empaten con lo que escribiste, cada bloque con su contador y un enlace para verlos todos en su pantalla. Busca con los mismos criterios de cada módulo, así que un **cliente** aparece aunque todavía no tenga proyectos (y también por su razón social de facturación, su RFC o el nombre de un contacto), y un **producto** se encuentra por el nombre con el que se vendió en algún proyecto, aunque en el catálogo se llame distinto. Si no tienes acceso a Clientes o a Productos, ese bloque simplemente no aparece.
 - **Calendario:** el mes actual y el siguiente lado a lado, igual que la página de Calendario, con los eventos del día visibles.
-- **Tu tablero (KPIs):** ocho indicadores del negocio; los tres financieros traen una mini-gráfica de los últimos seis meses. Puedes ocultarlos o reordenarlos (arrastrando) desde "Editar tablero", y pedirle KPIs a la medida al asistente desde "KPIs custom".
+- **Tu tablero (KPIs):** los indicadores que La Gerencia eligió para tu rol (quien no tiene tablero de su rol ve el «por omisión», que arranca con los ocho de siempre). Cada tarjeta trae su número en su forma (pesos, porcentaje, días, horas), un **punto de color** si La Gerencia le puso umbrales, y la **barra de su meta** si tiene una, con lo que se esperaba llevar hoy. Los tres financieros traen la mini-gráfica de seis meses y los demás, la de sus últimos 30 días en cuanto tienen historia. Desde "Editar tablero" quitas lo que no te sirve y agregas cualquier otro KPI que tu permiso te deje ver; las tarjetas se reordenan arrastrando. Ver **Los KPIs: tablero, metas y umbrales**.
 
 ---
 
@@ -7435,7 +7553,7 @@ Atajo desde el sidebar del Taller que te lleva a La Gerencia. Ahí configuras:
 - **Cobranza** (recordatorios de pago automáticos a clientes).
 - **Catálogos** (categorías, centros de costo).
 - **Orden del sidebar** para todo el equipo.
-- **KPIs** (metas de ingresos/egresos/utilidad del mes con barra de progreso).
+- **KPIs** — catálogo de todos los indicadores (prender/apagar, hacia dónde es mejor, umbrales), tablero de cada rol y metas. Se abre con el permiso **kpis · configurar**. Ver **Los KPIs: tablero, metas y umbrales**.
 - **Directorio** (usuarios, sus permisos individuales, roles extra personalizados).
 - **Chalanes** (qué proveedor de IA usa cada estación, cadena de fallback).
 - **El Site** (monitoreo del servidor, integraciones, backups).
