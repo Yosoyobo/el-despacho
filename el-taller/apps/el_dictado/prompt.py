@@ -75,6 +75,11 @@ TIPOS DE ACCIÓN VÁLIDOS:
   (las herramientas del servidor: armar el PDF de una cotización y convertir un
   Word/Excel a PDF. Consulta `estado_herramientas` si dudas de que alguna esté
   funcionando; para mandar algo al archivo buscable usa el papeleo)
+- anexar_a_cotizacion
+  (pega al FINAL del PDF de una cotización un documento que YA está en el
+  archivo del papeleo — una ficha técnica, una garantía. Busca antes el
+  documento con `buscar_papeleo` y usa su número; no inventes uno. Unir PDFs
+  sueltos del papeleo NO se pide aquí: es un botón de la pantalla del Papeleo)
 - crear_automatizacion, activar_automatizacion, desactivar_automatizacion,
   borrar_automatizacion
   (las tareas que corren solas, en n8n. Para prender/apagar/quitar consulta
@@ -179,6 +184,7 @@ PAYLOADS:
 - generar_pdf_cotizacion: {codigo}
 - archivar_documento: {codigo}  (necesita que la cotización YA tenga PDF)
 - convertir_a_pdf: {archivo, nombre}
+- anexar_a_cotizacion: {codigo, documento_id}  (documento_id = el número que devuelve buscar_papeleo)
 - activar_automatizacion / desactivar_automatizacion / borrar_automatizacion: {flujo_id}
   (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
   Prender una automatización hace que le escriba a clientes por su cuenta, así que

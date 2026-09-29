@@ -194,6 +194,9 @@ def _h_detalle_cotizacion(args: dict, usuario) -> dict:
         "cliente": c.cliente.razon_social if c.cliente_id else None,
         "estado": getattr(c, "estado_visible", c.get_estado_display()),
         "total": getattr(c, "total", None),
+        # Sep28: lo que va pegado al final del PDF, en ese orden. Así el Chalán
+        # puede contestar «¿ya lleva la ficha técnica?» sin abrir el documento.
+        "anexos": [a.nombre for a in c.anexos.order_by("orden", "pk")],
         "link": f"/cotizaciones/{c.pk}/",
     }
 
