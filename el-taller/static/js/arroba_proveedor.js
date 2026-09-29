@@ -110,6 +110,9 @@
     }).catch(function () { /* sin red: el gasto se guarda igual, sin proveedor */ });
   }
 
+  // Buscar sólo LEE lo escrito: no se pausa a media letra (en Android el teclado
+  // compone cada palabra y el «@» dejaría de sugerir hasta el espacio). Lo que
+  // sí respeta la composición es ELEGIR, que reescribe el campo (keydown).
   document.addEventListener('input', function (e) {
     var input = e.target;
     if (!input || !input.matches || !input.matches('[data-arroba-proveedor]')) return;
@@ -122,6 +125,9 @@
 
   document.addEventListener('keydown', function (e) {
     if (!pop || !activo) return;
+    // Enter a media letra (ñ con Option+n, ´ + a) es del teclado: si aquí
+    // eligiera, reescribiría el campo y la letra se perdería.
+    if (window.despachoComponiendo ? window.despachoComponiendo(e) : (e.isComposing || e.keyCode === 229)) return;
     if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); pintar(); e.preventDefault(); }
     else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); pintar(); e.preventDefault(); }
     else if (e.key === 'Enter') { if (items.length) { elegir(hi); e.preventDefault(); } }

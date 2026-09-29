@@ -1,6 +1,16 @@
 // Widgets de formulario TailAdmin — Wave 2 del arco S-TailAdmin-Sweep.
 // Vanilla JS, sin librería. Enchufa los partials `_tags_input.html`,
 // `_file_upload.html` y el combobox `[data-select-buscable]` (LC Buzón §4).
+// ¿El teclado está a media letra? (ñ con Option+n, acento ´ + a). La guarda
+// completa vive en ui.js; ésta es la de respaldo si ui.js no cargó.
+// OJO con el nombre: una `function` suelta en un script clásico se vuelve
+// propiedad de `window`. Si se llamara `despachoComponiendo` PISARÍA la de
+// ui.js (que carga antes) y se llamaría a sí misma sin fin en cada tecla.
+function fwComponiendo(e) {
+  if (window.despachoComponiendo) return window.despachoComponiendo(e);
+  return !!(e && (e.isComposing || e.keyCode === 229));
+}
+
 (function () {
   'use strict';
 
@@ -45,6 +55,8 @@
     }
 
     typer.addEventListener('keydown', function (e) {
+      // Enter a media letra confirma el acento, no agrega la etiqueta.
+      if (fwComponiendo(e)) return;
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
         add();
@@ -218,8 +230,12 @@
       items[resaltado].scrollIntoView({ block: 'nearest' });
     }
 
+    // Filtrar sólo LEE lo escrito: no se pausa a media letra (en Android el
+    // teclado compone cada palabra y el buscador se congelaría hasta el espacio).
     input.addEventListener('input', function () { pintar(input.value); });
     input.addEventListener('keydown', function (e) {
+      // Enter/Esc a media letra son del teclado (confirmar o soltar el acento).
+      if (fwComponiendo(e)) return;
       if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }
       else if (e.key === 'Enter') {
@@ -267,6 +283,7 @@
   }, true);
 
   document.addEventListener('keydown', function (e) {
+    if (fwComponiendo(e)) return;
     var sel = document.activeElement;
     if (!aplica(sel)) return;
     if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') &&
@@ -492,6 +509,7 @@
 
     input.addEventListener('input', pintar);
     input.addEventListener('keydown', function (e) {
+      if (fwComponiendo(e)) return;   // Esc suelta el acento, no cierra
       if (e.key === 'Escape') { e.preventDefault(); cerrar(); }
     });
 

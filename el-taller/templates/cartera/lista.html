@@ -53,7 +53,7 @@
 
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <div class="overflow-x-auto">
-        <table class="min-w-[640px] md:min-w-full text-sm">
+        <table data-tabla-movil class="min-w-[640px] md:min-w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
                 {% if editar_inline %}
                 <tr>
@@ -86,7 +86,7 @@
 <details class="mt-6 rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
     <summary class="cursor-pointer px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">Clientes archivados ({{ archivados_lista|length }})</summary>
     <div class="overflow-x-auto border-t border-gray-100 dark:border-gray-800">
-        <table class="min-w-[640px] md:min-w-full text-sm">
+        <table data-tabla-movil="Nombre|Contacto|Teléfono|Proyectos|Estado" class="min-w-[640px] md:min-w-full text-sm">
             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                 {% include "cartera/_filas.html" with clientes=archivados_lista %}
             </tbody>

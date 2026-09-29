@@ -25,7 +25,7 @@ formset del proyecto sigue sin viajar. El botón de archivar sí puede quedarse 
         —eso forzaba scroll horizontal en el celular—. En pantalla chica se esconden
         «Asignada a» y «Prioridad» (viven en el detalle de la tarea) y quedan las dos
         columnas que se operan desde aquí: el título y el estado.{% endcomment %}
-        <table class="w-full text-sm">
+        <table data-tabla-movil class="w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
                 <tr>{% if puede_editar %}<th class="w-8 px-1 py-2.5"><span class="sr-only">Ordenar</span></th>{% endif %}<th class="px-3 py-2.5 text-left sm:px-5">Tarea</th><th class="hidden px-5 py-2.5 text-left md:table-cell">Asignada a</th><th class="px-3 py-2.5 text-left sm:px-5">Estado</th><th class="hidden px-5 py-2.5 text-left sm:table-cell">Prioridad</th>{% if puede_editar %}<th class="px-2 py-2.5 text-right sm:px-3"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
             </thead>

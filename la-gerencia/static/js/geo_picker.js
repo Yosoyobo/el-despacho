@@ -294,6 +294,8 @@
       return false;
     }
 
+    // Buscar sólo LEE lo escrito y pinta la lista aparte: no se pausa a media
+    // letra (en Android el teclado compone cada palabra completa).
     box.addEventListener("input", function () {
       var q = box.value.trim();
       if (tryCoords(q)) { b.cancel(); return; }
@@ -311,6 +313,8 @@
     // es salto de línea). Sin mapa (modo texto) no se secuestra el Enter.
     if (autoPaste && box.tagName === "INPUT") {
       box.addEventListener("keydown", function (e) {
+        // Enter a media letra (Option+n, ´) confirma el acento: no busca.
+        if (window.despachoComponiendo ? window.despachoComponiendo(e) : (e.isComposing || e.keyCode === 229)) return;
         if (e.key !== "Enter") return;
         e.preventDefault();
         var q = box.value.trim();
