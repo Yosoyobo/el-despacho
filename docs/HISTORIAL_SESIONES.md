@@ -11052,7 +11052,33 @@ reembolso, orden de trabajo, recibo de nómina; orden de compra y portada. La vi
 previa es hoja continua (los cortes exactos, en el PDF de prueba); una imagen nueva
 se ve al guardarla.
 
-### S-KPIs-V2 · 1 ✅ — VERSION 2026.09.16 (2026-09-29)
+### S-Imprenta · Deploy 2 ✅ — VERSION 2026.09.16 (2026-09-29)
+
+Contenido de los documentos + la factura en La Imprenta.
+- **Notas editables**: tipo de campo `NOTAS` (`[{id, texto, activa}]`, ids estables
+  `n1…n7` de fábrica = las de siempre) en la sección «Notas» del tipo, con permiso
+  propio `editar_notas`; el guardado filtra **por sección** (`_claves_permitidas`).
+  `apps.cotizaciones.notas.notas_para(cot, cfg)`: globales activas − `notas_omitidas`
+  + `notas_extra` + forma de pago (apagable). Campos nuevos en `Cotizacion`
+  (`0021_notas_de_la_imprenta`), heredados a la versión siguiente y al duplicar;
+  controles en el recuadro «Documento» (`documento_opciones`, campos `nota` y
+  `notas_extra`, ids validados).
+- **Por tipo** (`DefinicionTipo.secciones`): firma/aceptación (`_firmas.html`),
+  folio/vigencia/QR (`_folio.html`, `imprenta/qr.py` con `segno` → SVG `data:`;
+  el QR del portal NUNCA lleva llave), marcas por estado (`Marca`,
+  `Config.marca_de`), patrón del nombre (`Config.nombre_archivo`) y PDF/A.
+  El QR es visual: no va en la versión de Google.
+- **Factura**: `FACTURA` en `imprenta/tipos.py`, plantilla movida a
+  `imprenta/templates/facturacion/pdf.html` y rehecha con `e.*` (la leyenda «no es
+  un CFDI» no se apaga), `services.pdf_comercial()` (Gotenberg, sin guardar),
+  ruta `facturacion:pdf-comercial`, recuadro «Documento comercial» en el detalle,
+  el correo adjunta el comercial si no hay CFDI. Marca por estado (PAGADA,
+  CANCELADA, VENCIDA, BORRADOR) y PDF/A de fábrica.
+- El Chalán/MCP: `enlace_documento(tipo, codigo)` (gating por el módulo del
+  documento) y `formato_documentos` suma notas, firma, QR y nombre de archivo.
+
+**Deuda**: el PDF comercial de la factura no se guarda (se arma al pedirlo).
+### S-KPIs-V2 · 1 ✅ — VERSION 2026.09.17 (2026-09-29)
 
 Ronda de KPIs con Oscar (tras arreglar el 500 de metas, 2026.09.13). Sus respuestas:
 las cuatro familias de KPIs nuevos «y lo que sea que me falte y no esté viendo»;

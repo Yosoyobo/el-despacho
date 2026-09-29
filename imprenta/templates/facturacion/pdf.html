@@ -1,0 +1,147 @@
+{% load forms_helpers imprenta %}<!DOCTYPE html>
+{% comment %}
+La factura comercial (NO es el CFDI) — La Imprenta, 2026-09-29.
+
+Mismo lenguaje que la cotización: tablas con estilos en línea (así la entiende
+también la conversión de Google, que es el respaldo) y todo lo visual sale de
+`e.*` (`imprenta.config.Estilo`), para que La Gerencia lo pueda cambiar. Qué
+partes lleva (`b`) y cómo se llama cada columna (`r`) salen de la pestaña
+«Factura» de Ajustes → Documentos.
+
+Lo que NO se apaga: el folio, el total y la leyenda «Documento comercial — no es
+un CFDI». Quitarla haría que el documento se confundiera con el fiscal, que lo
+timbra el contador aparte (§4 #16).
+{% endcomment %}
+<html lang="es">
+<head><meta charset="utf-8"><title>{{ titulo_documento }}</title>
+{{ e.fuentes_css|safe }}
+{% if preview %}{% include "imprenta/_pantalla.html" %}{% endif %}
+</head>
+<body style="{{ e.cuerpo }}">
+{% if preview %}
+{% if url_descargar and not sin_barra %}
+<div class="lc-barra">
+  <span>Vista previa · <strong>{{ nombre_archivo }}</strong></span>
+  <span>
+    <a class="lc-btn" href="{{ url_descargar }}" download="{{ nombre_archivo }}.pdf">&#11015; Bajar PDF</a>
+    <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
+  </span>
+</div>
+{% endif %}
+<div class="lc-hoja">
+{% endif %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">
+    <tr>
+      <td style="border:none; width:33%; vertical-align:top; text-align:left;">
+        {% if b.logo and logo_url and e.logo_alinea == "left" %}{% include "imprenta/_logo.html" with alinea="left" %}{% endif %}
+        {% if b.fecha %}{{ fac.fecha_emision|date:"j" }} {{ fac.fecha_emision|date:"F"|capfirst }} {{ fac.fecha_emision|date:"Y" }}{% endif %}
+      </td>
+      <td style="border:none; width:34%; vertical-align:top;">
+        {% if b.logo and logo_url and e.logo_alinea == "center" %}{% include "imprenta/_logo.html" with alinea="center" %}{% endif %}
+      </td>
+      <td style="border:none; width:33%; vertical-align:top; text-align:right;">
+        {% if b.logo and logo_url and e.logo_alinea == "right" %}{% include "imprenta/_logo.html" with alinea="right" %}{% endif %}
+        <div style="font-weight:bold; {{ e.total }}">FACTURA {{ fac.folio_display }}</div>
+        <div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">{{ fac.codigo }}</div>
+        <div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">Documento comercial — no es un CFDI</div>
+      </td>
+    </tr>
+  </table>
+
+  {% include "imprenta/_datos_despacho.html" %}
+  <p style="{{ e.titulo }} margin:0 0 8pt 0;">{{ titulo_documento }}</p>
+  {% include "imprenta/_folio.html" %}
+  {% if texto_intro %}<p style="margin:0 0 8pt 0;">{{ texto_intro }}</p>{% endif %}
+
+  {% if b.cliente or b.fechas or b.proyecto %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt; font-size:{{ e.tabla_pt }}pt;">
+    <tr>
+      <td style="border:none; width:60%; vertical-align:top;">
+        {% if b.cliente %}
+        <div style="{{ e.suave_css }}">{{ r.rotulo_cliente }}</div>
+        <div style="font-weight:bold;">{{ fac.cliente.razon_social }}</div>
+        {% if fac.cliente.rfc %}<div>RFC: {{ fac.cliente.rfc }}</div>{% endif %}
+        {% if fac.cliente.email_contacto %}<div>{{ fac.cliente.email_contacto }}</div>{% endif %}
+        {% if fac.cliente.telefono %}<div>{{ fac.cliente.telefono }}</div>{% endif %}
+        {% endif %}
+      </td>
+      <td style="border:none; vertical-align:top; text-align:right;">
+        {% if b.fechas %}
+        <div>Emisión: {{ fac.fecha_emision|date:"d/m/Y" }}</div>
+        <div>Vencimiento: {{ fac.fecha_vencimiento|date:"d/m/Y" }}</div>
+        <div>Moneda: {{ fac.moneda }}</div>
+        {% endif %}
+        {% if b.proyecto and fac.proyecto %}<div>Proyecto: {% firstof fac.proyecto.nombre fac.proyecto.codigo %}</div>{% endif %}
+      </td>
+    </tr>
+  </table>
+  {% endif %}
+
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+    <tr>
+      <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.descripcion }}</td>
+      <td style="{{ e.th }} width:10%; text-align:right; {{ e.th_letra }}">{{ r.cantidad }}</td>
+      <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.precio }}</td>
+      {% if b.descuento %}<td style="{{ e.th }} width:10%; text-align:right; {{ e.th_letra }}">{{ r.descuento }}</td>{% endif %}
+      <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.importe }}</td>
+    </tr>
+    {% for it in items %}
+    <tr style="{{ e|rayado:forloop.counter }}">
+      <td style="{{ e.td }} text-align:left;">{{ it.descripcion|default:"—" }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ it.cantidad|floatformat:"-2" }}</td>
+      <td style="{{ e.td }} text-align:right;">{{ it.precio_unitario|dinero }}</td>
+      {% if b.descuento %}<td style="{{ e.td }} text-align:right;">{% if it.descuento_porcentaje %}{{ it.descuento_porcentaje|floatformat:"-2" }}%{% else %}—{% endif %}</td>{% endif %}
+      <td style="{{ e.td }} text-align:right;">{{ it.subtotal|dinero }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" style="{{ e.td }} {{ e.suave_css }}">Sin conceptos.</td></tr>
+    {% endfor %}
+  </table>
+
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">
+    <tr>
+      <td style="border:none; width:50%;">&nbsp;</td>
+      <td style="border:none; vertical-align:top;">
+        <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:{{ e.tabla_pt }}pt;">
+          <tr><td style="border:none; padding:1pt 5pt;">{{ r.rotulo_subtotal }}</td><td style="border:none; padding:1pt 5pt; text-align:right;">{{ totales.subtotal_items|dinero }}</td></tr>
+          {% if totales.descuento_global %}
+          <tr><td style="border:none; padding:1pt 5pt;">Descuento global ({{ fac.descuento_global_porcentaje|floatformat:"-2" }}%)</td><td style="border:none; padding:1pt 5pt; text-align:right;">-{{ totales.descuento_global|dinero }}</td></tr>
+          {% endif %}
+          {% if totales.parcialidad_descuento %}
+          <tr><td style="border:none; padding:1pt 5pt;">Facturado al {{ totales.porcentaje_a_facturar|floatformat:0 }}% (parcialidad)</td><td style="border:none; padding:1pt 5pt; text-align:right;">-{{ totales.parcialidad_descuento|dinero }}</td></tr>
+          {% endif %}
+          {% for imp in totales.impuestos_detalle %}
+          <tr><td style="border:none; padding:1pt 5pt;">{{ imp.nombre }}{% if imp.tipo == "retencion" %} ret.{% endif %}</td><td style="border:none; padding:1pt 5pt; text-align:right;">{% if imp.tipo == "retencion" %}-{% endif %}{{ imp.monto|dinero }}</td></tr>
+          {% endfor %}
+          <tr><td style="border:none; padding:3pt 5pt; font-weight:bold; {{ e.total }}">{{ r.rotulo_total }}</td><td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ totales.total|dinero }} {{ fac.moneda }}</td></tr>
+          {% if b.saldo and fac.monto_cobrado %}
+          <tr><td style="border:none; padding:1pt 5pt;">Cobrado</td><td style="border:none; padding:1pt 5pt; text-align:right;">-{{ fac.monto_cobrado|dinero }}</td></tr>
+          <tr><td style="border:none; padding:1pt 5pt; font-weight:bold;">Saldo pendiente</td><td style="border:none; padding:1pt 5pt; text-align:right; font-weight:bold;">{{ fac.saldo_pendiente|dinero }}</td></tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  {% if b.pago_en_linea and link_pago %}
+  <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+    <tr><td style="{{ e.td }} padding:6pt;">
+      <div style="font-weight:bold; {{ e.suave_css }}">PAGO EN LÍNEA</div>
+      <div>Puede pagar el saldo con tarjeta o MercadoPago en: <a href="{{ link_pago }}" style="word-break:break-all;">{{ link_pago }}</a></div>
+    </td></tr>
+  </table>
+  {% endif %}
+
+  {% if b.notas and fac.notas %}
+  <p style="margin:0 0 2pt 0; font-size:{{ e.notas_pt }}pt; font-weight:bold; {{ e.suave_css }}">{{ r.rotulo_notas }}</p>
+  <div style="margin-bottom:10pt; font-size:{{ e.notas_pt }}pt; white-space:pre-line;">{{ fac.notas }}</div>
+  {% endif %}
+  {% if b.terminos and fac.terminos %}
+  <div style="margin-bottom:10pt; font-size:{{ e.notas_pt }}pt; {{ e.suave_css }} white-space:pre-line;">{{ fac.terminos }}</div>
+  {% endif %}
+
+  {% if texto_cierre %}<p style="margin:0 0 8pt 0;">{{ texto_cierre }}</p>{% endif %}
+  {% include "imprenta/_firmas.html" %}
+{% if preview %}</div>{% endif %}
+</body>
+</html>

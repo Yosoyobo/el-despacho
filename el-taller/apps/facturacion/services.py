@@ -7,6 +7,7 @@ desde la app `contaduria` para mantener la dependencia unidireccional.
 
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -18,6 +19,8 @@ from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
 from .models import Factura, FacturaImpuesto, FacturaItem
+
+logger = logging.getLogger(__name__)
 
 CERO = Decimal("0.00")
 
@@ -47,16 +50,148 @@ def emitir_actualizada(fac: Factura, actor):
     _emitir("factura.actualizada", fac, actor)
 
 
-def construir_html_pdf(fac: Factura) -> str:
-    """Renderiza el HTML imprimible de la factura (template `pdf.html`)."""
+def construir_html_pdf(fac: Factura, *, config=None, preview: bool = False,
+                       sin_barra: bool = False) -> str:
+    """Renderiza el documento de la factura comercial (template `pdf.html`).
+
+    La Imprenta (2026-09-29): se dibuja con la configuración de La Gerencia
+    (marca, tablas, qué partes lleva, rótulos). `preview=True` envuelve la hoja
+    para la pantalla, con su barra de «Bajar PDF»; `sin_barra` la quita (la
+    vista previa de La Gerencia).
+    """
     from django.template.loader import render_to_string
+
+    from imprenta import config as imprenta
+    from imprenta.tipos import FACTURA
+
+    cfg = config or imprenta.resolver("factura", destino="pantalla" if preview else "motor")
+    pagina = imprenta.pagina(cfg)
+    qr_uri, qr_texto = _qr_de(fac, cfg)
     return render_to_string("facturacion/pdf.html", {
         "fac": fac,
         "items": list(fac.items.select_related("servicio", "unidad_fk").all()),
         "totales": fac.calcular_totales(),
         # La Caja: el link para pagar el saldo en línea (None si está apagada).
         "link_pago": _link_pago(fac),
+        "c": cfg, "e": cfg.e,
+        "b": {bl.clave: cfg.bloque(bl.clave) for bl in FACTURA.bloques},
+        "r": {col.clave: cfg.rotulo(col.clave, col.default) for col in FACTURA.columnas},
+        "logo_url": cfg.e.logo_url,
+        "titulo_documento": cfg.titulo(
+            (fac.concepto or fac.titulo or f"Factura {fac.folio_display}").strip(),
+            folio=fac.folio or fac.codigo, cliente=fac.cliente.razon_social,
+            proyecto=(fac.proyecto.nombre if fac.proyecto_id else ""),
+            fecha=fac.fecha_emision.strftime("%d/%m/%Y") if fac.fecha_emision else ""),
+        "linea_folio": f"Folio {fac.folio_display}" if cfg.doc.get("mostrar_folio") else "",
+        "texto_intro": (cfg.doc.get("texto_intro") or "").strip(),
+        "texto_cierre": (cfg.doc.get("texto_cierre") or "").strip(),
+        "qr_uri": qr_uri, "qr_texto": qr_texto,
+        "preview": preview, "sin_barra": sin_barra,
+        "hoja_css": _hoja_css(pagina),
+        "url_descargar": _url_pdf_comercial(fac) if preview else "",
+        "nombre_archivo": nombre_archivo(fac, cfg),
     })
+
+
+def _hoja_css(pagina: dict) -> dict:
+    def pulgadas(clave, default_pt):
+        valor = pagina.get(clave)
+        return round((default_pt if valor is None else valor) / 72, 3)
+
+    return {"ancho": pagina.get("ancho_in") or 8.5,
+            "arriba": pulgadas("margen_superior_pt", 36), "abajo": pulgadas("margen_inferior_pt", 43),
+            "izquierda": pulgadas("margen_izquierdo_pt", 72), "derecha": pulgadas("margen_derecho_pt", 72)}
+
+
+def _url_pdf_comercial(fac: Factura) -> str:
+    from django.urls import NoReverseMatch, reverse
+    try:
+        return reverse("facturacion:pdf-comercial", args=[fac.pk])
+    except NoReverseMatch:
+        return ""
+
+
+def _qr_de(fac: Factura, cfg) -> tuple[str, str]:
+    destino = cfg.doc.get("qr") or ""
+    if not destino or cfg.basico:
+        return "", ""
+    from imprenta import qr
+
+    if destino == "pago":
+        url, texto = qr.url_pago(fac), "Escanea para pagar en línea"
+    else:
+        url, texto = qr.url_portal(), "Escanea para verla en el portal"
+    uri = qr.data_uri(url)
+    return (uri, texto) if uri else ("", "")
+
+
+def nombre_archivo(fac: Factura, cfg=None) -> str:
+    """El nombre del PDF comercial: el patrón de La Gerencia, o `FACTURA-F12-CLIENTE`."""
+    import re
+
+    if cfg is None:
+        from imprenta.config import resolver
+
+        cfg = resolver("factura")
+    cliente = fac.cliente.razon_social if fac.cliente_id else ""
+    limpio = re.sub(r'[\\/:"*?<>|\s]+', "", cliente).upper()
+    default = "-".join(x for x in ("FACTURA", fac.folio or fac.codigo, limpio) if x)
+    return cfg.nombre_archivo(
+        default, folio=fac.folio or fac.codigo, cliente=cliente, CLIENTE=cliente.upper(),
+        proyecto=(fac.proyecto.nombre if fac.proyecto_id else ""), version="",
+        fecha=fac.fecha_emision.strftime("%Y-%m-%d") if fac.fecha_emision else "")
+
+
+def marca_de_estado(fac: Factura, cfg) -> tuple[str, str]:
+    """(texto, color) de la marca de agua: cancelada > pagada > vencida > borrador."""
+    if fac.estado == "cancelada":
+        return cfg.marca_de("cancelada")
+    if fac.estado == "cobrada_total":
+        return cfg.marca_de("pagada")
+    if fac.esta_vencida or fac.vencida_real:
+        return cfg.marca_de("vencida")
+    if fac.estado == "borrador" and not fac.tiene_cfdi:
+        return cfg.marca_de("borrador")
+    return "", ""
+
+
+def pagina_documento(fac: Factura, *, config=None) -> dict:
+    """La hoja del PDF comercial: la de La Gerencia + marca y metadatos."""
+    from imprenta import config as imprenta
+
+    cfg = config or imprenta.resolver("factura")
+    pagina = imprenta.pagina(cfg)
+    marca, color = marca_de_estado(fac, cfg)
+    if marca:
+        pagina = {**pagina, "marca_agua": marca, "marca_color": color}
+    pagina["metadatos"] = {
+        "Title": f"Factura {fac.folio_display}",
+        "Author": cfg.despacho.get("nombre") or "Learning Center",
+        "Subject": fac.cliente.razon_social if fac.cliente_id else "",
+        "Keywords": fac.codigo,
+    }
+    return pagina
+
+
+def pdf_comercial(fac: Factura) -> bytes | None:
+    """El PDF de la factura COMERCIAL, armado por el motor propio. None si no contesta.
+
+    No se guarda: se arma al pedirlo (es el reflejo de la factura tal como está).
+    El PDF fiscal es otro — el del CFDI, que se sube aparte (`pdf_file_id`).
+    """
+    from imprenta import config as imprenta
+    from lib import gotenberg
+
+    try:
+        if not gotenberg.disponible():
+            return None
+        cfg = imprenta.resolver("factura")
+        return gotenberg.html_a_pdf(construir_html_pdf(fac, config=cfg),
+                                    pagina=pagina_documento(fac, config=cfg))
+    except Exception:  # noqa: BLE001 — sin PDF, quien llama ofrece la versión imprimible
+        logger.warning("facturacion: no se pudo armar el PDF comercial de %s", fac.codigo,
+                       exc_info=True)
+        return None
 
 
 def _link_pago(fac: Factura) -> str | None:
@@ -92,6 +227,14 @@ def enviar_por_correo(fac: Factura, actor):
     if pdf_bytes:
         adjuntos.append(cartero.Adjunto(
             nombre=f"{fac.codigo}.pdf", contenido=pdf_bytes, mime="application/pdf"))
+    else:
+        # La Imprenta: sin el CFDI subido, va la factura comercial en PDF — mejor
+        # que un correo sin nada que abrir. Si el motor no contesta, sin adjunto.
+        comercial = pdf_comercial(fac)
+        if comercial:
+            adjuntos.append(cartero.Adjunto(
+                nombre=f"{nombre_archivo(fac)}.pdf", contenido=comercial,
+                mime="application/pdf"))
 
     asunto, html = _render_correo(fac)
     return cartero.enviar(destinatario=destino, asunto=asunto, html=html, adjuntos=adjuntos)

@@ -1,0 +1,21 @@
+{% comment %}Envoltorio SOLO de pantalla para los documentos de La Imprenta: la hoja con
+sus márgenes (los mismos que se le mandan al motor, `hoja_css`) sobre fondo gris.
+Nada de esto viaja al PDF: va dentro de `{% if preview %}`. La cotización trae
+además su barra de «Bajar PDF»; los demás documentos, la suya opcional.{% endcomment %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: #e5e7eb; margin: 0; }
+  .lc-hoja { background: #ffffff; width: {{ hoja_css.ancho }}in; max-width: 100%; box-sizing: border-box;
+    margin: 24px auto; padding: {{ hoja_css.arriba }}in {{ hoja_css.derecha }}in {{ hoja_css.abajo }}in {{ hoja_css.izquierda }}in; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .lc-barra { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: space-between; gap: 12px;
+    background: #171717; color: #ffffff; padding: 10px 16px; font-size: 13px; font-family: Arial, sans-serif; }
+  .lc-barra a, .lc-barra button { font: inherit; text-decoration: none; cursor: pointer;
+    border-radius: 8px; padding: 7px 14px; border: 1px solid transparent; min-height: 44px; }
+  .lc-btn { background: #465fff; color: #ffffff; font-weight: 600; }
+  .lc-btn-sec { background: transparent; color: #e5e7eb; border-color: #4b5563; }
+  @media (max-width: 900px) { .lc-hoja { padding: 0.4in 0.5in 0.5in; margin: 12px auto; } }
+  @page { margin: 0; }
+  @media print { body { background: #ffffff; } .lc-barra { display: none; }
+    .lc-hoja { width: auto; margin: 0; box-shadow: none; } }
+</style>

@@ -29,6 +29,35 @@ cómo vienen contra el mes pasado.
 
 **Con El Chalán:** «¿cómo va mi tablero?», «¿qué metas van en riesgo?» o «ponle meta de
 250 mil a los ingresos del mes».
+## Novedades — Las notas se editan, la factura sale en PDF y los documentos llevan firma, folio y QR (29 de septiembre de 2026)
+
+**Las notas de la cotización ya se editan.** En Gerencia → Ajustes → Documentos
+→ Cotización → Notas las cambias, las reordenas con ↑/↓, apagas alguna sin
+borrarla o agregas nuevas. Salen igual que siempre hasta que alguien las toque.
+
+**Cada cotización puede ajustar las suyas.** En el recuadro «Documento» de la
+cotización quitas alguna de las notas generales para ese cliente, o escribes
+notas extra (una por renglón). La versión siguiente y el duplicado se las llevan.
+
+**La factura tiene su PDF.** En la factura, el recuadro «Documento comercial»
+tiene «Ver» y «Bajar PDF», con el mismo estilo que la cotización y los datos
+para depósito. Si no has subido el CFDI, el correo de la factura lleva este PDF.
+Sigue diciendo que no es un CFDI.
+
+**Firma, aceptación, folio, vigencia y código QR.** Cada documento puede llevar
+la firma del despacho, un renglón para que firme el cliente, el folio, la fecha
+hasta la que vale y un QR al link de pago o al portal.
+
+**Marcas por estado.** Además de BORRADOR, puedes marcar las cotizaciones
+aprobadas, rechazadas o vencidas, y la factura sale marcada como PAGADA,
+CANCELADA o VENCIDA.
+
+**El nombre del archivo lo decides tú**, con piezas como el folio, el cliente y
+la fecha. Y la factura se guarda en PDF/A, el formato que se conserva igual por
+años.
+
+Con El Chalán: «pásame el PDF de la factura F12» o «¿dónde bajo la
+COT-2026-0044?».
 
 ## Novedades — Los documentos en PDF ya se personalizan desde La Gerencia (29 de septiembre de 2026)
 
@@ -7141,11 +7170,13 @@ En el recuadro **Documento** (a la derecha, en la página de la cotización):
 
 El título y los dos controles se heredan a la siguiente versión.
 
-**Las notas van al pie, siempre completas** (precios de producción, imágenes
-ilustrativas, variaciones por proceso manual, existencias, precios sin IVA y la
-forma de pago). No se editan: son las condiciones con las que Learning Center
-cotiza. Si necesitas condiciones extra para un cliente, escríbelas en
-**Términos** y se agregan abajo como bloque aparte. El hueco que las empuja al
+**Las notas van al pie, siempre completas** (de fábrica: precios de producción,
+imágenes ilustrativas, variaciones por proceso manual, existencias, precios sin
+IVA y la forma de pago). Las de todas las cotizaciones se editan en La Gerencia →
+Ajustes → Documentos → Cotización → Notas. **En el recuadro «Documento» de cada
+cotización** quitas alguna para ese cliente o escribes notas extra (una por
+renglón); la versión siguiente y el duplicado se las llevan. Las condiciones
+largas siguen yendo en **Términos**, como bloque aparte. El hueco que las empuja al
 pie se calcula solo: si caben en lo que queda de la hoja bajan hasta el final, y
 si ya no caben pasan completas a la siguiente (nunca partidas).
 
@@ -7184,6 +7215,16 @@ Mismo patrón que en Proyectos: panel desplegable "+ Crear producto nuevo" abajo
 ## Facturación (interna, no fiscal)
 
 > **Importante:** el sistema **no emite CFDI ni se conecta a un PAC**. Esto es para tu gestión de cuentas por cobrar. Tu contador externo timbra las facturas fiscales aparte.
+
+### El documento de la factura (PDF comercial)
+
+En la factura, el recuadro **Documento comercial** tiene **«Ver»** (la hoja en
+pantalla, con su botón para bajarla) y **«⬇ Bajar PDF»**. Sale con el estilo de
+Ajustes → Documentos → Factura: tu logotipo, los datos del cliente, los conceptos,
+los totales y, si los capturaste, tu razón social, RFC y datos para depósito.
+**No es un CFDI** y lo dice siempre; el comprobante fiscal lo timbra el contador y
+se sube en el recuadro de abajo. Al mandar la factura por correo, si todavía no
+hay CFDI subido, se adjunta este PDF.
 
 ### El folio de la factura (F###)
 
@@ -7538,7 +7579,7 @@ conforme lleguen, los demás documentos). La pantalla tiene pestañas:
 | **Hoja y motor** | Quién arma el PDF (déjalo en automático), el tamaño de la hoja, los márgenes, el interlineado, el pie y el encabezado de cada hoja y la marca de «BORRADOR» de lo que aún no se manda. |
 | **Marca y tablas** | Tu logotipo (PNG, JPG o WebP; si no subes uno sale el de Learning Center), su alto y si va a la izquierda, al centro o a la derecha; la letra del documento y la de los títulos; el color del texto, del título y el total; los tamaños de letra; y las tablas: color y grosor de las líneas, fondo y letra del encabezado, renglones alternados y el aire de cada celda. |
 | **Datos y firma** | Nombre, razón social, RFC, dirección, teléfono, correo, sitio web, banco, titular, cuenta, CLABE e instrucciones de pago; y la firma (imagen, nombre y cargo). |
-| **Cotización** | Qué partes lleva, cómo se llama cada columna y rótulo, el título (acepta `{folio}`, `{cliente}`, `{proyecto}` y `{fecha}`), qué datos del despacho enseña, un texto de entrada y uno de cierre, y una hoja propia si la necesita (vacío = la de la hoja general). |
+| **Cotización** y **Factura** | Qué partes lleva, cómo se llama cada columna y rótulo, el título (acepta `{folio}`, `{cliente}`, `{proyecto}` y `{fecha}`), qué datos del despacho enseña, un texto de entrada y uno de cierre, **las notas** (sólo la cotización), **firma y aceptación**, **folio, vigencia y QR**, **marcas de agua por estado**, **el nombre del archivo** y **PDF/A**, y una hoja propia si la necesita (vacío = la de la hoja general). |
 | **Historial** | Cada guardado, con quién, cuándo y qué cambió. «Volver a esta versión» deja todo como estaba en ese momento. |
 
 **Todo nace igual que el documento de siempre**: si nadie toca nada, la
@@ -7560,6 +7601,28 @@ reescribirías; puedes recargar para ver lo suyo o guardar lo tuyo de todos modo
 **Si el PDF lo acaba armando Google** (el motor propio no contesta), sale con el
 formato de siempre —Google no respeta letras ni colores— pero con tus textos,
 rótulos y datos.
+
+**Las notas.** Se editan en la pestaña del documento: cambias el texto, las
+reordenas con ↑/↓, la casilla apaga una sin borrarla, ✕ la quita y «+ Agregar
+nota» suma otra. La última de la cotización (la forma de pago) se arma sola; se
+puede apagar. Cada cotización, en su recuadro «Documento», quita alguna de las
+generales o escribe las suyas.
+
+**Firma y aceptación.** La firma sale con la imagen, el nombre y el cargo de
+*Datos y firma*; el renglón de aceptación deja el espacio para que firme el
+cliente con su nombre y la fecha.
+
+**Folio, vigencia y QR.** El folio y el «válida hasta» van en un renglón chico
+debajo del título. El QR apunta al link de pago (si La Caja está encendida) o a la
+entrada del portal de clientes — nunca lleva una llave de acceso, porque un PDF se
+reenvía. Sólo lo pone el motor propio.
+
+**Marcas por estado.** Se escriben por tipo: la cotización trae BORRADOR (de la
+hoja general) y puedes sumar Aprobada, Rechazada o anulada, y Vencida; la factura
+trae BORRADOR, PAGADA, CANCELADA y VENCIDA. Vacío = sin marca.
+
+**El nombre del archivo.** Vacío es el de siempre (`COTIZACIÓN-CLIENTE-Proyecto-v2`,
+`FACTURA-F12-CLIENTE`). Con un patrón, p. ej. `{folio} — {cliente} — {fecha}`.
 
 **Permisos.** La pantalla tiene su propio permiso, **Documentos**, con cuatro
 partes que se dan por separado desde El Directorio: *ver*, *cambiar el estilo*,

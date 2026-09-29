@@ -1,0 +1,32 @@
+{% comment %}Firma del despacho, renglón de aceptación del cliente y código QR (La
+Imprenta). Una sola tabla de hasta tres columnas: así viaja junta entre páginas
+(el `page-break-inside` lo respeta Chromium; para Google va en su propia fila).
+El QR sólo existe con el motor propio: Google no dibuja imágenes `data:`.{% endcomment %}
+{% if c.doc.firma or c.doc.aceptacion or qr_uri %}
+<div style="page-break-inside:avoid;">
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin:14pt 0 10pt 0; font-size:{{ e.notas_pt }}pt;">
+  <tr>
+    {% if c.doc.firma %}
+    <td style="border:none; width:40%; vertical-align:bottom; text-align:center; padding:0 10pt;">
+      {% if e.firma_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ e.firma_url }}" alt="Firma" height="44" style="height:44pt; width:auto;"></p>{% else %}<div style="height:44pt;">&nbsp;</div>{% endif %}
+      <div style="border-top:1px solid {{ e.texto }}; padding-top:2pt;">{{ c.firma.nombre|default:c.despacho.nombre }}</div>
+      {% if c.firma.cargo %}<div style="{{ e.suave_css }}">{{ c.firma.cargo }}</div>{% endif %}
+    </td>
+    {% endif %}
+    {% if c.doc.aceptacion %}
+    <td style="border:none; width:40%; vertical-align:bottom; text-align:center; padding:0 10pt;">
+      <div style="height:44pt;">&nbsp;</div>
+      <div style="border-top:1px solid {{ e.texto }}; padding-top:2pt;">{{ c.doc.aceptacion_texto }}</div>
+      <div style="{{ e.suave_css }}">Nombre, firma y fecha</div>
+    </td>
+    {% endif %}
+    {% if qr_uri %}
+    <td style="border:none; vertical-align:bottom; text-align:right; padding:0;">
+      <img src="{{ qr_uri }}" alt="Código QR" width="64" height="64" style="width:64pt; height:64pt;">
+      <div style="{{ e.suave_css }}">{{ qr_texto }}</div>
+    </td>
+    {% endif %}
+  </tr>
+</table>
+</div>
+{% endif %}

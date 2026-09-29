@@ -13602,7 +13602,14 @@ contenido elegido. Permiso nuevo `documentos` (4 acciones). El Chalán:
 `formato_documentos`. Se arregló que el interlineado elegido no se aplicaba.
 Trabajo en worktree propio (otra sesión en el árbol principal). Primer deploy de 4.
 
-## 2026-09-29 — S-KPIs-V2 · 1 (VERSION 2026.09.16)
+## 2026-09-29 — S-Imprenta · Deploy 2 (VERSION 2026.09.16)
+
+Las notas de la cotización se editan en La Gerencia (con permiso propio) y cada
+cotización quita o suma las suyas; firma, aceptación, folio, vigencia, QR, marcas por
+estado, patrón del nombre y PDF/A por tipo de documento. La factura entra a La
+Imprenta con su PDF comercial («Ver» / «Bajar PDF»; va al correo si no hay CFDI).
+El Chalán: `enlace_documento`. Segundo deploy de 4.
+## 2026-09-29 — S-KPIs-V2 · 1 (VERSION 2026.09.17)
 
 Ronda de KPIs con Oscar → fases 1 y 2. La Gerencia → Ajustes → KPIs: catálogo
 (prender/apagar, dirección, umbrales), tableros por rol y metas del despacho, por

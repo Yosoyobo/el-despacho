@@ -1,33 +1,54 @@
-"""Notas al pie de la cotización (LC 2026-07).
+"""Notas al pie de la cotización.
 
-Decisión de Oscar: **las notas van siempre, tal cual.** No son editables ni
-opcionales — son las condiciones con las que Learning Center cotiza, y salir
-sin ellas cambiaría lo que el cliente está aceptando. Lo único que se mueve es
-la última, que depende del interruptor Anticipo / Un solo pago de la cotización.
+Hasta 2026-09-29 eran fijas en código (decisión de Oscar de julio: «las notas van
+siempre, tal cual»). Desde La Imprenta **se editan en La Gerencia** (Ajustes →
+Documentos → Cotización → Notas; permiso `documentos.editar_notas`) y cada
+cotización puede **quitar** alguna o **sumar** las suyas (`notas_omitidas`,
+`notas_extra`). Las de fábrica siguen siendo las de siempre, así que nada cambia
+hasta que alguien las edite.
 
-Si algún día hacen falta condiciones extra para un cliente puntual, se capturan
-en `Cotizacion.terminos` y el PDF las agrega como bloque aparte, debajo.
+La última sigue siendo automática: la forma de pago, que depende del interruptor
+Anticipo / Un solo pago de la cotización.
 """
 
 from __future__ import annotations
 
-NOTAS_FIJAS: tuple[str, ...] = (
-    "Precios unitarios de producción.",
-    "Todo detalle está abierto a cambios, nuevas ideas y necesidades.",
-    "Las imágenes son ilustrativas y no representan productos finales exactos.",
-    "Debido a procesos manuales y características de los materiales, pueden "
-    "existir leves variaciones en color, tamaño y acabado respecto a "
-    "indicaciones o referencias.",
-    "No nos hacemos responsables por retrasos ocasionados por proveedores "
-    "externos o causas de fuerza mayor.",
-    "Todos los productos sujetos a existencias.",
-    "Los precios no incluyen IVA.",
-)
+from imprenta.tipos import NOTAS_COTIZACION as NOTAS_FIJAS
 
 
-def notas_para(cotizacion) -> list[str]:
-    """Las notas del documento, en orden. La última es la forma de pago."""
-    return [*NOTAS_FIJAS, cotizacion.nota_forma_pago]
+def notas_globales(cfg=None) -> list[dict]:
+    """Las notas de La Gerencia: `[{id, texto, activa}]`, en su orden."""
+    if cfg is None:
+        from imprenta.config import resolver
+
+        cfg = resolver("cotizacion")
+    return list(cfg.doc.get("notas") or [])
 
 
-__all__ = ["NOTAS_FIJAS", "notas_para"]
+def notas_para(cotizacion, cfg=None) -> list[str]:
+    """Las notas del documento, en orden. La última es la forma de pago.
+
+    Globales activas, menos las que esta cotización quitó, más las suyas.
+    """
+    if cfg is None:
+        from imprenta.config import resolver
+
+        cfg = resolver("cotizacion")
+    omitidas = set(getattr(cotizacion, "notas_omitidas", None) or [])
+    notas = [n["texto"] for n in notas_globales(cfg)
+             if n.get("activa", True) and n.get("id") not in omitidas]
+    extra = getattr(cotizacion, "notas_extra", "") or ""
+    notas += [" ".join(r.split()) for r in extra.splitlines() if r.strip()]
+    if cfg.doc.get("nota_automatica", True):
+        notas.append(cotizacion.nota_forma_pago)
+    return notas
+
+
+def notas_de_la_cotizacion(cotizacion, cfg=None) -> list[dict]:
+    """Para el recuadro «Documento»: cada nota global activa y si va en ésta."""
+    omitidas = set(getattr(cotizacion, "notas_omitidas", None) or [])
+    return [{"id": n["id"], "texto": n["texto"], "incluida": n["id"] not in omitidas}
+            for n in notas_globales(cfg) if n.get("activa", True)]
+
+
+__all__ = ["NOTAS_FIJAS", "notas_de_la_cotizacion", "notas_globales", "notas_para"]
