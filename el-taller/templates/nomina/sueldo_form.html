@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Editar sueldo{% else %}Nuevo sueldo{% endif %} — Nómina{% endblock %}
+
+{% block contenido %}
+{% if obj %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Editar sueldo" subtitulo="Cambiar un renglón ya capturado. Para un aumento, mejor captura uno nuevo con su fecha." back_url="/nomina/sueldos/" back_label="Sueldos" %}
+{% else %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Sueldo o cambio de sueldo" subtitulo="Desde la fecha que digas, ése es el sueldo por quincena de la persona." back_url="/nomina/sueldos/" back_label="Sueldos" %}
+{% endif %}
+
+<form method="post" class="campo-form mx-auto grid max-w-2xl grid-cols-1 gap-6">
+    {% csrf_token %}
+    {% include "edicion/_testigo.html" %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% if form.non_field_errors %}<div class="mb-4 rounded-lg border border-error-300 bg-error-50 px-3 py-2 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">{{ form.non_field_errors|join:" · " }}</div>{% endif %}
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.usuario ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.sueldo_quincenal %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.vigente_desde %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.en_nomina ancho_completo=True %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas ancho_completo=True %}
+        </div>
+    </section>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+        {% if obj %}
+            <button type="submit" form="borrar-sueldo" class="btn-destructivo" onclick="return confirm('¿Borrar este sueldo? Los recibos ya cerrados conservan su copia.');">Borrar</button>
+        {% endif %}
+        </div>
+        <button type="submit" class="btn-primario">Guardar</button>
+    </div>
+</form>
+{% if obj %}
+<form id="borrar-sueldo" method="post" action="{% url 'nomina:sueldo_borrar' obj.pk %}" class="hidden">{% csrf_token %}</form>
+{% endif %}
+{% endblock %}

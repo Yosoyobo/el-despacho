@@ -193,7 +193,7 @@
         {% comment %} Grupo "Finanzas" — colapsable. Se auto-expande si alguna URL del grupo está activa.
            Estado persistido en localStorage. Sub-items gated por permiso individual.
            Inyectamos finanzas_grupo_activo desde el context processor sidebar_extras. {% endcomment %}
-        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria %}
+        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria or permisos_modulos.nomina %}
         {% if not sidebar_orden.finanzas.oculto %}
         <button type="button"
                 style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
@@ -228,6 +228,12 @@
             <a href="{% url 'facturacion:lista' %}" class="menu-item {% if '/facturacion' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6M9 16h6M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Facturación
+            </a>
+            {% endif %}
+            {% if permisos_modulos.nomina %}
+            <a href="{% url 'nomina:lista' %}" class="menu-item {% if '/nomina' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16v12H4zM8 10h8M8 14h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Nómina
             </a>
             {% endif %}
             {% if permisos_modulos.contaduria %}

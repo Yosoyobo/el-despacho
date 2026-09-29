@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Recibo de {% firstof r.usuario.nombre_completo r.usuario.email %} — Nómina{% endblock %}
+
+{% block contenido %}
+{% url 'nomina:periodo' p.pk as url_periodo %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=r.usuario.nombre_completo|default:r.usuario.email subtitulo=p.etiqueta|capfirst back_url=url_periodo back_label="La quincena" %}
+
+<div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
+
+    {# ── Resumen ─────────────────────────────────────────────────── #}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                {% include "nomina/_estado.html" with estado=p.estado etiqueta=p.get_estado_display %}
+                {% if p.cerrado %}{% include "nomina/_estado.html" with estado=r.estado etiqueta=r.get_estado_display %}{% endif %}
+                {% if r.pagado %}<span class="text-xs">Depositado el {{ r.pagado_en|date:"d/m/Y" }}{% if r.pagado_por %} · marcó {% firstof r.pagado_por.nombre_completo r.pagado_por.email %}{% endif %}</span>{% endif %}
+            </div>
+            <a href="{% url 'nomina:recibo_pdf' r.pk %}" target="_blank" rel="noopener" class="btn-secundario">📄 PDF</a>
+        </div>
+        <dl class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Sueldo</dt><dd class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ r.sueldo_aplicado|dinero }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">+ Percepciones</dt><dd class="mt-1 text-lg font-semibold tabular-nums text-success-600 dark:text-success-400">{{ r.percepciones|dinero }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">− Deducciones</dt><dd class="mt-1 text-lg font-semibold tabular-nums text-error-600 dark:text-error-400">{{ r.deducciones|dinero }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wider text-brand-700 dark:text-brand-300">Neto</dt><dd class="mt-1 text-lg font-semibold tabular-nums text-brand-700 dark:text-brand-300">{{ r.neto|dinero }}</dd></div>
+        </dl>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            Del Checador (sólo informa): {{ r.dias_laborales }} días laborales · {{ r.horas_trabajadas|floatformat:"-1" }} de {{ r.horas_esperadas|floatformat:"-1" }} h ·
+            {{ r.retardos }} retardo{{ r.retardos|pluralize }}{% if r.minutos_retardo %} ({{ r.minutos_retardo }} min){% endif %} ·
+            {{ r.faltas }} falta{{ r.faltas|pluralize }}.
+        </p>
+        {% if r.cambio_sueldo_en_periodo %}
+        <p class="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">
+            ⚠ El sueldo cambió el {{ r.sueldo_vigente_desde|date:"d/m" }} (antes {% if r.sueldo_anterior is not None %}{{ r.sueldo_anterior|dinero }}{% else %}no tenía sueldo{% endif %}). La quincena se paga con el nuevo; si corresponde, ajusta los días con un concepto.
+        </p>
+        {% endif %}
+        {% for c in pagados_aparte %}
+        <p class="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">
+            ⚠ El reembolso {% firstof c.egreso.codigo "(borrado)" %} ({{ c.monto|dinero }}) ya se pagó por otro lado en Tesorería.
+            {% if p.editable %}Recalcula o quítalo: no se va a volver a pagar.{% else %}El recibo lo incluye: descuéntalo del depósito; no se vuelve a saldar.{% endif %}
+        </p>
+        {% endfor %}
+    </section>
+
+    {# ── Conceptos ───────────────────────────────────────────────── #}
+    {% if editable %}
+    <form method="post" class="campo-form grid grid-cols-1 gap-6">
+        {% csrf_token %}
+        {% include "edicion/_testigo.html" %}
+        {{ formset.management_form }}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Conceptos</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bonos, comisiones, deducciones y ajustes se capturan a mano. Los abonos a préstamo y los reembolsos de Tesorería los pone el cálculo: puedes cambiar el abono o quitar la línea.</p>
+            {% if formset.non_form_errors %}<div class="mt-3 rounded-lg border border-error-300 bg-error-50 px-3 py-2 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">{{ formset.non_form_errors|join:" · " }}</div>{% endif %}
+            <div class="mt-4 space-y-4">
+                {% for f in formset %}
+                <div class="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 p-3 dark:border-gray-800 md:grid-cols-12 md:items-end">
+                    {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+                    <div class="md:col-span-3">
+                        <label for="{{ f.clase.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ f.clase.label }}{% if f.instance.automatico or f.instance.prestamo_id or f.instance.egreso_id %} <span class="rounded bg-blue-light-50 px-1.5 text-[10px] text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-300">del cálculo</span>{% endif %}</label>
+                        {{ f.clase }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="{{ f.tipo.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ f.tipo.label }}</label>
+                        {{ f.tipo }}
+                    </div>
+                    <div class="md:col-span-4">
+                        <label for="{{ f.descripcion.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ f.descripcion.label }}</label>
+                        {{ f.descripcion }}
+                        {% if f.descripcion.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.descripcion.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="{{ f.monto.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ f.monto.label }}</label>
+                        {{ f.monto }}
+                        {% if f.monto.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.monto.errors|join:" " }}</p>{% endif %}
+                    </div>
+                    <div class="md:col-span-1">
+                        {% if f.instance.pk %}
+                        <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">{{ f.DELETE }} Quitar</label>
+                        {% endif %}
+                    </div>
+                    <div class="md:col-span-12">
+                        <label for="{{ f.nota.id_for_label }}" class="sr-only">{{ f.nota.label }}</label>
+                        {{ f.nota }}
+                        {% if f.instance.prestamo_id %}<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Préstamo «{{ f.instance.prestamo.concepto }}»: saldo {{ f.instance.prestamo.saldo|dinero }} (baja al cerrar la quincena).</p>{% endif %}
+                        {% if f.non_field_errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ f.non_field_errors|join:" " }}</p>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">¿Más de una línea nueva? Guarda y aparece otra en blanco.</p>
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=form.notas %}
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn-primario">Guardar recibo</button>
+            </div>
+        </section>
+    </form>
+    {% else %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Conceptos</h2>
+        {% if conceptos %}
+        <div class="mt-3 overflow-x-auto">
+            <table data-tabla-movil class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
+                        <th class="py-2 pr-3 font-medium" data-movil="titulo">Concepto</th>
+                        <th class="py-2 pr-3 font-medium">Tipo</th>
+                        <th class="py-2 text-right font-medium">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in conceptos %}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3 text-gray-800 dark:text-gray-200">{{ c.descripcion }}{% if c.nota %}<span class="block text-xs text-gray-400">{{ c.nota }}</span>{% endif %}</td>
+                        <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">{{ c.get_clase_display }}</td>
+                        <td class="py-2 text-right tabular-nums {% if c.tipo == 'deduccion' %}text-error-600 dark:text-error-400{% else %}text-success-600 dark:text-success-400{% endif %}">{% if c.tipo == 'deduccion' %}−{% else %}+{% endif %}{{ c.monto|dinero }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Sin conceptos: sólo el sueldo.</p>
+        {% endif %}
+        {% if r.notas %}<p class="mt-3 text-sm text-gray-600 dark:text-gray-400">{{ r.notas|linebreaksbr }}</p>{% endif %}
+        {% if p.editable %}<p class="mt-3 text-xs text-gray-400">Sólo quien tiene permiso de editar la nómina cambia este recibo.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    {# ── Marcar pagado ───────────────────────────────────────────── #}
+    {% if puede_pagar %}
+    <section class="rounded-2xl border border-success-200 bg-white p-5 shadow-theme-sm dark:border-success-500/30 dark:bg-gray-900">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Marcar pagado</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Cuando ya se depositó. Si el recibo trae reembolsos, quedan saldados en Tesorería en ese momento (no se vuelven a pagar allá).</p>
+        <form method="post" action="{% url 'nomina:pagar' r.pk %}" class="campo-form mt-4 grid grid-cols-1 gap-4 md:grid-cols-3 md:items-start">
+            {% csrf_token %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=pagar_form.fecha %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=pagar_form.metodo %}
+            {% include "_componentes_tailadmin/_form_campo.html" with campo=pagar_form.banco_o_caja %}
+            <div class="md:col-span-3 flex justify-end">
+                <button type="submit" class="btn-primario">Marcar pagado · {{ r.neto|dinero }}</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

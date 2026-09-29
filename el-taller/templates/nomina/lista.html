@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Nómina{% endblock %}
+
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Nómina" subtitulo="Quincenas de sueldo fijo. Las horas del Checador sólo informan; el sueldo lo decide quien cierra." %}
+
+<div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
+
+    <section class="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% if puede_editar %}
+        <form method="post" action="{% url 'nomina:abrir' %}" class="campo-form flex flex-wrap items-end gap-3">
+            {% csrf_token %}
+            <div>
+                <label for="{{ form_abrir.fecha.id_for_label }}" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ form_abrir.fecha.label }}</label>
+                {{ form_abrir.fecha }}
+            </div>
+            <button type="submit" class="btn-primario">{% if hay_actual %}Ir a la quincena{% else %}Abrir quincena{% endif %}</button>
+        </form>
+        {% endif %}
+        <div class="flex flex-wrap gap-2">
+            {% if puede_sueldos %}<a href="{% url 'nomina:sueldos' %}" class="btn-secundario">Sueldos</a>{% endif %}
+            {% if puede_editar %}<a href="{% url 'nomina:prestamos' %}" class="btn-secundario">Préstamos</a>{% endif %}
+        </div>
+    </section>
+
+    {% if sin_sueldos %}
+    <div class="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+        Todavía no hay sueldos capturados. {% if puede_sueldos %}<a href="{% url 'nomina:sueldos' %}" class="font-medium underline">Captura el de cada quien</a> antes de calcular una quincena.{% else %}Pídele a quien lleva la nómina que los capture.{% endif %}
+    </div>
+    {% endif %}
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        {% if filas %}
+        <div class="overflow-x-auto">
+            <table data-tabla-movil class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
+                        <th class="py-2 pr-3 font-medium" data-movil="titulo">Quincena</th>
+                        <th class="py-2 pr-3 font-medium">Estado</th>
+                        <th class="py-2 pr-3 text-right font-medium">Personas</th>
+                        <th class="py-2 pr-3 text-right font-medium">Neto</th>
+                        <th class="py-2 text-right font-medium">Por pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3">
+                            <a href="{% url 'nomina:periodo' f.p.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{{ f.p.etiqueta|capfirst }}</a>
+                            <span class="block text-xs text-gray-400">{{ f.p.fecha_inicio|date:"d/m" }} – {{ f.p.fecha_fin|date:"d/m/Y" }}</span>
+                        </td>
+                        <td class="py-2 pr-3">{% include "nomina/_estado.html" with estado=f.p.estado etiqueta=f.p.get_estado_display %}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ f.t.recibos }}</td>
+                        <td class="py-2 pr-3 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ f.t.neto|dinero }}</td>
+                        <td class="py-2 text-right tabular-nums {% if f.t.por_pagar and f.p.cerrado %}text-warning-600 dark:text-warning-400{% else %}text-gray-500 dark:text-gray-400{% endif %}">{% if f.p.cerrado %}{{ f.t.por_pagar|dinero }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {% include "_componentes_tailadmin/_empty_state.html" with titulo="Aún no hay quincenas" descripcion="Abre la quincena, calcúlala, revisa los recibos y ciérrala." icono="folder" %}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

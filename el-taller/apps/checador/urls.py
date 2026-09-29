@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from . import views
+from . import views, views_nomina
 
 app_name = "checador"
 
@@ -23,6 +23,8 @@ urlpatterns = [
     path("sesion/nueva", views.sesion_modal, name="sesion_modal"),
     path("sesion", views.sesion, name="sesion"),
     path("historial/", views.historial, name="historial"),
+    # Mi Checador → mis recibos de nómina (sólo los CERRADOS y sólo los míos).
+    path("mis-recibos/", views_nomina.mis_recibos, name="mis_recibos"),
     path("correccion/nueva", views.correccion_modal, name="correccion_modal"),
     path("correccion", views.correccion, name="correccion"),
     # Ajuste de jornada completa (request del empleado + admin directo) — V1.3

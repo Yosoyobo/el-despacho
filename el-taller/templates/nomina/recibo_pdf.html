@@ -1,0 +1,87 @@
+{% load forms_helpers static %}<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recibo de nómina · {% firstof r.usuario.nombre_completo r.usuario.email %} · {{ p.etiqueta }}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1d2939; font-size: 11pt; background: #fff; }
+  .hoja { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+  .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #465fff; padding-bottom: 12px; }
+  .cab h1 { margin: 0; font-size: 16pt; }
+  .cab p { margin: 2px 0 0; color: #667085; font-size: 9.5pt; }
+  .marca { text-align: right; font-size: 9pt; color: #667085; }
+  .marca img { height: 36px; }
+  h2 { font-size: 11pt; margin: 20px 0 6px; color: #344054; text-transform: uppercase; letter-spacing: .04em; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 6px 4px; border-bottom: 1px solid #eaecf0; text-align: left; vertical-align: top; }
+  th { font-size: 8.5pt; color: #667085; text-transform: uppercase; font-weight: 600; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tot td { border-bottom: 0; }
+  .neto td { font-size: 13pt; font-weight: 700; border-top: 2px solid #1d2939; }
+  .info { font-size: 9pt; color: #667085; margin-top: 4px; }
+  .aviso { font-size: 9pt; background: #fffaeb; color: #93370d; padding: 6px 8px; border-radius: 6px; margin-top: 8px; }
+  .firmas { display: flex; gap: 32px; margin-top: 48px; }
+  .firmas div { flex: 1; border-top: 1px solid #98a2b3; padding-top: 4px; font-size: 9pt; color: #667085; text-align: center; }
+  .pie { margin-top: 28px; font-size: 8pt; color: #98a2b3; text-align: center; }
+  .pie a { color: #98a2b3; }
+  .imprimir { margin: 16px auto 0; max-width: 720px; padding: 0 16px; display: flex; gap: 8px; justify-content: flex-end; }
+  .imprimir button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid #465fff; background: #465fff; color: #fff; cursor: pointer; }
+  @media print { .imprimir { display: none; } .hoja { padding: 0; } }
+</style>
+</head>
+<body>
+{% if imprimible %}
+<div class="imprimir">
+  <span style="font-size:9pt;color:#667085;align-self:center">El convertidor de PDF no contestó: imprime o guarda como PDF desde aquí.</span>
+  <button type="button" onclick="window.print()">Imprimir / guardar PDF</button>
+</div>
+{% endif %}
+<div class="hoja">
+  <div class="cab">
+    <div>
+      <h1>Recibo de nómina</h1>
+      <p>{{ p.etiqueta|capfirst }} · del {{ p.fecha_inicio|date:"d/m/Y" }} al {{ p.fecha_fin|date:"d/m/Y" }}</p>
+      <p><strong>{% firstof r.usuario.nombre_completo r.usuario.email %}</strong> · {{ r.usuario.email }}</p>
+    </div>
+    <div class="marca">
+      <strong>Learning Center</strong><br>
+      Recibo interno (no fiscal)<br>
+      {% if r.pagado %}Pagado el {{ r.pagado_en|date:"d/m/Y" }}{% else %}{{ r.get_estado_display }}{% endif %}
+    </div>
+  </div>
+
+  <h2>Detalle</h2>
+  <table>
+    <thead><tr><th>Concepto</th><th>Tipo</th><th class="num">Monto</th></tr></thead>
+    <tbody>
+      <tr><td>Sueldo de la quincena</td><td>Sueldo</td><td class="num">{{ r.sueldo_aplicado|dinero_exacto }}</td></tr>
+      {% for c in conceptos %}
+      <tr>
+        <td>{{ c.descripcion }}{% if c.nota %}<div class="info">{{ c.nota }}</div>{% endif %}</td>
+        <td>{{ c.get_clase_display }}</td>
+        <td class="num">{% if c.tipo == "deduccion" %}−{% else %}+{% endif %}{{ c.monto|dinero_exacto }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <table style="margin-top:8px">
+    <tbody>
+      <tr class="tot"><td>Percepciones</td><td class="num">+{{ r.percepciones|dinero_exacto }}</td></tr>
+      <tr class="tot"><td>Deducciones</td><td class="num">−{{ r.deducciones|dinero_exacto }}</td></tr>
+      <tr class="neto"><td>Neto</td><td class="num">{{ r.neto|dinero_exacto }}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Asistencia (sólo informa)</h2>
+  <p class="info">{{ r.dias_laborales }} días laborales · {{ r.horas_trabajadas|floatformat:"-1" }} de {{ r.horas_esperadas|floatformat:"-1" }} horas · {{ r.retardos }} retardo{{ r.retardos|pluralize }} · {{ r.faltas }} falta{{ r.faltas|pluralize }}.</p>
+  {% if r.notas %}<p class="info">{{ r.notas|linebreaksbr }}</p>{% endif %}
+  <p class="aviso">Recibo interno de Learning Center. No es un comprobante fiscal: los impuestos y el timbrado los lleva el contador por separado.</p>
+
+  <div class="firmas"><div>Recibí</div><div>Entregó</div></div>
+
+  <p class="pie">Generado el {{ generado|date:"d/m/Y H:i" }} · Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener">NoKo Devs</a></p>
+</div>
+</body>
+</html>
