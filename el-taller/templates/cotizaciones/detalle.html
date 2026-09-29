@@ -151,6 +151,7 @@ cotización baja a subtítulo (decisión Oscar: nombre > código, siempre).{% en
         recuadro vive en su partial porque el endpoint lo devuelve para repintarlo
         al guardar — ver cotizaciones/_documento_opciones.html.{% endcomment %}
         {% if puede_editar_texto %}{% include "cotizaciones/_documento_opciones.html" %}{% endif %}
+        {% include "cotizaciones/_anexos.html" %}
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Cliente" items=info_cliente %}
         {% include "_componentes_tailadmin/_info_card.html" with titulo="Fechas" items=info_fechas %}
         {% if cot.estado == 'aprobada' %}
