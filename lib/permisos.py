@@ -650,6 +650,91 @@ def puede_ver_comentario(user, comentario) -> bool:
     return puede_ver_proyecto(user, proyecto)
 
 
+# ── La grilla por persona de El Directorio ───────────────────────────────────
+#
+# `puede()` resuelve un par `(modulo, accion)` así: si la persona tiene FILA
+# propia, manda la fila (encendida o apagada); si no, lo que den sus roles
+# asignados (`roles_extra`). El rol primario no entra: desde S-Roles-V2 se
+# DERIVA de los asignados (super_admin sólo si tiene ese rol asignado), así que
+# no aporta nada que los asignados no den ya.
+#
+# Hasta 2026-09-29 la grilla marcaba cada casilla por la fila o por los defaults
+# del rol PRIMARIO, y al guardar escribía una fila por CADA acción del catálogo:
+# un `miembro` con el rol Contador veía `contaduria.ver` desmarcado y «Guardar
+# permisos» tal cual se lo apagaba (la fila apagada gana sobre el rol). Ahora la
+# grilla enseña `efectivo_por_filas` —lo mismo que contesta `puede()`— y
+# `plan_de_grilla` sólo deja filas donde la persona DIFIERE de sus roles.
+
+
+def pares_de_roles(permisos_de_roles) -> set[tuple[str, str]]:
+    """Los pares que dan unos roles, a partir de sus JSON `Rol.permisos`."""
+    pares: set[tuple[str, str]] = set()
+    for permisos_del_rol in permisos_de_roles:
+        for modulo, acciones in (permisos_del_rol or {}).items():
+            for accion in acciones or ():
+                pares.add((modulo, accion))
+    return pares
+
+
+def efectivo_por_filas(filas: dict, por_rol: set, par: tuple[str, str]) -> bool:
+    """La precedencia de `puede()` sin la parte de la sesión (usuario activo,
+    «ver como rol»): la fila propia gana; sin fila, lo que den los roles.
+
+    La grilla la usa en vez de `puede()` para que un usuario BLOQUEADO siga
+    viendo sus casillas como son: con `puede()` saldrían todas apagadas y
+    guardarlas le escribiría filas apagadas que le durarían al desbloquearlo."""
+    if par in filas:
+        return bool(filas[par])
+    return par in por_rol
+
+
+def plan_de_grilla(filas: dict, roles_antes: set, roles_despues: set,
+                   elegidos: set, universo) -> tuple[dict, set]:
+    """Qué filas escribir y cuáles borrar al guardar la grilla de una persona.
+
+    - `filas`: `{(modulo, accion): activo}` que la persona tiene hoy.
+    - `roles_antes` / `roles_despues`: pares que dan sus roles antes y después
+      del guardado (el mismo POST puede asignar o quitar roles).
+    - `elegidos`: pares que llegaron marcados.
+    - `universo`: pares que la grilla enseña (el catálogo). Una fila fuera de
+      él no se toca.
+
+    Devuelve `(escribir, borrar)`: `escribir` es `{par: activo}` y `borrar` un
+    set de pares.
+
+    Por par, la casilla que la persona VIO es `efectivo_por_filas(filas,
+    roles_antes)`. Si llegó distinta, quien guarda la cambió: eso es lo que
+    queda. Si llegó igual, no opinó: se conserva lo puesto a mano (una fila que
+    difiere de sus roles de antes) y lo demás sigue a sus roles de DESPUÉS
+    —así asignar un rol en el mismo clic le da lo que el rol da, y quitárselo
+    le quita lo que le daba—.
+
+    Sólo se deja fila donde lo que queda difiere de `roles_despues`. Borrar la
+    fila que coincide no cambia el permiso efectivo: sin fila, `puede()`
+    contesta lo que dan los roles, que es justo lo que la fila decía. Con los
+    roles sin cambiar, lo efectivo después es exactamente `elegidos`.
+    """
+    escribir: dict = {}
+    borrar: set = set()
+    for par in universo:
+        fila = filas.get(par)
+        del_rol_antes = par in roles_antes
+        visto = fila if fila is not None else del_rol_antes
+        elegido = par in elegidos
+        if elegido != visto:
+            queda = elegido
+        elif fila is not None and fila != del_rol_antes:
+            queda = fila
+        else:
+            queda = None  # sigue a sus roles
+        if queda is None or queda == (par in roles_despues):
+            if fila is not None:
+                borrar.add(par)
+        elif fila != queda:
+            escribir[par] = queda
+    return escribir, borrar
+
+
 # ── Caché de permisos por instancia de usuario ───────────────────────────────
 #
 # `puede()` hacía DOS consultas por llamada (revocado + concedido) y el sistema
@@ -689,7 +774,6 @@ def _cargar_permisos(usuario) -> dict:
     """
     revocados: set[tuple[str, str]] = set()
     concedidos: set[tuple[str, str]] = set()
-    por_rol: set[tuple[str, str]] = set()
     from cuentas.models.permiso_usuario import PermisoUsuario
 
     for modulo, permiso, activo in PermisoUsuario.objects.filter(
@@ -697,10 +781,7 @@ def _cargar_permisos(usuario) -> dict:
     ).values_list("modulo", "permiso", "activo"):
         (concedidos if activo else revocados).add((modulo, permiso))
 
-    for permisos_del_rol in usuario.roles_extra.values_list("permisos", flat=True):
-        for modulo, acciones in (permisos_del_rol or {}).items():
-            for accion in acciones or ():
-                por_rol.add((modulo, accion))
+    por_rol = pares_de_roles(usuario.roles_extra.values_list("permisos", flat=True))
 
     return {"revocados": revocados, "concedidos": concedidos, "por_rol": por_rol}
 
