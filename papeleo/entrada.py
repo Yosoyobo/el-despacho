@@ -137,6 +137,12 @@ def papeleo_entrante(request):
         return JsonResponse({"ok": False, "error": "el archivo no aceptó el documento"},
                             status=502)
 
+    # El aviso a quien puede ver el papeleo (si está prendido en Gerencia). Va
+    # con `on_commit` + fondo: el robot no espera a Apple ni a Google.
+    from papeleo.avisos import avisar_papeleo_nuevo
+
+    avisar_papeleo_nuevo(nombre=nombre, titulo=titulo, tarea=str(tarea))
+
     # El documento AÚN NO EXISTE: Paperless devolvió el id de la tarea y su OCR
     # corre después. Por eso aquí no se puede ligar todavía —no hay texto que
     # leer ni id que guardar— y la respuesta lo dice en lugar de prometerlo.
