@@ -88,4 +88,9 @@ CRON_TZ=America/Mexico_City
 # leyó el documento; este repaso liga lo que llegó en las últimas 48 h y sigue
 # sin dueño, sólo cuando no hay duda. Se apaga en Gerencia → Papeleo.
 */15 * * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py papeleo_ligar_pendientes >> /var/log/papeleo.log 2>&1
+
+# LOS PDF UNIDOS DEL PAPELEO SE LIMPIAN (deuda Sep28). «Unir en un PDF» deja el
+# resultado en El Almacén para bajarlo o archivarlo; a los 7 días se borra, salvo
+# que otro registro comparta el mismo archivo. Diario 4:20, lejos del respaldo.
+20 4 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py papeleo_limpiar_unidos >> /var/log/papeleo.log 2>&1
 # <<< El Despacho <<<
