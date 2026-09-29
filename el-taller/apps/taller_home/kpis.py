@@ -64,10 +64,38 @@ class KPI:
     calcular: Callable[[Any], dict[str, Any]]
     origen: str = "manual"
     estado_kpi: str = "activo"
+    # Cómo se juzga (ver `kpi_meta.py`). Los del catálogo original los toman de
+    # `kpi_meta.metadatos_de()` al registrarse; los nuevos los declaran aquí.
+    direccion: str = "sube"
+    acumula: str = ""
+    personal: bool = False
+    acotado: bool = False
+    formato: str = "numero"
+    # El mismo número repartido: `desglose("persona")` → `{usuario_pk: n}`,
+    # `desglose("cliente")` → `{cliente_pk: n}`. Es lo que permite ponerle
+    # meta a una persona o a un cliente. `desgloses` dice cuáles sabe dar.
+    desglose: Callable[[str], dict[int, float]] | None = None
+    desgloses: tuple[str, ...] = ()
 
     def visible_para(self, user) -> bool:
         """¿`user` puede ver este KPI? (sus permisos; super_admin siempre)."""
         return puede_ver(user, self.permisos)
+
+    def admite_meta(self, ambito: str) -> bool:
+        """¿Se le puede poner meta de este ámbito (`despacho|persona|cliente`)?
+
+        Una meta del despacho necesita un número del despacho (no «mis
+        tareas»); una por persona, un KPI personal o que se reparta por
+        persona; una por cliente, que se reparta por cliente."""
+        if self.direccion == "neutro":
+            return False
+        if ambito == "despacho":
+            return not self.personal
+        if ambito == "persona":
+            return self.personal or "persona" in self.desgloses
+        if ambito == "cliente":
+            return "cliente" in self.desgloses
+        return False
 
 
 # ── Helpers de cálculo (mantienen las queries simples y legibles) ───────────
@@ -727,6 +755,18 @@ KPIS += [
     KPI(slug, titulo, descripcion, categoria, permisos, fn)
     for slug, titulo, descripcion, categoria, permisos, fn in catalogo_bi()
 ]
+
+# Cómo se juzga cada KPI del catálogo original (dirección, periodo, formato).
+from dataclasses import replace as _replace  # noqa: E402
+
+from .kpi_meta import metadatos_de  # noqa: E402
+
+KPIS = [_replace(k, **metadatos_de(k.slug)) for k in KPIS]
+
+# Los de desempeño declaran sus propios metadatos: van después del `replace`.
+from .kpis_desempeno import catalogo_desempeno  # noqa: E402
+
+KPIS += catalogo_desempeno()
 
 
 CATEGORIAS = (
