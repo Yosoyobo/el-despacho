@@ -150,8 +150,10 @@ def formato_documentos() -> dict[str, Any]:
 @mcp.tool()
 def enlace_documento(tipo: str, codigo: str) -> dict[str, Any]:
     """El enlace al PDF de un documento por su código. `tipo`: cotizacion
-    (COT-2026-0044) o factura (F12; la comercial, no el CFDI). Pide el permiso
-    del módulo de ese documento."""
+    (COT-2026-0044), factura (F12; la comercial, no el CFDI), recibo_pago
+    (código del ingreso), reembolso (código del egreso), remision u
+    orden_trabajo (código del proyecto) o estado_cuenta (nombre del cliente).
+    Pide el permiso del módulo de ese documento."""
     return herramientas.enlace_documento(tipo, codigo)
 
 

@@ -16,6 +16,7 @@
             {% if egreso.tiene_comprobante %}
             <p class="mt-4 text-sm"><a href="{% url 'tesoreria:egreso-comprobante' egreso.pk %}" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">📎 Ver comprobante →</a></p>
             {% endif %}
+            {% if egreso.es_reembolso %}{% include "imprenta/_botones_documento.html" with tipo="reembolso" pk=egreso.pk etiqueta="Comprobante de reembolso" %}{% endif %}
         </section>
 
         {% if egreso.anulado %}

@@ -96,8 +96,12 @@ def _h_formato_documentos(args: dict, usuario) -> dict:
     }
 
 
-#: tipo → (buscar por código, ruta del PDF, permiso de lectura del módulo).
 def _documentos_con_pdf():
+    """tipo → (buscar(codigo) → (objeto, ruta, nombre) | None, puede(usuario, objeto)).
+
+    El permiso es el del módulo del documento; el de la remisión y la orden de
+    trabajo es por proyecto (quien no ve el proyecto no recibe su enlace).
+    """
     from lib import permisos
 
     def cotizacion(codigo):
@@ -114,10 +118,49 @@ def _documentos_con_pdf():
              or (Factura.objects.filter(folio_numero=int(crudo)).first() if crudo.isdigit() else None))
         return (f, f"/facturacion/{f.pk}/pdf-comercial/", f.folio or f.codigo) if f else None
 
-    return {
-        "cotizacion": (cotizacion, permisos.puede_ver_cotizaciones),
-        "factura": (factura, permisos.puede_ver_facturacion),
+    def nuevo(tipo, buscar):
+        """Los documentos de La Imprenta: su ruta genérica y su propio permiso."""
+        from imprenta.tipos import DOCUMENTOS
+
+        doc = DOCUMENTOS[tipo]
+
+        def _buscar(codigo):
+            obj = buscar(codigo)
+            return (obj, f"/documentos/{tipo}/{obj.pk}/pdf/", codigo) if obj else None
+
+        return _buscar, doc.puede
+
+    def ingreso(codigo):
+        from apps.tesoreria.models import Ingreso
+
+        return Ingreso.objects.filter(codigo__iexact=codigo).first()
+
+    def egreso(codigo):
+        from apps.tesoreria.models import Egreso
+
+        return Egreso.objects.filter(codigo__iexact=codigo).first()
+
+    def proyecto(codigo):
+        from apps.los_proyectos.models import Proyecto
+
+        return (Proyecto.objects.filter(codigo__iexact=codigo).first()
+                or Proyecto.objects.filter(nombre__iexact=codigo).first())
+
+    def cliente(codigo):
+        from apps.la_cartera.models import Cliente
+
+        return (Cliente.objects.filter(razon_social__iexact=codigo).first()
+                or Cliente.objects.filter(razon_social__icontains=codigo).first())
+
+    documentos = {
+        "cotizacion": (cotizacion, lambda u, obj=None: permisos.puede_ver_cotizaciones(u)),
+        "factura": (factura, lambda u, obj=None: permisos.puede_ver_facturacion(u)),
     }
+    for tipo, buscar in (("recibo_pago", ingreso), ("reembolso", egreso),
+                         ("remision", proyecto), ("orden_trabajo", proyecto),
+                         ("estado_cuenta", cliente)):
+        documentos[tipo] = nuevo(tipo, buscar)
+    return documentos
 
 
 def _h_enlace_documento(args: dict, usuario) -> dict:
@@ -127,11 +170,11 @@ def _h_enlace_documento(args: dict, usuario) -> dict:
     if tipo not in documentos:
         return {"error": f"Tipo desconocido. Tipos: {', '.join(documentos)}."}
     buscar, puede = documentos[tipo]
-    if not puede(usuario):
-        return {"error": "No tienes permiso para ver ese tipo de documento."}
     hallado = buscar(codigo) if codigo else None
-    if hallado is None:
-        return {"error": f"No encontré {tipo} con código «{codigo}»."}
+    # Sin permiso sobre ESE documento, la misma respuesta que si no existiera:
+    # el chat no confirma que algo existe a quien no lo puede ver.
+    if hallado is None or not puede(usuario, hallado[0]):
+        return {"error": f"No encontré {tipo} con código «{codigo}», o no tienes permiso para verlo."}
     _, ruta, nombre = hallado
     return {"documento": nombre, "tipo": tipo, "pdf": ruta,
             "nota": "El PDF sale con el formato de Ajustes → Documentos de La Gerencia."}
@@ -141,9 +184,12 @@ _LECTURAS = {
     "enlace_documento": Capacidad(
         nombre="enlace_documento",
         descripcion=(
-            "El enlace al PDF de un documento por su código: tipo `cotizacion` "
-            "(COT-2026-0044) o `factura` (F12 o su código; es la factura COMERCIAL, "
-            "no el CFDI). Pide el permiso del módulo de ese documento."
+            "El enlace al PDF de un documento por su código: `cotizacion` "
+            "(COT-2026-0044), `factura` (F12; la COMERCIAL, no el CFDI), "
+            "`recibo_pago` (código del ingreso), `reembolso` (código del egreso), "
+            "`remision` u `orden_trabajo` (código o nombre del proyecto) y "
+            "`estado_cuenta` (nombre del cliente). Pide el permiso del módulo de ese "
+            "documento."
         ),
         args_schema={"tipo": {"tipo": "str", "requerido": True},
                      "codigo": {"tipo": "str", "requerido": True}},

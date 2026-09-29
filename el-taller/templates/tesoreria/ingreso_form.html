@@ -108,6 +108,12 @@
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Imagen o PDF, hasta 25 MB. También puedes <strong>pegar</strong> una captura con Ctrl/Cmd+V.</p>
             <p id="ingreso-comprobante-pegado" class="mt-1 hidden text-xs font-medium text-brand-600 dark:text-brand-400"></p>
         </section>
+        {% if ingreso %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Documento</h3>
+            {% include "imprenta/_botones_documento.html" with tipo="recibo_pago" pk=ingreso.pk etiqueta="Recibo de pago" %}
+        </section>
+        {% endif %}
     </aside>
 
     <div class="flex flex-wrap items-center justify-between gap-3 xl:col-span-3">

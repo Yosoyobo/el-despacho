@@ -1,0 +1,8 @@
+{% comment %}La Imprenta (2026-09-29): los documentos del proyecto — la remisión (para
+el cliente, con su firma de recibido) y la orden de trabajo (interna, para el
+taller). El formato sale de Gerencia → Ajustes → Documentos.{% endcomment %}
+<section class="{{ clase_extra }} rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Documentos</h3>
+    {% include "imprenta/_botones_documento.html" with tipo="remision" pk=proyecto.pk etiqueta="Remisión" %}
+    {% include "imprenta/_botones_documento.html" with tipo="orden_trabajo" pk=proyecto.pk etiqueta="Orden de trabajo" %}
+</section>

@@ -1,0 +1,29 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers %}
+{% comment %}Comprobante de reembolso (La Imprenta): sale de un egreso que alguien
+del equipo pagó de su bolsa. Lleva la firma de quien paga y la de quien recibe.{% endcomment %}
+{% block cuerpo %}
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin:6pt 0 12pt 0;">
+  <tr><td style="{{ e.th }} text-align:center; padding:8pt; font-size:{{ e.titulo_pt|add:6 }}pt; font-weight:bold; {{ e.total }}">{{ eg.monto|dinero }} {{ eg.moneda }}</td></tr>
+  {% if b.letra %}<tr><td style="{{ e.td }} text-align:center; font-size:{{ e.tabla_pt }}pt;">{{ monto_letra }}</td></tr>{% endif %}
+</table>
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; font-size:{{ e.tabla_pt }}pt;">
+  <tr><td style="border:none; width:30%; padding:3pt 0; {{ e.suave_css }}">{{ r.rotulo_persona }}</td>
+      <td style="border:none; padding:3pt 0; font-weight:bold;">{% firstof persona "—" %}</td></tr>
+  <tr><td style="border:none; padding:3pt 0; {{ e.suave_css }}">{{ r.rotulo_cantidad }}</td>
+      <td style="border:none; padding:3pt 0;">{{ eg.monto|dinero }} {{ eg.moneda }}</td></tr>
+  <tr><td style="border:none; padding:3pt 0; vertical-align:top; {{ e.suave_css }}">{{ r.rotulo_concepto }}</td>
+      <td style="border:none; padding:3pt 0;">{{ eg.descripcion }} · pagado con {{ metodo|lower }} el {{ eg.fecha|date:"d/m/Y" }}</td></tr>
+  {% if b.proveedor and proveedor %}
+  <tr><td style="border:none; padding:3pt 0; {{ e.suave_css }}">Comprado a</td><td style="border:none; padding:3pt 0;">{{ proveedor }}</td></tr>
+  {% endif %}
+  {% if b.proyecto %}{% if eg.proyecto or eg.centro_de_costo %}
+  <tr><td style="border:none; padding:3pt 0; {{ e.suave_css }}">Para</td>
+      <td style="border:none; padding:3pt 0;">{% if eg.proyecto %}{% firstof eg.proyecto.nombre eg.proyecto.codigo %}{% endif %}{% if eg.proyecto and eg.centro_de_costo %} · {% endif %}{% if eg.centro_de_costo %}{{ eg.centro_de_costo }}{% endif %}</td></tr>
+  {% endif %}{% endif %}
+  {% if b.pago %}
+  <tr><td style="border:none; padding:3pt 0; {{ e.suave_css }}">Reembolsado</td>
+      <td style="border:none; padding:3pt 0;">{% if eg.pagado_en %}el {{ eg.pagado_en|date:"d/m/Y" }}{% if eg.pagado_desde %} desde {{ eg.get_pagado_desde_display|lower }}{% endif %}{% else %}pendiente{% endif %}</td></tr>
+  {% endif %}
+</table>
+{% endblock %}

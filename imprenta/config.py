@@ -441,6 +441,20 @@ def pagina(cfg: Config, default: dict | None = None) -> dict:
     return pag
 
 
+def hoja_css(pag: dict) -> dict:
+    """Las medidas de la hoja para la vista previa, en pulgadas (el CSS las pide
+    así). Salen de la MISMA página que se le manda al motor."""
+    def pulgadas(clave, default_pt):
+        valor = pag.get(clave)
+        return round((default_pt if valor is None else valor) / 72, 3)
+
+    return {"ancho": pag.get("ancho_in") or 8.5,
+            "arriba": pulgadas("margen_superior_pt", 36),
+            "abajo": pulgadas("margen_inferior_pt", 43),
+            "izquierda": pulgadas("margen_izquierdo_pt", 72),
+            "derecha": pulgadas("margen_derecho_pt", 72)}
+
+
 def alto_util_pt(cfg: Config, default: int) -> int:
     """El alto que de verdad cabe, con la hoja y los márgenes de este tipo."""
     pag = pagina(cfg)

@@ -68,7 +68,9 @@ URL = "ajustes-documentos"
 # ── 1. Las pestañas ────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "factura", "historial"])
+@pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "factura",
+                                 "recibo_pago", "estado_cuenta", "remision", "orden_trabajo",
+                                 "reembolso", "historial"])
 def test_cada_pestana_abre(client, jefe, cot, tab):
     client.force_login(jefe)
     r = client.get(reverse(URL), {"tab": tab})
@@ -181,7 +183,7 @@ def test_la_vista_previa_de_la_hoja_sigue_los_margenes(client, jefe, cot):
 def test_la_vista_previa_sin_documentos_lo_dice(client, jefe):
     client.force_login(jefe)
     r = client.post(reverse("ajustes-documentos-vista"), {"seccion": "marca", "tipo": "cotizacion"})
-    assert "Todavía no hay" in r.content.decode()
+    assert "No hay ningún documento" in r.content.decode()
 
 
 def test_un_ejemplo_ajeno_no_se_dibuja(client, jefe, cot):
@@ -349,3 +351,20 @@ def test_la_siembra_da_documentos_a_quien_entraba_a_ajustes(usuario_factory):
 
     assert acciones(con_ajustes) == {"ver", "editar_estilo", "editar_notas", "editar_datos"}
     assert acciones(sin_ajustes) == set()
+
+
+def test_la_vista_previa_de_un_recibo_real(client, jefe, cliente_factory):
+    import datetime as dt
+
+    from apps.tesoreria.models import Ingreso
+
+    ing = Ingreso.objects.create(monto=Decimal("500"), descripcion="Pago de vasos", fecha=dt.date.today(),
+                                 metodo="efectivo", cliente=cliente_factory(creado_por=jefe),
+                                 creado_por=jefe)
+    client.force_login(jefe)
+    r = client.post(reverse("ajustes-documentos-vista"), {
+        "seccion": "recibo_pago", "tipo": "recibo_pago", "ejemplo": str(ing.pk),
+        "recibo_pago__col_rotulo_recibimos": "Pagó", "recibo_pago__bloque_letra": "on"})
+    html = r.content.decode()
+    assert "Pago de vasos" in html and ">Pagó<" in html
+    assert "QUINIENTOS PESOS 00/100 M.N." in html

@@ -45,4 +45,5 @@ urlpatterns = [
     path("", include("papeleo.urls")),
     # La Recepción (S5): invitar y revocar el acceso de un cliente al portal.
     path("", include("portal.urls_taller")),
+    path("documentos/", include("imprenta.urls_taller")),
 ]

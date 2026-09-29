@@ -1,0 +1,7 @@
+{% comment %}«Ver» y «Bajar PDF» de un documento de La Imprenta en El Taller.
+Params: tipo (slug), pk, etiqueta. El formato sale de Gerencia → Ajustes → Documentos.{% endcomment %}
+<div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ etiqueta }}</span>
+    <a href="{% url 'imprenta:ver' tipo pk %}" target="_blank" rel="noopener" class="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-200">👁 Ver</a>
+    <a href="{% url 'imprenta:pdf' tipo pk %}" class="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-200">⬇ Bajar PDF</a>
+</div>

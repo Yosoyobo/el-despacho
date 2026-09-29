@@ -132,6 +132,11 @@ class Egreso(models.Model):
             models.Index(fields=["pagado_por", "estado_pago"]),
         ]
 
+    @property
+    def es_reembolso(self) -> bool:
+        """Lo pagó alguien del equipo de su bolsa (La Imprenta arma su comprobante)."""
+        return self.metodo in METODOS_REEMBOLSO or self.estado_pago == "por_reembolsar"
+
     def __str__(self):
         return f"{self.codigo} · ${self.monto}"
 
