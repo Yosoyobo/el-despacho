@@ -242,6 +242,14 @@ def formato_documentos() -> dict[str, Any]:
     return _h_formato_documentos({}, usuario)
 
 
+def enlace_documento(tipo: str, codigo: str) -> dict[str, Any]:
+    """El enlace al PDF de un documento (cotización o factura comercial)."""
+    from capacidades.lecturas_imprenta import _h_enlace_documento
+
+    usuario = _usuario_actual()
+    return _h_enlace_documento({"tipo": _texto(tipo, 20), "codigo": _texto(codigo, 30)}, usuario)
+
+
 def mi_recibo(fecha: str = "") -> dict[str, Any]:
     """El recibo de nómina de quien opera la conexión (sólo quincenas cerradas)."""
     from capacidades.lecturas_nomina import _h_mi_recibo

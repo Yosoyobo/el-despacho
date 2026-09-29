@@ -37,6 +37,9 @@ OPCION = "opcion"
 IMAGEN = "imagen"
 MULTI = "multi"
 DECIMAL = "decimal"
+#: Una lista ordenada de notas: `[{"id", "texto", "activa"}]`. El id es estable
+#: para que cada cotización pueda quitar una en particular aunque se reordenen.
+NOTAS = "notas"
 
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -67,6 +70,8 @@ class Campo:
         """
         if self.tipo == BOOL:
             return str(crudo or "").strip().lower() in {"1", "on", "true", "si", "sí"}
+        if self.tipo == NOTAS:
+            return limpiar_notas(crudo)
         if self.tipo == MULTI:
             validas = {c for c, _ in self.opciones}
             valores = crudo if isinstance(crudo, list | tuple) else [crudo]
@@ -114,6 +119,10 @@ class Campo:
             return ", ".join(nombres.get(v, v) for v in (valor or [])) or "ninguno"
         if self.tipo == IMAGEN:
             return "imagen propia" if valor else "la de siempre"
+        if self.tipo == NOTAS:
+            notas = valor or []
+            activas = sum(1 for n in notas if n.get("activa", True))
+            return f"{len(notas)} nota(s), {activas} activa(s)"
         if valor in (None, ""):
             return "vacío"
         texto = str(valor)
@@ -128,6 +137,34 @@ class Seccion:
     campos: tuple[Campo, ...]
     #: El permiso que hace falta para cambiarla (acción del módulo `documentos`).
     permiso: str = "editar_estilo"
+
+
+def limpiar_notas(crudo) -> list[dict]:
+    """Normaliza una lista de notas. Las vacías se van; las nuevas reciben id.
+
+    `crudo` es una lista de dicts `{id, texto, activa}` (la arma la vista a
+    partir de los campos repetidos del formulario).
+    """
+    import secrets
+
+    limpias, vistos = [], set()
+    for n in crudo if isinstance(crudo, list | tuple) else []:
+        if not isinstance(n, dict):
+            continue
+        texto = " ".join(str(n.get("texto") or "").split())[:400]
+        if not texto:
+            continue
+        ident = re.sub(r"[^a-z0-9]", "", str(n.get("id") or "").lower())[:12]
+        if not ident or ident in vistos:
+            ident = "n" + secrets.token_hex(3)
+        vistos.add(ident)
+        limpias.append({"id": ident, "texto": texto, "activa": bool(n.get("activa", True))})
+    return limpias[:30]
+
+
+def notas_de_fabrica(textos) -> list[dict]:
+    """Las notas de siempre, con ids estables `n1`, `n2`…"""
+    return [{"id": f"n{i}", "texto": t, "activa": True} for i, t in enumerate(textos, 1)]
 
 
 # ── Tipografía ──────────────────────────────────────────────────────────────
@@ -341,6 +378,16 @@ class Columna:
 
 
 @dataclass(frozen=True)
+class Marca:
+    """Una marca de agua que se estampa según el estado del documento."""
+
+    clave: str
+    etiqueta: str
+    texto: str = ""
+    color: str = "#d92d20"
+
+
+@dataclass(frozen=True)
 class DefinicionTipo:
     """Lo que un tipo de documento declara para que la pantalla lo pinte.
 
@@ -360,6 +407,22 @@ class DefinicionTipo:
     #: Dónde se guarda en Drive.
     subcarpeta: str = "Documentos"
     ayuda: str = ""
+    #: Las marcas de agua por estado (vacío = sin marca en ese estado).
+    marcas: tuple[Marca, ...] = ()
+    #: Si el documento tiene vigencia («válida hasta»).
+    vigencia: bool = False
+    #: Las notas de fábrica. Vacío = el tipo no lleva notas.
+    notas_default: tuple[str, ...] = ()
+    #: La nota automática del final (p. ej. la forma de pago), si la hay.
+    nota_automatica: str = ""
+    #: De fábrica: folio visible, firma, aceptación, PDF/A.
+    folio_default: bool = False
+    firma_default: bool = False
+    aceptacion_default: bool = False
+    aceptacion_texto: str = "Acepto las condiciones de este documento."
+    pdfa_default: bool = False
+    #: Qué destinos de QR tienen sentido aquí.
+    qr_opciones: tuple[str, ...] = ("", "portal")
 
     def secciones(self) -> tuple[Seccion, ...]:
         bloques = tuple(
@@ -389,6 +452,53 @@ class DefinicionTipo:
         if columnas:
             secciones.append(Seccion("columnas", "Nombres de las columnas",
                                      "Cómo se llama cada columna de las tablas.", columnas))
+        if self.notas_default:
+            notas = [Campo("notas", NOTAS, "Notas", notas_de_fabrica(self.notas_default),
+                           "Se editan, se reordenan y se apagan aquí; cada documento "
+                           "puede quitar alguna o sumar las suyas.", visual=False)]
+            if self.nota_automatica:
+                notas.append(Campo("nota_automatica", BOOL, f"Agregar al final: {self.nota_automatica}",
+                                   True, "Se arma sola con lo que diga el documento.",
+                                   visual=False))
+            secciones.append(Seccion("notas", "Notas",
+                                     "Las condiciones que acompañan al documento.",
+                                     tuple(notas), permiso="editar_notas"))
+        firma = (
+            Campo("firma", BOOL, "Firma del despacho", self.firma_default,
+                  "La imagen, el nombre y el cargo de «Datos y firma».", visual=False),
+            Campo("aceptacion", BOOL, "Renglón para que firme el cliente", self.aceptacion_default,
+                  "", visual=False),
+            Campo("aceptacion_texto", TEXTO, "Texto de aceptación", self.aceptacion_texto,
+                  largo=160, visual=False),
+        )
+        secciones.append(Seccion("firmas", "Firma y aceptación", "", firma))
+        qr = tuple(o for o in OPCIONES_QR if o[0] in self.qr_opciones)
+        folio = [Campo("mostrar_folio", BOOL, "Enseñar el folio", self.folio_default,
+                       "Debajo del título.", visual=False)]
+        if self.vigencia:
+            folio.append(Campo("mostrar_vigencia", BOOL, "Enseñar «válida hasta»", False,
+                               "", visual=False))
+        folio.append(Campo("qr", OPCION, "Código QR", "",
+                           "Sólo lo pone el motor propio (Chromium).", opciones=qr))
+        secciones.append(Seccion("folio", "Folio, vigencia y QR", "", tuple(folio)))
+        if self.marcas:
+            marcas = []
+            for m in self.marcas:
+                marcas.append(Campo(f"marca_{m.clave}", TEXTO, f"Marca «{m.etiqueta}»", m.texto,
+                                    "Vacío = sin marca.", largo=30, visual=False))
+                marcas.append(Campo(f"marca_{m.clave}_color", COLOR, f"Color «{m.etiqueta}»", m.color))
+            secciones.append(Seccion("marcas", "Marcas de agua por estado",
+                                     "Se estampan cruzadas y tenues en todas las hojas.",
+                                     tuple(marcas)))
+        archivo = (
+            Campo("patron_archivo", TEXTO, "Nombre del archivo", "",
+                  "Vacío = el de siempre. Acepta {folio}, {cliente}, {CLIENTE}, {proyecto}, "
+                  "{version} y {fecha}.", largo=120, visual=False),
+            Campo("pdfa", BOOL, "Guardar como PDF/A (para archivar)", self.pdfa_default,
+                  "El formato que se conserva igual por años. Sólo con el motor propio.",
+                  visual=False),
+        )
+        secciones.append(Seccion("archivo", "El archivo", "", archivo))
         if self.extra:
             secciones.append(Seccion("extra", "Más ajustes", "", self.extra))
         secciones.append(Seccion("hoja", "Hoja de este documento",
@@ -437,12 +547,31 @@ def limpiar(secciones, datos, prefijo: str = "") -> dict:
     for s in secciones:
         for c in s.campos:
             nombre = f"{prefijo}{c.clave}"
+            if c.tipo == NOTAS:
+                valores[c.clave] = c.limpiar(_notas_del_formulario(datos, nombre))
+                continue
             if c.tipo == MULTI:
                 crudo = datos.getlist(nombre) if hasattr(datos, "getlist") else datos.get(nombre, [])
             else:
                 crudo = datos.get(nombre)
             valores[c.clave] = c.limpiar(crudo)
     return valores
+
+
+def _notas_del_formulario(datos, nombre: str) -> list[dict]:
+    """Las notas vienen en campos repetidos, en el orden de la pantalla:
+    `<nombre>__id`, `<nombre>__texto` y `<nombre>__activa` (valor = id)."""
+    if hasattr(datos, "getlist"):
+        ids, textos = datos.getlist(f"{nombre}__id"), datos.getlist(f"{nombre}__texto")
+        activas = set(datos.getlist(f"{nombre}__activa"))
+    else:
+        crudo = datos.get(nombre)
+        return list(crudo) if isinstance(crudo, list | tuple) else []
+    notas = []
+    for i, texto in enumerate(textos):
+        ident = ids[i] if i < len(ids) else ""
+        notas.append({"id": ident, "texto": texto, "activa": (ident in activas) if ident else True})
+    return notas
 
 
 def diferencias(secciones, antes: dict, despues: dict) -> list[str]:
@@ -457,14 +586,17 @@ def diferencias(secciones, antes: dict, despues: dict) -> list[str]:
 
 
 def _norm(v):
+    """Para comparar: las listas simples sin orden; las de notas, con orden."""
     if isinstance(v, list | tuple):
+        if any(isinstance(x, dict) for x in v):
+            return [dict(x) for x in v]
         return sorted(v)
     return v
 
 
 __all__ = [
     "BOOL", "COLOR", "DECIMAL", "DESPACHO", "HOJA", "ENTERO", "FIRMA", "FUENTES", "IMAGEN", "MARCA",
-    "MULTI", "OPCION", "SECCIONES_GLOBALES", "TABLAS", "TEXTO", "TEXTO_LARGO",
-    "Bloque", "Campo", "Columna", "DefinicionTipo", "Seccion", "defaults",
+    "MULTI", "NOTAS", "OPCION", "SECCIONES_GLOBALES", "TABLAS", "TEXTO", "TEXTO_LARGO",
+    "Bloque", "Campo", "Columna", "DefinicionTipo", "Marca", "Seccion", "defaults",
     "diferencias", "limpiar", "mezclar",
 ]

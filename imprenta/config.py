@@ -142,6 +142,29 @@ class Config:
                 filas.append((rotulo, valor))
         return filas
 
+    def marca_de(self, estado: str) -> tuple[str, str]:
+        """(texto, color) de la marca de agua para un estado. ("", "") = ninguna."""
+        texto = (self.doc.get(f"marca_{estado}") or "").strip()
+        if not texto:
+            return "", ""
+        return texto, self.doc.get(f"marca_{estado}_color") or "#d92d20"
+
+    def nombre_archivo(self, default: str, **valores) -> str:
+        """El nombre del PDF con el patrón del ajuste; `default` si no hay patrón.
+
+        Fuera los caracteres que ningún sistema de archivos tolera; si el patrón
+        queda vacío (piezas que no existen), se usa el de siempre.
+        """
+        import re
+
+        patron = (self.doc.get("patron_archivo") or "").strip()
+        if not patron:
+            return default
+        nombre = rellenar(patron, valores)
+        nombre = re.sub(r'[\\/:"*?<>|\n\r]+', " ", nombre)
+        nombre = " ".join(nombre.split()).strip(" .-")[:150]
+        return nombre or default
+
     def titulo(self, default: str, **valores) -> str:
         """El título del documento: el patrón del ajuste con sus piezas."""
         patron = (self.doc.get("titulo") or "").strip()
@@ -413,6 +436,8 @@ def pagina(cfg: Config, default: dict | None = None) -> dict:
             pag[clave] = doc[clave].strip()
     if cfg.destino == "motor" and not cfg.basico:
         pag["fuentes"] = cfg.e.archivos_fuente()
+        if doc.get("pdfa"):
+            pag["pdfa"] = True
     return pag
 
 

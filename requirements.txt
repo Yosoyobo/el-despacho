@@ -17,6 +17,9 @@ pillow==11.0.0
 # (`lib.almacen._heif_a_jpeg`), así el original también se ve en todos lados.
 pillow-heif==0.21.0
 markdown==3.7
+# La Imprenta: el código QR de los documentos (pura Python, sin dependencias;
+# se dibuja como SVG dentro del PDF).
+segno==1.6.6
 pywebpush==2.0.0
 # MCP oficial. Se fija a la rama estable v1 antes de la llegada de v2.
 mcp==1.27.2

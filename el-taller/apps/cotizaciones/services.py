@@ -131,7 +131,7 @@ def construir_html_pdf(
             "extras": [],
         })
     totales = cot.calcular_totales()
-    notas = notas_para(cot) if cfg.bloque("notas") else []
+    notas = notas_para(cot, cfg) if cfg.bloque("notas") else []
     # El «Desglose de Elementos» es lo que se está comprando, así que las
     # ALTERNATIVAS de volumen no van (si fueran, la lista no cuadraría con el
     # subtotal de abajo). Se leen en la tabla de montos de su producto.
@@ -140,8 +140,12 @@ def construir_html_pdf(
     # pie, si el documento va apretado y si arrancan a dos renglones de una hoja
     # nueva (LC 2026-08-18, ver `_plan_notas`).
     texto_cierre = (cfg.doc.get("texto_cierre") or "").strip()
+    qr_uri, qr_texto = _qr_de(cot, cfg)
+    # Lo que va entre el contenido y las notas también empuja: el texto de
+    # cierre y el bloque de firmas/QR (~76pt con firma o QR).
+    alto_firmas = 76 if (cfg.doc.get("firma") or cfg.doc.get("aceptacion") or qr_uri) else 0
     plan_notas = _plan_notas(cot, filas, items_desglose, notas, cfg=cfg,
-                             extra_pt=_alto_texto(texto_cierre))
+                             extra_pt=_alto_texto(texto_cierre) + alto_firmas)
     pagina = imprenta.pagina(cfg, default=PAGINA_DOCUMENTO)
     return render_to_string("cotizaciones/pdf.html", {
         # La Imprenta: la configuración, sus trozos de estilo, qué bloques van y
@@ -156,6 +160,9 @@ def construir_html_pdf(
             proyecto=getattr(cot.proyecto, "nombre", "") if cot.proyecto_id else "",
             fecha=cot.fecha_emision.strftime("%d/%m/%Y") if cot.fecha_emision else ""),
         "texto_intro": (cfg.doc.get("texto_intro") or "").strip(),
+        "linea_folio": _linea_folio(cot, cfg),
+        "qr_uri": qr_uri,
+        "qr_texto": qr_texto,
         "texto_cierre": texto_cierre,
         "hoja_css": _hoja_css(pagina),
         "cot": cot,
@@ -188,10 +195,91 @@ def construir_html_pdf(
         # La vista previa de La Gerencia enseña la hoja sin la barra de acciones
         # (no hay nada que bajar ni imprimir de un documento sin guardar).
         "sin_barra": sin_barra,
-        "nombre_archivo": cot.nombre_pdf,
+        "nombre_archivo": nombre_archivo(cot, cfg),
         # Sólo lo pinta la vista previa: en el PDF el pie lo pone la API de Docs.
         "pie_documento": PIE_DOCUMENTO,
     })
+
+
+def nombre_archivo(cot: Cotizacion, cfg=None) -> str:
+    """El nombre del PDF: el patrón de La Gerencia, o el de siempre
+    (`Cotizacion.nombre_pdf`, la convención COTIZACIÓN-CLIENTE-Proyecto-v2)."""
+    if cfg is None:
+        from imprenta.config import resolver
+
+        cfg = resolver("cotizacion")
+    cliente = getattr(cot.cliente, "razon_social", "") if cot.cliente_id else ""
+    proyecto = (cot.proyecto.nombre or cot.proyecto.codigo) if cot.proyecto_id else cot.titulo
+    return cfg.nombre_archivo(
+        cot.nombre_pdf, folio=cot.codigo, cliente=cliente, CLIENTE=cliente.upper(),
+        proyecto=proyecto, version=f"v{cot.version}" if cot.version else "",
+        fecha=cot.fecha_emision.strftime("%Y-%m-%d") if cot.fecha_emision else "")
+
+
+def _nombre_adjunto(cot: Cotizacion) -> str:
+    """El nombre del adjunto del correo: el del patrón si se escribió uno; si
+    no, el código de siempre (COT-2026-0044). Vacío = lo de siempre."""
+    from imprenta.config import resolver
+
+    cfg = resolver("cotizacion")
+    return nombre_archivo(cot, cfg) if (cfg.doc.get("patron_archivo") or "").strip() else cot.codigo
+
+
+def _linea_folio(cot: Cotizacion, cfg) -> str:
+    """«Folio COT-2026-0044 · Válida hasta el 12 de octubre de 2026», o ""."""
+    partes = []
+    if cfg.doc.get("mostrar_folio"):
+        partes.append(f"Folio {cot.codigo}")
+    if cfg.doc.get("mostrar_vigencia") and cot.fecha_validez:
+        from django.utils.formats import date_format
+
+        d = cot.fecha_validez
+        partes.append(f"Válida hasta el {d.day} de {date_format(d, 'F').lower()} de {d.year}")
+    return " · ".join(partes)
+
+
+def _qr_de(cot: Cotizacion, cfg) -> tuple[str, str]:
+    """(imagen, leyenda) del QR, o ("", ""). No va en la versión de Google."""
+    destino = cfg.doc.get("qr") or ""
+    if not destino or cfg.basico:
+        return "", ""
+    from imprenta import qr
+
+    if destino == "pago":
+        url, texto = qr.url_pago(cot), "Escanea para pagar el anticipo"
+    else:
+        url, texto = qr.url_portal(), "Escanea para verla y aprobarla en línea"
+    uri = qr.data_uri(url)
+    return (uri, texto) if uri else ("", "")
+
+
+def marca_de_estado(cot: Cotizacion, cfg) -> tuple[str, str]:
+    """(texto, color) de la marca de agua según cómo va la cotización.
+
+    Orden: perdida (rechazada o anulada) > aprobada > vencida > sin enviar. La
+    de «sin enviar» es la de la hoja general (BORRADOR, como siempre); las demás
+    nacen vacías, así que de fábrica sólo sale BORRADOR.
+    """
+    from datetime import date
+
+    from apps.cotizaciones.embudo import fase_efectiva
+    from apps.cotizaciones.models import FASE_GANADA, FASE_PERDIDA
+
+    fase = fase_efectiva(cot)
+    if fase == FASE_PERDIDA:
+        return cfg.marca_de("perdida")
+    if fase == FASE_GANADA:
+        return cfg.marca_de("aprobada")
+    if cot.fecha_validez and cot.fecha_validez < date.today():
+        texto, color = cfg.marca_de("vencida")
+        if texto:
+            return texto, color
+    if not getattr(cot, "enviada_en", None):
+        from lib.documentos import marca_borrador
+
+        texto = marca_borrador()
+        return (texto, "#d92d20") if texto else ("", "")
+    return "", ""
 
 
 def _definicion():
@@ -316,15 +404,16 @@ def pagina_documento(cot=None, *, config=None) -> dict:
     if cot is None:
         return pagina
 
-    # Una cotización que aún no se manda sale MARCADA, para que no se confunda
-    # con la que ya salió. Las dos se ven idénticas hoy, y confundirlas frente a
-    # un cliente es de los errores caros.
-    from lib.documentos import marca_borrador
+    # La marca de agua según el estado. Una cotización que aún no se manda sale
+    # MARCADA (BORRADOR), para que no se confunda con la que ya salió; desde La
+    # Imprenta también se pueden marcar la aprobada, la rechazada y la vencida.
+    if config is None:
+        from imprenta.config import resolver
 
-    if not getattr(cot, "enviada_en", None):
-        marca = marca_borrador()
-        if marca:
-            pagina = {**pagina, "marca_agua": marca}
+        config = resolver("cotizacion")
+    marca, color = marca_de_estado(cot, config)
+    if marca:
+        pagina = {**pagina, "marca_agua": marca, "marca_color": color}
 
     # Y los metadatos, para que las propiedades del archivo digan de qué es. Un
     # PDF sin título es imposible de encontrar en una carpeta con cien.
@@ -692,7 +781,8 @@ def enviar_por_correo(cot: Cotizacion, actor, email_destino: str = ""):
     res_pdf = generar_pdf(cot, actor)
     if res_pdf.ok and res_pdf.pdf_bytes:
         adjuntos.append(cartero.Adjunto(
-            nombre=f"{cot.codigo}.pdf", contenido=res_pdf.pdf_bytes, mime="application/pdf"))
+            nombre=f"{_nombre_adjunto(cot)}.pdf", contenido=res_pdf.pdf_bytes,
+            mime="application/pdf"))
 
     asunto, html = _render_correo(cot)
     return cartero.enviar(destinatario=destino, asunto=asunto, html=html, adjuntos=adjuntos)
@@ -744,7 +834,7 @@ def generar_pdf(cot: Cotizacion, actor):
     # Oscar): se dibuja sólo si hace falta.
     kwargs["html_google"] = lambda: construir_html_pdf(
         cot, config=imprenta.resolver("cotizacion", basico=True))
-    res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
+    res = _gen(html=html, nombre=nombre_archivo(cot, cfg), subcarpeta="Cotizaciones",
                pagina=pagina_documento(cot, config=cfg), **kwargs)
     if avisos_anexos:
         import contextlib
@@ -889,6 +979,8 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
             descuento_global_porcentaje=cot.descuento_global_porcentaje,
             notas=cot.notas,
             terminos=cot.terminos,
+            notas_omitidas=list(cot.notas_omitidas or []),
+            notas_extra=cot.notas_extra,
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
         for it in cot.items.all():
@@ -1043,6 +1135,9 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
             # un solo pago, la v+1 no te lo vuelve a preguntar.
             incluir_desglose=(ultima_cot.incluir_desglose if ultima_cot else False),
             forma_pago=(ultima_cot.forma_pago if ultima_cot else Cotizacion.FORMA_ANTICIPO),
+            # La Imprenta: lo que ESTA cotización quitó o sumó a las notas.
+            notas_omitidas=list(ultima_cot.notas_omitidas or []) if ultima_cot else [],
+            notas_extra=(ultima_cot.notas_extra if ultima_cot else ""),
             # Igual con el encabezado escrito a mano: si ya se corrigió en la
             # v1, la v2 no vuelve a salir con el título automático.
             titulo_documento_manual=(

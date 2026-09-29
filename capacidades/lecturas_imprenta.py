@@ -58,6 +58,10 @@ def _h_formato_documentos(args: dict, usuario) -> dict:
             "titulo": cfg.doc.get("titulo") or "el de siempre",
             "datos_del_despacho_que_ensena": [dict(esquema.DATOS_DESPACHO).get(x, x)
                                               for x in cfg.doc.get("datos_despacho") or []],
+            "notas": [n["texto"] for n in cfg.doc.get("notas") or [] if n.get("activa", True)],
+            "firma": bool(cfg.doc.get("firma")), "aceptacion": bool(cfg.doc.get("aceptacion")),
+            "qr": cfg.doc.get("qr") or "sin QR",
+            "nombre_de_archivo": cfg.doc.get("patron_archivo") or "el de siempre",
         })
     ultima = servicios.ultima_version()
     return {
@@ -92,7 +96,59 @@ def _h_formato_documentos(args: dict, usuario) -> dict:
     }
 
 
+#: tipo → (buscar por código, ruta del PDF, permiso de lectura del módulo).
+def _documentos_con_pdf():
+    from lib import permisos
+
+    def cotizacion(codigo):
+        from apps.cotizaciones.models import Cotizacion
+
+        c = Cotizacion.objects.filter(codigo__iexact=codigo).first()
+        return (c, f"/cotizaciones/{c.pk}/pdf/", c.codigo) if c else None
+
+    def factura(codigo):
+        from apps.facturacion.models import Factura
+
+        crudo = codigo.upper().lstrip("F")
+        f = (Factura.objects.filter(codigo__iexact=codigo).first()
+             or (Factura.objects.filter(folio_numero=int(crudo)).first() if crudo.isdigit() else None))
+        return (f, f"/facturacion/{f.pk}/pdf-comercial/", f.folio or f.codigo) if f else None
+
+    return {
+        "cotizacion": (cotizacion, permisos.puede_ver_cotizaciones),
+        "factura": (factura, permisos.puede_ver_facturacion),
+    }
+
+
+def _h_enlace_documento(args: dict, usuario) -> dict:
+    tipo = (args.get("tipo") or "").strip().lower()
+    codigo = (args.get("codigo") or "").strip()
+    documentos = _documentos_con_pdf()
+    if tipo not in documentos:
+        return {"error": f"Tipo desconocido. Tipos: {', '.join(documentos)}."}
+    buscar, puede = documentos[tipo]
+    if not puede(usuario):
+        return {"error": "No tienes permiso para ver ese tipo de documento."}
+    hallado = buscar(codigo) if codigo else None
+    if hallado is None:
+        return {"error": f"No encontré {tipo} con código «{codigo}»."}
+    _, ruta, nombre = hallado
+    return {"documento": nombre, "tipo": tipo, "pdf": ruta,
+            "nota": "El PDF sale con el formato de Ajustes → Documentos de La Gerencia."}
+
+
 _LECTURAS = {
+    "enlace_documento": Capacidad(
+        nombre="enlace_documento",
+        descripcion=(
+            "El enlace al PDF de un documento por su código: tipo `cotizacion` "
+            "(COT-2026-0044) o `factura` (F12 o su código; es la factura COMERCIAL, "
+            "no el CFDI). Pide el permiso del módulo de ese documento."
+        ),
+        args_schema={"tipo": {"tipo": "str", "requerido": True},
+                     "codigo": {"tipo": "str", "requerido": True}},
+        gating="abierto", fn=_h_enlace_documento,
+    ),
     "formato_documentos": Capacidad(
         nombre="formato_documentos",
         descripcion=(

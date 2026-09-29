@@ -18,6 +18,8 @@ urlpatterns = [
     path("<int:pk>/eliminar/", views.eliminar, name="eliminar"),
     path("<int:pk>/ver/", views.pdf_ver, name="ver"),
     path("<int:pk>/pdf/", views.descargar_pdf, name="pdf"),
+    # La Imprenta: la factura COMERCIAL en PDF (la arma el motor propio al pedirla).
+    path("<int:pk>/pdf-comercial/", views.pdf_comercial, name="pdf-comercial"),
     path("<int:pk>/xml/", views.descargar_xml, name="xml"),
     path("<int:pk>/cfdi/", views.almacenar_cfdi, name="cfdi"),
     path("api/cliente/<int:pk>/proyectos/", views.api_cliente_proyectos, name="api-cliente-proyectos"),

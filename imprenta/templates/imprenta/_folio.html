@@ -1,0 +1,3 @@
+{% comment %}Folio y vigencia (La Imprenta): un renglón chico debajo del título, con la
+misma alineación que el título. Sólo si el tipo de documento los enciende.{% endcomment %}
+{% if linea_folio %}<p style="margin:0 0 8pt 0; font-size:{{ e.notas_pt }}pt; {{ e.suave_css }} text-align:{{ c.marca.titulo_alineacion|default:'center' }};">{{ linea_folio }}</p>{% endif %}

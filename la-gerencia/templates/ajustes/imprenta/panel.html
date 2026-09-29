@@ -96,6 +96,7 @@ nuevo aparece aquí solo.
             {% for g in grupos %}
             <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 <h2 class="mb-1 text-theme-xl font-medium text-gray-800 dark:text-white/90">{{ g.seccion.titulo }}</h2>
+                {% if not g.editable %}<p class="mb-2 text-xs font-medium text-warning-600 dark:text-warning-400">No tienes permiso para cambiar esta parte: lo que escribas aquí no se guarda.</p>{% endif %}
                 {% if g.seccion.ayuda %}<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">{{ g.seccion.ayuda }}</p>{% endif %}
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {% for f in g.campos %}{% include "ajustes/imprenta/_campo.html" %}{% endfor %}
@@ -172,6 +173,27 @@ nuevo aparece aquí solo.
   }
   form.addEventListener('input', pronto);
   form.addEventListener('change', pronto);
+  // El editor de notas: subir, bajar, quitar y agregar sin recargar.
+  form.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-nota-subir],[data-nota-bajar],[data-nota-quitar],[data-nota-agregar]');
+    if (!b) return;
+    var editor = b.closest('[data-notas-editor]');
+    var lista = editor.querySelector('[data-notas-lista]');
+    var li = b.closest('[data-nota]');
+    if (b.hasAttribute('data-nota-agregar')) {
+      var molde = editor.querySelector('[data-notas-molde]');
+      lista.appendChild(molde.content.cloneNode(true));
+      var nuevas = lista.querySelectorAll('textarea');
+      nuevas[nuevas.length - 1].focus();
+    } else if (b.hasAttribute('data-nota-quitar')) {
+      li.remove();
+    } else if (b.hasAttribute('data-nota-subir') && li.previousElementSibling) {
+      lista.insertBefore(li, li.previousElementSibling);
+    } else if (b.hasAttribute('data-nota-bajar') && li.nextElementSibling) {
+      lista.insertBefore(li.nextElementSibling, li);
+    }
+    pronto();
+  });
   var ejemplo = document.getElementById('imprenta-ejemplo');
   if (ejemplo) ejemplo.addEventListener('change', refrescar);
   refrescar();

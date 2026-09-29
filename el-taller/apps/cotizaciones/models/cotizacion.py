@@ -117,6 +117,13 @@ class Cotizacion(models.Model):
     notas = models.TextField(blank=True, default="")
     terminos = models.TextField(blank=True, default="")
 
+    # La Imprenta (2026-09-29): las notas del PDF se editan en La Gerencia y cada
+    # cotización puede ajustarlas. `notas_omitidas` son los ids de las notas
+    # globales que ESTA no lleva; `notas_extra`, las suyas (una por renglón). Se
+    # heredan a la versión siguiente y al duplicar.
+    notas_omitidas = models.JSONField(default=list, blank=True)
+    notas_extra = models.TextField(blank=True, default="")
+
     # LC 2026-07 (Oscar) — dos interruptores del documento que se le manda al
     # cliente. Se prenden desde la página de la cotización y cada versión
     # guarda los suyos (la siguiente versión los hereda).
@@ -374,6 +381,13 @@ class Cotizacion(models.Model):
             return Decimal("0.00")
         total = self.calcular_totales()["total"]
         return (Decimal(total) * pct / Decimal("100")).quantize(Decimal("0.01"))
+
+    @property
+    def notas_documento(self) -> list[dict]:
+        """Las notas globales activas y si van en ÉSTA (recuadro «Documento»)."""
+        from apps.cotizaciones.notas import notas_de_la_cotizacion
+
+        return notas_de_la_cotizacion(self)
 
     @property
     def nota_forma_pago(self) -> str:
