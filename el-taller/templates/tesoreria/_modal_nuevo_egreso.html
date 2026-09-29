@@ -25,6 +25,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
             </header>
 
             <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                {% if cfdi_origen %}{% include "tesoreria/_cfdi_origen.html" %}{% endif %}
                 {% if ocr_log_id %}
                 <div class="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
                     <p class="text-xs font-medium uppercase tracking-wider text-brand-700 dark:text-brand-300">📸 Datos leídos del recibo</p>
@@ -69,10 +70,11 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                             <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
                             {{ form.proveedor }}
                             {% for e in form.proveedor.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
-                            <details class="mt-2 text-sm">
+                            <details class="mt-2 text-sm"{% if prov_prellenado_razon %} open{% endif %}>
                                 <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proveedor</summary>
                                 <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
-                                    <input type="text" id="prov-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="text" id="prov-razon" placeholder="Razón social *" value="{{ prov_prellenado_razon|default:'' }}" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="text" id="prov-rfc" placeholder="RFC" value="{{ prov_prellenado_rfc|default:'' }}" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
@@ -130,8 +132,10 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
         btn.addEventListener("click", async () => {
             const razon = root.querySelector("#prov-razon").value.trim();
             if (!razon) { root.querySelector("#prov-razon").focus(); return; }
+            const rfcEl = root.querySelector("#prov-rfc");
             const body = new URLSearchParams({
                 razon_social: razon,
+                rfc: rfcEl ? rfcEl.value.trim() : "",
                 nombre_contacto: root.querySelector("#prov-contacto").value.trim(),
                 email_contacto: root.querySelector("#prov-email").value.trim(),
                 telefono: root.querySelector("#prov-tel").value.trim(),
@@ -147,7 +151,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                 if (data.ok) {
                     sel.add(new Option(data.razon_social, data.id, true, true));
                     sel.value = String(data.id);
-                    ["#prov-razon","#prov-contacto","#prov-email","#prov-tel"].forEach(id => root.querySelector(id).value = "");
+                    ["#prov-razon","#prov-rfc","#prov-contacto","#prov-email","#prov-tel"].forEach(id => { const el = root.querySelector(id); if (el) el.value = ""; });
                 } else { alert(data.error || "No se pudo crear el proveedor."); }
             } catch (e) { alert("Error de red al crear el proveedor."); }
             finally { btn.disabled = false; }

@@ -1282,6 +1282,55 @@ def _h_papeleo_de(args: dict, usuario) -> dict:  # noqa: ARG001
 
 
 
+# ── Los CFDI que llegaron por correo y esperan dueño ─────────────────────────
+# S-Pendientes-Sep28. Es la lectura que va ANTES de proponer
+# `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura`: de aquí salen el folio
+# fiscal, el proveedor sugerido y —lo que evita contar un gasto dos veces— si ya
+# hay un egreso que casa con el comprobante.
+
+
+def _h_cfdi_pendientes(args: dict, usuario) -> dict:  # noqa: ARG001
+    from apps.facturacion import cfdi_recibidos
+
+    tipo = str(args.get("tipo") or "").strip().lower()
+    try:
+        limite = max(1, min(int(args.get("limite") or 10), 30))
+    except (TypeError, ValueError):
+        limite = 10
+    propio = cfdi_recibidos.rfc_propio()
+    todos = list(cfdi_recibidos.pendientes()[:200])
+    resumenes = []
+    por_tipo = {cfdi_recibidos.TIPO_PROVEEDOR: 0, cfdi_recibidos.TIPO_PROPIO: 0,
+                cfdi_recibidos.TIPO_DUDOSO: 0}
+    for c in todos:
+        t = cfdi_recibidos.clasificar(c, propio)
+        por_tipo[t] = por_tipo.get(t, 0) + 1
+        if tipo and t != tipo:
+            continue
+        if len(resumenes) < limite:
+            r = cfdi_recibidos.resumen(c, propio)
+            r["ver"] = f"/tesoreria/cfdi-recibidos/#cfdi-{c.pk}"
+            resumenes.append(r)
+    if not todos:
+        return {"total": 0, "pendientes": [],
+                "nota": "No hay CFDI recibidos esperando: todo lo que llegó por correo ya tiene dueño."}
+    return {
+        "total": len(todos),
+        "por_tipo": {
+            "de_proveedor": por_tipo[cfdi_recibidos.TIPO_PROVEEDOR],
+            "nuestros": por_tipo[cfdi_recibidos.TIPO_PROPIO],
+            "sin_saber": por_tipo[cfdi_recibidos.TIPO_DUDOSO],
+        },
+        "pendientes": resumenes,
+        "nota": (
+            "Los de proveedor se resuelven con registrar_egreso_desde_cfdi (si "
+            "`egresos_que_casan` trae un código, lígalo con egreso_codigo en vez de "
+            "crear otro). Los nuestros con ligar_cfdi_a_factura. Nada se aplica "
+            "sin que la persona lo confirme. En pantalla: Tesorería → CFDI recibidos."
+        ),
+    }
+
+
 # ── Las herramientas del servidor ──────────────────────────────────────────
 # Oscar, 2026-08-24: «si puedo clickear, teclear, lo puede hacer el chalán».
 # Estaban instaladas y él no las alcanzaba: podía medir una ruta por calles y
@@ -1339,6 +1388,20 @@ def _h_estado_herramientas(args: dict, usuario) -> dict:  # noqa: ARG001
 
 
 _LECTURAS: dict[str, Capacidad] = {
+    "cfdi_pendientes": Capacidad(
+        nombre="cfdi_pendientes",
+        descripcion=(
+            "Los CFDI que llegaron por correo y esperan que alguien decida: de quién "
+            "son, por cuánto, por qué no se ligaron solos, el proveedor o las "
+            "facturas que parecen ser, y los egresos que ya casan. Úsala ANTES de "
+            "proponer registrar_egreso_desde_cfdi o ligar_cfdi_a_factura. Args: "
+            "tipo (opcional: proveedor|propio|dudoso), limite (opcional)."
+        ),
+        args_schema={"tipo": {"tipo": "str", "requerido": False,
+                              "enum": ["proveedor", "propio", "dudoso"]},
+                     "limite": {"tipo": "int", "requerido": False}},
+        gating="finanzas", fn=_h_cfdi_pendientes,
+    ),
     "distancia_entre": Capacidad(
         nombre="distancia_entre",
         descripcion=(

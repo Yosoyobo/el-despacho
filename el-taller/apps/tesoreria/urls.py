@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_cfdi
 
 app_name = "tesoreria"
 
@@ -27,6 +27,10 @@ urlpatterns = [
     path("por-cobrar/", views.por_cobrar, name="por-cobrar"),
     path("por-pagar/", views.por_pagar, name="por-pagar"),
     path("gastos-no-registrados/", views.gastos_no_registrados, name="gastos-no-registrados"),
+    # CFDI que llegaron por correo y esperan dueño (S-Pendientes-Sep28).
+    path("cfdi-recibidos/", views_cfdi.cfdi_recibidos, name="cfdi-recibidos"),
+    path("cfdi-recibidos/<int:pk>/accion/", views_cfdi.cfdi_accion, name="cfdi-accion"),
+    path("cfdi-recibidos/<int:pk>/archivo/", views_cfdi.cfdi_archivo, name="cfdi-archivo"),
     path("reportes/", views.reportes, name="reportes"),
     # Exports
     path("exportar/<str:vista>.csv", views.exportar, name="exportar-csv"),

@@ -49,6 +49,14 @@ class LecturaCFDI:
     uuid: str = ""
     total: Decimal | None = None
     subtotal: Decimal | None = None
+    #: Descuento global del comprobante. La base del gasto es SubTotal − Descuento.
+    descuento: Decimal | None = None
+    #: IVA trasladado (Impuesto «002») a nivel comprobante. None = no lo trae.
+    iva: Decimal | None = None
+    #: Total de impuestos retenidos (ISR/IVA de honorarios). None = no lo trae.
+    retenciones: Decimal | None = None
+    #: I (ingreso), E (egreso/nota de crédito), P (pago)… como lo escribe el SAT.
+    tipo_comprobante: str = ""
     moneda: str = ""
     fecha: str = ""
     serie: str = ""
@@ -58,6 +66,18 @@ class LecturaCFDI:
     receptor_rfc: str = ""
     receptor_nombre: str = ""
     conceptos: list[str] = field(default_factory=list)
+
+    @property
+    def base(self) -> Decimal | None:
+        """Lo que vale el comprobante antes de impuestos: SubTotal − Descuento."""
+        if self.subtotal is None:
+            return None
+        return self.subtotal - (self.descuento or Decimal("0"))
+
+    @property
+    def concepto(self) -> str:
+        """Los conceptos en una línea, como los describe quien lo emitió."""
+        return " · ".join(self.conceptos)[:300]
 
     @property
     def referencia(self) -> str:
@@ -103,7 +123,9 @@ def leer(contenido: bytes) -> LecturaCFDI:
     lec = LecturaCFDI(ok=True)
     lec.total = _decimal(raiz.get("Total"))
     lec.subtotal = _decimal(raiz.get("SubTotal"))
+    lec.descuento = _decimal(raiz.get("Descuento"))
     lec.moneda = (raiz.get("Moneda") or "").strip()
+    lec.tipo_comprobante = (raiz.get("TipoDeComprobante") or "").strip().upper()
     lec.fecha = (raiz.get("Fecha") or "").strip()
     lec.serie = (raiz.get("Serie") or "").strip()
     lec.folio = (raiz.get("Folio") or "").strip()
@@ -123,12 +145,43 @@ def leer(contenido: bytes) -> LecturaCFDI:
             if desc and len(lec.conceptos) < 20:
                 lec.conceptos.append(desc[:200])
 
+    _leer_impuestos(raiz, lec)
+
     if not lec.uuid:
         # Sin folio fiscal no está timbrado: es un borrador o un archivo
         # cualquiera. Se lee igual, pero quien llame debe saberlo.
         lec.error = "El comprobante no trae folio fiscal (UUID): no está timbrado."
 
     return lec
+
+
+def _leer_impuestos(raiz, lec: LecturaCFDI) -> None:
+    """Los impuestos del COMPROBANTE, no los de cada concepto.
+
+    El nodo `Impuestos` aparece dos veces en un CFDI: dentro de cada concepto y
+    una vez como hijo directo de la raíz, con los totales. Sólo se lee ése —
+    sumar los de los conceptos contaría el IVA dos veces.
+    """
+    for hijo in list(raiz):
+        if hijo.tag.rsplit("}", 1)[-1] != "Impuestos":
+            continue
+        lec.retenciones = _decimal(hijo.get("TotalImpuestosRetenidos"))
+        iva = None
+        hay_traslados = False
+        for nodo in hijo.iter():
+            if nodo.tag.rsplit("}", 1)[-1] != "Traslado":
+                continue
+            hay_traslados = True
+            if (nodo.get("Impuesto") or "").strip() != "002":
+                continue  # IEPS u otro: no es IVA
+            importe = _decimal(nodo.get("Importe"))
+            if importe is not None:
+                iva = (iva or Decimal("0")) + importe
+        if not hay_traslados:
+            # Un comprobante viejo puede traer sólo el total, sin el detalle.
+            iva = _decimal(hijo.get("TotalImpuestosTrasladados"))
+        lec.iva = iva
+        return
 
 
 def es_nuestro(lec: LecturaCFDI, rfc_propio: str) -> bool:

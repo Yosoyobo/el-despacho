@@ -1000,7 +1000,7 @@ def proveedores_lista(request):
 def proveedor_quick_create(request):
     """POST /catalogo/proveedores/quick-create/ — crea Proveedor inline desde el form de Servicio.
 
-    Espera POST con: razon_social (requerido), nombre_contacto, email_contacto, telefono.
+    Espera POST con: razon_social (requerido), rfc, nombre_contacto, email_contacto, telefono.
     Retorna JSON con id + razon_social para que el JS agregue un checkbox marcado.
     Requiere permiso `crear` del módulo catálogo (el mismo que crea servicios).
     """
@@ -1012,6 +1012,9 @@ def proveedor_quick_create(request):
         return JsonResponse({"ok": False, "error": "La razón social es obligatoria."}, status=400)
     prov = Proveedor.objects.create(
         razon_social=razon,
+        # S-Pendientes-Sep28: el alta desde un CFDI trae el RFC del emisor, y
+        # con él el siguiente comprobante de ese proveedor se reconoce solo.
+        rfc=(request.POST.get("rfc") or "").strip().upper()[:20],
         nombre_contacto=(request.POST.get("nombre_contacto") or "").strip(),
         email_contacto=(request.POST.get("email_contacto") or "").strip(),
         telefono=(request.POST.get("telefono") or "").strip(),
