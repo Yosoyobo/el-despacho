@@ -10,8 +10,8 @@
         Permisos · {{ usuario.nombre_completo }}
     </h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Rol: <span class="font-medium">{{ usuario.get_rol_display }}</span>.
-        Cambia qué acciones tiene autorizadas. Los defaults vienen del rol.
+        Lo marcado es lo que esta persona tiene hoy, y junto a cada acción dice de dónde viene.
+        Lo que no toques sigue a sus roles.
     </p>
 </header>
 
@@ -22,13 +22,12 @@
             <h2 class="text-base font-semibold capitalize text-gray-900 dark:text-gray-100">{{ modulo }}</h2>
         </header>
         <ul class="divide-y divide-gray-200 dark:divide-gray-800">
-            {% for permiso, activo in filas %}
-            <li class="flex items-center gap-3 px-5 py-2">
-                <input type="checkbox" name="permisos" value="{{ modulo }}.{{ permiso }}"
-                       id="p_{{ modulo }}_{{ permiso }}"
-                       {% if activo %}checked{% endif %}
-                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
-                <label for="p_{{ modulo }}_{{ permiso }}" class="text-sm text-gray-700 dark:text-gray-300">{{ permiso }}</label>
+            {% for c in filas %}
+            <li class="flex items-start gap-3 px-5 py-2">
+                <input type="checkbox" name="permisos" value="{{ modulo }}.{{ c.permiso }}" {% if c.activo %}checked{% endif %}
+                       id="p_{{ modulo }}_{{ c.permiso }}"
+                       class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+                <label for="p_{{ modulo }}_{{ c.permiso }}" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{% include "directorio/_casilla_origen.html" %}</label>
             </li>
             {% endfor %}
         </ul>
@@ -39,7 +38,7 @@
 
     <div class="flex justify-end gap-2">
         <button name="restablecer" value="1" class="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
-            Restablecer a defaults del rol
+            Restablecer a lo que dan sus roles
         </button>
         <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
             Guardar
