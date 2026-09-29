@@ -18,16 +18,16 @@
             {% endfor %}
         </div>
     </section>
-    <p class="text-xs text-gray-500 dark:text-gray-400">Permisos individuales (afinan lo que dan los roles). Desmarca para revocar a esta persona; marca para conceder.</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">Permisos individuales: lo marcado es lo que esta persona tiene hoy, y abajo de cada uno dice de dónde viene. Desmarca para quitárselo sólo a ella; marca para dárselo. Lo que no toques sigue a sus roles.</p>
     {% for modulo, filas in secciones %}
     <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <h3 class="mb-2 text-sm font-semibold capitalize text-gray-800 dark:text-gray-100">{{ modulo }}</h3>
         <div class="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
-            {% for permiso, activo in filas %}
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" name="permisos" value="{{ modulo }}.{{ permiso }}" {% if activo %}checked{% endif %}
-                       class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
-                {{ permiso }}
+            {% for c in filas %}
+            <label class="inline-flex min-w-0 items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" name="permisos" value="{{ modulo }}.{{ c.permiso }}" {% if c.activo %}checked{% endif %}
+                       class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                {% include "directorio/_casilla_origen.html" %}
             </label>
             {% endfor %}
         </div>
