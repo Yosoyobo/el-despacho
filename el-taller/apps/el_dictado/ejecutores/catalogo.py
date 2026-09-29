@@ -171,7 +171,7 @@ def crear_proveedor(accion, usuario, contexto=None):
     """Crea un proveedor del Catálogo.
 
     Payload: razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?,
-    direccion?, notas?.
+    direccion?, notas?. Con dirección, el pin del mapa se ubica solo.
     """
     _gate(usuario, "puede_crear_catalogo", "crear proveedores del Catálogo")
     from apps.el_catalogo.models import Proveedor
@@ -192,6 +192,12 @@ def crear_proveedor(accion, usuario, contexto=None):
         notas=(payload.get("notas") or ""),
         creado_por=usuario,
     )
+    # Deuda Sep28: con dirección, el pin del mapa se ubica solo en el fondo
+    # (`apps.el_catalogo.ubicacion`): no espera al buscador y, si no la
+    # encuentra, lo avisa en la ficha.
+    from apps.el_catalogo import ubicacion
+
+    ubicacion.programar_alta(prov)
     accion.entidad_tipo = "proveedor"
     accion.entidad_id = prov.pk
     _emitir("proveedor.creado", usuario, {"proveedor_id": prov.pk, "razon_social": prov.razon_social})

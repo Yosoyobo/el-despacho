@@ -30,6 +30,12 @@ pin VIEJO, y el testigo de edición pisada (`lib/edicion.py`) lo tomaría por un
 choque con «alguien más». `corregir_post` reconoce ese caso —mandan justo el pin
 que este módulo reemplazó— y lo cambia por el nuevo antes de armar el
 formulario. Si la persona movió el pin a otro lado, eso manda.
+
+**El alta también** (`programar_alta`). Un proveedor nuevo con dirección y sin
+pin se ubica igual, en el fondo: la pantalla de alta, las altas rápidas (ficha
+de producto, gasto desde un CFDI) y `crear_proveedor` de El Chalán. Es el mismo
+recálculo con «antes» vacío: no hay pin previo que cuidar, y si el alta ya trae
+uno (se eligió una sugerencia del buscador) manda ése.
 """
 
 from __future__ import annotations
@@ -100,6 +106,8 @@ def toca_recalcular(antes: dict, despues) -> bool:
     return (despues.lat, despues.lng) == (antes.get("lat"), antes.get("lng"))
 
 
+MENSAJE_ALTA = ("El pin del mapa se ubica solo con su dirección en unos segundos (si no "
+                "se encuentra, se avisa aquí).")
 MENSAJE_PROGRAMADO = ("La dirección cambió: el pin del mapa se acomoda solo en unos "
                       "segundos (si no se encuentra, se queda donde estaba y se avisa aquí).")
 
@@ -115,6 +123,14 @@ def programar(prov, antes: dict) -> bool:
     args = (prov.pk, antes.get("direccion") or "", prov.direccion, prov.lat, prov.lng)
     transaction.on_commit(lambda: ejecutar_en_fondo(recalcular, *args))
     return True
+
+
+def programar_alta(prov) -> bool:
+    """El alta de un proveedor: si trae dirección y no trae pin, se ubica solo.
+
+    Un alta que ya trae pin (se eligió una sugerencia del buscador en la
+    pantalla de alta) no se toca: `toca_recalcular` ve que el pin «cambió»."""
+    return programar(prov, {"direccion": "", "lat": None, "lng": None})
 
 
 def recalcular(pk, direccion_anterior: str, direccion_nueva: str, lat0, lng0) -> str:
@@ -196,5 +212,5 @@ def antes_de(prov) -> dict:
     return {"direccion": prov.direccion, "lat": prov.lat, "lng": prov.lng}
 
 
-__all__ = ["UMBRAL_M", "antes_de", "aviso_pendiente", "corregir_post", "programar",
-           "recalcular", "toca_recalcular"]
+__all__ = ["MENSAJE_ALTA", "UMBRAL_M", "antes_de", "aviso_pendiente", "corregir_post",
+           "programar", "programar_alta", "recalcular", "toca_recalcular"]

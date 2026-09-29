@@ -78,6 +78,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                                     <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                    <input type="text" id="prov-direccion" placeholder="Dirección (el pin se ubica solo)" autocomplete="off" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                                     <button type="button" id="prov-crear" class="btn-secundario sm:col-span-2">Crear y seleccionar</button>
                                 </div>
                             </details>
@@ -139,6 +140,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                 nombre_contacto: root.querySelector("#prov-contacto").value.trim(),
                 email_contacto: root.querySelector("#prov-email").value.trim(),
                 telefono: root.querySelector("#prov-tel").value.trim(),
+                direccion: (root.querySelector("#prov-direccion") || {value: ""}).value.trim(),
             });
             btn.disabled = true;
             try {
@@ -151,7 +153,7 @@ inválido → re-render del modal. Ver vista `egreso_nuevo`.{% endcomment %}
                 if (data.ok) {
                     sel.add(new Option(data.razon_social, data.id, true, true));
                     sel.value = String(data.id);
-                    ["#prov-razon","#prov-rfc","#prov-contacto","#prov-email","#prov-tel"].forEach(id => { const el = root.querySelector(id); if (el) el.value = ""; });
+                    ["#prov-razon","#prov-rfc","#prov-contacto","#prov-email","#prov-tel","#prov-direccion"].forEach(id => { const el = root.querySelector(id); if (el) el.value = ""; });
                 } else { alert(data.error || "No se pudo crear el proveedor."); }
             } catch (e) { alert("Error de red al crear el proveedor."); }
             finally { btn.disabled = false; }

@@ -126,6 +126,11 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                                 <label for="prov-telefono" class="text-xs font-medium text-gray-600 dark:text-gray-300">Teléfono</label>
                                 <input id="prov-telefono" type="text" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                             </div>
+                            <div class="sm:col-span-2">
+                                <label for="prov-direccion" class="text-xs font-medium text-gray-600 dark:text-gray-300">Dirección</label>
+                                <input id="prov-direccion" type="text" autocomplete="off" placeholder="Calle, número, colonia, ciudad" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Con dirección, el pin del mapa se ubica solo.</p>
+                            </div>
                         </div>
                         <div class="mt-3 flex items-center gap-3">
                             <button type="button" id="prov-agregar" class="btn-primario whitespace-nowrap">Crear y marcar</button>
@@ -167,6 +172,7 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
             contacto: slot.querySelector('#prov-contacto'),
             email: slot.querySelector('#prov-email'),
             telefono: slot.querySelector('#prov-telefono'),
+            direccion: slot.querySelector('#prov-direccion'),
         };
         var msg = slot.querySelector('#prov-msg');
         var lista = slot.querySelector('#proveedores-lista');
@@ -183,6 +189,7 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
             body.append('nombre_contacto', inputs.contacto.value || '');
             body.append('email_contacto', inputs.email.value || '');
             body.append('telefono', inputs.telefono.value || '');
+            body.append('direccion', (inputs.direccion && inputs.direccion.value) || '');
             try {
                 var resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', { method: 'POST', headers: {'X-CSRFToken': csrf}, body: body });
                 var data = await resp.json();
@@ -195,8 +202,9 @@ HX-Redirect; inválido → re-render del modal. Ver vista `nuevo`.{% endcomment 
                 label.querySelector('span').textContent = data.razon_social;
                 lista.appendChild(label);
                 refrescarProv();
-                Object.values(inputs).forEach(function(i) { i.value = ''; });
-                mostrarMsg('Proveedor "' + data.razon_social + '" creado y marcado.', false);
+                Object.values(inputs).forEach(function(i) { if (i) i.value = ''; });
+                mostrarMsg('Proveedor "' + data.razon_social + '" creado y marcado.' +
+                           (data.pin_programado ? ' El pin del mapa se ubica solo con su dirección.' : ''), false);
                 btn.disabled = false;
             } catch (e) { mostrarMsg('Error de red.', true); btn.disabled = false; }
         });

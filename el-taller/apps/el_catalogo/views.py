@@ -1075,14 +1075,20 @@ def proveedor_quick_create(request):
         nombre_contacto=(request.POST.get("nombre_contacto") or "").strip(),
         email_contacto=(request.POST.get("email_contacto") or "").strip(),
         telefono=(request.POST.get("telefono") or "").strip(),
+        # Deuda Sep28: con dirección, el pin del mapa se ubica solo en el fondo.
+        direccion=(request.POST.get("direccion") or "").strip(),
         creado_por=request.user,
     )
+    from . import ubicacion
+
+    pin_programado = ubicacion.programar_alta(prov)
     emitir(EventoPortavoz(
         tipo="proveedor.quick_creado",
         actor_id=request.user.pk, actor_email=request.user.email,
         payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
     ))
-    return JsonResponse({"ok": True, "id": prov.pk, "razon_social": prov.razon_social})
+    return JsonResponse({"ok": True, "id": prov.pk, "razon_social": prov.razon_social,
+                         "pin_programado": pin_programado})
 
 
 def proveedor_buscar(request):
@@ -1135,12 +1141,18 @@ def proveedor_nuevo(request):
             prov.creado_por = request.user
             prov.save()
             form.save_m2m()  # persiste subcategorías (LC 2026-07)
+            # Deuda Sep28: con dirección y sin pin, el pin se ubica solo en el
+            # fondo; si el alta ya trae pin (sugerencia elegida), manda ése.
+            from . import ubicacion
+
+            pin_programado = ubicacion.programar_alta(prov)
             emitir(EventoPortavoz(
                 tipo="proveedor.creado",
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"proveedor_id": prov.pk, "razon_social": prov.razon_social},
             ))
-            messages.success(request, f"Proveedor '{prov.razon_social}' creado.")
+            messages.success(request, f"Proveedor '{prov.razon_social}' creado." + (
+                " " + ubicacion.MENSAJE_ALTA if pin_programado else ""))
             # LC 2026-08-12: se abre SU ficha, igual que un producto nuevo —
             # es lo que quieres hacer enseguida (ligarle productos, ubicación).
             destino = reverse("catalogo-proveedor-detalle", args=[prov.pk])
