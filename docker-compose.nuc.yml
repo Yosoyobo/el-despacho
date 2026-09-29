@@ -83,6 +83,10 @@ services:
       # vez. Con 8 hilos por worker se le da una arena a cada uno; cuesta ~150 MB
       # de fragmentación y aquí sobran diez gigas.
       MALLOC_ARENA_MAX: "8"
+      # En esta máquina corren Gotenberg, OSRM, n8n y Paperless: si alguno no
+      # contesta, /salud y El Vigía lo dicen (en HAL o en CI no existen, y ahí
+      # la alarma estaría prendida para siempre).
+      SITE_SERVICIOS_ESPERADOS: "1"
 
   la-gerencia:
     ports:
@@ -98,6 +102,7 @@ services:
       GUNICORN_WORKERS: "4"
       GUNICORN_THREADS: "8"
       MALLOC_ARENA_MAX: "8"
+      SITE_SERVICIOS_ESPERADOS: "1"
 
   # ── Postgres ────────────────────────────────────────────────────────────────
   # El compose base está tuneado para "droplet de 1 GB" (shared_buffers=64MB).

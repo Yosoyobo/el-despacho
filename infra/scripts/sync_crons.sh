@@ -29,8 +29,16 @@ trap 'rm -f "$CRON_TMP"' EXIT
 # abortar. sed borra cualquier bloque gestionado anterior (esté donde esté);
 # luego anexamos la versión fresca, que queda SIEMPRE al final (así CRON_TZ y
 # las env vars del bloque solo afectan a nuestras líneas).
+# El segundo sed limpia las copias HUÉRFANAS del encabezado viejo: hasta el
+# 2026-09-28 esas cuatro líneas vivían antes del marcador, así que cada deploy
+# las volvía a anexar (el NUC llegó a tener 38 copias). Ahora van dentro del
+# bloque; esto borra las que quedaron afuera.
 { crontab -l 2>/dev/null || true; } \
   | sed "/$MARCA_INI/,/$MARCA_FIN/d" \
+  | sed -e '/^# OJO (mudanza al NUC, 2026-08-21): la ruta del proyecto YA NO se escribe aqui\.$/d' \
+        -e '/^# `sync_crons.sh` sustituye .* por la raiz real del repo en la maquina$/d' \
+        -e '/^# donde se instala (droplet \/opt\/el-despacho, NUC \/mnt\/el-despacho, HAL otra)\.$/d' \
+        -e '/^# Asi los crons siguen al proyecto en vez de amarrarlo a un solo servidor\.$/d' \
   > "$CRON_TMP"
 # La raiz del repo en ESTA maquina (el guion vive en <raiz>/infra/scripts/).
 # Sustituye @@RAIZ@@ para que los crons no lleven una ruta hardcodeada: en el

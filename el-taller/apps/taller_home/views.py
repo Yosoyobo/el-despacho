@@ -406,14 +406,13 @@ def _buscar_otras_fichas(usuario, q: str) -> list[dict]:
     """
     from django.urls import reverse
 
-    from lib.permisos import puede, puede_ver_cartera
+    from lib.permisos import puede_ver_cartera, puede_ver_catalogo
     secciones: list[dict] = []
-    # OJO: el gate del Catálogo es `catalogo.ver_nombres`, el mismo que usa su
-    # propia lista. `lib.permisos.puede_ver_catalogo` pregunta por una acción
-    # `catalogo.ver` que NO EXISTE en el catálogo de permisos, así que devuelve
-    # False para todo el mundo (incluido super_admin) — usarlo aquí habría
-    # escondido las dos secciones sin que nada lo dijera.
-    ve_catalogo = puede(usuario, "catalogo", "ver_nombres")
+    # El gate del Catálogo es `catalogo.ver_nombres`, el mismo que usa su propia
+    # lista. `puede_ver_catalogo` preguntaba por una acción `catalogo.ver` que no
+    # existe (devolvía False para todos); desde S-Deuda-Sep28 ya pregunta por la
+    # correcta y este es su primer uso.
+    ve_catalogo = puede_ver_catalogo(usuario)
 
     def _agregar(titulo, icono, qs, fila, url_todos):
         filas = list(qs[: MAX_POR_SECCION + 1])

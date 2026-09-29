@@ -12,7 +12,7 @@
 #   3. Recicla workers gunicorn de la-gerencia/el-taller con HUP (libera
 #      fragmentación de heap acumulada; gunicorn re-forkea sin downtime
 #      gracias al master + max-requests).
-#   4. Docker: prune de contenedores parados, redes huérfanas, build cache,
+#   4. Docker: prune de imágenes colgantes, redes huérfanas, build cache (NO de contenedores),
 #      imágenes dangling. NUNCA --volumes (regla §12 del CLAUDE.md).
 #   5. Drop OS page cache (sync && echo 3 > .../drop_caches). Libera caché
 #      de I/O que el kernel guarda generosamente; en sistemas con poca RAM
@@ -119,8 +119,17 @@ res_prune="skipped"
 if [ "${SKIP_DOCKER_PRUNE:-0}" != "1" ]; then
     # -a NO se usa para no borrar imágenes que aún referencian containers
     # parados. La regla §12 prohíbe --volumes.
-    if liberado=$(docker system prune -f 2>&1 | tail -1); then
-        res_prune="$(echo "$liberado" | tr -d '\n')"
+    #
+    # Ya NO se usa `docker system prune`: también borra los contenedores
+    # DETENIDOS, y un contenedor detenido puede ser un servicio que falló al
+    # arrancar. El 2026-09-18 n8n y Paperless no pudieron arrancar tras un
+    # reinicio y esta poda los borró tres días después: desaparecieron sin dejar
+    # rastro. Se podan imágenes colgantes, redes huérfanas y caché de
+    # construcción; los contenedores se quedan, para que se vean y se puedan
+    # volver a levantar (lo hace `arranque_nuc.sh`).
+    if liberado=$( { docker image prune -f; docker network prune -f; docker builder prune -f; } 2>&1 \
+                   | grep -i "reclaimed" | tail -1); then
+        res_prune="$(echo "${liberado:-sin espacio que liberar}" | tr -d '\n')"
     else
         res_prune="error"
     fi

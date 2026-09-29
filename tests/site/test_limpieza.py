@@ -16,6 +16,7 @@ Lo que estas pruebas fijan, en orden de importancia:
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -607,11 +608,21 @@ class TestElPresupuestoDeTiempo:
         assert len(pedidas) == len(contenedores._PODAS)
 
     def test_lo_que_mas_libera_va_primero(self):
-        """La poda parcial sólo es segura si el orden es el correcto: contenedores
-        e imágenes liberan espacio de verdad; la caché de construcción, en este
-        servidor, está vacía (aquí no se compila — regla §4 #4)."""
+        """La poda parcial sólo es segura si el orden es el correcto: las imágenes
+        liberan espacio de verdad; la caché de construcción, en este servidor,
+        está vacía (aquí no se compila — regla §4 #4)."""
         rutas = [r for _, r in contenedores._PODAS]
-        assert "containers" in rutas[0] and "build" in rutas[-1]
+        assert "images" in rutas[0] and "build" in rutas[-1]
+
+    def test_los_contenedores_detenidos_no_se_podan(self):
+        """2026-09-18: n8n y Paperless no arrancaron tras un reinicio y la poda
+        borró sus contenedores; desaparecieron sin rastro. Un contenedor detenido
+        puede ser un servicio caído: se queda para que se vea y se levante."""
+        for _, ruta in contenedores._PODAS:
+            assert "containers" not in ruta, ruta
+        guion = (Path(__file__).resolve().parents[2] / "infra/scripts/optimizar.sh").read_text()
+        activas = [ln for ln in guion.splitlines() if not ln.lstrip().startswith("#")]
+        assert not any("docker system prune" in ln for ln in activas)
 
 
 class TestLaReservaDelReciclado:

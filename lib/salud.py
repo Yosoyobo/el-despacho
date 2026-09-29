@@ -99,6 +99,15 @@ def _m_cola() -> dict[str, Any]:
     det = f"{pend} pendientes"
     if dlq:
         det += f" · {dlq} descartados"
+    try:
+        from lib.portavoz import en_pausa
+
+        pausa = en_pausa()
+    except Exception:  # noqa: BLE001
+        pausa = {}
+    if pausa.get("pausado"):
+        # Pausa deliberada (sin destino configurado): se informa, no alarma.
+        det += f" · en pausa sin destino ({int(pausa.get('no_enviados') or 0)} sin enviar)"
     if dlq or pend >= UMBRAL_COLA_PENDIENTES:
         return {"modulo": "cola", "estado": "degradado", "detalle": det}
     return {"modulo": "cola", "estado": "ok", "detalle": det}
@@ -162,6 +171,29 @@ def _m_integraciones(de_la_casa: bool) -> dict[str, Any]:
     if de_la_casa:
         det += ": " + ", ".join(malas)
     return {"modulo": "integraciones", "estado": "degradado", "detalle": det}
+
+
+def _m_servicios(de_la_casa: bool) -> dict[str, Any] | None:
+    """Gotenberg, OSRM, n8n y Paperless: los servicios que corren junto a El
+    Despacho en el NUC. Uno caído no tumba el despacho (`degradado`), pero SE
+    DICE: el 2026-09-18 el NUC se reinició, n8n y Paperless no volvieron y nadie
+    se enteró en 10 días. `None` donde no se esperan (HAL, CI).
+
+    En abierto va el conteo; los nombres, con la credencial del Celador.
+    """
+    from lib.site import servicios
+
+    if not servicios.esperados():
+        return None
+    lista = servicios.estado_cacheado()
+    malos = servicios.caidos(lista)
+    if not malos:
+        return {"modulo": "servicios", "estado": "ok", "detalle": f"{len(lista)} servicios responden"}
+    n = len(malos)
+    det = f"{n} servicio no responde" if n == 1 else f"{n} servicios no responden"
+    if de_la_casa:
+        det += ": " + ", ".join(p["nombre"] for p in malos)
+    return {"modulo": "servicios", "estado": "degradado", "detalle": det}
 
 
 def _a_datetime(valor: Any) -> datetime | None:
@@ -262,14 +294,17 @@ def modulos(de_la_casa: bool = False) -> list[dict[str, Any]]:
         _m_ia,
         _m_memoria,
         lambda: _m_integraciones(de_la_casa),
+        lambda: _m_servicios(de_la_casa),
         lambda: _m_respaldo(de_la_casa),
     )
     salida: list[dict[str, Any]] = []
     for medir in medidas:
         try:
-            salida.append(medir())
+            m = medir()
         except Exception:  # noqa: BLE001 — un módulo que no se puede medir lo dice
             continue
+        if m is not None:  # None = no aplica en esta máquina
+            salida.append(m)
     return salida
 
 

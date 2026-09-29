@@ -144,25 +144,68 @@ def test_sin_llave_se_avisa_en_vez_de_fallar(monkeypatch, usuario_factory):
         activar_automatizacion(_Accion({"flujo_id": "1"}), usuario_factory(rol="super_admin"))
 
 
+# OJO: estas capacidades se ejercen POR EL REGISTRO (`ejecutar`), nunca llamando
+# el handler directo. La versión anterior de estos tests llamaba
+# `_h_listar_flujos(usuario)` con la firma invertida y salía verde — mientras en
+# producción el registro las llama `fn(args, usuario)` y las tres capacidades de
+# n8n llevaban rotas desde que nacieron: `listar_automatizaciones` SIEMPRE
+# tronaba (TypeError tragado como fallo_herramienta) y las otras dos descartaban
+# el flujo_id del LLM. El test verde era la trampa.
+
+
+def _ejecutar(nombre, args, usuario):
+    from capacidades import ejecutar
+
+    return ejecutar(nombre, args, usuario)
+
+
 def test_sin_llave_la_lectura_lo_dice_clarito(monkeypatch, usuario_factory):
-    from capacidades.lecturas import _h_listar_flujos
     from lib import n8n
 
     monkeypatch.setattr(n8n, "esta_configurado", lambda: False)
-    r = _h_listar_flujos(usuario_factory(rol="super_admin"))
+    r = _ejecutar("listar_automatizaciones", {}, usuario_factory(rol="super_admin"))
     assert r["disponible"] is False
     assert "Ajustes" in r["nota"]
 
 
 def test_la_lectura_lista_lo_que_hay(monkeypatch, usuario_factory):
-    from capacidades.lecturas import _h_listar_flujos
     from lib import n8n
 
     monkeypatch.setattr(n8n, "esta_configurado", lambda: True)
     monkeypatch.setattr(n8n, "listar_flujos", lambda: list(FLUJOS))
-    r = _h_listar_flujos(usuario_factory(rol="super_admin"))
+    r = _ejecutar("listar_automatizaciones", {}, usuario_factory(rol="super_admin"))
     assert r["total"] == 3
     assert r["flujos"][0]["nombre"] == "CFDI por correo"
+
+
+def test_el_detalle_usa_el_flujo_que_pidio_el_llm(monkeypatch, usuario_factory):
+    """La firma invertida no tronaba aquí: ligaba `flujo_id=<Usuario>` y
+    consultaba n8n con el repr del usuario, descartando lo que pidió el LLM."""
+    from lib import n8n
+
+    pedido = {}
+    monkeypatch.setattr(n8n, "esta_configurado", lambda: True)
+    monkeypatch.setattr(n8n, "detalle_flujo",
+                        lambda fid: pedido.setdefault("fid", fid) or {"id": fid, "nombre": "X"})
+    _ejecutar("detalle_automatizacion", {"flujo_id": "7"},
+              usuario_factory(rol="super_admin"))
+    assert pedido["fid"] == "7", "el flujo_id del LLM se descartó"
+
+
+def test_las_corridas_respetan_flujo_y_limite(monkeypatch, usuario_factory):
+    from lib import n8n
+
+    pedido = {}
+    monkeypatch.setattr(n8n, "esta_configurado", lambda: True)
+
+    def _eje(fid, limite):
+        pedido.update(fid=fid, limite=limite)
+        return []
+
+    monkeypatch.setattr(n8n, "ejecuciones", _eje)
+    _ejecutar("corridas_automatizacion", {"flujo_id": "7", "limite": 3},
+              usuario_factory(rol="super_admin"))
+    assert pedido == {"fid": "7", "limite": 3}
 
 
 # ── Los tres lugares del contrato ──────────────────────────────────────────

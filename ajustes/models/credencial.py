@@ -113,6 +113,13 @@ class Credencial(models.Model):
     @classmethod
     def guardar(cls, clave: str, valor: str, *, usuario=None) -> Credencial:
         """Cifra y persiste. Si valor es vacío, elimina la entrada."""
+        if clave == "n8n_webhook_url":
+            # El Portavoz recuerda por un minuto si hay destino; que se entere ya.
+            from lib.portavoz import olvidar_destino, reiniciar_pausa
+
+            olvidar_destino()
+            if valor:
+                reiniciar_pausa()
         if not valor:
             cls.objects.filter(clave=clave).delete()
             return cls(clave=clave)

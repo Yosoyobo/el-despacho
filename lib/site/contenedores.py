@@ -233,8 +233,11 @@ def _post(path: str, cuerpo: dict | None = None, *,
 # que es lo que hace `docker system prune`. Con `?filters={"dangling":["false"]}`
 # borraría cualquier imagen sin contenedor, y eso incluye la anterior a este
 # despliegue — la que permite volver atrás si el nuevo sale mal.
+# Los contenedores DETENIDOS no se podan (2026-09-28): uno detenido puede ser un
+# servicio que falló al arrancar. Tras el reinicio del NUC del 2026-09-18, n8n y
+# Paperless quedaron así y la poda los borró: desaparecieron sin dejar rastro, y
+# El Vigía —que sólo ve lo que existe— no tuvo nada que mostrar.
 _PODAS: tuple[tuple[str, str], ...] = (
-    ("contenedores parados", "/v1.44/containers/prune"),
     ("imágenes colgantes", "/v1.44/images/prune"),
     ("redes huérfanas", "/v1.44/networks/prune"),
     ("caché de construcción", "/v1.44/build/prune"),
@@ -242,7 +245,8 @@ _PODAS: tuple[tuple[str, str], ...] = (
 
 
 def podar(*, timeout: float = 8.0, presupuesto_s: float = 12.0) -> dict[str, Any]:
-    """Lo que `docker system prune -f` haría, por el socket. Nunca lanza.
+    """Lo que `docker system prune -f` haría, por el socket, MENOS borrar los
+    contenedores detenidos (ver `_PODAS`). Nunca lanza.
 
     `presupuesto_s` corta la poda a medias en vez de arriesgar el tiempo de
     espera de gunicorn (30 s por default): una poda incompleta no rompe nada y

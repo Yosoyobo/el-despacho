@@ -10233,3 +10233,73 @@ tarjetas de producto — el Kanban sigue con DnD de HTML5 (escritorio).
 
 ---
 
+### S-Pendientes-Sep28 · Deploy 1 ✅ — deuda, el Portavoz en pausa y el NUC que vuelve solo (2026-09-28, VERSION 2026.09.01)
+
+Plan de 3 deploys acordado con Oscar en 9 rondas (`docs/SPRINT-Pendientes-Sep28.md`).
+**Sólo el Deploy 1 llegó a producción** (decisión de Oscar: «terminamos en
+productivo, pero hasta esta fase»). Los Deploys 2 y 3 quedan **a medias en sus
+ramas, sin desplegar** (tabla abajo).
+
+- **«Otros responsables» se perdían** — las 3 vistas que crean `Tarea` con
+  `save(commit=False)` (`nueva_tarea`, `nueva_tarea_global`, `agregar_tarea_modal`)
+  no llamaban `form.save_m2m()`. Arreglado; `TareaForm.save(commit=False)` mete al
+  principal en la M2M y `TareaRapidaForm` también. El mini-Chalán y los ejecutores
+  no aceptan corresponsables (no perdían nada).
+- **`_productos_calc()` memoizado por instancia** (`los_proyectos/memo_productos.py`):
+  versión global que suben signals (`weak=False`) de línea/proceso/venta/escala/
+  Servicio/Variacion + `QuerySetDelDinero` que invalida en `update`/`bulk_*`
+  (también desde related managers) + `recalcular_monto_estimado`/`refresh_from_db`
+  olvidan el memo. Medido con 8 líneas: **231 → 151 consultas**, carga de líneas
+  **18 → 1**.
+- **`puede_ver_catalogo`** pregunta por `ver_nombres` (antes `catalogo.ver`, que no
+  existe → False para todos) y lo usa el buscador del Dashboard. **`analisis.ver`
+  entra a `CATALOGO_PERMISOS`** (estaba sembrado por rol pero no era delegable).
+- **`_emitir_noop` del conftest** parchea en el origen y en todo módulo cargado cuyo
+  `emitir` ES la función (por identidad) — se acabó la lista obsoleta y el folclore
+  de «los fallos locales de Redis».
+- **Portavoz en pausa sin destino**: sin `n8n_webhook_url` no encola; cuenta en
+  `portavoz:sin_destino` cuántos no salieron y desde cuándo, y El Vigía / El Site /
+  `/salud` lo dicen como pausa deliberada. Ante la duda (sin base/Django) encola.
+- **El NUC vuelve solo tras un reinicio** (el 2026-09-18 n8n y Paperless pasaron 10
+  días sin existir): `arranque_nuc.sh` (`@reboot`) espera Docker + tailnet y hace
+  `up -d --no-recreate` con la MISMA lista de compose del deploy
+  (`_compose_nuc.sh`); la poda ya no borra contenedores detenidos; módulo
+  `servicios` en `/salud` y rojo en «Las piezas» (`SITE_SERVICIOS_ESPERADOS=1` en
+  el overlay del NUC); el encabezado del cron entra a los marcadores (había 38
+  copias).
+- **Tarifas oficiales de Grok y MiMo, por modelo**, con fuente y fecha; el precio
+  se toma del modelo que contestó.
+- Tests: `tests/taller/test_deuda_sep28.py` (7 mutaciones verificadas, todas caen),
+  `test_portavoz_pausa_sep28.py`, `tests/site/test_servicios_caidos_sep28.py`.
+  Suite: 3785 pass (los 4 errores de `test_portavoz_worker.py` son de entorno local:
+  buscan Redis fijo en `localhost:6379`; y el candado «un solo `pdf.html`» ve las
+  copias de `.claude/worktrees/` — en CI no existen).
+
+**Lección operativa (va a memoria): agentes en paralelo NO comparten carpeta
+temporal.** Los 8 agentes usaban el mismo scratchpad y se sobrescribieron el guion
+`mutar.py`; al cortarse la sesión quedaron **tres mutaciones aplicadas en el
+código** (un candado de permiso quitado en CFDI, otro en presencia, el memo
+apagado en deuda) — una de ellas se habría desplegado con un endpoint sin permiso.
+Regla: carpeta temporal por agente, **commit antes de mutar**, mutaciones en primer
+plano, y al retomar **barrer los diffs** buscando `if False:` antes de commitear.
+
+**Lo que quedó sin desplegar (ramas locales, commit final `wip:`):**
+
+| Frente | Rama | Estado |
+|---|---|---|
+| Producto: ★ pregunta, color sólo alias+catálogo, HEIC, @persona | `worktree-agent-a848d89796e4abec3` | 4 puntos commiteados; falta el plegado de fichas (WIP a medias) |
+| Tablas → tarjetas en móvil + teclado ñ | `worktree-agent-a534aaaa24f645d81` | WIP, sin medir ni probar |
+| 8 comandos del Chalán de julio | `worktree-agent-afc5463fe18462cc1` | commit `2dbdc10f` + WIP chico del prompt |
+| CFDI de proveedor → egreso | `worktree-agent-ae78c360635ab4e28` | WIP (migr. facturacion/0013, tesoreria/0009); mutaciones 4-7 sin verificar |
+| Papeleo + anexos de cotización | `worktree-agent-a34d3626acecfd010` | WIP (migr. cotizaciones/0020) |
+| Usuarios en línea | `worktree-agent-afd882af0e3d6dbbd` | commiteado (migr. cuentas/0045-0046); faltan mutaciones y corrida completa |
+| Aviso de edición pisada | `worktree-agent-a37ae6e5b8aef1d20` | WIP, sin tests |
+| Pestañas | `agent/pestanas` | commit `27f30f6d`, probado en navegador; va después de la edición pisada |
+| App Android | — | sin empezar (Java 17 instalado; herramientas de Android en el RAID) |
+
+Los encargos originales y las bitácoras de cada agente están en el scratchpad de
+la sesión `39067a7c…/scratchpad/agentes/`. El reparto de migraciones del documento
+del sprint sigue vigente para cuando se retome.
+
+**Paso operativo pendiente tras el deploy:** vaciar `portavoz:cola` (≈2,192) al
+respaldo — ver BITACORA.

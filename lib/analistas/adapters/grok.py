@@ -27,13 +27,34 @@ from ..capacidades import Capability
 MODELO_DEFAULT = "grok-4.5"
 API_URL = "https://api.x.ai/v1/chat/completions"
 
-# Precios USD por token. NOTA: placeholder marcado — confirmar la tarifa oficial
-# de grok-4.5 en la consola de xAI. El conteo de tokens y llamadas (AnalistaLog)
-# es exacto sin importar el precio; solo el costo estimado depende de estos
-# valores. Ajustar cuando se confirme la tarifa.
-PRECIO_IN = 3.0 / 1_000_000    # placeholder — confirmar con xAI
-PRECIO_OUT = 15.0 / 1_000_000  # placeholder — confirmar con xAI
-MODELOS_CURADOS = ("grok-4.5", "grok-4", "grok-3", "grok-3-mini")
+# Tarifa oficial por modelo, USD por MILLÓN de tokens (entrada, salida).
+# Fuente: https://docs.x.ai/developers/pricing — consultada el 2026-09-28.
+# Se busca por prefijo más largo, así «grok-4.20-0309-reasoning» cae en «grok-4.20».
+TARIFAS: dict[str, tuple[float, float]] = {
+    "grok-4.7": (2.00, 6.00),
+    "grok-4.6": (2.00, 6.00),
+    "grok-4.5": (2.00, 6.00),
+    "grok-4.3": (1.25, 2.50),
+    "grok-4.20": (1.25, 2.50),
+    "grok-build": (1.00, 2.00),
+}
+# A partir de este tamaño de prompt xAI cobra TODA la petición al doble.
+UMBRAL_CONTEXTO_LARGO = 200_000
+
+
+def tarifa(modelo: str, prompt_tokens: int = 0) -> tuple[float, float]:
+    """USD por TOKEN (entrada, salida) del modelo. Un modelo que no esté en la
+    tabla se cobra como el default: mejor una estimación cercana que un cero."""
+    m = (modelo or "").lower()
+    clave = max((k for k in TARIFAS if m.startswith(k)), key=len, default=MODELO_DEFAULT)
+    ent, sal = TARIFAS[clave]
+    if prompt_tokens >= UMBRAL_CONTEXTO_LARGO:
+        ent, sal = ent * 2, sal * 2
+    return ent / 1_000_000, sal / 1_000_000
+
+
+PRECIO_IN, PRECIO_OUT = tarifa(MODELO_DEFAULT)
+MODELOS_CURADOS = ("grok-4.5", "grok-4.7", "grok-4.6", "grok-4.3", "grok-build-0.1")
 
 
 class GrokAdapter(Adapter):
@@ -90,7 +111,8 @@ class GrokAdapter(Adapter):
         usage = data.get("usage") or {}
         pt = int(usage.get("prompt_tokens") or 0)
         ct = int(usage.get("completion_tokens") or 0)
-        costo = pt * PRECIO_IN + ct * PRECIO_OUT
+        precio_in, precio_out = tarifa(data.get("model") or self.modelo, pt)
+        costo = pt * precio_in + ct * precio_out
         return Resultado(
             texto=texto, provider=self.nombre, modelo=data.get("model") or self.modelo,
             prompt_tokens=pt, completion_tokens=ct, costo_usd=round(costo, 6),
@@ -128,9 +150,12 @@ class GrokAdapter(Adapter):
         if resp.status_code >= 400:
             raise ErrorPermanente(f"grok: {resp.status_code} {resp.text[:200]}")
 
+        data = resp.json()
+        pt = int((data.get("usage") or {}).get("prompt_tokens") or 0)
+        precio_in, precio_out = tarifa(data.get("model") or self.modelo, pt)
         return parsear_openai(
-            resp.json(), provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
-            precio_in=PRECIO_IN, precio_out=PRECIO_OUT,
+            data, provider=self.nombre, modelo=self.modelo, latencia_ms=latencia,
+            precio_in=precio_in, precio_out=precio_out,
         )
 
     def listar_modelos(self) -> list[str]:

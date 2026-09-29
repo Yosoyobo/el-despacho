@@ -1,8 +1,8 @@
+# >>> El Despacho (gestionado por mudanza.sh) >>>
 # OJO (mudanza al NUC, 2026-08-21): la ruta del proyecto YA NO se escribe aqui.
 # `sync_crons.sh` sustituye @@RAIZ@@ por la raiz real del repo en la maquina
 # donde se instala (droplet /opt/el-despacho, NUC /mnt/el-despacho, HAL otra).
 # Asi los crons siguen al proyecto en vez de amarrarlo a un solo servidor.
-# >>> El Despacho (gestionado por mudanza.sh) >>>
 # ──────────────────────────────────────────────────────────────────────────
 # Fuente ÚNICA de verdad de los cron jobs de La Sede. NO editar a mano en el
 # servidor: mudanza.sh reinstala este bloque en el crontab del usuario
@@ -79,4 +79,9 @@ CRON_TZ=America/Mexico_City
 # Gerencia → El Cartero → Reglas, este cron no manda nada. Un cliente recibe
 # como mucho un correo al mes por regla (la referencia lleva el mes).
 30 8 * * 2 cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py correos_clientes_dormidos >> /var/log/correos_reglas.log 2>&1
+# Al prender el NUC (S-Pendientes-Sep28): espera al tailnet y levanta lo que
+# falte. Tras el reinicio del 2026-09-18, n8n y Paperless no volvieron porque
+# Docker arrancó antes que Tailscale. Idempotente (`up -d --no-recreate`).
+@reboot sleep 20; cd @@RAIZ@@ && ./infra/scripts/arranque_nuc.sh >> $HOME/arranque_nuc.log 2>&1
+
 # <<< El Despacho <<<

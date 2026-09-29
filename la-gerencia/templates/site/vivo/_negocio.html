@@ -129,7 +129,9 @@ la hora en UTC mientras el reloj de la cabecera va en local.
       <div class="flex items-baseline justify-between gap-2">
         <span class="truncate vg-3">El Portavoz <span class="text-[10px] vg-5">avisos por salir</span></span>
         <span class="shrink-0 font-mono tabular-nums">
-          {% if internos.portavoz_head.disponible %}
+          {% if internos.portavoz_pausa.pausado %}
+            <span class="vg-4" title="No hay a dónde mandarlos: falta la dirección del webhook de n8n en Los Ajustes">en pausa · {{ internos.portavoz_pausa.no_enviados|default:0 }} sin enviar</span>
+          {% elif internos.portavoz_head.disponible %}
             <span class="{% if internos.portavoz_head.items_pendientes > 200 %}text-warning-400{% else %}vg-2{% endif %}">{{ internos.portavoz_head.items_pendientes }}</span>
           {% else %}
             <span class="text-success-400">al día</span>

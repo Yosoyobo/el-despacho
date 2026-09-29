@@ -444,3 +444,25 @@ class TestMultimodal:
         monkeypatch.setattr(reemplazo, "cadena_de", lambda *a, **k: [DeepseekAdapter()])
         with pytest.raises(TodosLosAnalistasFallaron):
             analizar("ocr_recibo", "lee el recibo", imagenes=_IMG)
+
+
+# ── S-Pendientes-Sep28: tarifas oficiales por modelo ─────────────────────────
+
+def test_grok_cobra_por_modelo_y_el_doble_con_contexto_largo():
+    from lib.analistas.adapters import grok
+
+    assert grok.tarifa("grok-4.5") == (2.00 / 1_000_000, 6.00 / 1_000_000)
+    assert grok.tarifa("grok-4.20-0309-reasoning") == (1.25 / 1_000_000, 2.50 / 1_000_000)
+    assert grok.tarifa("grok-build-0.1") == (1.00 / 1_000_000, 2.00 / 1_000_000)
+    ent, sal = grok.tarifa("grok-4.5", prompt_tokens=250_000)
+    assert (ent, sal) == (4.00 / 1_000_000, 12.00 / 1_000_000)
+    # Un modelo desconocido no sale gratis: se cobra como el default.
+    assert grok.tarifa("grok-99") == grok.tarifa(grok.MODELO_DEFAULT)
+
+
+def test_mimo_cobra_por_modelo_y_el_pro_no_se_confunde():
+    from lib.analistas.adapters import mimo
+
+    assert mimo.tarifa("mimo-v2.5-pro") == (0.435 / 1_000_000, 0.87 / 1_000_000)
+    assert mimo.tarifa("mimo-v2.5") == (0.14 / 1_000_000, 0.28 / 1_000_000)
+    assert mimo.tarifa("desconocido") == mimo.tarifa(mimo.MODELO_DEFAULT)

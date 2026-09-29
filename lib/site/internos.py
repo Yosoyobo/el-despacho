@@ -38,6 +38,16 @@ def ultimo_evento_portavoz() -> dict[str, Any]:
         return {"disponible": False, "motivo": str(exc)[:120]}
 
 
+def pausa_portavoz() -> dict[str, Any]:
+    """¿El Portavoz está en pausa por falta de destino? (ver `lib.portavoz`)."""
+    try:
+        from lib.portavoz import en_pausa
+
+        return en_pausa()
+    except Exception:  # noqa: BLE001
+        return {"pausado": False}
+
+
 def items_dlq() -> int:
     try:
         import redis
@@ -151,6 +161,7 @@ def snapshot() -> dict[str, Any]:
     return {
         "portavoz_head": ultimo_evento_portavoz(),
         "portavoz_dlq": items_dlq(),
+        "portavoz_pausa": pausa_portavoz(),
         "backup_local": ultimo_backup_local(),
         "backup_remoto": ultimo_backup_remoto("base"),
         "backup_medios": ultimo_backup_remoto("medios"),

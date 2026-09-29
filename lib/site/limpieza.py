@@ -249,8 +249,9 @@ def _tamano_base(connection) -> tuple[int | None, str]:
 
 
 def podar_disco(*, presupuesto_s: float = 12.0) -> tuple[dict[str, Any], int]:
-    """Lo que Docker dejó tirado: contenedores parados, imágenes colgantes, redes
-    huérfanas y caché de construcción. **Nunca volúmenes** (ahí viven los datos).
+    """Lo que Docker dejó tirado: imágenes colgantes, redes huérfanas y caché de
+    construcción. **Nunca volúmenes** (ahí viven los datos) **ni contenedores
+    detenidos** (uno detenido puede ser un servicio caído; ver `_PODAS`).
 
     Devuelve el renglón del reporte y los bytes liberados, que se muestran arriba
     como el número grande de la limpieza: es lo único medible de verdad.

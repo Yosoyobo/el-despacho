@@ -5,6 +5,37 @@
 
 ---
 
+## Novedades — Los responsables de una tarea ya no se pierden, y el proyecto abre más rápido (28 de septiembre de 2026)
+
+**Los «Otros responsables» de una tarea se guardan.** Al crear una tarea desde
+Tareas, desde el modal de un proyecto o desde el calendario, además de la
+persona principal puedes marcar a otros responsables. Hasta hoy esos otros se
+perdían al guardar: la tarea quedaba sólo a nombre del principal. Ya se guardan
+todos. Si creaste tareas con varios responsables estas semanas, revisa que
+estén completas.
+
+**El detalle de un proyecto carga más rápido.** Los montos del proyecto
+(costo, utilidad, margen, IVA, lo que se le debe a cada proveedor) se calculaban
+varias veces cada que abrías la página. Ahora se calculan una vez, y cuando
+cambias una cantidad o un precio el recuadro se actualiza igual que siempre.
+
+**El permiso de «El Análisis» ya se puede dar a otras personas.** En El
+Directorio → Permisos aparece ahora la casilla de El Análisis, para que un
+administrador pueda abrirle esa pantalla a quien la necesite.
+
+**Si el servidor se reinicia, los servicios vuelven solos.** Y si alguno no
+vuelve, El Vigía y El Site lo marcan en rojo en «Las piezas» en lugar de
+quedarse callados.
+
+**El Portavoz se pone en pausa cuando no tiene a dónde mandar los avisos.**
+Mientras no haya un destino configurado para las automatizaciones, los avisos
+ya no se acumulan en una fila que nunca sale: El Vigía y El Site dicen «en
+pausa» y cuántos no salieron, sin alarmar.
+
+**El gasto en IA de Grok y MiMo ya es real.** Sus tarifas eran de ejemplo;
+ahora son las oficiales de cada modelo, así que el gasto que ves en Chalanes
+cuadra con lo que cobran.
+
 ## Novedades — Mira la cotización antes de generarla (29 de agosto de 2026)
 
 **En el recuadro de Cotizaciones hay un botón nuevo: 👁 Vista previa.**
@@ -5573,6 +5604,9 @@ Cada tarea pertenece a un proyecto. Tiene título, descripción, estado, priorid
   verdad la mueves.
 - Si le **dictas** las tareas a El Chalán y no le dices a quién, quedan **sin
   responsable** (generales del despacho) — nunca se las cuelga a quien dicta.
+- **Varios responsables.** Además de la persona principal puedes marcar «Otros
+  responsables»; la tarea queda a nombre de todos (desde Tareas, desde el modal del
+  proyecto o desde el calendario).
 - La persona asignada recibe push automático.
 - Diseñadores solo ven tareas de proyectos donde están asignados.
 - Las completas marcando "Completar".
