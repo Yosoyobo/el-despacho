@@ -18,6 +18,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from ajustes.models.tasa import TasaImpositiva
+from lib import edicion
 from lib.busqueda import q_texto
 from lib.permisos import (
     puede_anular_cotizaciones,
@@ -321,6 +322,27 @@ def nuevo(request):
     return render(request, "cotizaciones/form.html", ctx)
 
 
+def _edicion_cotizacion(cot, form, formset, ids_actuales, request=None):
+    """Lo que vigila El Testigo en una cotización: sus datos, sus líneas y las
+    tasas marcadas (S-Pendientes-Sep28 · Deploy 3). Las tasas se guardan por
+    fuera del form, así que van como «extra»."""
+    posteado = edicion.SIN_DATO
+    if request is not None and request.method == "POST":
+        posteado = edicion.lista_canonica(sorted(set(_ids_tasas(request))))
+    extras = {"tasas": edicion.Extra(
+        etiqueta="Impuestos",
+        actual=edicion.lista_canonica(sorted(set(ids_actuales))),
+        posteado=posteado,
+        legible=lambda: ", ".join(
+            str(t) for t in TasaImpositiva.objects.filter(pk__in=_ids_tasas(request))) or "(ninguno)",
+    )}
+    grupo = edicion.Grupo(
+        formset,
+        etiqueta_linea=lambda it: f"la línea «{(getattr(it, 'concepto_visible', '') or it.descripcion or 'sin nombre')[:40]}»",
+    )
+    return edicion.Edicion(cot, form, grupos={"items": grupo}, extras=extras)
+
+
 @login_required
 def editar(request, pk):
     if (r := _gate_ver(request)) is not None:
@@ -339,22 +361,31 @@ def editar(request, pk):
         form = CotizacionForm(request.POST, instance=cot)
         formset = ItemFormSet(request.POST, instance=cot)
         ids = _ids_tasas(request)
-        if form.is_valid() and formset.is_valid():
+        # El Testigo: antes de validar (§14 Bug D).
+        ed_cot = _edicion_cotizacion(cot, form, formset, ids_actuales, request)
+        choque = ed_cot.revisar(request)
+        if choque is None and form.is_valid() and formset.is_valid():
             form.save()
             _autocompletar_lineas_desde_catalogo(formset)
             formset.save()
             _persistir_impuestos(cot, ids)
+            edicion.firmar(cot, request.user, edicion.ventana_posteada(request))
             services.emitir_actualizada(cot, request.user)
             messages.success(request, f"Cotización {cot.codigo} actualizada.")
             return redirect("cotizaciones:detalle", pk=cot.pk)
         ctx = _ctx_form(form, formset, modo="editar", cot=cot, tasas_qs=tasas_qs,
                         tasas_seleccionadas=ids)
-        return render(request, "cotizaciones/form.html", ctx)
+        ctx["edicion"] = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_cot.testigo_para(request),
+            choque=choque)
+        return render(request, "cotizaciones/form.html", ctx, status=409 if choque else 200)
 
     form = CotizacionForm(instance=cot)
     formset = ItemFormSet(instance=cot)
     ctx = _ctx_form(form, formset, modo="editar", cot=cot, tasas_qs=tasas_qs,
                     tasas_seleccionadas=ids_actuales)
+    ctx["edicion"] = edicion.contexto(
+        request, testigo=_edicion_cotizacion(cot, form, formset, ids_actuales).testigo())
     return render(request, "cotizaciones/form.html", ctx)
 
 
@@ -971,6 +1002,7 @@ def item_celda(request, pk):
     else:
         return HttpResponseBadRequest("Campo no editable.")
     it.save(update_fields=[campo])
+    edicion.firmar(it.cotizacion, request.user)
     services.emitir_actualizada(it.cotizacion, request.user)
     return HttpResponse(status=204)
 
@@ -1018,6 +1050,7 @@ def documento_opciones(request, pk):
     else:
         return HttpResponseBadRequest("Campo no editable.")
     cot.save(update_fields=[campo, "actualizado_en"])
+    edicion.firmar(cot, request.user)
     services.emitir_actualizada(cot, request.user)
     # LC 2026-07-26 (Oscar, ronda 3): se devuelve el recuadro repintado. Antes
     # era un 204 y la pastilla seguía marcando la opción vieja —«el botón de un

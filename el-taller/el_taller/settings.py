@@ -107,6 +107,7 @@ TEMPLATES = [
                 "lib.aviso_deploy.contexto_aviso_deploy",
                 "lib.version.contexto_version",
                 "apps.taller_home.context_processors.sidebar_grupos",
+                "apps.taller_home.context_processors.pestanas",
                 "apps.taller_home.context_processors.salud_sistema",
                 "cuentas.context_processors.formato_hora",
             ],
@@ -178,7 +179,11 @@ MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = "DENY"
+# SAMEORIGIN y no DENY desde S-Pendientes-Sep28: las pestañas de El Taller son
+# marcos de la misma página, y con DENY el navegador no pinta ninguno. Otro sitio
+# sigue sin poder incrustar El Taller (el clickjacking queda igual de cerrado).
+# La Gerencia se queda en DENY: no lleva pestañas.
+X_FRAME_OPTIONS = "SAMEORIGIN"
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True

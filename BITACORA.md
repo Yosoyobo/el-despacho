@@ -13480,3 +13480,12 @@ de 8 fechas que se veían en blanco. Hallazgo: el `wip:` del Chalán era una mut
 commiteada (renombres de proveedor perdidos) — quitada. Migraciones: proyectos/0038,
 facturacion/0013, tesoreria/0009, cotizaciones/0020, cuentas/0045-0046. Cron nuevo:
 `papeleo_ligar_pendientes` cada 15 min. Detalle en `docs/HISTORIAL_SESIONES.md`.
+
+## 2026-09-28 — S-Pendientes-Sep28 · Deploy 3 (VERSION 2026.09.03)
+
+Cierre del sprint: aviso de edición pisada en los 6 modelos, pestañas en El Taller
+(escritorio, tope 6) y la app Android firmada con su huella en El Portero. Al
+desplegar el Deploy 2 se descubrió que `deploy_nuc.sh` nunca abría la ventana de
+mantenimiento (se perdió en la mudanza al NUC): ahora la abre y la cierra solo, con
+`trap`. Pendiente manual: instalar el APK en los teléfonos y pasar la contraseña de
+la llave al gestor de Oscar. Detalle en `docs/HISTORIAL_SESIONES.md`.

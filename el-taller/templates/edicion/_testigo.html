@@ -1,0 +1,21 @@
+{% comment %}
+El Testigo — aviso de edición pisada (S-Pendientes-Sep28 · Deploy 3).
+
+Va DENTRO del <form> que edita el registro. Lleva:
+- `_edicion_testigo`: las huellas de lo que había en la base cuando se abrió
+  la pantalla (lo arma `lib.edicion`). Al guardar, el servidor compara.
+- `_edicion_forzar`: vacío; el botón «Guardar la mía de todos modos» lo pone
+  en 1 y reenvía.
+- El aviso, si el último intento chocó.
+
+`oob=True` lo pinta para el autoguardado (reemplaza el contenedor entero:
+tras un guardado propio el testigo se refresca y el aviso desaparece).
+Recibe `edicion` = dict de `lib.edicion.contexto`.
+{% endcomment %}
+{% if edicion %}
+<div id="{{ edicion.id }}" data-edicion{% if oob %} hx-swap-oob="true"{% endif %}>
+    <input type="hidden" name="_edicion_testigo" value="{{ edicion.testigo }}">
+    <input type="hidden" name="_edicion_forzar" value="">
+    {% if edicion.choque %}{% include "edicion/_aviso_choque.html" with choque=edicion.choque url_ver=edicion.url archivos=edicion.archivos %}{% endif %}
+</div>
+{% endif %}

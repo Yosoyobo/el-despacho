@@ -7,6 +7,7 @@
 
 <form id="form-proyecto" method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
+    {% include "edicion/_testigo.html" %}
 
     {% comment %} ── Columna principal: Datos → Productos ── {% endcomment %}
     <div class="min-w-0 space-y-6 xl:col-span-2">

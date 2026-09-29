@@ -24,8 +24,25 @@ staticfiles/
 *.log
 
 # El Envoltorio (V6 Bloque 9): el keystore y los builds NUNCA al repo.
-envoltorio/*.keystore
-envoltorio/*.apk
-envoltorio/*.aab
+# Globales a propósito: una llave o un APK no entra al repo desde NINGUNA carpeta.
+# La llave vive en ~/.android-llaves/el-despacho/ (ver envoltorio/README.md).
+*.keystore
+*.jks
+*.apk
+*.aab
+*.idsig
+LEEME-contrasena.txt
+# El proyecto Android que genera Bubblewrap: sólo twa-manifest.json se commitea.
 envoltorio/app/
+envoltorio/build/
+envoltorio/gradle/
+envoltorio/.gradle/
+envoltorio/build.gradle
+envoltorio/settings.gradle
+envoltorio/gradle.properties
+envoltorio/gradlew
+envoltorio/gradlew.bat
+envoltorio/local.properties
+envoltorio/manifest-checksum.txt
+envoltorio/store_icon.png
 envoltorio/node_modules/

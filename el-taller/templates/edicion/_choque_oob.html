@@ -1,0 +1,10 @@
+{% comment %}
+Respuesta 409 del autoguardado cuando choca (S-Pendientes-Sep28 · Deploy 3).
+Todo va por OOB: el testigo VIEJO con el aviso (para que un «Guardar» normal
+siga chocando hasta que se decida) y, si la pantalla tiene uno, su indicador
+de guardado en estado de choque.
+{% endcomment %}
+{% include "edicion/_testigo.html" with edicion=edicion oob=True %}
+{% if indicador_id %}
+<span id="{{ indicador_id }}" hx-swap-oob="true" class="inline-flex items-center gap-1 text-xs font-medium text-warning-600 dark:text-warning-400">⚠ Alguien más lo cambió — no se guardó</span>
+{% endif %}

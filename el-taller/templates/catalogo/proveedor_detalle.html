@@ -24,6 +24,7 @@ llevan sus propios <form> y no se pueden anidar.{% endcomment %}
       hx-post="{% url 'catalogo-proveedor-detalle' proveedor.pk %}" hx-trigger="submit, change delay:700ms" hx-swap="none"
       class="campo-form">
     {% csrf_token %}
+    {% include "edicion/_testigo.html" %}
 <div class="grid gap-6 xl:grid-cols-3">
     <main class="space-y-6 xl:col-span-2">
         {# ── ¿Qué surte? (subcategorías) — lo primero que se consulta ── #}

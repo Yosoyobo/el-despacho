@@ -10389,3 +10389,60 @@ quitó. Suite completa integrada verde (sólo las 4 fallas locales de
 - PDFs unidos en El Almacén sin limpieza; PDF de CFDI por JSON tope ~750 KB.
 - Vistas nuevas de proyecto gatean con `puede_editar_proyecto` (por dentro es
   `es_admin`), igual que el resto del módulo.
+
+### S-Pendientes-Sep28 · Deploy 3 ✅ — VERSION 2026.09.03 (2026-09-28)
+
+Cierre del sprint de pendientes + pestañas. Integrado en `agent/deploy3-sep28`
+encima del Deploy 2.
+
+**Entregado**
+- **Aviso de edición pisada** (`tests/taller/test_edicion_pisada_sep28.py`, 39
+  pruebas): «El Testigo», `lib/edicion.py` + `el-taller/templates/edicion/`. Un
+  testigo por formulario con lo que había al abrir; al guardar se compara CAMPO
+  POR CAMPO testigo / base / lo posteado (no un solo `actualizado_en`: se movería
+  con el recálculo de monto, la barra de estado o el reordenar, y el autoguardado
+  chocaría consigo mismo). «Quién» sale de una firma en caché que deja cada
+  guardado (ningún modelo tiene `actualizado_por`). Sin testigo o con
+  `_edicion_forzar=1` guarda como antes (El Chalán no trae testigo). Proyecto:
+  también procesos, ventas y opciones de volumen de cada tarjeta
+  (`los_proyectos/testigo.py`); cada autoguardado propio devuelve el testigo nuevo
+  por OOB; 409 con aviso detiene el autoguardado. Cubre proyecto (detalle +
+  editar), cotización, factura, cliente (+contactos y razones sociales), producto
+  (+procesos, calculadora, quitar foto) y proveedor (ficha + editar). Estado
+  «⚠ Choque» y los tres botones en `ui.js` (dual-copy). Se compara contra la BASE,
+  no `changed_data`: los campos con `show_hidden_initial` (fechas con default
+  callable) dejaban pisar sin aviso.
+- **Pestañas** (`tests/taller/test_pestanas_sep28.py`): marcos aislados en El
+  Taller, sólo escritorio, tope 6 (se descarga la más vieja sin usar),
+  `localStorage`, duplicada salta a la existente; Ctrl/Cmd+clic, clic derecho,
+  «+». Dentro del marco no se pinta chrome (context processor `embebido`, señal
+  `Sec-Fetch-Dest: iframe`, que el SW repone como `X-Despacho-Marco`).
+  `X_FRAME_OPTIONS` de El Taller pasa a `SAMEORIGIN`; La Gerencia sigue `DENY`.
+- **App Android (El Envoltorio, TWA)** (`tests/test_envoltorio.py`): llave
+  PKCS12 fuera del repo (`~/.android-llaves/el-despacho/`, respaldo en
+  `/Volumes/RAID/Backups/el-despacho/envoltorio/`, contraseña en
+  `LEEME-contrasena.txt` 600 junto a cada copia); huella SHA-256
+  `77:C2:7B:44:…:64:F3` publicada en `/.well-known/assetlinks.json` del
+  `Caddyfile`; `envoltorio/twa-manifest.json` sin secretos; APK/AAB firmados en el
+  respaldo (`el-taller-2026-09-28.apk`). SDK en `/Volumes/RAID/android-sdk`
+  (build-tools 36.1.0, platform 36). `.gitignore` excluye llaves, APK/AAB y el
+  proyecto generado.
+- **La ventana de mantenimiento la abre el propio deploy**
+  (`tests/test_deploy_abre_ventana.py`): regresión encontrada al desplegar el
+  Deploy 2 — `lib/aviso_deploy` documentaba que `mudanza.sh` abría la ventana,
+  pero `deploy_nuc.sh` (el deploy real desde la mudanza al NUC) nunca lo hacía y
+  quedó a mano; el Deploy 2 salió sin banner. Ahora se abre antes del `pull` (TTL
+  30 min), se cierra al comprobar las imágenes y un `trap EXIT` la cierra en
+  rollback/error.
+- El Esc que cancela un acento ya no cierra el menú de pestañas (lo cazó el
+  candado del teclado al integrar).
+
+**Deuda**
+- La versión de cotización dentro del proyecto (`ppv`) no se vigila (declarado en
+  `testigo.py`). Sin fusión automática: un campo que el otro cambió y tú no, detiene
+  el guardado igual (a propósito, con test).
+- Pantalla de mantenimiento (`lc_failover` del Caddyfile) sigue sin roadmap
+  automático: el banner sí, la página de corte se actualiza a mano.
+- App Android: falta instalar en los teléfonos y verificar sin barra de URL, push
+  con la app cerrada, GPS del Checador, cámara del OCR. Las actualizaciones del APK
+  se reparten a mano.

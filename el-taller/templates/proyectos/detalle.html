@@ -114,6 +114,7 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
       class="campo-form flex flex-col gap-6 xl:grid xl:grid-cols-3">
     {% csrf_token %}
     <div class="hidden">{{ form.estado }}</div>
+    {% include "edicion/_testigo.html" %}
 
     {% comment %}ORDEN EN MÓVIL (LC 2026-07-29, Oscar): «el recuadro de información
     debería acomodarse arriba de Tareas y abajito Descripción; Ingresos y egresos
