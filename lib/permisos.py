@@ -362,6 +362,23 @@ def puede_subir_papeleo(user) -> bool:
     return puede(user, "papeleo", "subir")
 
 
+def usuarios_con_permiso(modulo: str, accion: str) -> list:
+    """Usuarios activos que tienen `(modulo, accion)` — por fila propia o por
+    cualquiera de sus roles.
+
+    Existe para los avisos que se reparten «a quien puede ver X» (§4 #20: nada
+    por rol literal). Pasa por `puede()` usuario por usuario a propósito: es la
+    ÚNICA definición de quién tiene un permiso, con su precedencia (una fila
+    individual apagada revoca aunque el rol lo dé). Un filtro en SQL que la
+    imitara acabaría disintiendo de ella en el primer caso raro. Con los pocos
+    usuarios del despacho, recorrerlos cuesta nada.
+    """
+    from cuentas.models.usuario import Usuario
+
+    return [u for u in Usuario.objects.filter(is_active=True).order_by("pk")
+            if puede(u, modulo, accion)]
+
+
 def usuarios_runner():
     """Usuarios activos elegibles como runner — permiso (runner, recibir).
 

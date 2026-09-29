@@ -5,6 +5,14 @@ from . import entrada, views
 urlpatterns = [
     path("papeleo/", views.buscar, name="papeleo-buscar"),
     path("papeleo/subir", views.subir, name="papeleo-subir"),
+    # Unir varios documentos en un solo PDF (Sep28). El resultado se sirve sólo a
+    # quien lo unió: la sesión guarda qué claves son suyas.
+    path("papeleo/unir", views.unir, name="papeleo-unir"),
+    path("papeleo/unido/<str:clave>/", views.unido, name="papeleo-unido"),
+    path("papeleo/unido/<str:clave>/bajar", views.unido_bajar,
+         name="papeleo-unido-bajar"),
+    path("papeleo/unido/<str:clave>/archivar", views.unido_archivar,
+         name="papeleo-unido-archivar"),
     path("papeleo/<int:documento_id>/", views.ver, name="papeleo-ver"),
     # El documento se sirve por proxy, con el permiso comprobado: la dirección
     # de Paperless sólo existe en el tailnet y tiene su propia sesión.

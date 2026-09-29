@@ -38,7 +38,8 @@
     <button type="submit" class="btn-primario">Mandar al archivo</button>
     <p class="w-full text-xs text-gray-500 dark:text-gray-400">
         El archivo lo lee en unos minutos; hasta entonces no se puede buscar por
-        su texto. Los CFDI no van aquí — ésos entran por Facturación, que los liga
+        su texto. Un Word o un Excel entra ya convertido a PDF, con su mismo
+        nombre. Los CFDI no van aquí — ésos entran por Facturación, que los liga
         a su factura.
     </p>
 </form>
@@ -65,9 +66,31 @@
     </div>
 
     {% if documentos %}
+    {% comment %}Unir varios en un PDF (Sep28). El formulario vive FUERA de la
+    rejilla porque cada tarjeta ya trae su propio <form> de «ligar», y los forms no
+    se anidan: las casillas se asocian a éste con el atributo `form=`. El orden en
+    que se marcan queda en `orden` — es el orden del expediente.{% endcomment %}
+    <form id="papeleo-unir" method="post" action="{% url 'papeleo-unir' %}"
+          class="sticky top-16 z-20 mb-4 hidden flex-wrap items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-2.5 shadow-theme-sm dark:border-brand-500/30 dark:bg-gray-900"
+          data-papeleo-unir>
+        {% csrf_token %}
+        <input type="hidden" name="orden" value="" data-unir-orden>
+        <span class="text-sm text-brand-700 dark:text-brand-300">
+            <strong data-unir-cuantos>0</strong> marcado(s) · se unen en el orden en que los marcaste
+        </span>
+        <button type="submit" class="btn-primario ml-auto" data-unir-boton disabled>Unir en un PDF</button>
+        <button type="button" class="text-xs text-gray-500 hover:underline dark:text-gray-400" data-unir-limpiar>Quitar marcas</button>
+    </form>
+
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {% for d in documentos %}
-        <article class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm transition hover:shadow-theme-md dark:border-gray-800 dark:bg-gray-900">
+        <article class="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm transition hover:shadow-theme-md dark:border-gray-800 dark:bg-gray-900">
+            <label class="absolute left-2 top-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white/90 shadow-theme-xs dark:border-gray-700 dark:bg-gray-900/90"
+                   title="Marcar para unir en un PDF">
+                <input type="checkbox" name="doc" value="{{ d.id }}" form="papeleo-unir"
+                       class="h-4 w-4 rounded border-gray-300 text-brand-500" data-unir-casilla>
+            </label>
+            <input type="hidden" name="titulo_{{ d.id }}" value="{{ d.titulo }}" form="papeleo-unir">
             <a href="{% url 'papeleo-ver' d.id %}" class="block">
                 {% comment %}La miniatura es lo que deja reconocer un escaneo de un
                 vistazo: los títulos de un archivo suelen ser «scan_0042».{% endcomment %}
@@ -108,5 +131,39 @@
     {% include "_componentes_tailadmin/_empty_state.html" with titulo="El archivo está vacío" descripcion="Todavía no hay nada archivado. Sube un contrato o una remisión aquí arriba, o deja que entren solos por correo." icono="inbox" %}
     {% endif %}
 </section>
+<script>
+(function () {
+  // La barra de «Unir en un PDF» aparece al marcar el primero y lleva el ORDEN
+  // de los clics: casi nunca es el de la página (lo más reciente primero).
+  var barra = document.querySelector('[data-papeleo-unir]');
+  if (!barra) return;
+  var orden = [];
+  var campo = barra.querySelector('[data-unir-orden]');
+  var cuantos = barra.querySelector('[data-unir-cuantos]');
+  var boton = barra.querySelector('[data-unir-boton]');
+  function casillas() { return document.querySelectorAll('[data-unir-casilla]'); }
+  function pintar() {
+    campo.value = orden.join(',');
+    cuantos.textContent = String(orden.length);
+    boton.disabled = orden.length < 2;
+    barra.classList.toggle('hidden', orden.length === 0);
+    barra.classList.toggle('flex', orden.length > 0);
+  }
+  casillas().forEach(function (c) {
+    c.addEventListener('change', function () {
+      var id = c.value;
+      orden = orden.filter(function (x) { return x !== id; });
+      if (c.checked) orden.push(id);
+      pintar();
+    });
+  });
+  barra.querySelector('[data-unir-limpiar]').addEventListener('click', function () {
+    casillas().forEach(function (c) { c.checked = false; });
+    orden = [];
+    pintar();
+  });
+  pintar();
+})();
+</script>
 {% endif %}
 {% endblock %}

@@ -26,6 +26,12 @@ urlpatterns = [
     # desde la página de la cotización. `pk` es de la LÍNEA, no de la cotización.
     path("items/<int:pk>/celda/", views.item_celda, name="item-celda"),
     path("<int:pk>/documento/", views.documento_opciones, name="documento-opciones"),
+    # Sep28: los anexos (fichas técnicas al final del PDF). `pk` de subir es la
+    # cotización; el de mover/quitar/ver es el ANEXO.
+    path("<int:pk>/anexos/subir/", views.anexo_subir, name="anexo-subir"),
+    path("anexos/<int:pk>/mover/", views.anexo_mover, name="anexo-mover"),
+    path("anexos/<int:pk>/quitar/", views.anexo_quitar, name="anexo-quitar"),
+    path("anexos/<int:pk>/", views.anexo_ver, name="anexo-ver"),
     path("<int:pk>/factura-anticipo/", views.factura_anticipo, name="factura-anticipo"),
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
     path("api/sugerir-precio/", views.sugerir_precio, name="api-sugerir-precio"),

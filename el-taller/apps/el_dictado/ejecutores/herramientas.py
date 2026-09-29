@@ -19,6 +19,16 @@ def _payload(accion) -> dict:
     return accion.payload if hasattr(accion, "payload") else (accion or {})
 
 
+def _apunta_a_cotizacion(accion, cot) -> None:
+    """Deja anotado en la acción a qué cotización llevó, para el botón «Ir a la
+    cotización» del resultado. `services.aplicar` descarta lo que devuelve el
+    ejecutor; lo que lee es `accion.entidad_tipo/entidad_id` (como hacen los
+    ejecutores de `avanzados.py`). Una acción de prueba (dict) no lleva campos."""
+    if hasattr(accion, "entidad_tipo"):
+        accion.entidad_tipo = "cotizacion"
+        accion.entidad_id = cot.pk
+
+
 def _cotizacion(codigo: str):
     from apps.cotizaciones.models import Cotizacion
 
@@ -46,6 +56,7 @@ def generar_pdf_cotizacion(accion, usuario, contexto=None):
     if not getattr(res, "ok", False):
         raise ValueError(
             f"No se pudo armar el PDF: {getattr(res, 'error', 'sin detalle')}")
+    _apunta_a_cotizacion(accion, cot)
     return {"entidad_tipo": "cotizacion", "entidad_id": cot.pk,
             "resumen": f"PDF de {cot.codigo} listo."}
 
@@ -86,6 +97,7 @@ def archivar_documento(accion, usuario, contexto=None):
         raise ValueError("El archivo no aceptó el documento.")
     # `subir` devuelve el id de la TAREA: el lector de texto corre después.
     # Prometer «ya quedó archivado» sería mentir por unos minutos.
+    _apunta_a_cotizacion(accion, cot)
     return {"entidad_tipo": "cotizacion", "entidad_id": cot.pk,
             "resumen": (f"{cot.codigo} va camino al archivo. Tarda unos minutos "
                         "en poderse buscar por su texto.")}
@@ -119,6 +131,52 @@ def convertir_a_pdf(accion, usuario, contexto=None):
     pdf = gotenberg.office_a_pdf(contenido, nombre)
     destino = nombre.rsplit(".", 1)[0] + ".pdf"
     guardado = almacen.guardar_bytes(pdf, nombre=destino, mime="application/pdf")
+    # El Almacén devuelve la llave en `id` (antes se leía `clave`, que no existe,
+    # y el resultado caía siempre al nombre del archivo).
     return {"entidad_tipo": "archivo",
-            "entidad_id": (guardado or {}).get("clave") or destino,
+            "entidad_id": (guardado or {}).get("id") or destino,
             "resumen": f"«{nombre}» convertido a PDF."}
+
+
+@registrar("anexar_a_cotizacion")
+def anexar_a_cotizacion(accion, usuario, contexto=None):
+    """Pega un documento del archivo del papeleo al final de una cotización.
+
+    Sep28: en el chat no se sube un archivo a una cotización, pero sí se puede
+    decir «anéxale a la COT-2026-0044 la ficha técnica del papeleo #45» — el
+    documento ya está en el archivo, y de ahí se trae.
+
+    Pide DOS permisos: editar cotizaciones (cambia el documento que ve el
+    cliente) y ver el papeleo (se está leyendo un documento del archivo). Tener
+    uno solo no alcanza: con el primero sin el segundo se podría sacar al PDF de
+    un cliente un contrato que no se tiene permiso de ver.
+    """
+    _gate(usuario, "puede_editar_cotizaciones", "anexar documentos a una cotización")
+    _gate(usuario, "puede_ver_papeleo", "leer el archivo del papeleo")
+    from apps.cotizaciones import anexos
+
+    from lib import paperless
+
+    if not paperless.esta_configurado():
+        raise ValueError(
+            "El archivo no está conectado: falta la llave de Paperless en "
+            "Gerencia → Papeleo.")
+
+    p = _payload(accion)
+    cot = _cotizacion(p.get("codigo", ""))
+    if not cot.permite_editar_texto:
+        raise ValueError(f"{cot.codigo} ya está cerrada: su documento no se modifica.")
+    try:
+        documento_id = int(str(p.get("documento_id") or p.get("documento") or "")
+                           .lstrip("#").strip())
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Falta decir qué documento del papeleo anexar (su número, el que "
+            "devuelve `buscar_papeleo`).") from exc
+
+    res = anexos.anexar_desde_papeleo(cot, documento_id, usuario)
+    if not res.ok:
+        raise ValueError(res.mensaje)
+    _apunta_a_cotizacion(accion, cot)
+    return {"entidad_tipo": "cotizacion", "entidad_id": cot.pk,
+            "resumen": f"{res.mensaje} Va al final del PDF de {cot.codigo}."}

@@ -506,6 +506,15 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "archivo (clave), nombre",
         "gating": "cotizaciones_crear",
     },
+    {
+        # Sep28: los anexos de la cotización. En el chat no se sube un archivo,
+        # pero sí se trae uno que ya está en el archivo del papeleo.
+        "tipo": "anexar_a_cotizacion",
+        "titulo": "Anexar un documento del papeleo a una cotización",
+        "ejemplo": "Anéxale a la COT-2026-0044 la ficha técnica del papeleo #45.",
+        "payload": "codigo, documento_id (el número que da buscar_papeleo)",
+        "gating": "cotizaciones_anexar",
+    },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
@@ -544,6 +553,11 @@ def _gating_checks():
         "automatizacion": permisos.puede_acceder_ajustes,
         # Mandar un documento al archivo del papeleo.
         "papeleo_subir": permisos.puede_subir_papeleo,
+        # Anexar a una cotización un documento del papeleo: cambia el PDF que ve
+        # el cliente (editar cotizaciones) Y lee el archivo (ver papeleo). Con
+        # uno solo no alcanza — el ejecutor pide los dos también.
+        "cotizaciones_anexar": lambda u: (permisos.puede_editar_cotizaciones(u)
+                                          and permisos.puede_ver_papeleo(u)),
     }
 
 
@@ -614,7 +628,9 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "tareas_de_producto", "que": "Las tareas de un producto DENTRO de un proyecto (las que se crean desde su tarjeta). Pregunta: «¿qué falta de las playeras del LC-0044?»."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
     {"nombre": "listar_plantillas_correo", "que": "Qué plantillas de correo hay listas para mandar y de qué dirección sale cada una. Requiere permiso de Comunicación. Pregunta: «¿qué correos puedo mandar?»."},
-    {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
+    {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso). La cotización dice además qué anexos lleva pegados al final del PDF. Pregunta: «¿la COT-2026-0044 ya lleva la ficha técnica?»."},
+    {"nombre": "buscar_papeleo / detalle_papeleo / papeleo_de", "que": "Busca en el archivo del papeleo por lo que dicen los documentos adentro, lee uno, o dice qué papeleo tiene un cliente, proyecto o proveedor (requiere permiso de Papeleo). Para anexar uno a una cotización se propone `anexar_a_cotizacion` con su número. Pregunta: «busca la garantía del termo» o «¿qué papeleo tiene Optimist?»."},
+    {"nombre": "Papeleo · unir y convertir", "que": "Unir varios documentos del papeleo en un solo PDF NO se pide por chat: es el botón «Unir en un PDF» de la pantalla del Papeleo (marcas las tarjetas). Convertir Word/Excel tampoco hace falta pedirlo: al subir al Papeleo o anexar a una cotización se convierten a PDF solos. El aviso de papeleo nuevo y el ligado automático corren solos (se prenden en Gerencia → Papeleo)."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
     {"nombre": "mi_jornada_hoy / mis_horas_semana", "que": "Tu jornada de hoy (entrada/salida/retardo) y tus horas de los últimos 7 días (El Checador)."},

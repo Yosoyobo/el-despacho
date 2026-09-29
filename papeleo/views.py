@@ -278,7 +278,13 @@ def subir(request):
     except Exception:  # noqa: BLE001 — sin etiqueta se archiva igual
         pass
 
-    tarea = paperless.subir(archivo.read(), archivo.name,
+    # Word y Excel se vuelven PDF antes de entrar (Paperless sin Office no los
+    # lee). Si el convertidor no contesta, se archiva el original y se avisa.
+    from lib.a_pdf import preparar
+
+    preparado = preparar(archivo.read(), archivo.name)
+
+    tarea = paperless.subir(preparado.contenido, preparado.nombre,
                             titulo=(request.POST.get("titulo") or "").strip(),
                             etiquetas_ids=etiquetas)
     if tarea:
@@ -286,7 +292,14 @@ def subir(request):
         messages.success(request, "Recibido. El archivo lo va a leer en unos "
                                   "minutos; hasta entonces no se puede buscar "
                                   "por su texto.")
-        _emitir("papeleo.subido", request.user, {"nombre": archivo.name})
+        if preparado.convertido:
+            messages.info(request, f"«{archivo.name}» se convirtió a PDF antes de "
+                                   f"archivarlo («{preparado.nombre}»).")
+        if preparado.aviso:
+            messages.warning(request, f"{preparado.aviso} Puede que no se "
+                                      "encuentre por lo que dice adentro.")
+        _emitir("papeleo.subido", request.user,
+                {"nombre": preparado.nombre, "convertido": preparado.convertido})
     else:
         messages.error(request, "El archivo de papeleo no aceptó el documento.")
     return redirect("papeleo-buscar")
@@ -318,6 +331,257 @@ def sugerencias(request):
     for v in Proveedor.objects.filter(q_texto(q, "razon_social"), activo=True)[:5]:
         salida.append({"tipo": "proveedor", "id": v.pk, "nombre": str(v)})
     return JsonResponse({"resultados": salida})
+
+
+# ── Unir varios documentos en un solo PDF ──────────────────────────────────
+#
+# Se elige en la pantalla del papeleo, Gotenberg los junta en el orden en que se
+# marcaron, y el resultado se ofrece para bajarlo y —si se puede subir— para
+# archivarlo como un documento más. Sirve para mandar UN archivo en vez de cinco:
+# quien recibe cinco adjuntos abre el primero que ve.
+#
+# **El resultado vive en El Almacén, no en la sesión**: un PDF de varios megas no
+# cabe en una cookie ni conviene en Redis. Lo que sí va en la sesión es la LISTA
+# de lo que ESTA persona unió, y es el candado: la descarga sólo sirve claves que
+# están ahí. Sin eso, quien tuviera permiso de ver el papeleo podría pedir
+# cualquier archivo del almacén adivinando su llave.
+
+#: Cuántos documentos se juntan de una vez. Veinte contratos en un archivo ya es
+#: un expediente; más, y la conversión se vuelve lenta para nada.
+MAX_UNIR = 20
+_SESION_UNIDOS = "papeleo_unidos"
+#: Cuántos resultados se recuerdan por persona. Los viejos se olvidan (el archivo
+#: se queda en el almacén; sólo deja de estar a su alcance desde aquí).
+_MAX_RECORDADOS = 10
+
+
+def _ids_a_unir(request) -> list[int]:
+    """Los documentos marcados, en el orden en que se marcaron.
+
+    Las casillas llegan en el orden de la página (lo más reciente primero), que
+    casi nunca es el orden que se quiere en el expediente. La pantalla anota el
+    orden de los clics en `orden`; si no llegó o no cuadra, se usa el de la
+    página. Nunca se une algo que no se marcó.
+    """
+    marcados: list[int] = []
+    for v in request.POST.getlist("doc"):
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            continue
+        if n > 0 and n not in marcados:
+            marcados.append(n)
+
+    orden: list[int] = []
+    for v in (request.POST.get("orden") or "").split(","):
+        try:
+            n = int(v.strip())
+        except (TypeError, ValueError):
+            continue
+        if n in marcados and n not in orden:
+            orden.append(n)
+    orden += [n for n in marcados if n not in orden]
+    return orden[:MAX_UNIR]
+
+
+def _es_pdf(contenido: bytes) -> bool:
+    return b"%PDF" in (contenido or b"")[:1024]
+
+
+def _unidos(request) -> dict:
+    return dict(request.session.get(_SESION_UNIDOS) or {})
+
+
+def _recordar_unido(request, clave: str, datos: dict) -> None:
+    unidos = _unidos(request)
+    unidos[clave] = datos
+    # Se conservan los más recientes: el dict guarda el orden de inserción.
+    while len(unidos) > _MAX_RECORDADOS:
+        unidos.pop(next(iter(unidos)))
+    request.session[_SESION_UNIDOS] = unidos
+
+
+def _clave_valida(clave: str) -> bool:
+    import re
+
+    return bool(re.fullmatch(r"[0-9a-f]{64}", clave or ""))
+
+
+@login_required
+@require_POST
+def unir(request):
+    """Junta los documentos marcados en un solo PDF."""
+    from django.utils import timezone
+
+    from lib import almacen, gotenberg, paperless
+
+    if not puede_ver_papeleo(request.user):
+        return _prohibido()
+
+    ids = _ids_a_unir(request)
+    if len(ids) < 2:
+        messages.error(request, "Marca al menos dos documentos para unirlos.")
+        return redirect("papeleo-buscar")
+    if not paperless.esta_configurado():
+        messages.error(request, "El archivo de papeleo no está conectado.")
+        return redirect("papeleo-buscar")
+    if not gotenberg.disponible():
+        # Se dice qué falta en vez de un «no se pudo»: es el convertidor, no el
+        # archivo, y cada uno se arregla en un lugar distinto.
+        messages.error(request, "El servicio que une los PDF no está contestando. "
+                                "Vuelve a intentar en un momento.")
+        return redirect("papeleo-buscar")
+
+    pdfs: list[bytes] = []
+    incluidos: list[dict] = []
+    saltados: list[dict] = []
+    for doc_id in ids:
+        titulo = (request.POST.get(f"titulo_{doc_id}") or f"Documento #{doc_id}")[:160]
+        traido = paperless.archivo(doc_id, "download")
+        if traido is None:
+            saltados.append({"id": doc_id, "titulo": titulo,
+                             "motivo": "no se pudo traer del archivo"})
+            continue
+        contenido, _tipo = traido
+        if not _es_pdf(contenido):
+            # Una foto suelta o un Excel que entró sin convertir: Gotenberg sólo
+            # une PDF. Se dice cuál se quedó fuera en lugar de fallar todo.
+            saltados.append({"id": doc_id, "titulo": titulo,
+                             "motivo": "no es PDF, no se puede unir"})
+            continue
+        pdfs.append(contenido)
+        incluidos.append({"id": doc_id, "titulo": titulo})
+
+    if len(pdfs) < 2:
+        detalle = "; ".join(f"«{s['titulo']}»: {s['motivo']}" for s in saltados)
+        messages.error(request, "No quedaron al menos dos documentos que se puedan "
+                                f"unir. {detalle}".strip())
+        return redirect("papeleo-buscar")
+
+    try:
+        unido = gotenberg.unir(pdfs)
+    except Exception as exc:  # noqa: BLE001
+        messages.error(request, f"No se pudieron unir los documentos: {exc}")
+        return redirect("papeleo-buscar")
+
+    nombre = f"Papeleo unido {timezone.localtime():%Y-%m-%d %H%M}.pdf"
+    try:
+        guardado = almacen.guardar_bytes(unido, mime="application/pdf", nombre=nombre)
+    except Exception as exc:  # noqa: BLE001 — disco lleno, permisos
+        messages.error(request, f"Se unieron pero no se pudieron guardar: {exc}")
+        return redirect("papeleo-buscar")
+
+    clave = guardado["id"]
+    _recordar_unido(request, clave, {
+        "nombre": nombre, "incluidos": incluidos, "saltados": saltados,
+        "archivado": False,
+    })
+    _emitir("papeleo.subido", request.user,
+            {"nombre": nombre, "unidos": len(incluidos), "origen": "unir"})
+    return redirect("papeleo-unido", clave=clave)
+
+
+def _datos_unido(request, clave: str):
+    """Los datos de un resultado DE ESTA PERSONA, o None. Es el candado."""
+    if not _clave_valida(clave):
+        return None
+    return _unidos(request).get(clave)
+
+
+@login_required
+def unido(request, clave: str):
+    """El resultado: bajarlo y, si se puede, archivarlo."""
+    if not puede_ver_papeleo(request.user):
+        return _prohibido()
+    datos = _datos_unido(request, clave)
+    if datos is None:
+        messages.error(request, "Ese PDF unido ya no está disponible; vuelve a "
+                                "unir los documentos.")
+        return redirect("papeleo-buscar")
+    return render(request, "papeleo/unido.html", {
+        "clave": clave,
+        "datos": datos,
+        "titulo_sugerido": datos["nombre"][:-4],
+        "puede_subir": puede_subir_papeleo(request.user),
+        "breadcrumb_items": [{"label": "Papeleo", "url": "/papeleo/"},
+                             {"label": "PDF unido"}],
+    })
+
+
+@login_required
+def unido_bajar(request, clave: str):
+    """El PDF unido, como descarga."""
+    from urllib.parse import quote
+
+    from lib import almacen
+
+    if not puede_ver_papeleo(request.user):
+        return _prohibido()
+    datos = _datos_unido(request, clave)
+    if datos is None:
+        return HttpResponse("Ese PDF unido ya no está disponible.", status=404)
+    try:
+        contenido, _mime, _nombre = almacen.leer(clave)
+    except Exception:  # noqa: BLE001
+        return HttpResponse("No se encontró el PDF unido.", status=404)
+
+    nombre = datos["nombre"]
+    ascii_ = nombre.encode("ascii", "ignore").decode() or "papeleo-unido.pdf"
+    r = HttpResponse(contenido, content_type="application/pdf")
+    r["Content-Disposition"] = (f'attachment; filename="{ascii_}"; '
+                                f"filename*=UTF-8''{quote(nombre)}")
+    r["Cache-Control"] = "private, no-store"
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+@login_required
+@require_POST
+def unido_archivar(request, clave: str):
+    """Manda el PDF unido al archivo, como un documento más."""
+    from lib import almacen, paperless
+
+    if not puede_subir_papeleo(request.user):
+        return _prohibido("No tienes permiso para subir papeleo.")
+    datos = _datos_unido(request, clave)
+    if datos is None:
+        messages.error(request, "Ese PDF unido ya no está disponible.")
+        return redirect("papeleo-buscar")
+    if datos.get("archivado"):
+        # Dos clics no dejan dos copias en el archivo.
+        messages.info(request, "Ese PDF unido ya se mandó al archivo.")
+        return redirect("papeleo-unido", clave=clave)
+
+    try:
+        contenido, _mime, _nombre = almacen.leer(clave)
+    except Exception:  # noqa: BLE001
+        messages.error(request, "No se encontró el PDF unido.")
+        return redirect("papeleo-buscar")
+
+    etiquetas = []
+    try:
+        from ajustes.models import ConfiguracionPapeleo
+
+        marca = (ConfiguracionPapeleo.obtener().etiqueta_entrada or "").strip()
+        if marca and (eid := paperless.id_de_etiqueta(marca)):
+            etiquetas.append(eid)
+    except Exception:  # noqa: BLE001 — sin etiqueta se archiva igual
+        pass
+
+    titulo = (request.POST.get("titulo") or datos["nombre"][:-4]).strip()[:160]
+    tarea = paperless.subir(contenido, datos["nombre"], titulo=titulo,
+                            etiquetas_ids=etiquetas)
+    if not tarea:
+        messages.error(request, "El archivo de papeleo no aceptó el documento.")
+        return redirect("papeleo-unido", clave=clave)
+
+    datos["archivado"] = True
+    _recordar_unido(request, clave, datos)
+    messages.success(request, "Va camino al archivo. En unos minutos se puede "
+                              "buscar por lo que dice adentro.")
+    _emitir("papeleo.subido", request.user,
+            {"nombre": datos["nombre"], "origen": "unir"})
+    return redirect("papeleo-buscar")
 
 
 def _emitir(tipo: str, usuario, payload: dict) -> None:
