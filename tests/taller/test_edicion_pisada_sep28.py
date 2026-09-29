@@ -26,6 +26,7 @@ inline de un producto no se duplica en el autoguardado siguiente (bug V8).
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from html.parser import HTMLParser
 
@@ -527,3 +528,39 @@ def test_ui_js_y_el_servidor_usan_los_mismos_nombres():
         assert f"accion === '{accion}'" in js
     # El estado «⚠ Choque» de la barra global de guardado.
     assert "choque: ['⚠ Choque" in js
+
+
+# ── El contenedor del testigo no rompe la retícula (2026-09-28) ─────────────
+#
+# Los formularios son `grid xl:grid-cols-3` y el testigo es su hijo directo. Un
+# `<div>` visible (aunque vacío) se comía la primera celda y recorría todo: en el
+# detalle del proyecto el contenido se fue a la derecha y Notas a la izquierda.
+
+_CONTENEDOR = re.compile(r"<div[^>]*\bdata-edicion(?=[\s>])[^>]*>")
+
+
+def _clases(tag: str) -> list[str]:
+    m = re.search(r'class="([^"]*)"', tag)
+    return m.group(1).split() if m else []
+
+
+def test_sin_choque_el_contenedor_no_ocupa_celda(dos, caso):
+    tags = _CONTENEDOR.findall(dos["ca"].get(caso["url"]).content.decode())
+    assert tags, "la pantalla no trae el testigo"
+    for tag in tags:
+        assert "contents" in _clases(tag), (
+            f"{caso['url']}: el contenedor del testigo genera caja y se come una celda: {tag}")
+
+
+def test_con_choque_el_aviso_se_ve_y_el_contenedor_sigue_sin_caja(dos, caso):
+    a = _abrir(dos["ca"], caso["url"])
+    b = _abrir(dos["cb"], caso["url"])
+    assert _guardo(caso["guardar"](dos["cb"], _con(b, **{caso["campo"]: "Lo de Beto"})))
+    html = caso["guardar"](dos["ca"], _con(a, **{caso["campo"]: "Lo de Ana"})).content.decode()
+    tags = _CONTENEDOR.findall(html)
+    assert tags, "el choque no devolvió el contenedor del aviso"
+    for tag in tags:
+        clases = _clases(tag)
+        assert "contents" in clases and "hidden" not in clases, tag
+    aviso = re.search(r"<div[^>]*\bdata-edicion-choque\b[^>]*>", html)
+    assert aviso and "fixed" in _clases(aviso.group(0)), "el aviso dejó de flotar: ocuparía una celda"
