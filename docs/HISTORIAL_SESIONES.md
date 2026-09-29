@@ -10798,3 +10798,21 @@ pagar que se marca pagado; cada quien ve sólo su recibo; El Análisis costea co
 informativa); no se reabre una quincena cerrada. Bug encontrado en la grilla de
 permisos de El Directorio (no mira `roles_extra`; guardar apaga lo que da un rol
 asignado) — en arreglo aparte.
+
+### S-Grilla-Permisos ✅ — VERSION 2026.09.11 (2026-09-29)
+
+Bug encontrado al reescribir `ROLES.md`: la grilla de permisos por persona de El
+Directorio marcaba según la fila o el default del rol PRIMARIO y no miraba
+`roles_extra`; al guardar escribía una fila por cada acción → «Guardar» apagaba en
+silencio lo que daba un rol asignado (y al asignar un rol + guardar en el mismo clic).
+Arreglo (`tests/gerencia/test_grilla_permisos.py`): la regla vive en `lib/permisos.py`
+(`pares_de_roles`, `efectivo_por_filas`, `plan_de_grilla`); la grilla muestra el
+efectivo y su origen («por su rol X», «puesto a mano», «quitado a mano»); guardar sólo
+deja filas que difieren de los roles NUEVOS del mismo POST (borra las que coinciden:
+no cambia el efectivo). La página completa `/directorio/<id>/permisos` usa la misma
+grilla; «Restablecer» deja lo de los roles + universales. Guardar tal cual no cambia
+ningún permiso efectivo (foto de producción y 5 primarios × todas las combinaciones).
+
+**Deuda**: un usuario con primario super_admin SIN el rol asignado (estado previo a
+S-Roles-V2, no existe en producción) pierde el super_admin al guardar el panel
+(`sincronizar_rol_primario`), con o sin este arreglo.

@@ -5,6 +5,18 @@
 
 ---
 
+## Novedades — Los permisos de El Directorio dicen de dónde vienen y ya no se pierden al guardar (29 de septiembre de 2026)
+
+**En El Directorio → Permisos, cada permiso dice de dónde le viene a la persona**:
+por su rol, puesto a mano, o quitado a mano.
+
+**Lo que alguien tiene por un rol asignado ya sale marcado, y «Guardar permisos» ya
+no se lo quita.** Antes, guardar la pantalla tal como se veía podía apagarle en
+silencio lo que le daba un rol asignado encima de otro.
+
+**Asignar o quitar un rol y guardar en el mismo clic** da o quita lo que ese rol
+trae; lo que pusiste a mano se respeta.
+
 ## Novedades — Ya hay nómina (29 de septiembre de 2026)
 
 **Nueva pantalla Nómina** (Finanzas → Nómina): abres la quincena, la calculas,

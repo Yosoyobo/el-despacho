@@ -118,25 +118,21 @@ La tabla la genera `python3 infra/scripts/tabla_roles.py --escribir`;
 4. Para cambiar a todos los de un rol a la vez, edita el rol en
    **El Directorio → Roles**, no a cada persona.
 
-## La trampa: la grilla no ve los roles asignados
+## La grilla de permisos (desde 2026-09-29)
 
-La grilla marca cada casilla según **la fila de la persona** o, si no hay fila,
-según **el default de su rol primario**. **No mira los roles asignados.** Y al
-guardar escribe una fila por **cada** acción del catálogo, con lo que esté
-marcado.
+Cada casilla muestra el permiso **efectivo** —lo que contesta `puede()`: la fila
+de la persona si existe; si no, sus roles asignados— y dice de dónde viene («por
+su rol X», «puesto a mano», «quitado a mano»). Al guardar sólo quedan filas donde
+la persona **difiere** de sus roles; lo que no tocas sigue a sus roles, incluso a
+los que asignes o quites en el mismo clic. Guardar tal cual no cambia nada
+(`tests/gerencia/test_grilla_permisos.py`). Guardar borra las filas que coinciden
+con el rol, así que quitarle el rol después sí le quita lo que le daba.
 
-Consecuencia: si una acción le llega a alguien **sólo** por un rol asignado
-(p. ej. «Director» sobre un primario `miembro`), la grilla la muestra
-**desmarcada**, y «Guardar permisos» la **apaga** — la fila apagada le gana al
-rol. Pasa también al asignar un rol y guardar en el mismo clic.
-
-- **En el día a día**: antes de guardar la grilla de alguien cuyo acceso viene
-  de un rol, marca las casillas de ese rol (o asigna el rol y no toques la grilla).
-- **Al programar**: cuando una acción nueva **reemplaza una puerta que antes
-  decidía el rol**, no basta con meterla al JSON del rol: se **siembra por
-  persona** (una fila `PermisoUsuario` activa a cada quien hoy pasa esa puerta),
-  como hicieron `cuentas/0047_permisos_sin_rol_literal` y `0048_puertas_decididas`.
-  Si no, el primer «Guardar» en El Directorio se la quita sin que nadie lo note.
+- **Al programar**: una acción nueva que reemplaza una puerta por rol se sigue
+  sembrando **por persona** o en el JSON del rol, porque `puede()` no lee
+  `DEFAULTS_POR_ROL` ni el rol primario (como hicieron
+  `cuentas/0047_permisos_sin_rol_literal` y `0048_puertas_decididas`). Lo que ya
+  no pasa es que el primer «Guardar» se la quite.
 - **Módulo nuevo** (§4 #20): acción en `CATALOGO_PERMISOS` + en
   `DEFAULTS_POR_ROL` de los roles que deban traerla + migración `seed_permisos_*`
   (esquema **o** datos, nunca las dos — §14 Bug I) + `@requiere_permiso` en las
