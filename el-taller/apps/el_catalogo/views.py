@@ -1185,7 +1185,12 @@ def proveedor_detalle(request, pk: int):
     if request.method == "POST":
         if not puede_editar:
             return HttpResponseForbidden("Sin permiso para editar proveedores.")
-        form = ProveedorForm(request.POST, instance=prov, inline=True)
+        from . import ubicacion
+
+        # Antes de validar (§14 Bug D): el pin sigue a la dirección si no se movió.
+        antes_pin = ubicacion.antes_de(prov)
+        form = ProveedorForm(ubicacion.corregir_post(request.POST, prov), instance=prov,
+                             inline=True)
         # El Testigo (S-Pendientes-Sep28 · Deploy 3): antes de validar (§14 Bug D)
         # se pregunta si guardar pisaría lo que alguien más cambió.
         ed_prov = edicion.Edicion(prov, form)
@@ -1196,6 +1201,7 @@ def proveedor_detalle(request, pk: int):
                 return edicion.respuesta_choque_htmx(request, ctx_edicion, indicador_id="prov-guardado")
         elif form.is_valid():
             form.save()
+            pin_programado = ubicacion.programar(prov, antes_pin)
             ventana = edicion.ventana_posteada(request)
             edicion.firmar(prov, request.user, ventana)
             emitir(EventoPortavoz(
@@ -1209,10 +1215,11 @@ def proveedor_detalle(request, pk: int):
                 prov.refresh_from_db()
                 fresco = edicion.Edicion(prov, ProveedorForm(instance=prov, inline=True))
                 return render(request, "catalogo/_proveedor_guardado_oob.html", {
-                    "proveedor": prov, "ok": True,
+                    "proveedor": prov, "ok": True, "pin_programado": pin_programado,
                     "edicion": edicion.contexto(request, testigo=fresco.testigo(ventana=ventana)),
                 })
-            messages.success(request, "Proveedor guardado.")
+            messages.success(request, "Proveedor guardado." + (
+                " " + ubicacion.MENSAJE_PROGRAMADO if pin_programado else ""))
             return redirect("catalogo-proveedor-detalle", pk=prov.pk)
         elif es_htmx:
             primer = next(
@@ -1224,6 +1231,10 @@ def proveedor_detalle(request, pk: int):
         if ctx_edicion is None:
             ctx_edicion = edicion.contexto(request, testigo=ed_prov.testigo_para(request))
     else:
+        from .ubicacion import aviso_pendiente
+
+        if aviso := aviso_pendiente(prov.pk):
+            messages.warning(request, aviso)
         form = ProveedorForm(instance=prov, inline=True)
         if puede_editar:
             ctx_edicion = edicion.contexto(request, testigo=edicion.Edicion(prov, form).testigo())
@@ -1327,11 +1338,16 @@ def proveedor_editar(request, pk: int):
     prov = get_object_or_404(Proveedor, pk=pk)
     choque = None
     if request.method == "POST":
-        form = ProveedorForm(request.POST, instance=prov)
+        from . import ubicacion
+
+        antes_pin = ubicacion.antes_de(prov)
+        form = ProveedorForm(ubicacion.corregir_post(request.POST, prov), instance=prov)
         ed_prov = edicion.Edicion(prov, form)
         choque = ed_prov.revisar(request)   # antes de validar (§14 Bug D)
         if choque is None and form.is_valid():
             form.save()
+            if ubicacion.programar(prov, antes_pin):
+                messages.info(request, ubicacion.MENSAJE_PROGRAMADO)
             edicion.firmar(prov, request.user, edicion.ventana_posteada(request))
             emitir(EventoPortavoz(
                 tipo="proveedor.actualizado",

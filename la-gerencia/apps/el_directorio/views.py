@@ -237,14 +237,19 @@ def rol_nuevo(request):
         if Rol.objects.filter(nombre=nombre).exists():
             messages.error(request, f"Ya existe un rol llamado «{nombre}».")
             return render(request, "directorio/rol_form.html", {"modo": "nuevo", "nombre": nombre, "descripcion": descripcion, "secciones": _secciones_rol(permisos)})
-        rol = Rol.objects.create(clave=_clave_unica(nombre), nombre=nombre, descripcion=descripcion, permisos=permisos, sistema=False)
+        # Todo rol nace con los universales (`equipo.ver_actividad`): la persona
+        # de ese rol los trae igual por su fila, y sin ellos «ver como rol»
+        # mostraría otra pantalla. Se quitan por persona, no por rol.
+        from lib.permisos_defaults import con_universales
+        rol = Rol.objects.create(clave=_clave_unica(nombre), nombre=nombre, descripcion=descripcion, permisos=con_universales(permisos), sistema=False)
         emitir(EventoPortavoz(
             tipo="rol.creado", actor_id=request.user.pk, actor_email=request.user.email,
             payload={"rol_id": rol.pk, "nombre": rol.nombre, "clave": rol.clave},
         ))
         messages.success(request, f"Rol «{rol.nombre}» creado.")
         return redirect("directorio-roles")
-    return render(request, "directorio/rol_form.html", {"modo": "nuevo", "secciones": _secciones_rol({})})
+    from lib.permisos_defaults import con_universales
+    return render(request, "directorio/rol_form.html", {"modo": "nuevo", "secciones": _secciones_rol(con_universales({}))})
 
 
 @requiere_permiso("directorio", "roles")

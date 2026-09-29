@@ -681,3 +681,107 @@ def test_fecha_fuera_de_ventana_no_casa(proveedor, centro, admin):
     c = _recibir(_xml_proveedor(fecha="2026-09-20T10:00:00"))
     _egreso(proveedor, centro, admin, fecha=date(2026, 9, 20) - timedelta(days=svc.DIAS_VENTANA + 1))
     assert svc.egresos_que_casan(c) == []
+
+
+# ── Ignorar pide el permiso del lado al que pertenece (deuda Sep28) ────────
+# Ligar un CFDI PROPIO pide `facturacion.editar`; ignorarlo pedía
+# `tesoreria.capturar_egreso`, así que quien llevaba la facturación no podía
+# descartar un duplicado de su propia factura, y quien capturaba gastos sí.
+
+UUID_PROPIO = "99999999-8888-7777-6666-555555555555"
+UUID_RARO = "77777777-6666-5555-4444-333333333333"
+
+
+def _con_permisos(usuario_factory, *pares):
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    u = usuario_factory(rol="miembro")
+    for modulo, permiso in (("tesoreria", "ver"), *pares):
+        PermisoUsuario.objects.create(usuario=u, modulo=modulo, permiso=permiso)
+    return u
+
+
+def _ignorar(client, c):
+    return client.post(reverse("tesoreria:cfdi-accion", args=[c.pk]),
+                       {"accion": "ignorar", "motivo": "duplicado"})
+
+
+def _propio():
+    return _recibir(_xml_proveedor(uuid=UUID_PROPIO, emisor=RFC_NUESTRO, receptor=RFC_CLIENTE))
+
+
+def _dudoso():
+    """Ni nos lo emitieron ni lo emitimos, y nadie en el catálogo tiene esos RFC.
+    Se crea directo: la ingesta ya lo habría explicado en `motivo`."""
+    from apps.facturacion.models import CfdiEntrante
+
+    return CfdiEntrante.objects.create(uuid=UUID_RARO, emisor_rfc="XAXX010101000",
+                                       receptor_rfc="XEXX010101000")
+
+
+@pytest.mark.parametrize("pares,puede", [
+    ((("facturacion", "editar"),), True),
+    ((("tesoreria", "capturar_egreso"),), False),
+])
+def test_un_cfdi_propio_se_ignora_con_permiso_de_facturacion(client, usuario_factory,
+                                                             pares, puede):
+    from apps.facturacion import cfdi_recibidos as svc
+    from apps.facturacion.models import ESTADO_IGNORADO, ESTADO_PENDIENTE
+
+    c = _propio()
+    assert svc.clasificar(c) == svc.TIPO_PROPIO and c.estado == ESTADO_PENDIENTE
+    client.force_login(_con_permisos(usuario_factory, *pares))
+    r = _ignorar(client, c)
+    c.refresh_from_db()
+    if puede:
+        assert r.status_code == 302 and c.estado == ESTADO_IGNORADO
+    else:
+        assert r.status_code == 403 and c.estado == ESTADO_PENDIENTE
+
+
+@pytest.mark.parametrize("pares,puede", [
+    ((("tesoreria", "capturar_egreso"),), True),
+    ((("facturacion", "editar"),), False),
+])
+def test_un_cfdi_de_proveedor_se_sigue_ignorando_con_permiso_de_egresos(
+        client, usuario_factory, pares, puede):
+    from apps.facturacion.models import ESTADO_IGNORADO, ESTADO_PENDIENTE
+
+    c = _recibir(_xml_proveedor())
+    client.force_login(_con_permisos(usuario_factory, *pares))
+    r = _ignorar(client, c)
+    c.refresh_from_db()
+    if puede:
+        assert r.status_code == 302 and c.estado == ESTADO_IGNORADO
+    else:
+        assert r.status_code == 403 and c.estado == ESTADO_PENDIENTE
+
+
+@pytest.mark.parametrize("pares", [(("facturacion", "editar"),),
+                                   (("tesoreria", "capturar_egreso"),)])
+def test_uno_dudoso_lo_ignora_cualquiera_de_los_dos_lados(client, usuario_factory, pares):
+    from apps.facturacion import cfdi_recibidos as svc
+    from apps.facturacion.models import ESTADO_IGNORADO
+
+    c = _dudoso()
+    assert svc.clasificar(c) == svc.TIPO_DUDOSO
+    client.force_login(_con_permisos(usuario_factory, *pares))
+    assert _ignorar(client, c).status_code == 302
+    c.refresh_from_db()
+    assert c.estado == ESTADO_IGNORADO
+
+
+def test_la_pantalla_ofrece_ignorar_solo_donde_se_puede(client, usuario_factory):
+    """Quien lleva la facturación ve «Ignorar» en el propio y no en el del
+    proveedor; el botón no promete lo que el servidor va a negar."""
+    propio = _propio()
+    del_proveedor = _recibir(_xml_proveedor())
+    client.force_login(_con_permisos(usuario_factory, ("facturacion", "editar")))
+    html = client.get(reverse("tesoreria:cfdi-recibidos")).content.decode()
+
+    def _tarjeta(c):
+        ini = html.index(f'id="cfdi-{c.pk}"')
+        return html[ini:html.index("</article>", ini)]
+
+    assert 'value="ignorar"' in _tarjeta(propio)
+    assert 'value="ignorar"' not in _tarjeta(del_proveedor)

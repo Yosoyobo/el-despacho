@@ -195,7 +195,7 @@ def _escribir_meta(clave: str, datos: dict) -> None:
 
 
 def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
-                    clave: str = "") -> dict:
+                    clave: str = "", temporal: str = "") -> dict:
     """Guarda un archivo en el almacén y devuelve sus metadatos.
 
     Se escribe **por trozos** a un temporal mientras se calcula el sha256, y al
@@ -207,6 +207,14 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
     Sin `clave` se usa el sha256 del contenido, con lo que la misma foto subida a
     cinco productos ocupa un solo archivo. Con `clave` (la importación de Drive)
     se respeta el id que ya está en la base.
+
+    `temporal` marca un archivo que NADIE referencia desde la base y que una
+    limpieza puede quitar pasado un tiempo (hoy sólo el PDF unido del papeleo,
+    `temporal="papeleo-unir"`; lo borra `papeleo_limpiar_unidos`). Queda en el
+    meta como `temporal` + `creado`. **Como el almacén está direccionado por
+    contenido, la marca se cae sola en cuanto el mismo contenido se guarda por
+    otro camino** (alguien bajó el unido y lo anexó a una cotización): desde ese
+    momento el archivo es de dos, y lo de uno ya no se borra.
     """
     base = raiz()
     tmp_dir = base / "tmp"
@@ -230,6 +238,18 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
         if destino.is_file():
             # Ya estaba (misma foto, o reimportación): se descarta el temporal.
             existente = meta(clave_final) or {}
+            marca = existente.get("temporal") or ""
+            if marca and marca == temporal:
+                # El mismo temporal otra vez (unir lo mismo dos veces): cuenta
+                # desde hoy, no desde la primera vez.
+                existente = {**existente, "creado": _ahora_iso()}
+                _escribir_meta(clave_final, existente)
+            elif marca:
+                # Otro camino guardó el mismo contenido: ya es compartido y deja
+                # de ser temporal.
+                existente = {k: v for k, v in existente.items()
+                             if k not in ("temporal", "creado")}
+                _escribir_meta(clave_final, existente)
             return {**existente, "id": clave_final, "duplicado": True}
 
         destino_dir.mkdir(parents=True, exist_ok=True)
@@ -272,6 +292,9 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
     }
     if convertido_de:
         datos["convertido_de"] = convertido_de
+    if temporal:
+        datos["temporal"] = temporal
+        datos["creado"] = _ahora_iso()
     _escribir_meta(clave_final, datos)
     # Los derivados actualizan el meta con `variantes`, `ancho` y `alto`.
     derivar(clave_final)
@@ -279,12 +302,37 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
 
 
 def guardar_bytes(contenido: bytes, *, mime: str = "", nombre: str = "archivo",
-                  clave: str = "") -> dict:
+                  clave: str = "", temporal: str = "") -> dict:
     """`guardar_fileobj` para bytes que ya están en memoria (la importación de
     Drive y las pruebas)."""
     import io
 
-    return guardar_fileobj(io.BytesIO(contenido), mime=mime, nombre=nombre, clave=clave)
+    return guardar_fileobj(io.BytesIO(contenido), mime=mime, nombre=nombre,
+                           clave=clave, temporal=temporal)
+
+
+def _ahora_iso() -> str:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def metas_en_disco():
+    """Recorre los `meta.json` del almacén y da `(meta, ruta_del_original)`.
+
+    Para las limpiezas: lee del disco sin pasar por el recuerdo en proceso. Lo
+    que no se deja leer se salta (un meta a medio escribir no es motivo para
+    detener un repaso)."""
+    base = raiz() / "orig"
+    if not base.is_dir():
+        return
+    for ruta_meta in base.glob(f"*/*/*/{_NOMBRE_META}"):
+        try:
+            datos = json.loads(ruta_meta.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(datos, dict) and datos.get("id"):
+            yield datos, ruta_meta.parent / _NOMBRE_ORIGINAL
 
 
 def _trozos(fileobj, tamano: int = 1024 * 512):
@@ -707,6 +755,7 @@ __all__ = [
     "hay_decodificador_heic",
     "leer",
     "meta",
+    "metas_en_disco",
     "olvidar_meta",
     "proporcion",
     "raiz",

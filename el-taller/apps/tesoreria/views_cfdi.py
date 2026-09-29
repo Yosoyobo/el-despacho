@@ -42,6 +42,24 @@ def puede_ligar_facturas(user) -> bool:
     return _puede(user, "facturacion", "editar")
 
 
+def puede_ignorar(user, tipo: str) -> bool:
+    """Ignorar pide el permiso del lado al que pertenece el comprobante.
+
+    Uno PROPIO (lo emitió Learning Center) es de Facturación: quien lo liga a su
+    factura es quien decide que no es de nadie (`facturacion.editar`). Uno de
+    PROVEEDOR es un gasto: Tesorería (`tesoreria.capturar_egreso`). Uno DUDOSO
+    se puede resolver por cualquiera de los dos lados, así que cualquiera de los
+    dos permisos basta para descartarlo (un duplicado, una prueba).
+    """
+    from apps.facturacion import cfdi_recibidos as svc
+
+    if tipo == svc.TIPO_PROPIO:
+        return puede_ligar_facturas(user)
+    if tipo == svc.TIPO_PROVEEDOR:
+        return puede_resolver_egresos(user)
+    return puede_ligar_facturas(user) or puede_resolver_egresos(user)
+
+
 def _url_lista(filtro: str = "pendiente") -> str:
     base = reverse("tesoreria:cfdi-recibidos")
     return base if filtro == "pendiente" else f"{base}?{urlencode({'estado': filtro})}"
@@ -67,7 +85,8 @@ def cfdi_recibidos(request):
     hay_facturas = False
     for c in cfdis:
         tipo = svc.clasificar(c, propio)
-        t = {"c": c, "tipo": tipo, "que_es": svc.ETIQUETA_TIPO[tipo]}
+        t = {"c": c, "tipo": tipo, "que_es": svc.ETIQUETA_TIPO[tipo],
+             "puede_ignorar": puede_ignorar(request.user, tipo)}
         if c.estado == ESTADO_PENDIENTE:
             if tipo in (svc.TIPO_PROVEEDOR, svc.TIPO_DUDOSO):
                 prov = svc.proveedor_sugerido(c)
@@ -115,7 +134,8 @@ def cfdi_accion(request, pk):
         "ligar_factura": puede_ligar_facturas,
         "ligar_egreso": puede_resolver_egresos,
         "proveedor": puede_resolver_egresos,
-        "ignorar": puede_resolver_egresos,
+        # El de ignorar depende de DE QUIÉN es el comprobante (ver `puede_ignorar`).
+        "ignorar": lambda u: puede_ignorar(u, svc.clasificar(c)),
     }.get(accion)
     if permiso is None:
         messages.error(request, "No entendí qué hacer con ese comprobante.")
@@ -184,4 +204,4 @@ def cfdi_archivo(request, pk):
 
 
 __all__ = ["cfdi_accion", "cfdi_archivo", "cfdi_recibidos",
-           "puede_ligar_facturas", "puede_resolver_egresos"]
+           "puede_ignorar", "puede_ligar_facturas", "puede_resolver_egresos"]

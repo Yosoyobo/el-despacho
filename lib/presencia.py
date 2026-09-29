@@ -293,7 +293,8 @@ def ruta_de_pantalla(request, response=None) -> str:
     - HTMX manda `HX-Current-URL`: un modal o un autoguardado se piden a su propio
       endpoint, pero la persona sigue viendo el proyecto. Si la respuesta la manda
       a otra página (`HX-Redirect`), ésa es la pantalla nueva.
-    - Un formulario clásico que redirige: la pantalla es a donde lo mandan.
+    - Un formulario clásico que redirige: la pantalla es a donde lo mandan (ojo:
+      `registrar` no escribe en una 3xx; anota la petición que sigue).
     - Un `fetch` de fondo (el navegador lo marca con `Sec-Fetch-Mode` distinto de
       `navigate`): la pantalla es la que lo pidió (`Referer`).
     - Lo demás es una navegación: la pantalla es la ruta misma.
@@ -411,7 +412,18 @@ def registrar(request, response) -> bool:
 def _registrar(request, response) -> bool:
     if getattr(request, "method", "GET") in ("HEAD", "OPTIONS"):
         return False
-    if getattr(response, "status_code", 500) >= 400:
+    estado = getattr(response, "status_code", 500)
+    if estado >= 400:
+        return False
+    # Una redirección no es una pantalla que alguien tenga enfrente, y tampoco se
+    # anota como actividad (deuda Sep28): el navegador la sigue en el acto y ESA
+    # petición —en la app a la que caiga, con su propio host— anota la actividad
+    # y la pantalla de verdad. Anotar aquí hacía dos daños: si el destino es otra
+    # app (La Gerencia manda a El Taller) su `Location` es de otro host, no se
+    # cree, y quedaba la ruta PEDIDA; y aun con un destino de aquí, la escritura
+    # gastaba el tope de 15 s y la pantalla real llegaba tarde. No se pierde
+    # actividad: la petición que sigue llega milisegundos después.
+    if 300 <= estado < 400:
         return False
     # El sondeo se descarta ANTES de tocar `request.user`: así una petición
     # automática ni siquiera carga al usuario si la vista no lo hizo.

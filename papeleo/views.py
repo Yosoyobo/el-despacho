@@ -353,6 +353,9 @@ _SESION_UNIDOS = "papeleo_unidos"
 #: Cuántos resultados se recuerdan por persona. Los viejos se olvidan (el archivo
 #: se queda en el almacén; sólo deja de estar a su alcance desde aquí).
 _MAX_RECORDADOS = 10
+#: La marca de El Almacén para el unido: `papeleo_limpiar_unidos` borra lo que
+#: la lleva pasado su plazo (el unido es de paso: se baja o se archiva).
+TEMPORAL_UNIDO = "papeleo-unir"
 
 
 def _ids_a_unir(request) -> list[int]:
@@ -466,7 +469,8 @@ def unir(request):
 
     nombre = f"Papeleo unido {timezone.localtime():%Y-%m-%d %H%M}.pdf"
     try:
-        guardado = almacen.guardar_bytes(unido, mime="application/pdf", nombre=nombre)
+        guardado = almacen.guardar_bytes(unido, mime="application/pdf", nombre=nombre,
+                                         temporal=TEMPORAL_UNIDO)
     except Exception as exc:  # noqa: BLE001 — disco lleno, permisos
         messages.error(request, f"Se unieron pero no se pudieron guardar: {exc}")
         return redirect("papeleo-buscar")
@@ -482,10 +486,22 @@ def unir(request):
 
 
 def _datos_unido(request, clave: str):
-    """Los datos de un resultado DE ESTA PERSONA, o None. Es el candado."""
+    """Los datos de un resultado DE ESTA PERSONA, o None. Es el candado.
+
+    Si la limpieza (`papeleo_limpiar_unidos`) ya lo quitó del almacén, se olvida
+    también de la sesión: ofrecer «Bajar» de algo que ya no está es un 404
+    esperando a que alguien le pique."""
+    from lib import almacen
+
     if not _clave_valida(clave):
         return None
-    return _unidos(request).get(clave)
+    unidos = _unidos(request)
+    datos = unidos.get(clave)
+    if datos is not None and not almacen.existe(clave):
+        unidos.pop(clave, None)
+        request.session[_SESION_UNIDOS] = unidos
+        return None
+    return datos
 
 
 @login_required

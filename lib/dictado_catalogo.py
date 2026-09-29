@@ -458,7 +458,9 @@ COMANDOS_DICTADO: list[dict] = [
         "ejemplo": "Cambia el teléfono de Telas del Norte a 555-9090.",
         "payload": ("proveedor (su nombre actual), y sólo lo que cambia: "
                     "razon_social_nueva? (si lo renombran), nombre_contacto?, email_contacto?, "
-                    "telefono?, rfc?, direccion?, direccion_fiscal?, notas?"),
+                    "telefono?, rfc?, direccion?, direccion_fiscal?, notas?. Al cambiar la "
+                    "dirección, el pin del mapa se reubica solo (salvo que lo hayan puesto "
+                    "a mano)"),
         "gating": "catalogo_proveedores",
     },
     {
