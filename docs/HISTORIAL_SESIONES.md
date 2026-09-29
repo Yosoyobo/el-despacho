@@ -11200,3 +11200,29 @@ Decisiones: cambiar un KPI del constructor lo re-aprueba quien lo guarda; el re-
 permiso del DSL deja sin número a quien no ve el dato (consultar_metrica lo hereda).
 Deuda: el flujo viejo de El Taller (`/kpis/custom/`) sigue usando su propia pantalla; un
 «editar» desde El Taller podría llevar al constructor cuando haya quién lo pida.
+
+### S-Imprenta · Deploy 4 ✅ — VERSION 2026.09.20 (2026-09-29)
+
+Cierre del arco de La Imprenta. (El Deploy 3 salió a producción dentro de la
+2026.09.19 de la otra sesión.)
+- **Compras** (app nueva `el-taller/apps/compras/`, label `compras`; instalada en
+  Taller y Gerencia —la Gerencia corre su migración y previsualiza—, COPY en el
+  Dockerfile de Gerencia): `OrdenCompra` (folio OC-AAAA-NNNN por año con
+  `select_for_update`, proveedor PROTECT, proyecto opcional, estados
+  borrador/enviada/recibida/cancelada con sus sellos, condiciones, notas) +
+  `OrdenCompraItem` (sin `orden` en el formulario: la vista numera por posición
+  para que un renglón vacío no parezca «cambiado»). Pantallas lista/nueva/
+  detalle/editar (con El Testigo, `lib.edicion`) y estado. No mueve dinero.
+- Permiso `compras` (ver/crear/editar/cancelar), sembrado por `compras/0002` a
+  quien tiene `tesoreria.ver` efectivo + super_admin. Renglón «Compras» en Finanzas
+  (`finanzas_grupo_activo` suma `/compras`). Eventos `compras.orden_*`.
+- Documento `orden_compra` en La Imprenta (`imprenta/documentos/compras.py`;
+  marcas BORRADOR/CANCELADA; precios apagables). Acceso desde el proyecto.
+- **Portada** de la cotización (`COTIZACION.extra`: `portada`, `portada_texto`;
+  visual, así que no va en Google; `page-break-after`).
+- El Chalán/MCP: `ordenes_de_compra` (gating `compras`) y `enlace_documento`
+  tipo `orden_compra`; crear/cambiar declarado fuera del chat.
+
+**Deuda del arco**: el recibo de nómina conserva su plantilla propia; el PDF
+comercial de la factura se arma al pedirlo (no se guarda); la vista previa es hoja
+continua; una imagen nueva se ve al guardarla.

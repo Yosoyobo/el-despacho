@@ -5,6 +5,26 @@
 
 ---
 
+## Novedades — Órdenes de compra a proveedores y portada para las cotizaciones (29 de septiembre de 2026)
+
+**Ya hay órdenes de compra.** En Finanzas → Compras capturas qué le pides a un
+proveedor, cuánto, a qué precio y para cuándo, ligado a un proyecto si quieres.
+Cada una tiene su folio (OC-2026-0001) y su PDF con tu formato, para mandárselo
+al proveedor.
+
+**Sigues su camino**: borrador, enviada, recibida o cancelada. El PDF sale
+marcado como BORRADOR mientras no la mandes, y como CANCELADA si se cancela.
+
+**Desde el proyecto**, en «Documentos», está «+ Orden de compra para este
+proyecto», que ya trae el proyecto elegido.
+
+**Portada para las cotizaciones grandes.** En Gerencia → Ajustes → Documentos →
+Cotización → Más ajustes puedes encender una hoja de presentación al principio,
+con tu logotipo grande, el título, el cliente, la fecha y un texto propio.
+
+Con El Chalán: «¿qué órdenes de compra siguen sin recibirse?» o «pásame la
+OC-2026-0003». Crearlas y cambiarlas se hace en la pantalla, no por chat.
+
 ## Novedades — Arma tus propios KPIs desde La Gerencia (29 de septiembre de 2026)
 
 **Hay un constructor de KPIs.** En La Gerencia → KPIs → **Constructor** armas un
@@ -7352,6 +7372,37 @@ Desde el detalle, el botón **"Cancelar factura"** abre una ventana:
 
 ---
 
+## Compras (órdenes de compra)
+
+En **Finanzas → Compras** están las órdenes de compra a proveedores: lo que se le
+pide a cada uno, cuánto, a qué precio acordado y para cuándo.
+
+- **Nueva orden**: eliges el proveedor, el proyecto (opcional), la fecha, para
+  cuándo lo necesitas, las condiciones (pago, entrega, empaque) y los renglones
+  (descripción, cantidad, unidad y precio). Los renglones vacíos no se guardan y
+  «+ Agregar renglón» suma otro. Desde un proyecto, «Documentos → + Orden de
+  compra para este proyecto» ya trae el proyecto.
+- **El folio** avanza solo por año: OC-2026-0001, OC-2026-0002…
+- **Qué sigue**: «Marcar enviada» cuando se la mandas al proveedor, «Marcar
+  recibida» cuando llega el material, y «Cancelar orden». Una orden recibida o
+  cancelada ya no se edita.
+- **El documento**: en «Documento», «Ver» y «Bajar PDF». Sale con tus datos (a
+  quién facturar y a dónde entregar), los del proveedor, los renglones y el total,
+  y tu firma. Mientras sea borrador sale marcada BORRADOR; cancelada, CANCELADA.
+- **Si alguien más la editó** mientras tú la tenías abierta, al guardar te avisa
+  antes de pisarlo.
+
+Una orden de compra no es un gasto: el egreso se registra en la Tesorería cuando
+se paga, como siempre.
+
+**Permisos.** Módulo **Compras**: *ver* (la lista y el PDF), *crear*, *editar*
+(también marcarla enviada o recibida) y *cancelar*. Nace para quien ve el dinero
+del despacho; se da o se quita desde El Directorio.
+
+**Con El Chalán:** «¿qué órdenes de compra siguen sin recibirse?», «¿qué le
+pedimos a Crea Blanks?» o «pásame la OC-2026-0003». Crear o cambiar una orden no
+se hace por chat.
+
 ## Tesorería
 
 El dinero que entra y sale.
@@ -7696,9 +7747,14 @@ rótulos y datos.
 | Remisión | El proyecto → «Documentos» | Qué se entrega y cuánto; «recibí de conformidad». Con precios si los enciendes | Quien ve el proyecto |
 | Orden de trabajo | El proyecto → «Documentos» | Producto, cantidad, merma, proveedor, procesos y fecha de entrega. Sin precios | Quien ve el proyecto |
 | Comprobante de reembolso | El gasto pagado con tarjeta o efectivo personal | A quién se le devuelve, cuánto y por qué; dos firmas | Quien ve finanzas |
+| Orden de compra | Finanzas → Compras | Qué se le pide al proveedor, cuánto, a qué precio y para cuándo; firma de quien la autoriza | Quien ve compras |
 
 En cada uno, **«Ver»** abre la hoja en pantalla y **«Bajar PDF»** la baja. Si el
 motor de PDF no contesta, «Bajar PDF» te lleva a la versión imprimible.
+
+**La portada.** En la pestaña Cotización → Más ajustes: una hoja de presentación
+al principio con el logotipo grande, el título, el cliente, la fecha y un texto
+propio. Sólo la pone el motor propio; si el PDF lo arma Google, sale sin ella.
 
 **Las notas.** Se editan en la pestaña del documento: cambias el texto, las
 reordenas con ↑/↓, la casilla apaga una sin borrarla, ✕ la quita y «+ Agregar
