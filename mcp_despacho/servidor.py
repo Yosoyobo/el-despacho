@@ -136,6 +136,14 @@ def mi_recibo(fecha: str = "") -> dict[str, Any]:
     return herramientas.mi_recibo(fecha)
 
 
+@mcp.tool()
+def historial_de_actividad(persona: str = "", fecha: str = "") -> dict[str, Any]:
+    """Qué hizo una persona en un día: a qué hora entró y salió, qué pantallas abrió,
+    qué guardó y su tiempo activo. Sin persona, el tuyo. Fecha: hoy, ayer, anteayer
+    o AAAA-MM-DD (se guarda un año). El de otro pide permiso de ver el historial."""
+    return herramientas.historial_de_actividad(persona, fecha)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

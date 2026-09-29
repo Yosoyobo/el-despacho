@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Actividad · {{ persona_nombre }}{% endblock %}
+{% block contenido %}
+{% comment %}El historial de actividad en La Gerencia (2026-09-29): /directorio/<pk>/actividad, desde El Directorio y desde el nombre de una petición en El Site. El de otro pide equipo.ver_historial. El cuerpo es el partial dual-copy.{% endcomment %}
+{% breadcrumb_items "El Directorio" "/directorio/" persona_nombre "Actividad" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Actividad de "|add:persona_nombre subtitulo="Qué pantallas abrió y qué guardó, día por día. Se guarda un año." breadcrumb_items=breadcrumb_items back_url="/directorio/" back_label="El Directorio" %}
+{% include "_componentes_tailadmin/_historial_actividad.html" %}
+{% endblock %}

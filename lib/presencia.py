@@ -483,12 +483,18 @@ def _marcar(request, user, marca: str) -> None:
 def marcar_entrada(request, user) -> None:
     """Entrar al sistema ya es estar aquí."""
     _marcar(request, user, ENTRADA)
+    from lib import historial_actividad
+
+    historial_actividad.marcar(request, user, "entrada")
 
 
 def marcar_salida(request, user) -> None:
     """Cerrar sesión es la única forma de saber que alguien se fue ANTES de los
     30 minutos. Sin esto, quien sale aparecería «en línea» cinco minutos más."""
     _marcar(request, user, SALIDA)
+    from lib import historial_actividad
+
+    historial_actividad.marcar(request, user, "salida")
 
 
 # ── Mostrar ──────────────────────────────────────────────────────────────────

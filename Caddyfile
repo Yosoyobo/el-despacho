@@ -122,6 +122,16 @@
 #     fotos de la pantalla.
 #   · HAL local → el volumen sí está montado: se sirve del disco, como siempre.
 #
+# De quién es cada petición (2026-09-29). Las apps ponen `X-Despacho-Quien` en su
+# respuesta para que gunicorn la escriba en su log de acceso: así Peticiones en
+# vivo (El Vigía / El Site) sabe el nombre de quien pidió cada cosa. Es un dato
+# para el log, no para el navegador: aquí se quita antes de que salga. Un
+# `header` que BORRA se aplica al escribir la respuesta, así que alcanza también
+# a lo que llega por `reverse_proxy`.
+(sin_quien) {
+	header -X-Despacho-Quien
+}
+
 # `root * /srv` con `pub/` montado en `/srv/medios` es la frontera de seguridad:
 # Caddy sólo alcanza los derivados JPEG/PNG que generamos NOSOTROS. Los originales
 # que sube la gente viven en `orig/`, fuera de su alcance, así que ningún archivo
@@ -168,6 +178,7 @@ www.learningcenter.mx {
 
 taller.learningcenter.mx {
 	encode gzip
+	import sin_quien
 	import medios
 	# El Envoltorio (V6 Bloque 9): Digital Asset Links para la TWA Android.
 	# La huella SHA-256 es la del certificado de envoltorio-taller.keystore (alias
@@ -183,6 +194,7 @@ taller.learningcenter.mx {
 
 gerencia.learningcenter.mx {
 	encode gzip
+	import sin_quien
 	import medios
 	reverse_proxy {$UPSTREAM_GERENCIA:la-gerencia:8001}
 	import lc_failover
@@ -198,12 +210,14 @@ recepcion.learningcenter.mx {
 	# failover que las demás (§4 #23): si el NUC no contesta, el cliente ve la
 	# pantalla de mantenimiento y las sondas (/ping, /salud) el error de verdad.
 	encode gzip
+	import sin_quien
 	reverse_proxy {$UPSTREAM_RECEPCION:la-recepcion:8002}
 	import lc_failover
 }
 
 # Acceso por IP / localhost (HAL dev): mismo routing por path-prefix de host header.
 :80 {
+	import sin_quien
 	import medios
 	@taller host localhost 127.0.0.1
 	handle @taller {

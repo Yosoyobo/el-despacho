@@ -5,9 +5,12 @@ Antes se leían rutas —`/proyectos/kanban/`, `/medios/ab/cd/x/w400.png`— que
 correctas y son ilegibles desde tres metros. Ahora cada renglón responde tres
 preguntas, en el orden en que uno las hace:
 
-  QUIÉN     la dirección del visitante de verdad (el primer salto del
+  QUIÉN     la persona (del equipo, o el cliente del portal con su empresa)
+            Y la dirección del visitante de verdad (el primer salto del
             X-Forwarded-For; la IP que ve gunicorn es siempre la del proxy) y
-            desde qué aparato.
+            desde qué aparato. Las dos cosas siempre (decisión de Oscar,
+            2026-09-29); sin sesión, sólo la IP. El nombre sale del log:
+            `X-Despacho-Quien` (ver `lib.historial_actividad`).
   QUÉ       lo que la persona está haciendo, traducido por `lib.site.acciones`.
   A DÓNDE   a qué pieza del sistema le tocó atenderlo, y la ruta cruda debajo,
             para cuando hace falta el detalle.
@@ -79,9 +82,15 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
         </td>
 
         {# ── quién ── #}
-        <td class="hidden whitespace-nowrap px-2 xl:table-cell xl:w-[180px]">
-          <div class="flex items-baseline gap-2">
-            <span class="font-mono text-xs vg-2">{{ f.quien|default:"—" }}</span>
+        <td class="hidden px-2 py-1 xl:table-cell xl:w-[200px]">
+          {% if f.persona %}
+            <div class="truncate text-xs font-medium vg-1" title="{{ f.persona.nombre }}{% if f.persona.detalle %} · {{ f.persona.detalle }}{% endif %}">
+              {% if enlace_historial and f.persona.id %}<a href="{% url 'directorio-actividad' f.persona.id %}" class="hover:underline">{{ f.persona.nombre }}</a>{% else %}{{ f.persona.nombre }}{% endif %}{% if f.persona.tipo == 'cliente' %} <span class="text-[10px] font-normal text-success-300">cliente</span>{% endif %}
+            </div>
+            {% if f.persona.detalle %}<div class="truncate text-[10px] vg-3">{{ f.persona.detalle }}</div>{% endif %}
+          {% endif %}
+          <div class="flex items-baseline gap-2 whitespace-nowrap">
+            <span class="font-mono {% if f.persona %}text-[10px] vg-4{% else %}text-xs vg-2{% endif %}">{{ f.quien|default:"—" }}</span>
             {% if f.aparato %}
               <span class="text-[10px] vg-4">{{ f.aparato }}</span>
             {% endif %}
@@ -96,7 +105,7 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
           </div>
           <div class="truncate font-mono text-[10px] vg-5">
             {# En chico, el quién y la pieza bajan aquí: se esconde la columna, no el dato. #}
-            <span class="lg:hidden">{{ f.servicio }} · </span><span class="xl:hidden">{{ f.quien }} · </span>{{ f.ruta }}
+            <span class="lg:hidden">{{ f.servicio }} · </span><span class="xl:hidden">{% if f.persona %}{{ f.persona.nombre }} · {% endif %}{{ f.quien }} · </span>{{ f.ruta }}
           </div>
         </td>
 
@@ -105,9 +114,11 @@ con las migajas: se veía «/sit…» con media pantalla vacía al lado.
           <span class="badge badge-sm border-0 text-[10px] font-medium
             {% if f.servicio == 'Taller' %}bg-brand-500/15 text-brand-300
             {% elif f.servicio == 'Gerencia' %}bg-purple-500/15 text-purple-300
+            {% elif f.servicio == 'Recepción' %}bg-warning-500/15 text-warning-300
             {% else %}bg-success-500/15 text-success-300{% endif %}">
             {% if f.servicio == 'Taller' %}El Taller
             {% elif f.servicio == 'Gerencia' %}La Gerencia
+            {% elif f.servicio == 'Recepción' %}La Recepción
             {% else %}El Mostrador{% endif %}
           </span>
         </td>

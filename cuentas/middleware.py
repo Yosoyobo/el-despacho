@@ -13,6 +13,11 @@ pone el middleware de impersonación de El Taller.
 
 `registrar` nunca lanza. Una presencia que no se pudo anotar se pierde; una
 pantalla que se cae porque no se pudo anotar la presencia sería absurdo.
+
+2026-09-29: en la misma vuelta se anota el **historial** (`lib.historial_actividad`,
+con su propio criterio de cuándo repetir) y se pone `X-Despacho-Quien` en la
+respuesta: gunicorn la escribe en su log de acceso y así Peticiones en vivo sabe
+de quién es cada petición. El Portero la quita antes de que salga al navegador.
 """
 
 from __future__ import annotations
@@ -26,7 +31,11 @@ class PresenciaMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        from lib import presencia
+        from lib import historial_actividad, presencia
 
         presencia.registrar(request, response)
+        historial_actividad.registrar(request, response)
+        quien = historial_actividad.cabecera_quien(request)
+        if quien:
+            response[historial_actividad.CABECERA] = quien
         return response

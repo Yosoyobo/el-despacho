@@ -490,6 +490,21 @@ def puede_ver_actividad_equipo(user) -> bool:
     return puede(user, "equipo", "ver_actividad")
 
 
+def puede_ver_historial_equipo(user) -> bool:
+    """Ver el historial de actividad de OTRAS personas (un año de pantallas y
+    acciones). Nace para super_admin y dueño; se delega por persona (§4 #20)."""
+    return puede(user, "equipo", "ver_historial")
+
+
+def puede_ver_historial_de(viewer, persona) -> bool:
+    """El propio historial lo ve cada quien; el de otro, con el permiso."""
+    if not viewer or not getattr(viewer, "is_authenticated", False):
+        return False
+    if persona is not None and getattr(persona, "pk", persona) == viewer.pk:
+        return True
+    return puede_ver_historial_equipo(viewer)
+
+
 def puede_ligar_papeleo(user) -> bool:
     """Decir de qué cliente, proyecto o proveedor es un documento."""
     return puede(user, "papeleo", "ligar")
