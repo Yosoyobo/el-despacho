@@ -5,6 +5,8 @@ es un dict con:
 - `slug`: KPI a sugerir
 - `motivo`: texto humano para el banner
 - `disparar(user)`: callable que retorna `True` si la sugerencia aplica
+- `permisos` (opcional): lo que además de ver el KPI hace falta para que se
+  sugiera (§4 #20 — nunca un nombre de rol)
 
 Se persiste una fila en `SugerenciaKPI(estado='pendiente')` la primera vez
 que dispara. Si el usuario la descarta (`estado='descartada'`), no se vuelve
@@ -19,6 +21,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from .kpis import kpi_por_slug
+from .permisos_kpi import ATIENDE_SOPORTE, GESTIONA_PROYECTOS, puede_ver
 
 
 def _tareas_vencidas_equipo_count(user) -> int:
@@ -43,29 +46,28 @@ def _buzon_pendiente_count(user) -> int:
     return MensajeBuzon.objects.filter(estado="nuevo").count()
 
 
-def _es_admin(user) -> bool:
-    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
-    from lib.permisos import tiene_rol
-    return tiene_rol(user, "super_admin", "dueno")
-
-
 REGLAS: list[dict] = [
     {
         "slug": "tareas-vencidas-equipo",
         "motivo": "Tu equipo tiene {n} tareas vencidas pero este KPI no está visible para ti.",
-        "disparar": lambda u: _es_admin(u) and _tareas_vencidas_equipo_count(u) > 3,
+        "permisos": GESTIONA_PROYECTOS,
+        "disparar": lambda u: _tareas_vencidas_equipo_count(u) > 3,
         "contar": _tareas_vencidas_equipo_count,
     },
     {
         "slug": "proyectos-sin-actividad",
         "motivo": "{n} proyectos llevan >14 días sin movimiento — riesgo de cliente perdido.",
-        "disparar": lambda u: _es_admin(u) and _proyectos_inactivos_count(u) > 0,
+        # El KPI lo ve también quien ve todos los proyectos (el contador); la
+        # sugerencia es para quien los gestiona y puede moverlos.
+        "permisos": GESTIONA_PROYECTOS,
+        "disparar": lambda u: _proyectos_inactivos_count(u) > 0,
         "contar": _proyectos_inactivos_count,
     },
     {
         "slug": "buzon-sin-responder",
         "motivo": "Hay {n} mensajes del Buzón sin responder.",
-        "disparar": lambda u: _es_admin(u) and _buzon_pendiente_count(u) > 2,
+        "permisos": ATIENDE_SOPORTE,
+        "disparar": lambda u: _buzon_pendiente_count(u) > 2,
         "contar": _buzon_pendiente_count,
     },
     {
@@ -98,11 +100,8 @@ def evaluar_y_persistir(user) -> int:
         kpi = kpi_por_slug(slug)
         if not kpi:
             continue
-        # V6 Bloque 10: la comparación contra roles_visible acepta el set de
-        # roles efectivos (primario + roles_extra). Sin rol → trato disenador.
-        from lib.permisos import roles_efectivos
-        roles = roles_efectivos(user) or {"disenador"}
-        if not (roles & set(kpi.roles_visible)):
+        # Se sugiere sólo lo que el usuario puede ver (y lo que la regla pide).
+        if not kpi.visible_para(user) or not puede_ver(user, regla.get("permisos", ())):
             continue
         # Si el usuario ya lo tiene visible explícitamente o lo descartó como sugerencia, skip.
         if slug not in pref_ocultas and PreferenciaKPI.objects.filter(usuario=user, kpi_slug=slug, visible=True).exists():

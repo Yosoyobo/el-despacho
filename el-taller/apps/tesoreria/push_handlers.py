@@ -17,11 +17,15 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
+# Quien ve el dinero (`tesoreria.ver`), no un rol (§4 #20). Con los defaults,
+# los mismos de antes (super_admin, dueño y contador). Es también el permiso de
+# la casilla «Reembolsos pendientes» de /perfil/notificaciones/.
+PERMISO_REEMBOLSOS = ("tesoreria", "ver")
+
+
 def _contadores_y_admins_activos():
-    # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
-    # personalizados (roles_extra) y ya filtra is_active=True.
-    from lib.permisos import usuarios_con_rol
-    return usuarios_con_rol("super_admin", "dueno", "contador")
+    from lib.permisos import usuarios_con_permiso
+    return usuarios_con_permiso(*PERMISO_REEMBOLSOS)
 
 
 def _enviar(usuario, *, titulo: str, cuerpo: str, url: str, tag: str,

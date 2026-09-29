@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from apps.taller_home.push_handlers import PERMISO_COBRANZA, PERMISO_SOPORTE
+from apps.tesoreria.push_handlers import PERMISO_REEMBOLSOS
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
@@ -15,12 +17,15 @@ from lib.interfono import InterfonoConfig
 
 HISTORIAL_PAGINA = 25
 
-# (slug, etiqueta, descripción, roles_visible). Default: opt-out (activo si no hay fila).
+# (slug, etiqueta, descripción, permiso). Default: opt-out (activo si no hay fila).
+# El 4º elemento es el `(modulo, accion)` que hay que tener para ver la casilla —
+# el MISMO que decide a quién le llega el aviso, así que nadie ve un interruptor
+# de algo que nunca le va a llegar (§4 #20: nunca un nombre de rol). None = todos.
 CATEGORIAS = [
     ("recados", "Los Recados (legacy)", "Recibir push cuando me mandan o mencionan en la bandeja vieja.", None),
     ("recados_chat", "Los Recados (chat)", "Recibir push cuando me escriben en una conversación.", None),
     ("buzon", "El Buzón (admins)", "Push cuando un empleado crea un mensaje nuevo.",
-     ("super_admin", "dueno")),
+     PERMISO_SOPORTE),
     ("proyectos", "Mis proyectos", "Push cuando se crea un proyecto o cambia el estado de uno donde participo.",
      None),
     ("tareas", "Mis tareas", "Push cuando me asignan una tarea nueva o está por vencer.", None),
@@ -28,42 +33,29 @@ CATEGORIAS = [
     ("novedades", "Novedades del sistema", "Push cuando hay cambios y mejoras nuevas en El Despacho.", None),
     ("tesoreria_reembolso", "Reembolsos pendientes",
      "Push cuando se captura un egreso por reembolsar (contador + pagador).",
-     ("super_admin", "dueno", "contador")),
+     PERMISO_REEMBOLSOS),
     ("cobranza", "Cobranza · facturas vencidas",
      "Push diario cuando una factura cruza su fecha de vencimiento sin cobrarse.",
-     ("super_admin", "dueno", "contador")),
+     PERMISO_COBRANZA),
     ("checador", "El Checador",
      "Push de correcciones de checada: solicitudes (a quien aprueba) y resoluciones (a quien solicitó).", None),
     ("chalan_sugerencia", "Sugerencias de El Chalán",
      "Push cuando El Chalán detecta algo que conviene revisar (facturas vencidas, proyectos estancados, mandados sin avance) o te manda el resumen del día.", None),
     ("chalan_analisis", "Opiniones del negocio (El Chalán)",
      "Análisis periódico del negocio (finanzas, cobranza, ventas, márgenes). La notificación abre un modal con la opinión completa del Chalán.", None),
-    # Sep28: se ofrece por PERMISO, no por rol (§4 #20). El 5º elemento es el
-    # `(modulo, accion)` que hay que tener para ver la casilla — es el mismo que
-    # decide a quién le llega el aviso, así que nadie ve un interruptor de algo
-    # que nunca le va a llegar.
     ("papeleo", "Papeleo nuevo",
      "Push cuando entra un documento al archivo del papeleo por el buzón (si está prendido en Gerencia → Papeleo).",
-     None, ("papeleo", "ver")),
+     ("papeleo", "ver")),
 ]
 
 
 def _categorias_para(user):
-    # V6 Bloque 10: la comparación contra roles_visible usa los roles
-    # efectivos del usuario (rol primario + roles personalizados).
-    from lib.permisos import puede, roles_efectivos
-    roles_user = roles_efectivos(user)
-    salida = []
-    for entrada in CATEGORIAS:
-        slug, nombre, desc = entrada[0], entrada[1], entrada[2]
-        roles = entrada[3] if len(entrada) > 3 else None
-        permiso = entrada[4] if len(entrada) > 4 else None
-        if roles and not (roles_user & set(roles)):
-            continue
-        if permiso and not puede(user, *permiso):
-            continue
-        salida.append((slug, nombre, desc))
-    return salida
+    from lib.permisos import puede
+    return [
+        (slug, nombre, desc)
+        for slug, nombre, desc, permiso in CATEGORIAS
+        if permiso is None or puede(user, *permiso)
+    ]
 
 
 @login_required

@@ -30,10 +30,10 @@ def _destinatarios(tarea, config):
                 rol_en_proyecto="lider", usuario__is_active=True).select_related("usuario"):
             por_pk[asig.usuario_id] = asig.usuario
     if config.incluir_admins:
-        # V6 Bloque 10: usuarios_con_rol reconoce rol primario + roles
-        # personalizados (roles_extra) y ya filtra is_active=True.
-        from lib.permisos import usuarios_con_rol
-        for u in usuarios_con_rol("super_admin", "dueno"):
+        # «Admins» = quien gestiona los proyectos y sus tareas (`proyectos.editar`,
+        # §4 #20): con los defaults, super_admin y dueño, como antes.
+        from lib.permisos import usuarios_con_permiso
+        for u in usuarios_con_permiso("proyectos", "editar"):
             por_pk[u.pk] = u
     return list(por_pk.values())
 

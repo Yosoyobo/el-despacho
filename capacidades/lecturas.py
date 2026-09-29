@@ -15,14 +15,10 @@ from .registro import _TOP_N, Capacidad, registrar
 
 # ── Implementaciones (todas read-only) ────────────────────────────────────────
 
-def _rol(usuario) -> str:
-    return getattr(usuario, "rol", "") or ""
-
-
 def _h_listar_kpis(args: dict, usuario) -> dict:
-    from apps.taller_home.kpis import kpis_aplicables_a_rol
+    from apps.taller_home.kpis import kpis_aplicables
     categoria = args.get("categoria")
-    kpis = kpis_aplicables_a_rol(_rol(usuario), user=usuario)
+    kpis = kpis_aplicables(usuario)
     filas = [
         {"slug": k.slug, "titulo": k.titulo, "categoria": k.categoria}
         for k in kpis
@@ -37,7 +33,10 @@ def _h_consultar_kpi(args: dict, usuario) -> dict:
     kpi = kpi_por_slug(slug)
     if kpi is None:
         return {"error": "kpi_inexistente", "slug": slug}
-    if _rol(usuario) not in kpi.roles_visible:
+    # El mismo permiso que lo muestra en La Sala de Juntas (antes, el rol
+    # PRIMARIO: quien tenía el rol asignado lo veía listado pero no lo podía
+    # consultar).
+    if not kpi.visible_para(usuario):
         return {"error": "sin_permiso", "slug": slug}
     res = kpi.calcular(usuario)
     return {"titulo": kpi.titulo, "valor": res.get("valor"),
@@ -376,10 +375,10 @@ def _h_kpis_a_mirar_hoy(args: dict, usuario) -> dict:
 def _h_anomalias_kpi(args: dict, usuario) -> dict:
     """Qué indicadores se salieron de su comportamiento normal."""
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpis_aplicables_a_rol
+    from apps.taller_home.kpis import kpis_aplicables
 
     raros = []
-    for kpi in kpis_aplicables_a_rol(getattr(usuario, "rol", ""), user=usuario):
+    for kpi in kpis_aplicables(usuario):
         try:
             valor = kpi.calcular(usuario).get("valor")
         except Exception:  # noqa: BLE001
