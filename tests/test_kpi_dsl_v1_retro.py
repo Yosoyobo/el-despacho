@@ -24,6 +24,7 @@ def datos(usuario_factory, cliente_factory):
     from apps.los_proyectos.models import Proyecto, ProyectoAsignacion
     from apps.recados.models import Recado
     from apps.tesoreria.models import CentroDeCosto, Egreso, Ingreso
+
     from buzon.models import MensajeBuzon
 
     hoy = timezone.localdate()
