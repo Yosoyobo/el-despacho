@@ -54,7 +54,26 @@ def construir_html_pdf(fac: Factura) -> str:
         "fac": fac,
         "items": list(fac.items.select_related("servicio", "unidad_fk").all()),
         "totales": fac.calcular_totales(),
+        # La Caja: el link para pagar el saldo en línea (None si está apagada).
+        "link_pago": _link_pago(fac),
     })
+
+
+def _link_pago(fac: Factura) -> str | None:
+    """URL de pago de La Caja para esta factura, o None. Nunca lanza."""
+    try:
+        from apps.caja.services import url_pago
+    except ImportError:  # La Caja no instalada
+        return None
+    return url_pago(fac)
+
+
+def _con_boton_pago(html: str, url: str | None) -> str:
+    try:
+        from apps.caja.services import anexar_boton
+    except ImportError:
+        return html
+    return anexar_boton(html, url)
 
 
 def enviar_por_correo(fac: Factura, actor):
@@ -92,14 +111,16 @@ def _render_correo(fac: Factura) -> tuple[str, str]:
         "fecha_emision": fac.fecha_emision.strftime("%d/%m/%Y") if fac.fecha_emision else "",
         "vencimiento": fac.fecha_vencimiento.strftime("%d/%m/%Y") if fac.fecha_vencimiento else "",
         "notas": fac.notas or "",
+        "link_pago": _link_pago(fac) or "",
     }
     try:
         from ajustes.models import PlantillaCorreo
-        return PlantillaCorreo.obtener("factura").render(contexto)
+        asunto, html = PlantillaCorreo.obtener("factura").render(contexto)
     except Exception:  # noqa: BLE001
         from django.template.loader import render_to_string
         html = render_to_string("facturacion/email.html", {"fac": fac})
-        return f"Factura {fac.codigo} · Learning Center", html
+        asunto = f"Factura {fac.codigo} · Learning Center"
+    return asunto, _con_boton_pago(html, contexto["link_pago"])
 
 
 # --- CFDI del PAC (LC #162): almacenar PDF + XML, no generar --------------

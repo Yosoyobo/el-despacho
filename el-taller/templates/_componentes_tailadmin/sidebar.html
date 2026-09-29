@@ -1,4 +1,4 @@
-{% load static %}{% load permisos %}
+{% load static %}{% load permisos %}{% load caja %}
 {% comment %} Sidebar — El Taller. Items condicionales por permiso granular (Pre-S2b.2).
    Cada item se evalúa con `permisos_modulos.<modulo>` inyectado por context
    processor. Cambiar permisos desde Gerencia → Directorio → Permisos. {% endcomment %}
@@ -212,9 +212,16 @@
              style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
              class="ml-4 flex flex-col gap-1 border-l border-gray-200 pl-3 dark:border-gray-800 {% if not finanzas_grupo_activo %}hidden{% endif %}">
             {% if permisos_modulos.tesoreria %}
-            <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+            <a href="{% url 'tesoreria:landing' %}" class="menu-item {% if '/tesoreria' in request.path and '/tesoreria/caja' not in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v10H3zM7 7v10M17 7v10M12 10v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Tesorería
+            </a>
+            {% endif %}
+            {% if permisos_modulos.caja %}{% caja_encendida as caja_on %}{% endif %}
+            {% if permisos_modulos.caja and caja_on %}
+            <a href="{% url 'caja:landing' %}" class="menu-item {% if '/tesoreria/caja' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 11h18M7 15h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                La Caja
             </a>
             {% endif %}
             {% if permisos_modulos.facturacion %}

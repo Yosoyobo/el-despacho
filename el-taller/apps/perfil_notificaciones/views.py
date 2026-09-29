@@ -43,6 +43,9 @@ CATEGORIAS = [
      "Push cuando El Chalán detecta algo que conviene revisar (facturas vencidas, proyectos estancados, mandados sin avance) o te manda el resumen del día.", None),
     ("chalan_analisis", "Opiniones del negocio (El Chalán)",
      "Análisis periódico del negocio (finanzas, cobranza, ventas, márgenes). La notificación abre un modal con la opinión completa del Chalán.", None),
+    ("caja", "La Caja · pagos en línea",
+     "Push cuando un cliente paga un link de pago (Stripe o MercadoPago) o cuando un pago llega y no cuadra.",
+     ("caja", "ver")),
     ("papeleo", "Papeleo nuevo",
      "Push cuando entra un documento al archivo del papeleo por el buzón (si está prendido en Gerencia → Papeleo).",
      ("papeleo", "ver")),
@@ -53,11 +56,14 @@ CATEGORIAS = [
 
 
 def _categorias_para(user):
+    from lib import pasarelas
     from lib.permisos import puede
+    # Sin llaves La Caja es invisible (Oscar, 2026-09-29): su casilla tampoco sale.
+    ocultas = set() if pasarelas.encendida() else {"caja"}
     return [
         (slug, nombre, desc)
         for slug, nombre, desc, permiso in CATEGORIAS
-        if permiso is None or puede(user, *permiso)
+        if slug not in ocultas and (permiso is None or puede(user, *permiso))
     ]
 
 

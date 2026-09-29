@@ -1,0 +1,55 @@
+{% load static %}<!doctype html>
+<html lang="es-mx">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title>{% block title %}Pago en línea — Learning Center{% endblock %}</title>
+    <script>
+        // Anti-FOUC: el mismo del resto de El Taller (regla §4 #19), antes del primer pintado.
+        (function() {
+            try {
+                var g = localStorage.getItem('despacho-tema');
+                if (g === 'dark') { document.documentElement.classList.add('dark'); }
+                else if (g === 'light') { document.documentElement.classList.remove('dark'); }
+                else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <meta name="theme-color" content="#465fff">
+    <link rel="icon" href="{% static 'branding/Icono_LC-32.png' %}" sizes="32x32" type="image/png">
+</head>
+{% comment %}La página que ve el CLIENTE. Layout propio a propósito: aunque la abra
+alguien del despacho con su sesión, se ve igual que la ve el cliente — sin menú,
+sin banner de despliegue, sin service worker.{% endcomment %}
+<body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+<div class="flex min-h-screen flex-col">
+    <header class="flex items-center justify-between gap-3 px-4 py-4 sm:px-6">
+        <span class="flex min-w-0 items-center gap-2.5">
+            <img src="{% static 'branding/Logo_LC-64.png' %}" alt="" class="h-9 w-9 shrink-0 rounded-lg">
+            <span class="truncate text-sm font-semibold text-gray-800 dark:text-gray-100">Learning Center</span>
+        </span>
+        {% include "_toggle_tema.html" %}
+    </header>
+    <main class="flex flex-1 items-start justify-center px-4 pb-10 pt-2 sm:pt-8">
+        <div class="w-full max-w-md">
+            {% block contenido %}{% endblock %}
+        </div>
+    </main>
+    <footer class="border-t border-gray-200 px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        © 2026 Learning Center · <a href="/legal/privacidad" class="underline hover:text-gray-700 dark:hover:text-gray-300">Privacidad</a>
+        · <a href="/legal/terminos" class="underline hover:text-gray-700 dark:hover:text-gray-300">Términos</a>
+        <span class="mx-2 text-gray-300 dark:text-gray-700">·</span>
+        Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline dark:text-brand-400">NoKo Devs</a>
+    </footer>
+</div>
+<script src="{% static 'js/tema.js' %}" defer></script>
+</body>
+</html>

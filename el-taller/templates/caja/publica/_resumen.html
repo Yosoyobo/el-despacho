@@ -1,0 +1,15 @@
+{% load forms_helpers %}
+{% comment %}Qué se está pagando: lo mismo en la página, en «gracias» y en «cancelado».{% endcomment %}
+<div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 sm:p-6">
+    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ link.referencia }}</p>
+    <p class="mt-2 text-title-sm font-bold tabular-nums text-gray-900 dark:text-white">{{ link.monto|dinero }} <span class="text-base font-medium text-gray-500 dark:text-gray-400">{{ link.moneda }}</span></p>
+    <dl class="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm dark:border-gray-800">
+        {% if cliente_nombre %}
+        <div class="flex justify-between gap-4"><dt class="shrink-0 text-gray-500 dark:text-gray-400">Cliente</dt><dd class="min-w-0 break-words text-right font-medium text-gray-800 dark:text-gray-200">{{ cliente_nombre }}</dd></div>
+        {% endif %}
+        <div class="flex justify-between gap-4"><dt class="shrink-0 text-gray-500 dark:text-gray-400">Concepto</dt><dd class="min-w-0 break-words text-right text-gray-800 dark:text-gray-200">{{ link.concepto }}</dd></div>
+        {% if link.estado == "vigente" %}
+        <div class="flex justify-between gap-4"><dt class="shrink-0 text-gray-500 dark:text-gray-400">Vence</dt><dd class="text-right text-gray-800 dark:text-gray-200">{{ link.vence_en|date:"d/m/Y" }}</dd></div>
+        {% endif %}
+    </dl>
+</div>

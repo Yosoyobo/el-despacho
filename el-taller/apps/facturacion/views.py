@@ -593,6 +593,14 @@ def detalle(request, pk):
             '<button type="button" hx-get="{}" hx-target="#modal-slot" hx-swap="innerHTML" class="btn-primario">Registrar cobro</button>',
             reverse("facturacion:cobrar", args=[fac.pk]),
         ))
+    # La Caja: el link para que el cliente pague el saldo en línea. Sale vacío
+    # si La Caja está apagada, si no hay saldo o si falta `caja.crear_link`.
+    try:
+        from apps.caja.ui import boton_accion
+        if boton := boton_accion(request.user, fac):
+            acciones_html.append(boton)
+    except ImportError:  # La Caja no instalada
+        pass
     if puede_duplicar:
         from django.middleware.csrf import get_token
         token = get_token(request)

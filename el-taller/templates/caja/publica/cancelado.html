@@ -1,0 +1,11 @@
+{% extends "caja/publica/base.html" %}
+{% block title %}Pago cancelado — Learning Center{% endblock %}
+{% block contenido %}
+{% include "caja/publica/_modo_prueba.html" %}
+<h1 class="mb-4 text-title-xs font-semibold text-gray-900 dark:text-white">No se hizo ningún cargo</h1>
+{% include "caja/publica/_resumen.html" %}
+<p class="mt-5 text-sm text-gray-600 dark:text-gray-400">Saliste de la página de pago antes de terminar. Puedes intentarlo otra vez cuando quieras.</p>
+{% if link.cobrable %}
+<a href="{{ link.ruta_publica }}" class="btn-primario mt-4 min-h-[48px] w-full text-base">Volver a intentar</a>
+{% endif %}
+{% endblock %}

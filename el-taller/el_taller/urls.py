@@ -37,6 +37,9 @@ urlpatterns = [
     path("", include("apps.buzon_empleado.urls")),
     path("recados/", include("apps.recados.urls", namespace="recados")),
     path("", include("apps.el_dictado.urls")),
+    # La Caja: /pagar/<token>/ (pública), /caja/webhook/… y /tesoreria/caja/…
+    # Antes que Tesorería para que `tesoreria/caja/` no caiga en sus rutas.
+    path("", include("apps.caja.urls", namespace="caja")),
     path("tesoreria/", include("apps.tesoreria.urls", namespace="tesoreria")),
     path("cotizaciones/", include("apps.cotizaciones.urls", namespace="cotizaciones")),
     path("facturacion/", include("apps.facturacion.urls", namespace="facturacion")),

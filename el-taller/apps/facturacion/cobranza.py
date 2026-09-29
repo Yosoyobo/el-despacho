@@ -83,6 +83,8 @@ def enviar_recordatorio(fac: Factura, *, config=None, tipo: str = "mora",
         "moneda": fac.moneda,
         "vencimiento": fac.fecha_vencimiento.strftime("%d/%m/%Y") if fac.fecha_vencimiento else "",
         "dias_vencida": dias if dias > 0 else 0,
+        # La Caja: el botón «Pagar en línea» (vacío si está apagada).
+        "link_pago": _link_pago(fac),
     }
     try:
         from ajustes.models import PlantillaCorreo
@@ -92,6 +94,7 @@ def enviar_recordatorio(fac: Factura, *, config=None, tipo: str = "mora",
         html = (f"<p>Estimado/a {fac.cliente.razon_social}:</p>"
                 f"<p>La factura {fac.codigo} tiene un saldo pendiente de "
                 f"{dinero(saldo)} {fac.moneda}.</p>")
+    html = _con_boton(html, contexto["link_pago"])
 
     adjuntos = []
     if config.incluir_pdf:
@@ -113,6 +116,24 @@ def enviar_recordatorio(fac: Factura, *, config=None, tipo: str = "mora",
     )
     _emitir_recordatorio(rec, fac, actor)
     return rec
+
+
+def _link_pago(fac: Factura) -> str:
+    """El link de La Caja para el saldo; cadena vacía si está apagada. Nunca lanza."""
+    try:
+        from apps.caja.services import url_pago
+    except ImportError:  # La Caja no instalada
+        return ""
+    return url_pago(fac) or ""
+
+
+def _con_boton(html: str, url: str) -> str:
+    """Una plantilla guardada antes de La Caja no trae el botón: se le anexa."""
+    try:
+        from apps.caja.services import anexar_boton
+    except ImportError:
+        return html
+    return anexar_boton(html, url)
 
 
 def _emitir_recordatorio(rec: RecordatorioCobranza, fac: Factura, actor) -> None:

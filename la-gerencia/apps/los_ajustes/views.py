@@ -50,8 +50,22 @@ def _slots_por_grupo():
             "slots": filas,
             "puestas": sum(1 for f in filas if f[3]),
             "total": len(filas),
+            "estado": _estado_de_grupo(filas),
         })
     return grupos
+
+
+def _estado_de_grupo(filas) -> dict | None:
+    """Una línea de «qué pasa hoy» para los grupos que encienden algo.
+
+    Por ahora sólo «Cobros en línea»: dice si La Caja está apagada, encendida
+    o en modo prueba (con llaves de prueba los links no cobran de verdad).
+    """
+    claves = {f[0] for f in filas}
+    if "stripe_secret_key" in claves:
+        from lib import pasarelas
+        return pasarelas.resumen_para_ajustes()
+    return None
 
 
 @requiere_permiso("ajustes", "acceder")

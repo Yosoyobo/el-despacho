@@ -1,0 +1,52 @@
+{% load forms_helpers %}
+{% comment %}El link ya hecho: URL + copiar + mandar + anular. Va en el modal y en la
+página del link. Pide el contexto de `views._ctx_link`.{% endcomment %}
+<div data-link-panel class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ link.referencia }}</p>
+            <p class="text-title-xs font-semibold tabular-nums text-gray-900 dark:text-white">{{ link.monto|dinero }} <span class="text-sm font-normal text-gray-500">{{ link.moneda }}</span></p>
+        </div>
+        <span class="badge {% if link.estado == 'vigente' %}badge-success{% elif link.estado == 'pagado' %}badge-brand{% elif link.estado == 'anulado' %}badge-error{% else %}badge-gray{% endif %}">{{ link.get_estado_display }}</span>
+    </div>
+    {% if aviso %}<p class="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 dark:bg-success-500/10 dark:text-success-400">{{ aviso }}</p>{% endif %}
+    {% if error %}<p role="alert" class="rounded-lg bg-error-50 px-3 py-2 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-400">{{ error }}</p>{% endif %}
+    {% if link.cobrable %}
+    <div class="campo-form">
+        <label for="caja-url-{{ link.pk }}">Link para el cliente</label>
+        <input id="caja-url-{{ link.pk }}" type="url" readonly value="{{ url_publica }}" class="font-mono text-xs" onclick="this.select()">
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vence el {{ link.vence_en|date:"d/m/Y" }}. Quien lo abra paga sin entrar al sistema.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-primario" data-copiar-link="{{ url_publica }}"
+                onclick="(function(b){var u=b.getAttribute('data-copiar-link'),t=b.textContent,ok=function(){b.textContent='¡Copiado!';setTimeout(function(){b.textContent=t},1600)},viejo=function(){var i=b.closest('[data-link-panel]').querySelector('input[readonly]');i.focus();i.select();try{document.execCommand('copy');ok()}catch(e){}};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(u).then(ok,viejo)}else{viejo()}})(this)">Copiar link</button>
+        <a href="{{ url_publica }}" target="_blank" rel="noopener" class="btn-secundario">Abrir</a>
+        {% if puede_mandar %}
+        {% if correo_cliente %}
+        <form hx-post="{% url 'caja:link-correo' link.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" method="post" action="{% url 'caja:link-correo' link.pk %}" class="contents">
+            {% csrf_token %}
+            <button type="submit" class="btn-secundario" title="Lo manda por El Cartero a {{ correo_cliente }}">✉️ Mandar a {{ correo_cliente|truncatechars:28 }}</button>
+        </form>
+        {% else %}
+        <span class="self-center text-xs text-gray-500 dark:text-gray-400">El cliente no tiene correo: copia el link y mándalo tú.</span>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% if puede_anular %}
+    <details class="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800">
+        <summary class="cursor-pointer text-error-600 dark:text-error-400">Anular este link</summary>
+        <form hx-post="{% url 'caja:link-anular' link.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" method="post" action="{% url 'caja:link-anular' link.pk %}" class="campo-form mt-2 space-y-2">
+            {% csrf_token %}
+            <input type="text" name="motivo" maxlength="200" placeholder="¿Por qué? (opcional)">
+            <button type="submit" class="btn-destructivo">Anular link</button>
+        </form>
+    </details>
+    {% endif %}
+    {% elif link.estado == "pagado" %}
+    <p class="text-sm text-gray-600 dark:text-gray-400">Pagado{% if link.pagado_en %} el {{ link.pagado_en|date:"d/m/Y H:i" }}{% endif %}{% if link.pasarela %} con {{ link.pasarela_nombre }}{% endif %}.</p>
+    {% elif link.estado == "anulado" %}
+    <p class="text-sm text-gray-600 dark:text-gray-400">Anulado{% if link.motivo_anulacion %}: {{ link.motivo_anulacion }}{% endif %}</p>
+    {% else %}
+    <p class="text-sm text-gray-600 dark:text-gray-400">Este link venció. Genera otro desde la factura, la cotización o la ficha.</p>
+    {% endif %}
+</div>
