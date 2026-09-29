@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Iniciar sesión — El Taller{% endblock %}
+{% block head_extra %}
+<script>
+    // Si la sesión caduca dentro de una pestaña de El Taller, el login no se queda
+    // encerrado en el marco: toma la ventana completa (S-Pendientes-Sep28).
+    try { if (window.self !== window.top && window.top.location.origin === location.origin) { window.top.location.href = location.href; } } catch (e) {}
+</script>
+{% endblock %}
 {% block contenido_publico %}
 <div class="mx-auto max-w-md">
     <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">

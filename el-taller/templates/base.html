@@ -21,6 +21,20 @@
             } catch (e) {}
         })();
     </script>
+    {% comment %}Pestañas (S-Pendientes-Sep28): dentro de un marco de El Taller la página
+    no pinta menú, encabezado, banner ni pie — los pone el contenedor. El servidor
+    ya los omite (`embebido`, por `Sec-Fetch-Dest: iframe`); esto es el respaldo
+    para un navegador que no mande esa cabecera, y va antes del primer pintado.{% endcomment %}
+    <style>html.en-pestana [data-fuera-de-pestana]{display:none!important}</style>
+    <script>
+        (function() {
+            try {
+                if (window.self !== window.top && window.top.location.origin === location.origin) {
+                    document.documentElement.classList.add('en-pestana');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
@@ -37,8 +51,8 @@
 grupo de botones original se esconde (Oscar, LC 2026-08-07). Es un interruptor a
 propósito: `ui.js` es dual-copy (regla §18) y La Gerencia NO lo prende, así que
 allá el Guardar sigue apareciendo sólo al salirse de la pantalla.{% endcomment %}
-<body data-guardar-fijo class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
-{% include "_componentes_tailadmin/_banner_deploy.html" %}
+<body data-guardar-fijo {% block body_attrs %}{% endblock %} class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 min-h-screen">
+{% if not embebido %}<div data-fuera-de-pestana class="contents">{% include "_componentes_tailadmin/_banner_deploy.html" %}</div>{% endif %}
 {% if request.impersonando %}
 <div class="sticky top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-warning-500 px-4 py-2 text-center text-sm font-medium text-white">
     <span>👁 Estás viendo el sistema como <strong>{{ request.impersonando.nombre_completo }}</strong> (modo desarrollo).</span>
@@ -58,24 +72,28 @@ allá el Guardar sigue apareciendo sólo al salirse de la pantalla.{% endcomment
 </div>
 {% endif %}
 {% if request.user.is_authenticated %}
-<div class="flex min-h-screen">
-    {% include "_componentes_tailadmin/sidebar.html" %}
+<div class="flex {% block envoltura_clase %}min-h-screen{% endblock %}">
+    {% if not embebido %}<div data-fuera-de-pestana class="contents">{% include "_componentes_tailadmin/sidebar.html" %}</div>{% endif %}
     <div class="flex flex-1 flex-col min-w-0">
-        {% include "_componentes_tailadmin/header.html" %}
+        {% if not embebido %}<div data-fuera-de-pestana class="contents">{% include "_componentes_tailadmin/header.html" %}</div>
+        {% comment %}La barra de pestañas: la arma pestanas.js y sólo aparece en escritorio.{% endcomment %}
+        <div id="barra-pestanas" data-fuera-de-pestana class="hidden"></div>{% endif %}
+        {% block principal %}
         <main class="flex-1 px-[max(env(safe-area-inset-left),1rem)] py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
             <div class="mx-auto max-w-7xl">
                 {% include "_componentes_tailadmin/alertas_mensajes.html" %}
                 {% block contenido %}{% endblock %}
             </div>
         </main>
-        <footer class="border-t border-gray-200 px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        {% endblock %}
+        {% if not embebido %}<footer data-fuera-de-pestana class="border-t border-gray-200 px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
             © 2026 Learning Center · <a href="/legal/privacidad" class="underline hover:text-gray-700 dark:hover:text-gray-300">Privacidad</a>
             · <a href="/legal/terminos" class="underline hover:text-gray-700 dark:hover:text-gray-300">Términos</a>
             <span class="mx-2 text-gray-300 dark:text-gray-700">·</span>
             Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline dark:text-brand-400">NoKo Devs</a>
             <span class="mx-2 text-gray-300 dark:text-gray-700">·</span>
             <span class="font-mono text-[10px] tracking-tight text-gray-400 dark:text-gray-600" title="Actualizado el {{ app_version_fecha }}">v{{ app_version }}</span>
-        </footer>
+        </footer>{% endif %}
     </div>
 </div>
 {% else %}
@@ -107,6 +125,7 @@ allá el Guardar sigue apareciendo sólo al salirse de la pantalla.{% endcomment
 {% comment %}El Arrastre — motor único de arrastrar y soltar (LC 2026-08-12).
 Sólo El Taller: La Gerencia conserva el suyo en el editor del menú.{% endcomment %}
 <script src="{% static 'js/arrastrar.js' %}" defer></script>
+<script src="{% static 'js/pestanas.js' %}" defer></script>
 {% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 <div id="modal-slot"></div>

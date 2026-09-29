@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% comment %}
+El contenedor de las pestañas (S-Pendientes-Sep28). La página no trae contenido
+propio: el menú y el encabezado son los de siempre, y el área de trabajo es un
+marco por pestaña que arma `static/js/pestanas.js` con lo que guardó el
+navegador. Toda la altura va a los marcos, por eso la envoltura es `h-screen`.
+{% endcomment %}
+{% block title %}Pestañas — El Taller{% endblock %}
+{% block body_attrs %}data-pestanas-shell{% endblock %}
+{% block envoltura_clase %}h-screen overflow-hidden{% endblock %}
+{% block principal %}
+<main class="relative min-h-0 flex-1 bg-gray-50 dark:bg-gray-950" data-pestanas-area>
+    <noscript>
+        <p class="p-6 text-sm text-gray-600 dark:text-gray-300">Las pestañas necesitan JavaScript. <a class="text-brand-600 underline" href="{% url 'taller-home' %}">Ir al Dashboard</a>.</p>
+    </noscript>
+</main>
+{% endblock %}
