@@ -1738,6 +1738,13 @@ def _h_documentos_del_cliente(args: dict, usuario) -> dict:  # noqa: ARG001
     }
 
 
+# Las entidades y ventanas del DSL v2 (S-KPIs-V2 · 2): la descripción de
+# `consultar_metrica` las toma de ahí para no quedarse con la lista vieja.
+from lib.kpi_dsl.schema import ENTIDADES as _DSL_ENTIDADES_MAPA  # noqa: E402
+from lib.kpi_dsl.schema import VENTANAS_TIEMPO as _DSL_VENTANAS  # noqa: E402
+
+_DSL_ENTIDADES = tuple(_DSL_ENTIDADES_MAPA)
+
 _LECTURAS: dict[str, Capacidad] = {
     "cfdi_pendientes": Capacidad(
         nombre="cfdi_pendientes",
@@ -1889,10 +1896,10 @@ _LECTURAS: dict[str, Capacidad] = {
     "consultar_metrica": Capacidad(
         nombre="consultar_metrica",
         descripcion=(
-            "Métrica agregada vía consulta acotada. entidad ∈ {proyecto, tarea, cliente, "
-            "egreso, ingreso, recado, buzon_mensaje}; agregacion ∈ {count, sum, avg, min, max}; "
+            "Métrica agregada vía consulta acotada (el mismo motor del constructor de KPIs). "
+            f"entidad ∈ {{{', '.join(_DSL_ENTIDADES)}}}; agregacion ∈ {{count, sum, avg, min, max}}; "
             "campo (para sum/avg/min/max — en egreso/ingreso es 'monto'); "
-            "ventana_tiempo ∈ {siempre, ultimos_7d, ultimos_30d, este_mes, este_ano}; "
+            f"ventana_tiempo ∈ {{{', '.join(_DSL_VENTANAS)}}}; "
             "alcance_usuario ∈ {todos, mio}. "
             "filtros: objeto {campo: {op, valor}}. Para buscar por texto usa op 'contiene' "
             "(ej. gasto en ubers este mes → entidad=egreso, agregacion=sum, campo=monto, "
@@ -1904,8 +1911,7 @@ _LECTURAS: dict[str, Capacidad] = {
             "agregacion": {"tipo": "str", "requerido": False,
                            "enum": ["count", "sum", "avg", "min", "max"]},
             "campo": {"tipo": "str", "requerido": False},
-            "ventana_tiempo": {"tipo": "str", "requerido": False,
-                               "enum": ["siempre", "ultimos_7d", "ultimos_30d", "este_mes", "este_ano"]},
+            "ventana_tiempo": {"tipo": "str", "requerido": False, "enum": list(_DSL_VENTANAS)},
             "alcance_usuario": {"tipo": "str", "requerido": False, "enum": ["todos", "mio"]},
             "filtros": {"tipo": "any", "requerido": False},
         },

@@ -11168,3 +11168,35 @@ la otra sesión, que mezcló `main` antes de desplegar.)
   igual que «no existe».
 
 **Deuda**: el recibo de nómina conserva su plantilla propia (no está en La Imprenta).
+
+### S-KPIs-V2 · 2 ✅ — VERSION 2026.09.19 (2026-09-29)
+
+Fase 3 de la ronda de KPIs: el **constructor** en La Gerencia → Ajustes → KPIs →
+Constructor, sobre el **DSL v2** (`lib/kpi_dsl`, agente en paralelo, retrocompatible:
+`tests/test_kpi_dsl_v1_retro.py` se escribió contra el motor viejo).
+
+- **DSL v2**: 8 entidades nuevas (cotización, factura, jornada, sesión de proyecto,
+  visita, CFDI entrante, línea bancaria, mandado); campos tipados con etiqueta y permiso;
+  filtros `vacio`, fechas relativas (`hoy`, `hace_N_dias`, `en_N_dias`), `in` con lista y
+  `campo_ref` (fecha contra fecha); ventanas nuevas y `campo_fecha`; `agrupar_por` + `top`;
+  `tipo: porcentaje` + `filtros_numerador`; duraciones nombradas (en Python, portable);
+  `comparar` (mismo tramo del periodo anterior); `formato`/`direccion`. `permisos_de()`,
+  `esquema_para_ui(usuario)`, `describir()`; el ejecutor re-chequea el permiso.
+- **Constructor** (`los_ajustes/views_kpis_constructor.py` + `static/js/constructor_kpi.js`):
+  formulario armado desde `esquema_para_ui` (vanilla JS, textContent), vista previa en vivo
+  (`ejecutar_con_preview`), «Pídeselo a El Chalán» (`nl_a_dsl`, `sanear_contexto` antes), y
+  lista con archivar/reactivar/aprobar/rechazar. Lo guardado nace `equipo` + `activo`,
+  aprobado por quien tiene `kpis.configurar`.
+- **`kpis.kpi_de_custom()`**: un KPICustom como `KPI` con `permisos=permisos_de()` (antes
+  `()`: cualquiera veía un KPI custom de dinero), dirección/formato/periodo del DSL y
+  `desglose` si agrupa por persona/cliente. `kpi_por_slug` resuelve `custom-*` de equipo;
+  el catálogo, los tableros y las metas de Gerencia los incluyen.
+- `consultar_metrica` toma entidades y ventanas del DSL (no la lista v1 a mano).
+- Pruebas: vistas del constructor, integración con metas por cliente, y **navegador**
+  (`tests/gerencia/test_constructor_navegador.py`, Playwright/Chromium, se salta sin
+  navegador): armar/guardar/reabrir, porcentaje con fecha contra fecha, sin scroll a 390 px.
+
+Decisiones: cambiar un KPI del constructor lo re-aprueba quien lo guarda; el re-chequeo de
+permiso del DSL deja sin número a quien no ve el dato (consultar_metrica lo hereda).
+Deuda: el flujo viejo de El Taller (`/kpis/custom/`) sigue usando su propia pantalla; un
+«editar» desde El Taller podría llevar al constructor cuando haya quién lo pida.
