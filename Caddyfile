@@ -114,11 +114,12 @@ taller.learningcenter.mx {
 	encode gzip
 	import medios
 	# El Envoltorio (V6 Bloque 9): Digital Asset Links para la TWA Android.
-	# El fingerprint SHA-256 sale del keystore de firma (ver envoltorio/README.md);
-	# mientras sea el placeholder, la app abre con barra de URL (no rompe nada).
+	# La huella SHA-256 es la del certificado de envoltorio-taller.keystore (alias
+	# taller), que vive FUERA del repo (ver envoltorio/README.md). Si no coincide
+	# con la del APK instalado, la app abre con barra de URL (no rompe nada).
 	handle /.well-known/assetlinks.json {
 		header Content-Type application/json
-		respond `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"mx.learningcenter.taller","sha256_cert_fingerprints":["REEMPLAZAR_CON_FINGERPRINT_SHA256"]}}]` 200
+		respond `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"mx.learningcenter.taller","sha256_cert_fingerprints":["77:C2:7B:44:E1:F7:F0:CD:87:6F:F3:0E:1C:4B:7E:C5:2E:C7:F0:0F:E2:7D:A8:C6:03:05:C7:F2:0D:C1:64:F3"]}}]` 200
 	}
 	reverse_proxy {$UPSTREAM_TALLER:el-taller:8000}
 	import lc_failover
