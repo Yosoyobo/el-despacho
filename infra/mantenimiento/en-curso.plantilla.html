@@ -1,0 +1,159 @@
+<!doctype html>
+<!--
+  Pantalla de mantenimiento — VERSIÓN CON ROADMAP (regla §4 #23, tercera pieza).
+
+  PLANTILLA: no se sirve tal cual. La llena `infra/scripts/pantalla_mantenimiento.py`
+  en el runner de la mudanza (versión, título de las Novedades, hora de inicio) y
+  el paso que corre en La Sede la deja en `data/caddy/mantenimiento/en-curso.html`
+  ANTES de saltar al NUC; un `trap` la borra al terminar (verde, rollback o
+  error), y El Portero vuelve solo a la versión corta (`index.html`).
+
+  La barra avanza por TIEMPO ESPERADO: La Sede no ve el interior del deploy del
+  NUC, así que no hay progreso real que leer. Los tiempos salen de los deploys
+  reales (bajar ~5 s, reiniciar ~25 s, comprobar ~50 s). Si pasa de lo previsto
+  lo dice, y a los 30 min (el TTL del banner) la pantalla se da por vieja y
+  muestra el aviso corto: un roadmap que sobrevive al trabajo terminado miente.
+
+  El video es PEDIDO EXPLÍCITO DE OSCAR (2026-08-23). No lo quites.
+-->
+<html lang="es" data-pantalla="__MARCA__" data-inicio="__INICIO__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Estamos actualizando El Despacho</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.6;overflow-wrap:anywhere}
+main{flex:1;width:100%;max-width:40rem;margin:0 auto;padding:2.5rem 1rem 1rem;text-align:center}
+.icono{font-size:3rem;line-height:1}
+h1{font-size:1.5rem;line-height:1.3;margin:.85rem 0 .5rem;color:#fff}
+.lema{color:#94a3b8;max-width:34rem;margin:0 auto 1.75rem}
+.roadmap{text-align:left;background:#1e293b;border:1px solid #334155;border-radius:14px;padding:1.25rem 1.25rem 1rem;margin:0 auto 2rem}
+.etiqueta{display:inline-block;margin:0 0 .5rem;padding:.1rem .65rem;border-radius:9999px;background:#172554;color:#93c5fd;font-size:.75rem;font-weight:600;letter-spacing:.02em}
+.roadmap h2{font-size:1.1rem;line-height:1.4;margin:0 0 1rem;color:#fff}
+.roadmap h3{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin:1.1rem 0 .4rem}
+.puntos{margin:0;padding-left:1.1rem;color:#cbd5e1;font-size:.925rem}
+.puntos li{margin:.3rem 0}
+.barra{height:.6rem;border-radius:9999px;background:#334155;overflow:hidden;margin:.35rem 0 .45rem}
+.barra span{display:block;height:100%;width:0;border-radius:inherit;background:#3b82f6;transition:width .8s ease}
+.lento .barra span{background:#f59e0b}
+.cuenta{margin:0 0 .75rem;color:#94a3b8;font-size:.85rem}
+.pasos{list-style:none;margin:0;padding:0}
+.pasos li{display:flex;gap:.65rem;align-items:flex-start;padding:.4rem 0;color:#64748b}
+.pasos li::before{content:"";flex:none;width:1.1rem;height:1.1rem;margin-top:.2rem;border-radius:9999px;border:2px solid #475569}
+.pasos li.ahora{color:#e2e8f0}
+.pasos li.ahora::before{border-color:#3b82f6;background:radial-gradient(circle,#3b82f6 38%,transparent 42%)}
+.pasos li.hecho{color:#94a3b8}
+.pasos li.hecho::before{border-color:#22c55e;background:#22c55e}
+.pasos b{display:block;font-weight:600}
+.pasos small{display:block;font-size:.8rem;color:#64748b}
+.si-viejo{display:none}
+.viejo .roadmap,.viejo .si-deploy{display:none}
+.viejo .si-viejo{display:block}
+.video{max-width:38rem;margin:0 auto}
+.marco{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.marco iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+.nota{color:#64748b;font-size:.8rem;margin:.75rem 0 0}
+footer{color:#64748b;font-size:.8rem;text-align:center;padding:1.5rem 1rem 2rem}
+footer a{color:#60a5fa;font-weight:500}
+</style>
+</head>
+<body>
+<main>
+  <div class="icono" aria-hidden="true">&#128736;&#65039;</div>
+  <div class="si-deploy">
+    <h1>Estamos actualizando El Despacho</h1>
+    <p class="lema">Est&aacute; entrando una versi&oacute;n nueva. Tus datos est&aacute;n a salvo; esta p&aacute;gina se revisa sola y te regresa en cuanto el sistema responda.</p>
+  </div>
+  <div class="si-viejo">
+    <h1>Volvemos en unos minutos</h1>
+    <p class="lema">Estamos mejorando el sistema. Tus datos est&aacute;n a salvo; esta p&aacute;gina se revisa sola y te regresa en cuanto el sistema responda.</p>
+  </div>
+
+  <section class="roadmap" aria-labelledby="qhacemos">
+    <p class="etiqueta">Versi&oacute;n __VERSION__</p>
+    <h2 id="qhacemos">__TITULO__</h2>
+    <h3>Para qu&eacute; sirve</h3>
+    <ul class="puntos">__PUNTOS__</ul>
+    <h3>Qu&eacute; falta</h3>
+    <div class="barra" role="progressbar" aria-label="Avance de la actualizaci&oacute;n" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+    <p class="cuenta" aria-live="polite">Empezando&hellip;</p>
+    <ol class="pasos">
+      <li data-hasta="20"><div><b>Bajar la versi&oacute;n nueva</b><small>unos segundos</small></div></li>
+      <li data-hasta="60"><div><b>Reiniciar el sistema</b><small>menos de un minuto</small></div></li>
+      <li data-hasta="120"><div><b>Comprobar que todo responde</b><small>alrededor de un minuto</small></div></li>
+    </ol>
+  </section>
+
+  <div class="video">
+    <div class="marco"><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=dQw4w9WgXcQ&amp;rel=0&amp;modestbranding=1" title="Mientras esperas" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+    <p class="nota">Arranca sin sonido &mdash; s&uacute;belo si quieres acompa&ntilde;amiento.</p>
+  </div>
+</main>
+<footer>Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener">NoKo Devs</a> &middot; &copy; 2026 Learning Center</footer>
+<script>
+(function () {
+  var raiz = document.documentElement;
+  var marca = raiz.getAttribute("data-pantalla");
+  var inicio = Number(raiz.getAttribute("data-inicio")) || 0;
+  var CADUCA = 1800;  // el mismo TTL que el banner ámbar (deploy_nuc.sh)
+  var pasos = [].slice.call(document.querySelectorAll(".pasos li"));
+  var total = Number(pasos[pasos.length - 1].getAttribute("data-hasta"));
+  var barra = document.querySelector(".barra");
+  var relleno = barra.firstElementChild;
+  var cuenta = document.querySelector(".cuenta");
+
+  function minutos(s) {
+    var m = Math.round(s / 60);
+    return m <= 1 ? "un minuto" : m + " minutos";
+  }
+
+  function pinta() {
+    var t = Math.max(0, Date.now() / 1000 - inicio);
+    if (!inicio || t > CADUCA) { raiz.classList.add("viejo"); return; }
+    var previo = 0;
+    pasos.forEach(function (li) {
+      var hasta = Number(li.getAttribute("data-hasta"));
+      li.className = t >= hasta ? "hecho" : (t >= previo ? "ahora" : "");
+      previo = hasta;
+    });
+    // La barra nunca llega a 100 sola: el 100 es «ya volvió», y eso lo decide la
+    // recarga, no el reloj.
+    var pct = Math.min(97, Math.round((t / total) * 100));
+    relleno.style.width = pct + "%";
+    barra.setAttribute("aria-valuenow", String(pct));
+    if (t < total) {
+      raiz.classList.remove("lento");
+      cuenta.textContent = "Llevamos " + (t < 60 ? Math.round(t) + " s" : minutos(t)) +
+        " · falta " + (total - t < 60 ? "menos de un minuto" : "alrededor de " + minutos(total - t)) + ".";
+    } else {
+      raiz.classList.add("lento");
+      pasos[pasos.length - 1].className = "ahora";
+      cuenta.textContent = "Está tardando un poco más de lo previsto (llevamos " + minutos(t) +
+        "). En cuanto el sistema responda, esta página te regresa sola.";
+    }
+  }
+
+  // Cada 20 s pregunta por esta misma dirección. Si ya no contesta El Portero con
+  // su 503 (el sistema volvió) o contesta con OTRA pantalla (terminó este
+  // despliegue o empezó otro), se recarga. `replace` y no `reload`: si esta
+  // pantalla fue la respuesta a un formulario, `reload` volvería a mandarlo.
+  function revisa() {
+    fetch(location.href, { cache: "no-store", credentials: "same-origin" }).then(function (r) {
+      if (r.status !== 503) { location.replace(location.href); return; }
+      return r.text().then(function (t) {
+        var m = t.match(/data-pantalla="([^"]*)"/);
+        if (!m || m[1] !== marca) location.replace(location.href);
+      });
+    }).catch(function () {});
+  }
+
+  pinta();
+  setInterval(pinta, 1000);
+  setInterval(revisa, 20000);
+})();
+</script>
+</body>
+</html>

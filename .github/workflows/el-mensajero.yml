@@ -314,6 +314,20 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     steps:
+      # §4 #23, tercera pieza: la pantalla que sirve El Portero mientras el NUC no
+      # contesta dice QUÉ entra, PARA QUÉ sirve y QUÉ FALTA. Se arma AQUÍ, en el
+      # runner, con el checkout de este commit: el de La Sede lo pone al día el job
+      # `ventana`, que corre en paralelo, y a esta hora todavía puede ser el viejo.
+      # Si algo falla aquí el deploy sigue: sólo se queda la pantalla corta.
+      - uses: actions/checkout@v4
+      - name: 🪧 Armar la pantalla de mantenimiento con el roadmap de este deploy
+        id: pantalla
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python3 infra/scripts/pantalla_mantenimiento.py --commit "$GITHUB_SHA" > en-curso.html
+          echo "b64=$(base64 -w0 en-curso.html)" >> "$GITHUB_OUTPUT"
+          echo "Pantalla lista: $(wc -c < en-curso.html) bytes."
       - name: SSH a La Sede y deploy al NUC por el tailnet
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -321,14 +335,52 @@ jobs:
           NUC_USER: ${{ secrets.NUC_USER }}
           SHA: ${{ github.sha }}
           CORRIDA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PANTALLA_B64: ${{ steps.pantalla.outputs.b64 }}
         with:
           host: ${{ secrets.SEDE_HOST }}
           username: ${{ secrets.SEDE_USER }}
           key: ${{ secrets.SEDE_SSH_KEY }}
           command_timeout: 20m
-          envs: NUC_HOST,NUC_USER,SHA,CORRIDA
+          envs: NUC_HOST,NUC_USER,SHA,CORRIDA,PANTALLA_B64
           script: |
             set -uo pipefail
+
+            # La pantalla con roadmap se pone ANTES de saltar al NUC y se quita al
+            # salir por CUALQUIER camino (verde, rollback, error o la sesión SSH
+            # cortada): un roadmap que sobrevive al trabajo terminado miente. Al
+            # quitarla, El Portero vuelve solo a la corta (`infra/mantenimiento/`).
+            #
+            # Se escribe con un contenedor desechable y no con el shell: la carpeta
+            # vive bajo ./data, que Docker crea como root, y así no importa de quién
+            # sea. No es un servicio del compose (§14 Bug J): `--rm`, sin nombre.
+            # Best-effort: si no se puede, avisa y el deploy sigue.
+            PANTALLA_DIR=/opt/el-despacho/data/caddy/mantenimiento
+            pantalla() {  # $1 = poner | quitar
+              local rc=0
+              if [ "$1" = "poner" ]; then
+                if [ -z "${PANTALLA_B64:-}" ]; then
+                  echo "· Sin pantalla con roadmap (no se armó en el runner): se queda la corta."
+                  return 0
+                fi
+                printf '%s' "$PANTALLA_B64" | base64 -d \
+                  | docker run --rm -i --network none -v "$PANTALLA_DIR:/m" caddy:2-alpine \
+                      sh -c 'cat > /m/.en-curso.tmp && mv -f /m/.en-curso.tmp /m/en-curso.html' \
+                  || rc=$?
+              else
+                docker run --rm --network none -v "$PANTALLA_DIR:/m" caddy:2-alpine \
+                  rm -f /m/en-curso.html /m/.en-curso.tmp || rc=$?
+              fi
+              if [ "$rc" -eq 0 ]; then
+                echo "=== Pantalla de mantenimiento: $1 ==="
+              else
+                echo "⚠️  No se pudo $1 la pantalla de mantenimiento (no tumba el deploy)."
+              fi
+            }
+            pantalla poner
+            # bash corre el trap EXIT también si la sesión se corta (HUP/TERM). Y si
+            # aun así quedara, la pantalla se declara vieja sola a los 30 min.
+            trap 'pantalla quitar' EXIT
+
             echo "=== La Sede → NUC ($NUC_HOST) por el tailnet ==="
             # La llave está acotada en el NUC con `command=`, así que lo que se
             # manda aquí NO se ejecuta: el NUC corre siempre su envoltorio
