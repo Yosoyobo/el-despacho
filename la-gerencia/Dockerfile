@@ -56,6 +56,8 @@ COPY el-taller/apps/checador/ /app/apps/checador/
 # S-LC-Feedback-V6 Bloque 1: EstadoTarea (apps.el_pizarron) para el CRUD
 # admin de Estados de tarea + aplicar sus migraciones (Bug A/B §14).
 COPY el-taller/apps/el_pizarron/ /app/apps/el_pizarron/
+# La Caja: Gerencia corre su migración (Bug B) y lee su estado en Los Ajustes.
+COPY el-taller/apps/caja/ /app/apps/caja/
 COPY la-gerencia/ /app/
 
 # Compilar Tailwind si hay config

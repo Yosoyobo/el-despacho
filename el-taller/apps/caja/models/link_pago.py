@@ -142,7 +142,9 @@ class LinkPago(models.Model):
         nombre = {"": "caja:pagar", "gracias": "caja:pagar-gracias",
                   "cancelado": "caja:pagar-cancelado", "stripe": "caja:pagar-stripe",
                   "mercadopago": "caja:pagar-mercadopago"}[sufijo]
-        return reverse(nombre, args=[self.token_firmado])
+        # Contra el montaje de El Taller, no el del proceso: el link se arma
+        # también desde La Recepción y La Gerencia (ver `apps.caja.urls_raiz`).
+        return reverse(nombre, args=[self.token_firmado], urlconf="apps.caja.urls_raiz")
 
     def url_publica(self, sufijo: str = "") -> str:
         """La URL ABSOLUTA que se le manda al cliente."""
