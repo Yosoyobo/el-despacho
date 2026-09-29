@@ -185,3 +185,22 @@ def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
     if isinstance(datos, dict) and datos.get("error") == "no_visible":
         raise ErrorAccesoMCP(f"No existe el indicador «{slug}».")
     return datos
+
+
+def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
+    """La Caja: pagos que llegaron por Stripe/MercadoPago (registrados, por
+    revisar, pendientes) y lo cobrado en línea este mes."""
+    from capacidades.lecturas_caja import _h_pagos_recientes
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "caja", "ver")
+    return _h_pagos_recientes({"estado": _texto(estado, 20), "limite": limite}, usuario)
+
+
+def links_de_pago(estado: str = "", limite: int = 20) -> dict[str, Any]:
+    """La Caja: links de pago en línea (vigentes, pagados, anulados, vencidos)."""
+    from capacidades.lecturas_caja import _h_links_de_pago
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "caja", "ver")
+    return _h_links_de_pago({"estado": _texto(estado, 20), "limite": limite}, usuario)

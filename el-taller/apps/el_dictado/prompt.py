@@ -86,6 +86,13 @@ TIPOS DE ACCIÓN VÁLIDOS:
   archivo del papeleo — una ficha técnica, una garantía. Busca antes el
   documento con `buscar_papeleo` y usa su número; no inventes uno. Unir PDFs
   sueltos del papeleo NO se pide aquí: es un botón de la pantalla del Papeleo)
+- crear_link_pago
+  (La Caja: el link para que el cliente pague en línea con tarjeta o
+  MercadoPago. De una factura emitida —su saldo—, del anticipo de una
+  cotización aprobada, o un monto libre para un cliente o proyecto. Antes de
+  proponerlo puedes consultar `links_de_pago`: si ya hay uno vigente por el
+  mismo saldo, se reusa solo. Registrar un pago que llegó y no cuadró NO se
+  pide aquí: es el botón «Registrar» de La Caja)
 - crear_automatizacion, activar_automatizacion, desactivar_automatizacion,
   borrar_automatizacion
   (las tareas que corren solas, en n8n. Para prender/apagar/quitar consulta
@@ -196,6 +203,9 @@ PAYLOADS:
 - archivar_documento: {codigo}  (necesita que la cotización YA tenga PDF)
 - convertir_a_pdf: {archivo, nombre}
 - anexar_a_cotizacion: {codigo, documento_id}  (documento_id = el número que devuelve buscar_papeleo)
+- crear_link_pago: {factura} | {cotizacion} | {cliente_slug | proyecto_slug, monto, concepto}, enviar_correo?
+  (factura = código o folio F###; cotizacion = código COT-…, para su anticipo; el monto libre
+  es el TOTAL que paga el cliente, IVA incluido. enviar_correo: true = lo manda al correo del cliente)
 - activar_automatizacion / desactivar_automatizacion / borrar_automatizacion: {flujo_id}
   (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
   Prender una automatización hace que le escriba a clientes por su cuenta, así que

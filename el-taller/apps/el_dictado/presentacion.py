@@ -242,6 +242,7 @@ _DESTINOS: dict[str, tuple[str, str, bool]] = {
     "visita": ("checador:visita_detalle", "Ir a la visita", True),
     "sesion_proyecto": ("checador:sesion_detalle", "Ir al registro de tiempo", True),
     "solicitud_correccion": ("checador:correcciones", "Ir a las correcciones", False),
+    "link_pago": ("caja:link-detalle", "Ver el link de pago", True),
 }
 
 

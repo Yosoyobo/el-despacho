@@ -534,6 +534,17 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo, documento_id (el número que da buscar_papeleo)",
         "gating": "cotizaciones_anexar",
     },
+    {
+        # La Caja: el link para que el cliente pague en línea (Stripe/MercadoPago).
+        "tipo": "crear_link_pago",
+        "titulo": "Crear un link de pago en línea",
+        "ejemplo": ("Hazme el link de pago de la factura F120. O: «link de pago del anticipo de la "
+                    "COT-2026-0044». O: «cóbrale a Optimist $3,500 de muestras con link»."),
+        "payload": ("factura (código o folio) | cotizacion (código, para su anticipo) | "
+                    "cliente_slug o proyecto_slug + monto + concepto (monto libre, IVA incluido); "
+                    "enviar_correo? (true = se lo manda al correo del cliente)"),
+        "gating": "caja_crear_link",
+    },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
@@ -585,6 +596,8 @@ def _gating_checks():
         # uno solo no alcanza — el ejecutor pide los dos también.
         "cotizaciones_anexar": lambda u: (permisos.puede_editar_cotizaciones(u)
                                           and permisos.puede_ver_papeleo(u)),
+        # La Caja: generar (y mandar) un link de pago en línea.
+        "caja_crear_link": permisos.puede_crear_link_caja,
     }
 
 
@@ -659,6 +672,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso). La cotización dice además qué anexos lleva pegados al final del PDF. Pregunta: «¿la COT-2026-0044 ya lleva la ficha técnica?»."},
     {"nombre": "buscar_papeleo / detalle_papeleo / papeleo_de", "que": "Busca en el archivo del papeleo por lo que dicen los documentos adentro, lee uno, o dice qué papeleo tiene un cliente, proyecto o proveedor (requiere permiso de Papeleo). Para anexar uno a una cotización se propone `anexar_a_cotizacion` con su número. Pregunta: «busca la garantía del termo» o «¿qué papeleo tiene Optimist?»."},
     {"nombre": "Papeleo · unir y convertir", "que": "Unir varios documentos del papeleo en un solo PDF NO se pide por chat: es el botón «Unir en un PDF» de la pantalla del Papeleo (marcas las tarjetas). Convertir Word/Excel tampoco hace falta pedirlo: al subir al Papeleo o anexar a una cotización se convierten a PDF solos. El aviso de papeleo nuevo y el ligado automático corren solos (se prenden en Gerencia → Papeleo)."},
+    {"nombre": "links_de_pago / pagos_recientes", "que": "La Caja: los links de pago en línea (Stripe / MercadoPago) —de qué factura, anticipo o monto libre, si siguen vigentes y su URL— y los pagos que llegaron: cuáles se registraron solos y cuáles quedaron por revisar y por qué (requiere permiso de La Caja). Pregunta: «¿qué pagos llegaron en línea?», «¿hay pagos por revisar?», «dame el link de pago de la F120». Para hacer uno nuevo, El Chalán propone `crear_link_pago` y tú confirmas; registrar un pago que no cuadró NO se pide por chat: es el botón «Registrar» de La Caja."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "contaduria_carga", "que": "Cómo quedó la última carga contable y si cuadró («¿cuadró la carga contable?»). Subirla es en pantalla: Contaduría → Carga contable (requiere permiso de carga contable)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
