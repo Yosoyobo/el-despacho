@@ -10590,3 +10590,17 @@ obsoletas; La Recepción y La Caja después; las 32 facturas en borrador no se t
   dirección.
 - Con varias ventanas en la misma ficha, sólo la primera ve el aviso de «no se pudo
   ubicar» (el pin sí llega a todas).
+
+### S-Fin-Sep29 · cabos ✅ — VERSION 2026.09.07 (2026-09-29)
+
+- **Grupos de recados «por rol»** (`recados/services._usuarios_por_rol`): cuentan
+  el primario Y los roles asignados (`usuarios_con_rol`), coherente con la decisión
+  de Oscar de reconocer el rol asignado. Antes un Director sobre `miembro` no
+  recibía los recados de «Dirección» (`tests/taller/test_recados_grupos_rol_asignado.py`).
+- **Aviso del pin en varias ventanas**: la deuda anotada («sólo la primera ventana
+  ve el aviso») no era real — `para_ficha` repone el texto desde el estado final
+  (10 min). Queda candado (`test_dos_ventanas_abiertas_ven_las_dos_el_aviso`).
+- Oscar pidió sacar de la lista sus pendientes manuales (instalar el APK, la
+  contraseña de la llave, cambiar la contraseña escrita en el chat): se verificarán
+  en su momento.
+- Único pendiente de desarrollo: los sprints grandes La Recepción y La Caja.

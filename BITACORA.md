@@ -13515,3 +13515,9 @@ y dejar La Recepción, La Caja y las 32 facturas en borrador. Entregado: puertas
 KPIs/avisos por permiso, acciones de proyecto separadas, pin del proveedor en el
 alta y en la ficha abierta. Operación: `portavoz:fallidos` respaldado y vaciado
 (`/salud` en «ok»), ramas obsoletas borradas con etiqueta de respaldo.
+
+## 2026-09-29 — S-Fin-Sep29 · cabos (VERSION 2026.09.07)
+
+Los grupos de recados por rol cuentan el rol asignado; candado del aviso del pin en
+dos ventanas (la deuda no era real). Oscar retiró de la lista sus pendientes
+manuales. Queda sólo lo grande: La Recepción y La Caja.

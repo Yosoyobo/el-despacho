@@ -5,6 +5,12 @@
 
 ---
 
+## Novedades — Los recados a «Dirección» y «Finanzas» llegan a todos los que tienen ese rol (29 de septiembre de 2026)
+
+**Los recados a un grupo llegan también a quien tiene el rol asignado.** Si tu rol
+de Director o de Contador se te asignó encima de otro, ahora sí recibes los
+recados que mandan a «Dirección» o a «Finanzas», igual que los demás.
+
 ## Novedades — Cada quien ve lo que su permiso le abre, y el pin del proveedor se pone solo (29 de septiembre de 2026)
 
 **Si te quitan el acceso a La Gerencia, sales en ese momento**, aunque tengas la

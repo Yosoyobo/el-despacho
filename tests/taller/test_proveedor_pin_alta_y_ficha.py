@@ -488,3 +488,19 @@ def test_el_alta_rapida_del_proyecto_programa_el_pin(navegador, buscador, origen
     r = navegador.post("/catalogo/proveedores/quick-create/", campos)
     assert r.status_code == 200 and r.json()["pin_programado"] is True
     assert _pin(_ultimo()) == PUNTO
+
+
+def test_dos_ventanas_abiertas_ven_las_dos_el_aviso(navegador, jefe, buscador):
+    """Con la misma ficha en dos ventanas, las dos se enteran de que no se pudo
+    ubicar: la segunda no se queda callada porque la primera ya lo leyó."""
+    buscador["caido"] = True
+    prov = _proveedor(pin=None)
+    otra = Client()
+    otra.force_login(jefe)
+    datos = _abrir(navegador, _ficha(prov))
+    _abrir(otra, _ficha(prov))
+    navegador.post(_ficha(prov), _con(datos, direccion=DIRECCION), **HTMX)
+    for ventana in (navegador, otra):
+        r = ventana.get(_url_pin(prov), **HTMX)
+        assert r.status_code == 286
+        assert "No se pudo ubicar la dirección nueva" in r.content.decode()
