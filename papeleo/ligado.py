@@ -120,6 +120,37 @@ def ligar(documento_id: int, *, titulo: str = "", cliente=None, proyecto=None,
     return fila
 
 
+def decidir(*, titulo: str = "", texto: str = "") -> dict:
+    """A quién ligaría el documento, SIN guardar nada. Nunca lanza.
+
+    Devuelve `{"campo": "cliente"|"proyecto"|"proveedor"|None, "entidad": …,
+    "motivo": "…"}`. Existe aparte de `ligar_automatico` para que el repaso del
+    cron pueda correr en seco (`--dry-run`) con EXACTAMENTE la misma regla: dos
+    copias de la decisión terminarían diciendo cosas distintas.
+    """
+    try:
+        encontrados = candidatos(f"{titulo}\n{texto}")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("papeleo: no se pudo buscar a quién ligar: %s", exc)
+        return {"campo": None, "entidad": None, "motivo": "No se pudo revisar el texto."}
+
+    # El proyecto gana sobre el cliente: es más específico, y un documento que
+    # nombra el proyecto casi siempre nombra también a su cliente.
+    for llave, campo in (("proyectos", "proyecto"), ("clientes", "cliente"),
+                         ("proveedores", "proveedor")):
+        halla = encontrados[llave]
+        if len(halla) == 1:
+            return {"campo": campo, "entidad": halla[0],
+                    "motivo": f"Menciona a {halla[0]}."}
+        if len(halla) > 1:
+            nombres = ", ".join(str(x) for x in halla[:3])
+            return {"campo": None, "entidad": None,
+                    "motivo": f"Menciona a varios ({nombres}); mejor decídelo tú."}
+
+    return {"campo": None, "entidad": None,
+            "motivo": "No se reconoció a nadie en el texto."}
+
+
 def ligar_automatico(documento_id: int, *, titulo: str = "", texto: str = "",
                      usuario=None) -> dict:
     """Intenta ligar solo. Devuelve qué pasó, en español, y nunca lanza.
@@ -134,31 +165,16 @@ def ligar_automatico(documento_id: int, *, titulo: str = "", texto: str = "",
     except Exception:  # noqa: BLE001 — sin configuración no se liga solo
         return {"ligado": None, "motivo": "No se pudo leer la configuración."}
 
+    veredicto = decidir(titulo=titulo, texto=texto)
+    if veredicto["campo"] is None:
+        return {"ligado": None, "motivo": veredicto["motivo"]}
     try:
-        encontrados = candidatos(f"{titulo}\n{texto}")
+        fila = ligar(documento_id, titulo=titulo, usuario=usuario, automatico=True,
+                     **{veredicto["campo"]: veredicto["entidad"]})
     except Exception as exc:  # noqa: BLE001
-        logger.warning("papeleo: no se pudo buscar a quién ligar: %s", exc)
-        return {"ligado": None, "motivo": "No se pudo revisar el texto."}
-
-    # El proyecto gana sobre el cliente: es más específico, y un documento que
-    # nombra el proyecto casi siempre nombra también a su cliente.
-    for llave, campo in (("proyectos", "proyecto"), ("clientes", "cliente"),
-                         ("proveedores", "proveedor")):
-        halla = encontrados[llave]
-        if len(halla) == 1:
-            try:
-                fila = ligar(documento_id, titulo=titulo, usuario=usuario,
-                             automatico=True, **{campo: halla[0]})
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("papeleo: no se pudo ligar #%s: %s", documento_id, exc)
-                return {"ligado": None, "motivo": "No se pudo guardar la liga."}
-            return {"ligado": fila, "motivo": f"Menciona a {fila.a_quien}."}
-        if len(halla) > 1:
-            nombres = ", ".join(str(x) for x in halla[:3])
-            return {"ligado": None,
-                    "motivo": f"Menciona a varios ({nombres}); mejor decídelo tú."}
-
-    return {"ligado": None, "motivo": "No se reconoció a nadie en el texto."}
+        logger.warning("papeleo: no se pudo ligar #%s: %s", documento_id, exc)
+        return {"ligado": None, "motivo": "No se pudo guardar la liga."}
+    return {"ligado": fila, "motivo": f"Menciona a {fila.a_quien}."}
 
 
 def papeleo_de(entidad, limite: int = 25) -> list:
@@ -194,5 +210,5 @@ def contexto_ficha(usuario, entidad) -> dict:
     }
 
 
-__all__ = ["MAX_CANDIDATOS", "candidatos", "contexto_ficha", "ligar",
+__all__ = ["MAX_CANDIDATOS", "candidatos", "contexto_ficha", "decidir", "ligar",
            "ligar_automatico", "papeleo_de"]
