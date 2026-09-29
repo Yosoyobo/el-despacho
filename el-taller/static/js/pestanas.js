@@ -612,7 +612,11 @@
     document.addEventListener('click', function (ev) {
       if (Menu.el && !Menu.el.contains(ev.target)) Menu.cerrar();
     });
-    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') Menu.cerrar(); });
+    document.addEventListener('keydown', function (ev) {
+      // El Esc que cancela un acento a medio escribir no cierra el menú.
+      if (window.despachoComponiendo ? window.despachoComponiendo(ev) : (ev.isComposing || ev.keyCode === 229)) return;
+      if (ev.key === 'Escape') Menu.cerrar();
+    });
     window.addEventListener('scroll', function () { Menu.cerrar(); }, true);
     window.addEventListener('blur', function () { Menu.cerrar(); });
   }
