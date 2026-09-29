@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ modo|capfirst }} ingreso — Tesorería{% endblock %}
 {% block contenido %}
-{% load forms_helpers %}
+{% load forms_helpers permisos %}
 {% breadcrumb_items "Tesorería" "/tesoreria/ingresos/" "Ingreso" as breadcrumb_items %}
 <div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
 <header class="mb-6">
@@ -82,7 +82,9 @@
                     </div>
                     {% endif %}
                     {{ form.proyecto }}
+                    {% if request.user|puede_crear_proyecto %}
                     <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
+                    {% endif %}
                 </div>
             </div>
         </section>

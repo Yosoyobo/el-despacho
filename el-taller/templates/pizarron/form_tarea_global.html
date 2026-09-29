@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers %}
+{% load forms_helpers permisos %}
 {% block title %}Nueva tarea — El Taller{% endblock %}
 {% comment %}El geo-picker del Lugar dibuja mapa: sin Leaflet sólo funcionaría el buscador.{% endcomment %}
 {% block head_extra %}{% include "_componentes_tailadmin/_leaflet.html" %}{% endblock %}
@@ -29,7 +29,7 @@
                     </span>
                 </label>
                 {% empty %}
-                <p class="text-sm text-gray-400">No hay proyectos activos. <a href="/proyectos/nuevo/" class="text-brand-600 underline">Crea uno primero</a>.</p>
+                <p class="text-sm text-gray-400">No hay proyectos activos.{% if request.user|puede_crear_proyecto %} <a href="{% url 'proyectos-nuevo' %}" class="text-brand-600 underline">Crea uno primero</a>.{% endif %}</p>
                 {% endfor %}
             </div>
         </div>

@@ -1,3 +1,4 @@
+{% load permisos %}
 {% comment %}
 Modal "Nuevo evento" (chooser) — patrón Wave 5. Tres opciones: evento genérico
 (feriado/vacaciones/operativo), tarea o proyecto. Si viene ?fecha, se precarga.
@@ -27,6 +28,7 @@ S-LC-Feedback-V13.
                     <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Un pendiente asignado a alguien, ligado a un proyecto.</span>
                 </span>
             </a>
+            {% if request.user|puede_crear_proyecto %}
             <a href="{% url 'proyectos-nuevo' %}{% if fecha_default %}?fecha_compromiso={{ fecha_default }}{% endif %}"
                class="group flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 hover:bg-brand-50/40 dark:border-gray-800 dark:hover:bg-brand-500/5">
                 <span class="text-xl">📁</span>
@@ -35,6 +37,7 @@ S-LC-Feedback-V13.
                     <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Un trabajo completo con cliente y entregables.</span>
                 </span>
             </a>
+            {% endif %}
         </div>
     </div>
 </div>

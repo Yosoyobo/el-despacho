@@ -824,3 +824,47 @@ class TestBusquedaInversa:
         otro = usuario_factory(rol="miembro")
         _referencia_a("usuario", usuario=otro)
         assert self._total(client, usuario_factory(rol="miembro"), f"/api/referencias/usuarios/{otro.pk}") == 1
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Los accesos directos a «Nuevo proyecto» sólo a quien puede crear
+# ═════════════════════════════════════════════════════════════════════════════
+
+ACCESOS_DIRECTOS = [
+    # (nombre, ruta, ¿HTMX?) — cada una pinta un enlace/botón a `proyectos-nuevo`.
+    ("Inicio", "/", False),
+    ("Calendario · agregar", "/calendario/nuevo/", True),
+    ("Tesorería · ingreso (página)", "/tesoreria/ingresos/nuevo/", False),
+    ("Calendario · un día", "/calendario/dia/2026-09-28/", True),
+    ("Tesorería · nuevo ingreso", "/tesoreria/ingresos/nuevo/", True),
+    ("Cotizaciones · nueva", "/cotizaciones/nueva/", False),
+    # Sin proyectos activos, la tarea nueva ofrece «Crea uno primero».
+    ("Pizarrón · tarea sin proyectos", "/tareas/nueva/", False),
+]
+
+
+class TestAccesosDirectosACrearProyecto:
+    def _pinta(self, client, u, ruta, htmx):
+        client.force_login(u)
+        r = client.get(ruta, **({"HTTP_HX_REQUEST": "true"} if htmx else {}))
+        assert r.status_code == 200, (ruta, r.status_code)
+        return 'proyectos/nuevo"' in r.content.decode() or "proyectos/nuevo?" in r.content.decode()
+
+    @pytest.mark.parametrize("nombre,ruta,htmx", ACCESOS_DIRECTOS)
+    def test_por_los_dos_lados(self, client, usuario_factory, nombre, ruta, htmx):
+        """Con todo lo demás igual (el rol dueño, que abre cada pantalla), el
+        acceso directo aparece o no según `proyectos.crear`."""
+        from cuentas.models.permiso_usuario import PermisoUsuario
+
+        con, sin = usuario_factory(rol="dueno"), usuario_factory(rol="dueno")
+        PermisoUsuario.objects.filter(usuario=sin, modulo="proyectos", permiso="crear").update(activo=False)
+        permisos.invalidar_cache_permisos()
+        assert self._pinta(client, con, ruta, htmx), nombre
+        assert not self._pinta(client, sin, ruta, htmx), nombre
+
+    def test_el_filtro_es_la_puerta_del_alta(self, usuario_factory):
+        from cuentas.templatetags.permisos import filtro_puede_crear_proyecto
+
+        for rol in ("super_admin", "dueno", "contador", "disenador", "miembro"):
+            u = usuario_factory(rol=rol)
+            assert filtro_puede_crear_proyecto(u) == permisos.puede_crear_proyecto(u), rol
