@@ -298,3 +298,28 @@ def test_el_boton_de_google_sale_solo_si_esta_configurado(client, monkeypatch):
 def test_next_no_manda_a_otro_sitio(client, uno, entrar_como, monkeypatch):
     r = client.get("/entrar/", {"next": "https://malo.example/robar"})
     assert b"malo.example" not in r.content
+
+
+def test_una_sesion_de_antes_de_revocar_no_revive_al_reinvitar(client, uno, entrar_como, correos):
+    """Revocar y volver a invitar SIN que la sesión vieja haga un clic en medio:
+    la cookie vieja trae la generación anterior y ya no abre nada."""
+    from portal import servicios
+
+    entrar_como(uno["acceso"])
+    servicios.revocar(uno["acceso"], None)
+    servicios.invitar(uno["cliente"], "ana@a.mx", None)
+    r = client.get("/proyectos/")
+    assert r.status_code == 302 and r["Location"].startswith("/entrar/")
+
+
+def test_revocar_deja_vencidos_en_la_base_los_enlaces_pendientes(uno):
+    """Defensa en profundidad: aunque el acceso inactivo ya no deja canjear, el
+    enlace pendiente queda vencido en la base (un respaldo restaurado o un
+    acceso reactivado a mano no lo revive)."""
+    from portal import servicios
+    from portal.models import EnlaceAcceso
+
+    servicios._crear_enlace(uno["acceso"], "entrada")
+    servicios.revocar(uno["acceso"], None)
+    e = EnlaceAcceso.objects.get()
+    assert e.expira_en <= timezone.now() and e.usado_en is None
