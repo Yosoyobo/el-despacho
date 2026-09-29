@@ -240,6 +240,16 @@
     {% endif %}
 </section>
 
+{% comment %}Sprint de pendientes 2026-09-28: «Quién está conectado». Se pide
+por HTMX y se refresca solo cada minuto — el endpoint está en
+lib.presencia.URL_NAMES_SONDEO, así que tener el Dashboard abierto NO hace que
+alguien salga «en línea». Gateado por (equipo, ver_actividad).{% endcomment %}
+{% if permisos_modulos.equipo %}
+<section class="mb-6" hx-get="{% url 'directorio-en-linea' %}" hx-trigger="load, every 60s" hx-swap="innerHTML">
+    <div class="ta-card"><p class="text-xs text-gray-400 dark:text-gray-500">Viendo quién está conectado…</p></div>
+</section>
+{% endif %}
+
 {# ── 3) 5 KPIs grandes (zona hero), 1/5 c/u. ── #}
 {% if hero_kpis %}
 <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

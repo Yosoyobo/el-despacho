@@ -178,6 +178,17 @@ Cuatro decisiones que conviene no deshacer:
   <div class="shrink-0" hx-get="{% url 'site-vivo-limpieza' %}"
        hx-trigger="load" hx-swap="outerHTML"></div>
 
+  {# ── El equipo ahora: quién está en línea y dónde anda (2026-09-28) ───── #}
+  {% comment %}
+  Franja baja a propósito: se lee de lejos sin quitarle alto a los paneles de
+  abajo. El mismo panel que pide El Site (regla §4 #22); aquí va rápido.
+  {% endcomment %}
+  <section class="shrink-0 overflow-hidden rounded-2xl border vg-borde vg-tarjeta"
+           hx-get="{% url 'site-vivo-equipo' %}"
+           hx-trigger="load, every 15s" hx-swap="innerHTML">
+    <p class="px-4 py-2.5 text-xs vg-4">Viendo quién está conectado…</p>
+  </section>
+
   {# ── Cuerpo ────────────────────────────────────────────────────────────── #}
   {% comment %}
   El reparto: arriba las dos cosas que se miran de lejos (el flujo y Los

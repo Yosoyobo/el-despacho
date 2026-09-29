@@ -35,5 +35,8 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         # comprobantes no es lo mismo que configurar el despacho — hay quien
         # necesita lo uno sin lo otro, en los dos sentidos.
         "papeleo": permisos.puede_ver_papeleo,
+        # Presencia del equipo: permiso propio (`equipo.ver_actividad`), nace
+        # activo para todos y se revoca por persona desde El Directorio.
+        "equipo_actividad": permisos.puede_ver_actividad_equipo,
     }.get(gating)
     return bool(fn(usuario)) if fn else False

@@ -1,4 +1,4 @@
-{% load forms_helpers %}
+{% load forms_helpers presencia %}
 {% for u in usuarios %}
 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]{% if request.user.es_super_admin %} cursor-pointer{% endif %}"
     {% if request.user.es_super_admin %}hx-get="{% url 'directorio-panel' u.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"{% endif %}>
@@ -14,6 +14,9 @@
             <span class="badge badge-brand">{{ u.get_rol_display }}</span>
             {% for r in u.roles_extra_nombres %}<span class="badge badge-gray">{{ r }}</span>{% endfor %}
         </div>
+    </td>
+    <td class="max-w-[18rem] px-5 py-3">
+        {% actividad_de u as act %}{% include "_componentes_tailadmin/_presencia.html" with act=act modo="linea" %}
     </td>
     <td class="px-5 py-3">
         {% if u.ia_efectivo == 'auto' %}
@@ -43,5 +46,5 @@
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="7" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin usuarios" descripcion="Aún no hay nadie en El Directorio." icono="inbox" %}</div></td></tr>
+<tr><td colspan="8" class="px-5 py-12 text-center"><div class="mx-auto max-w-xs">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Sin usuarios" descripcion="Aún no hay nadie en El Directorio." icono="inbox" %}</div></td></tr>
 {% endfor %}

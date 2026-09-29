@@ -19,6 +19,8 @@ urlpatterns = [
     path("vivo/negocio", views_vivo.vivo_negocio, name="site-vivo-negocio"),
     path("vivo/chalanes", views_vivo.vivo_chalanes, name="site-vivo-chalanes"),
     path("vivo/ventana", views_vivo.vivo_ventana, name="site-vivo-ventana"),
+    # El equipo ahora: quién está en línea y dónde anda (2026-09-28).
+    path("vivo/equipo", views_vivo.vivo_equipo, name="site-vivo-equipo"),
     # La Limpieza. GET pinta el estado, POST la corre — un solo endpoint porque es
     # un solo partial, compartido por la pared y por El Site (regla §22).
     path("vivo/limpieza", views_vivo.vivo_limpieza, name="site-vivo-limpieza"),

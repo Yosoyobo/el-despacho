@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 
@@ -172,4 +172,33 @@ def perfil(request, pk: int):
         "roles_simulables": roles_simulables,
         "osm_src": osm_src,
         "es_self": es_self,
+    })
+
+
+@login_required
+def en_linea(request):
+    """El recuadro «Quién está conectado» del Dashboard (2026-09-28).
+
+    Sólo quien está en línea o ausente, y sin uno mismo: el recuadro contesta
+    «¿con quién puedo contar ahorita?». La lista completa, con los desconectados
+    y la hora de su última vez, vive en Equipo.
+
+    Se pide solo cada minuto, así que NO cuenta como actividad (está en
+    `lib.presencia.URL_NAMES_SONDEO`). Sin el permiso `(equipo, ver_actividad)`
+    devuelve un cuerpo vacío en vez de un 403: HTMX no pinta un 4xx, y el
+    recuadro se quedaría en «cargando…» para siempre.
+    """
+    from lib import presencia
+    from lib.permisos import puede_ver_actividad_equipo
+
+    if not puede_ver_actividad_equipo(request.user):
+        return HttpResponse("")
+    todos = presencia.equipo_ahora(viewer=request.user)
+    conectados = [
+        a for a in todos
+        if a["estado"] in ("en_linea", "ausente") and a["usuario"].pk != request.user.pk
+    ]
+    return render(request, "directorio_taller/_en_linea.html", {
+        "conectados": conectados,
+        "conteo": presencia.conteo(conectados),
     })

@@ -837,6 +837,64 @@ def _h_tareas_de_producto(args: dict, usuario) -> dict:
     return {"proyecto": p.codigo, "productos": salida}
 
 
+
+def _h_quien_esta_en_linea(args: dict, usuario) -> dict:
+    """Quién del equipo está conectado ahora y dónde anda (sprint 2026-09-28).
+
+    «En línea» es actividad en los últimos 5 minutos y «ausente» de 5 a 30; lo
+    demás es «desconectado» con la hora de su última vez. La actividad la marca
+    una persona picando cosas, no una pestaña abierta: los sondeos de fondo no
+    cuentan.
+
+    Con `persona` se acota a una sola, por nombre o correo. Si dos coinciden
+    **no se adivina**: se dice cuáles hay, igual que el resto de los
+    resolvedores del repo. La pantalla sale con el nombre del registro sólo si
+    quien pregunta lo puede ver; si no, sólo la sección.
+    """
+    from lib import presencia
+
+    items = presencia.equipo_ahora(viewer=usuario)
+    aguja = presencia.normalizar(args.get("persona") or "").lstrip("@")
+    if aguja:
+        def _clave(item):
+            u = item["usuario"]
+            return presencia.normalizar(u.nombre_completo or ""), presencia.normalizar(u.email or "")
+
+        exactas = [i for i in items if aguja in _clave(i)]
+        casan = exactas or [
+            i for i in items
+            if any(aguja in campo for campo in _clave(i))
+        ]
+        if not casan:
+            return {"error": "persona_no_encontrada", "persona": aguja}
+        if len(casan) > 1:
+            return {"error": "ambiguo",
+                    "coinciden": [presencia.para_chalan(i)["nombre"] for i in casan]}
+        return {"regla": _REGLA_PRESENCIA, "persona": presencia.para_chalan(casan[0])}
+
+    cuenta = presencia.conteo(items)
+    return {
+        "regla": _REGLA_PRESENCIA,
+        "en_linea": [presencia.para_chalan(i) for i in items if i["estado"] == "en_linea"],
+        "ausentes": [presencia.para_chalan(i) for i in items if i["estado"] == "ausente"],
+        "fuera": [
+            {"nombre": presencia.para_chalan(i)["nombre"],
+             "ultima_actividad": presencia.para_chalan(i)["ultima_actividad"]}
+            for i in items if i["estado"] in ("desconectado", "nunca")
+        ],
+        "conteo": {
+            "en_linea": cuenta.get("en_linea", 0),
+            "ausentes": cuenta.get("ausente", 0),
+            "fuera": cuenta.get("desconectado", 0) + cuenta.get("nunca", 0),
+        },
+    }
+
+
+_REGLA_PRESENCIA = (
+    "En línea = actividad en los últimos 5 minutos; ausente = de 5 a 30; "
+    "desconectado = más de 30. Una pestaña abierta sin usar no cuenta."
+)
+
 def _h_contaduria_saldo_cuenta(args: dict, usuario) -> dict:
     from apps.contaduria.models import CuentaContable
     from apps.contaduria.services import saldo_cuenta
@@ -1649,6 +1707,17 @@ _LECTURAS: dict[str, Capacidad] = {
                      "producto": {"tipo": "str", "requerido": False},
                      "solo_abiertas": {"tipo": "bool", "requerido": False}},
         gating="abierto", fn=_h_tareas_de_producto,
+    ),
+    "quien_esta_en_linea": Capacidad(
+        nombre="quien_esta_en_linea",
+        descripcion=(
+            "Quién del equipo está conectado ahora, quién está ausente y quién se "
+            "fue (con la hora de su última actividad), en qué app, sección y "
+            "pantalla anda cada uno y desde qué aparato. Arg opcional `persona` "
+            "(nombre o correo) para preguntar por una sola."
+        ),
+        args_schema={"persona": {"tipo": "str", "requerido": False}},
+        gating="equipo_actividad", fn=_h_quien_esta_en_linea,
     ),
     "contaduria_saldo_cuenta": Capacidad(
         nombre="contaduria_saldo_cuenta",

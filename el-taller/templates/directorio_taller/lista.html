@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Equipo{% endblock %}
 {% block contenido %}
-{% load forms_helpers %}
+{% load forms_helpers presencia %}
 {% breadcrumb_items "Equipo" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="Equipo" subtitulo="Conoce a tus compañeros: contacto, puesto, horario y asistencia. Expande una persona para ver su horario; abre su ficha para el detalle completo." breadcrumb_items=breadcrumb_items %}
 
@@ -24,16 +24,22 @@
 <div class="space-y-3">
     {% for item in equipo %}
     {% with u=item.u %}
+    {% actividad_de u as act %}
     <details class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 {% if not u.is_active %}opacity-60{% endif %}">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition hover:bg-gray-50 [&::-webkit-details-marker]:hidden dark:hover:bg-white/[0.02]">
             <div class="flex min-w-0 items-center gap-4">
+                {% comment %}Sprint de pendientes 2026-09-28: el puntito de «en línea» en la esquina del avatar. Sin permiso de ver la actividad del equipo, el partial no pinta nada.{% endcomment %}
+                <div class="relative shrink-0">
                 {% if u.avatar_url %}
                 <img src="{{ u.avatar_url }}" alt="{{ u.nombre_completo }}" class="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800">
                 {% else %}
                 <div class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ u.nombre_completo|slice:":1"|upper }}</div>
                 {% endif %}
+                {% include "_componentes_tailadmin/_presencia.html" with act=act modo="punto" clase_extra="absolute bottom-0 right-0" %}
+                </div>
                 <div class="min-w-0">
                     <p class="font-semibold text-gray-900 dark:text-gray-100">{{ u.nombre_completo }}</p>
+                    {% if act %}<div class="mt-0.5 min-w-0">{% include "_componentes_tailadmin/_presencia.html" with act=act modo="linea" %}</div>{% endif %}
                     <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ u.puesto|default:"Sin puesto" }}{% if u.direccion %} <span class="px-0.5 text-gray-300 dark:text-gray-600">·</span> {{ u.direccion }}{% endif %}</p>
                     <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300">{{ u.get_modalidad_display }}</span>
@@ -63,6 +69,13 @@
                     <dd class="mt-0.5 truncate font-medium text-gray-800 dark:text-gray-100">{% if u.jefe_directo %}{{ u.jefe_directo.nombre_completo }}{% else %}—{% endif %}</dd>
                 </div>
             </dl>
+
+            {% if act %}
+            <div class="mt-5">
+                <p class="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Última actividad</p>
+                {% include "_componentes_tailadmin/_presencia.html" with act=act modo="detalle" %}
+            </div>
+            {% endif %}
 
             {% if item.horario %}
             <div class="mt-5">
