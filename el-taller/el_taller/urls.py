@@ -46,6 +46,8 @@ urlpatterns = [
     path("ayuda/", include("apps.ayuda.urls")),
     path("", include("campanas.urls")),
     path("", include("papeleo.urls")),
+    # La Recepción (S5): invitar y revocar el acceso de un cliente al portal.
+    path("", include("portal.urls_taller")),
 ]
 
 handler404 = _err.handler404

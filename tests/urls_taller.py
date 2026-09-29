@@ -38,4 +38,6 @@ urlpatterns = [
     path("proximamente/", include("proximamente.urls", namespace="proximamente")),
     path("api/", include("referencias.urls", namespace="referencias")),
     path("", include("papeleo.urls")),
+    # La Recepción (S5): invitar y revocar el acceso de un cliente al portal.
+    path("", include("portal.urls_taller")),
 ]

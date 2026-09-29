@@ -46,6 +46,9 @@ CATEGORIAS = [
     ("papeleo", "Papeleo nuevo",
      "Push cuando entra un documento al archivo del papeleo por el buzón (si está prendido en Gerencia → Papeleo).",
      ("papeleo", "ver")),
+    ("portal", "Respuestas en el portal de clientes",
+     "Push cuando un cliente aprueba o rechaza una cotización desde La Recepción.",
+     ("cotizaciones", "ver")),
 ]
 
 

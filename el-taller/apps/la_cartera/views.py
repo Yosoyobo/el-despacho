@@ -246,8 +246,13 @@ def detalle(request, pk):
     # Sale de NUESTRA base, así que la ficha se pinta igual si el archivo de
     # Paperless está caído — y por eso nada de esto va en un try por red.
     from papeleo.ligado import contexto_ficha
+
+    # La Recepción: quién de este cliente puede entrar al portal. Vacío (y el
+    # recuadro no se pinta) sin permiso `recepcion.ver` / `recepcion.invitar`.
+    from portal.views_taller import contexto_ficha as contexto_portal
     return render(request, "cartera/detalle.html", {
         "cliente": cliente,
+        **contexto_portal(request.user, cliente),
         "puede_editar": puede_editar,
         "puede_crear_proyecto": puede_crear_proyecto(request.user),
         **contexto_ficha(request.user, cliente),
