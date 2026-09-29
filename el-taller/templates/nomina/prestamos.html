@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Préstamos — Nómina{% endblock %}
+
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Préstamos y adelantos" subtitulo="Se descuentan quincena a quincena hasta saldarse. El saldo baja cuando se cierra la quincena del abono." back_url="/nomina/" back_label="Nómina" %}
+
+<div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
+    <div class="flex justify-end"><a href="{% url 'nomina:prestamo_nuevo' %}" class="btn-primario">+ Préstamo</a></div>
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Vigentes</h2>
+        {% if activos %}
+        <div class="overflow-x-auto">
+            <table data-tabla-movil class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-400 dark:border-gray-800">
+                        <th class="py-2 pr-3 font-medium" data-movil="titulo">Persona</th>
+                        <th class="py-2 pr-3 font-medium">Concepto</th>
+                        <th class="py-2 pr-3 text-right font-medium">Prestado</th>
+                        <th class="py-2 pr-3 text-right font-medium">Abono</th>
+                        <th class="py-2 text-right font-medium">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in activos %}
+                    <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
+                        <td class="py-2 pr-3"><a href="{% url 'nomina:prestamo' p.pk %}" class="font-medium text-brand-600 hover:underline dark:text-brand-400">{% firstof p.usuario.nombre_completo p.usuario.email %}</a><span class="block text-xs text-gray-400">{{ p.fecha|date:"d/m/Y" }}</span></td>
+                        <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ p.concepto }}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ p.monto|dinero }}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ p.cuota|dinero }}</td>
+                        <td class="py-2 text-right font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ p.saldo|dinero }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500 dark:text-gray-400">Nadie debe nada.</p>
+        {% endif %}
+    </section>
+
+    {% if saldados %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Saldados</h2>
+        <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+            {% for p in saldados %}
+            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><a href="{% url 'nomina:prestamo' p.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{% firstof p.usuario.nombre_completo p.usuario.email %} · {{ p.concepto }}</a><span class="tabular-nums text-gray-500">{{ p.monto|dinero }} · {{ p.fecha|date:"d/m/Y" }}</span></li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

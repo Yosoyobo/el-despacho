@@ -651,6 +651,11 @@ COMANDOS_PROHIBIDOS: list[dict] = [
         "razon": "Solo super_admin asigna permisos desde El Directorio.",
     },
     {
+        "tipo": "operar_nomina",
+        "razon": ("Calcular, cerrar y pagar la nómina, y capturar sueldos o préstamos, se hace con "
+                  "los botones de la pantalla Nómina; El Chalán sólo la consulta."),
+    },
+    {
         "tipo": "eliminar_entidad",
         "razon": "El dictado nunca borra — soft-delete o anulación se hacen desde su módulo.",
     },
@@ -688,6 +693,9 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "contaduria_carga", "que": "Cómo quedó la última carga contable y si cuadró («¿cuadró la carga contable?»). Subirla es en pantalla: Contaduría → Carga contable (requiere permiso de carga contable)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
     {"nombre": "mi_jornada_hoy / mis_horas_semana", "que": "Tu jornada de hoy (entrada/salida/retardo) y tus horas de los últimos 7 días (El Checador)."},
+    {"nombre": "nomina_quincena", "que": "La Nómina de una quincena: si está abierta, calculada o cerrada, el total a pagar, sueldos, bonos y deducciones, cuántos recibos van pagados y el neto, faltas y retardos de cada quien (requiere permiso de Nómina). Pregunta: «¿cuánto es la nómina de esta quincena?» o «¿ya se pagó la nómina?»."},
+    {"nombre": "mi_recibo", "que": "Tu recibo de nómina de una quincena ya cerrada: sueldo, conceptos, neto, si ya se depositó y el enlace al PDF. Sólo el tuyo; cualquiera lo puede pedir. Pregunta: «¿cuánto me pagaron la quincena pasada?»."},
+    {"nombre": "Nómina · calcular, cerrar, pagar", "que": "Calcular o recalcular una quincena, cerrarla, marcar un recibo pagado y capturar sueldos o préstamos NO se pide por chat: son botones de la pantalla Nómina (Finanzas → Nómina). El Chalán sólo la lee."},
     {"nombre": "resumen del calendario", "que": "En la página de Calendario, el botón '🤖 Resumir con El Chalán' arma un resumen ejecutivo de tus próximas entregas y tareas (qué viene, qué urge)."},
     {"nombre": "gasto_ia", "que": "Costo, llamadas y tokens de IA por proveedor."},
     {"nombre": "resumen_finanzas", "que": "Cómo va el negocio en dinero: ingresos/egresos/utilidad del mes, margen y saldos (requiere permiso de Finanzas). Pregunta informal: «¿cómo vamos de finanzas?»."},

@@ -13,10 +13,19 @@ obra sería una columna vacía. Por eso se cuentan dos cosas:
 "Tocó" un proyecto = le movió algo ese día: cronómetro, actividad registrada en
 el proyecto, o una visita ligada a él.
 
-El costo por hora sale de la tarifa del rol (Gerencia → Ajustes → El Análisis).
-Una persona con varios roles cuesta lo que su rol más caro: al costear conviene
-no quedarse corto. Sin tarifa, se usa la tarifa general; si tampoco hay, esa
-persona no suma costo y se dice.
+El costo por hora (S-Checador-V2, decisión Oscar 2026-09-29):
+
+1. Si la persona tiene **sueldo capturado** en La Nómina: su sueldo quincenal
+   vigente ÷ las horas laborales de SU horario en esa quincena
+   (`apps.checador.nomina.costo_hora_por_sueldo`). Cada hora se costea con la
+   quincena en la que cayó.
+2. Si no: la tarifa del rol (Gerencia → Ajustes → El Análisis). Una persona con
+   varios roles cuesta lo que su rol más caro: al costear conviene no quedarse
+   corto. Sin tarifa, se usa la tarifa general; si tampoco hay, esa persona no
+   suma costo y se dice.
+
+Sin ningún sueldo capturado, el resultado es EXACTAMENTE el de antes
+(`tests/taller/test_nomina.py` lo fija).
 """
 
 from __future__ import annotations
@@ -37,9 +46,21 @@ def _cfg():
     return ConfiguracionAnalisis.obtener()
 
 
-def costo_hora_de(usuario, cfg=None) -> Decimal:
-    """Cuánto cuesta una hora de esta persona."""
+def costo_hora_de(usuario, cfg=None, fecha: date | None = None) -> Decimal:
+    """Cuánto cuesta una hora de esta persona (en la quincena de `fecha`; hoy si
+    no se dice). Primero su sueldo; si no tiene, la tarifa del rol."""
     from ajustes.models import TarifaRol
+
+    try:
+        from apps.checador.nomina import costo_hora_por_sueldo
+
+        from lib.fecha import ahora_mx
+
+        por_sueldo = costo_hora_por_sueldo(usuario, fecha or ahora_mx().date())
+        if por_sueldo is not None:
+            return por_sueldo
+    except Exception:  # noqa: BLE001 — el costeo nunca tumba El Análisis
+        logger.warning("costo_hora_de: no se pudo leer el sueldo", exc_info=True)
 
     cfg = cfg or _cfg()
     try:
@@ -92,12 +113,16 @@ def horas_por_proyecto(desde: date, hasta: date) -> dict[int, dict]:
     acumulado: dict[int, dict] = defaultdict(
         lambda: {"horas_medidas": 0.0, "horas_estimadas": 0.0, "costo": Decimal("0.00")}
     )
-    costo_cache: dict[int, Decimal] = {}
+    # Por (persona, quincena): con sueldo, cada quincena cuesta distinto.
+    costo_cache: dict[tuple[int, date], Decimal] = {}
 
-    def costo_de(usuario) -> Decimal:
-        if usuario.pk not in costo_cache:
-            costo_cache[usuario.pk] = costo_hora_de(usuario, cfg)
-        return costo_cache[usuario.pk]
+    def costo_de(usuario, dia: date) -> Decimal:
+        from apps.checador.models.nomina import quincena_de
+
+        clave = (usuario.pk, quincena_de(dia)[0])
+        if clave not in costo_cache:
+            costo_cache[clave] = costo_hora_de(usuario, cfg, dia)
+        return costo_cache[clave]
 
     # 1) Lo medido: cronómetro por proyecto.
     medidas: dict[tuple[int, date], dict[int, float]] = defaultdict(dict)
@@ -115,7 +140,7 @@ def horas_por_proyecto(desde: date, hasta: date) -> dict[int, dict]:
                 medidas[(s.usuario_id, dia)].get(s.proyecto_id, 0.0) + horas
             )
             acumulado[s.proyecto_id]["horas_medidas"] += horas
-            acumulado[s.proyecto_id]["costo"] += Decimal(str(round(horas, 4))) * costo_de(s.usuario)
+            acumulado[s.proyecto_id]["costo"] += Decimal(str(round(horas, 4))) * costo_de(s.usuario, dia)
     except Exception:  # noqa: BLE001
         logger.warning("horas_por_proyecto: falló la lectura de cronómetros", exc_info=True)
 
@@ -142,7 +167,7 @@ def horas_por_proyecto(desde: date, hasta: date) -> dict[int, dict]:
             if not tocados:
                 continue  # trabajó, pero no en algo que se pueda imputar
             parte = restante / len(tocados)
-            costo_h = costo_de(j.usuario)
+            costo_h = costo_de(j.usuario, j.fecha)
             for pid in tocados:
                 acumulado[pid]["horas_estimadas"] += parte
                 acumulado[pid]["costo"] += Decimal(str(round(parte, 4))) * costo_h
@@ -172,6 +197,11 @@ def hay_tarifas_configuradas() -> bool:
         cfg = _cfg()
         if cfg.tarifa_hora_default and cfg.tarifa_hora_default > 0:
             return True
-        return TarifaRol.objects.filter(activo=True, costo_hora__gt=0).exists()
+        if TarifaRol.objects.filter(activo=True, costo_hora__gt=0).exists():
+            return True
+        # Con sueldos capturados en La Nómina también se puede costear.
+        from apps.checador.models import SueldoPersona
+
+        return SueldoPersona.objects.filter(en_nomina=True, sueldo_quincenal__gt=0).exists()
     except Exception:  # noqa: BLE001
         return False
