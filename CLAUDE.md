@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.10` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.11` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.11 | S-Grilla-Permisos | La grilla de El Directorio reconoce el rol asignado; guardarla ya no quita permisos |
 | 2026.09.10 | S-Checador-V2 | Nómina quincenal de sueldo fijo (recibos, préstamos, reembolsos, Mis recibos, costeo por sueldo); `.venv` 3.12 + suite portable; `ROLES.md` generado |
 | 2026.09.09 | S-Recepcion-Caja | Portal de clientes encendido (enlace por correo, aprobar cotizaciones, facturas); La Caja apagada sin llaves |
 | 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
@@ -403,14 +404,13 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda; la barra de guardar va debajo de las pestañas |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
 | 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
-| 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
 - `lib.permisos.puede()` **no tiene failsafe automático de super_admin**: una acción nueva
   necesita estar en `DEFAULTS_POR_ROL["super_admin"]` + migración `seed_permisos_*`.
   Si la acción REEMPLAZA a una puerta por rol, se siembra POR PERSONA (fila `PermisoUsuario`):
-  la grilla de El Directorio muestra fila o default del rol primario, y guardarla la apagaría.
+  `puede()` no lee `DEFAULTS_POR_ROL` ni el rol primario. La grilla de El Directorio muestra el efectivo y guardar sólo deja filas que difieren de los roles (2026.09.11).
 - Acción de catálogo: `ver_nombres`/`ver_precios` (no existe `catalogo.ver`); `puede_ver_catalogo`
   ya pregunta por `ver_nombres` (2026.09.01).
 - `app_label` reales: tareas = `pizarron`, proyectos = `proyectos`, cartera = `cartera`

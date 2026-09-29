@@ -13551,3 +13551,8 @@ rondas de decisiones de Oscar: sólo reporte, sin impuestos, recibos por pagar q
 marcan pagados, préstamos y reembolsos, Mis recibos, costeo por sueldo en El Análisis.
 Repo limpio: `.venv` 3.12, suite local en 0 fallas, `ROLES.md` generado del código.
 La Caja y el Portal salen de la deuda por decisión de Oscar.
+
+## 2026-09-29 — S-Grilla-Permisos (VERSION 2026.09.11)
+
+La grilla de permisos de El Directorio ya reconoce el rol asignado: cada casilla dice
+de dónde viene y «Guardar permisos» ya no quita en silencio lo que da un rol asignado.

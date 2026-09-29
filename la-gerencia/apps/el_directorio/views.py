@@ -11,7 +11,6 @@ from django.views.decorators.http import require_http_methods
 from cuentas.models.permiso_usuario import PermisoUsuario
 from cuentas.models.usuario import Usuario
 from lib.permisos import requiere_permiso, usuarios_con_rol
-from lib.permisos_defaults import DEFAULTS_POR_ROL
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -148,33 +147,16 @@ def bloquear(request, pk: int):
 @requiere_permiso("directorio", "permisos")
 @require_http_methods(["GET", "POST"])
 def permisos(request, pk: int):
-    """UI de gestión de PermisoUsuario para un usuario específico."""
+    """Página completa de la grilla por persona (la misma del tab Permisos del
+    panel, sin los roles). Comparte `_secciones_permisos` y `_guardar_grilla`
+    con el panel: guardar tal cual no cambia ningún permiso efectivo."""
     u = get_object_or_404(Usuario, pk=pk)
-    defaults_rol = DEFAULTS_POR_ROL.get(u.rol, {})
 
     if request.method == "POST":
         if "restablecer" in request.POST:
-            # Borra todo y vuelve a sembrar.
-            PermisoUsuario.objects.filter(usuario=u).delete()
-            for modulo, permisos_lista in defaults_rol.items():
-                for permiso in permisos_lista:
-                    PermisoUsuario.objects.create(
-                        usuario=u, modulo=modulo, permiso=permiso, activo=True,
-                        modificado_por=request.user,
-                    )
+            _restablecer_grilla(u, request.user)
         else:
-            seleccionados = set(request.POST.getlist("permisos"))
-            todos = []
-            for modulo, permisos_lista in defaults_rol.items():
-                for permiso in permisos_lista:
-                    todos.append((modulo, permiso))
-            for modulo, permiso in todos:
-                clave = f"{modulo}.{permiso}"
-                activo = clave in seleccionados
-                PermisoUsuario.objects.update_or_create(
-                    usuario=u, modulo=modulo, permiso=permiso,
-                    defaults={"activo": activo, "modificado_por": request.user},
-                )
+            _guardar_grilla(u, set(request.POST.getlist("permisos")), None, request.user)
         with contextlib.suppress(Exception):
             emitir(EventoPortavoz(
                 tipo="permisos.actualizado",
@@ -184,18 +166,8 @@ def permisos(request, pk: int):
         messages.success(request, f"Permisos de {u.email} actualizados.")
         return redirect("directorio-permisos", pk=u.pk)
 
-    # GET: construye estructura {modulo: [(permiso, activo), ...]}
-    activos = {
-        (p.modulo, p.permiso): p.activo
-        for p in PermisoUsuario.objects.filter(usuario=u)
-    }
-    secciones = []
-    for modulo, permisos_lista in defaults_rol.items():
-        filas = [(p, activos.get((modulo, p), True)) for p in permisos_lista]
-        secciones.append((modulo, filas))
-
     return render(request, "directorio/permisos.html", {
-        "usuario": u, "secciones": secciones,
+        "usuario": u, "secciones": _secciones_permisos(u),
     })
 
 
@@ -357,23 +329,119 @@ def _ctx_ia(usuario) -> dict:
     }
 
 
-def _secciones_permisos(u):
-    """Grilla módulo×acción para el editor por-usuario. Muestra TODO el catálogo
-    (no solo los defaults del rol primario) para poder conceder cualquier permiso
-    a cualquier usuario — incluido `miembro`, que no tiene defaults. El estado
-    "marcado por default" sigue lo que el rol primario otorga."""
-    from lib.permisos_defaults import catalogo_permisos, defaults_de
-    activos = {
-        (p.modulo, p.permiso): p.activo
-        for p in PermisoUsuario.objects.filter(usuario=u)
+def _estado_grilla(u):
+    """Lo que la grilla necesita de la persona: sus filas propias (sólo las del
+    catálogo), los pares que dan sus roles asignados y, por par, los nombres de
+    los roles que lo dan (para decir «por su rol X»)."""
+    from lib.permisos_defaults import catalogo_permisos
+    universo = {(m, a) for m, acciones in catalogo_permisos().items() for a in acciones}
+    filas = {
+        (m, a): activo
+        for m, a, activo in PermisoUsuario.objects.filter(usuario=u).values_list("modulo", "permiso", "activo")
+        if (m, a) in universo
     }
-    base = defaults_de(u.rol)
+    roles_por_par: dict[tuple[str, str], list[str]] = {}
+    for nombre, permisos_del_rol in u.roles_extra.order_by("nombre").values_list("nombre", "permisos"):
+        for m, acciones in (permisos_del_rol or {}).items():
+            for a in acciones or ():
+                roles_por_par.setdefault((m, a), []).append(nombre)
+    return universo, filas, roles_por_par
+
+
+# (efectivo, algún rol lo da) → de dónde viene la casilla.
+_ORIGEN = {(True, True): "rol", (True, False): "mano", (False, True): "quitado", (False, False): ""}
+
+
+def _secciones_permisos(u):
+    """Grilla módulo×acción para el editor por persona. Muestra TODO el catálogo
+    para poder conceder cualquier permiso a cualquiera —incluido un `miembro`—.
+
+    Cada casilla sale marcada según el permiso EFECTIVO, el mismo que contesta
+    `lib.permisos.puede()` (fila propia; si no hay, sus roles asignados), y dice
+    de dónde viene: `rol` (se lo da un rol), `mano` (encendido sólo para esta
+    persona) o `quitado` (su rol lo da, pero se le apagó a esta persona)."""
+    from lib.permisos import efectivo_por_filas
+    from lib.permisos_defaults import catalogo_permisos
+    _universo, filas, roles_por_par = _estado_grilla(u)
+    por_rol = set(roles_por_par)
     secciones = []
     for modulo, permisos_lista in catalogo_permisos().items():
-        defm = base.get(modulo, [])
-        filas = [(p, activos.get((modulo, p), p in defm)) for p in permisos_lista]
-        secciones.append((modulo, filas))
+        casillas = []
+        for p in permisos_lista:
+            par = (modulo, p)
+            roles = roles_por_par.get(par, [])
+            activo = efectivo_por_filas(filas, por_rol, par)
+            origen = _ORIGEN[(activo, bool(roles))]
+            casillas.append({"permiso": p, "activo": activo, "origen": origen,
+                             "roles": ", ".join(roles)})
+        secciones.append((modulo, casillas))
     return secciones
+
+
+def _aplicar_plan(u, escribir, borrar, actor):
+    from django.db.models import Q
+    if borrar:
+        cual = Q()
+        for m, a in borrar:
+            cual |= Q(modulo=m, permiso=a)
+        PermisoUsuario.objects.filter(cual, usuario=u).delete()
+    for (m, a), activo in escribir.items():
+        PermisoUsuario.objects.update_or_create(
+            usuario=u, modulo=m, permiso=a,
+            defaults={"activo": activo, "modificado_por": actor},
+        )
+
+
+def _guardar_grilla(u, marcadas, roles_nuevos, actor):
+    """Guarda la grilla de una persona sin que nadie gane ni pierda por guardar.
+
+    `marcadas` son los `modulo.accion` que llegaron marcados; `roles_nuevos`,
+    los `Rol` que quedan asignados (None = no se tocan). Si el mismo POST
+    cambia los roles, lo que no se tocó sigue a los roles NUEVOS. Sólo quedan
+    filas donde la persona difiere de sus roles (`lib.permisos.plan_de_grilla`).
+    """
+    from django.db import transaction
+
+    from lib.permisos import invalidar_cache_permisos, pares_de_roles, plan_de_grilla
+
+    elegidos = set()
+    for clave in marcadas:
+        m, _, a = clave.partition(".")
+        elegidos.add((m, a))
+    with transaction.atomic():
+        universo, filas, roles_por_par = _estado_grilla(u)
+        roles_antes = set(roles_por_par)
+        if roles_nuevos is not None:
+            u.roles_extra.set(roles_nuevos)
+            # S-Roles-V2: el rol primario se DERIVA de los roles asignados.
+            from lib.permisos import sincronizar_rol_primario
+            sincronizar_rol_primario(u)
+        roles_despues = pares_de_roles(u.roles_extra.values_list("permisos", flat=True))
+        escribir, borrar = plan_de_grilla(filas, roles_antes, roles_despues,
+                                          elegidos & universo, universo)
+        _aplicar_plan(u, escribir, borrar, actor)
+    invalidar_cache_permisos()
+
+
+def _restablecer_grilla(u, actor):
+    """«Restablecer»: quita todo lo puesto a mano en la grilla. Queda lo que dan
+    sus roles asignados, más los universales (`PERMISOS_UNIVERSALES`, que todo
+    usuario trae desde que nace aunque ningún rol se los dé). Éste SÍ cambia
+    permisos: es lo que el botón pide."""
+    from django.db import transaction
+
+    from lib.permisos import invalidar_cache_permisos
+    from lib.permisos_defaults import PERMISOS_UNIVERSALES
+    with transaction.atomic():
+        universo, filas, roles_por_par = _estado_grilla(u)
+        escribir = {
+            (m, a): True
+            for m, acciones in PERMISOS_UNIVERSALES.items() for a in acciones
+            if (m, a) in universo and (m, a) not in roles_por_par
+        }
+        borrar = {par for par in filas if par not in escribir}
+        _aplicar_plan(u, escribir, borrar, actor)
+    invalidar_cache_permisos()
 
 
 def _permisos_desde_checkboxes(request):
@@ -496,19 +564,13 @@ def panel_permisos(request, pk: int):
     from cuentas.models.rol import Rol
     u = get_object_or_404(Usuario, pk=pk)
     if request.method == "POST":
-        from lib.permisos_defaults import catalogo_permisos
-        seleccionados = set(request.POST.getlist("permisos"))
-        for modulo, permisos_lista in catalogo_permisos().items():
-            for permiso in permisos_lista:
-                PermisoUsuario.objects.update_or_create(
-                    usuario=u, modulo=modulo, permiso=permiso,
-                    defaults={"activo": f"{modulo}.{permiso}" in seleccionados,
-                              "modificado_por": request.user},
-                )
-        u.roles_extra.set(Rol.objects.filter(pk__in=request.POST.getlist("roles_extra")))
-        # S-Roles-V2: el rol primario se DERIVA de los roles asignados.
-        from lib.permisos import sincronizar_rol_primario
-        sincronizar_rol_primario(u)
+        # Roles y casillas en un solo guardado: lo que no se tocó sigue a los
+        # roles NUEVOS (asignar un rol y guardar en el mismo clic se lo da).
+        _guardar_grilla(
+            u, set(request.POST.getlist("permisos")),
+            list(Rol.objects.filter(pk__in=request.POST.getlist("roles_extra"))),
+            request.user,
+        )
         with contextlib.suppress(Exception):
             emitir(EventoPortavoz(
                 tipo="permisos.actualizado",
