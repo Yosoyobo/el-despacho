@@ -592,8 +592,10 @@ def puede_ver_comentario(user, comentario) -> bool:
     comentario. La migración 0047 lo conservó «como hoy» —sembró
     `ver_comentarios`/`ver_internos` sólo por rol primario— y la 0048 lo
     corrigió por decisión de Oscar (2026-09-28): quien tiene ASIGNADO un rol del
-    sistema recibe las filas que ese rol le daría. Para que alguien más los lea
-    basta prender el permiso en El Directorio.
+    sistema recibe las filas que ese rol le daría, y la 0049 lo volvió regla
+    —los roles del sistema traen otra vez `ver_comentarios`/`ver_internos` en su
+    JSON—, así que quien reciba el rol mañana lee igual. Para que alguien más
+    los lea basta prender el permiso en El Directorio.
     """
     if es_super_admin(user):
         return True

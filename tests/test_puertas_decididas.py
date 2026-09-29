@@ -33,12 +33,13 @@ from tests.test_permisos_sin_rol_literal import (
     _comentarios,
     _filas_de_la_foto,
     v_ver_comentario,
-    v_ver_proyecto,
+    v_ver_comentario_efectivo,
 )
 
 pytestmark = pytest.mark.django_db
 
-MIGRACIONES = ("0047_permisos_sin_rol_literal", "0048_puertas_decididas")
+MIGRACIONES = ("0047_permisos_sin_rol_literal", "0048_puertas_decididas",
+               "0049_comentarios_en_roles_del_sistema")
 
 
 @pytest.fixture
@@ -346,21 +347,6 @@ def _lee(foto_o_esc, fn):
     return _para
 
 
-def v_ver_comentario_por_roles_asignados(u, c):
-    """La regla vieja leyendo los roles EFECTIVOS en vez del primario: lo que
-    decidió Oscar para quien tiene un rol del sistema asignado."""
-    from lib.permisos import roles_efectivos
-
-    roles = roles_efectivos(u)
-    if roles & {"super_admin", "dueno", "contador"}:
-        return True
-    if "disenador" in roles:
-        if c.es_interno and c.autor_id != u.pk:
-            return False
-        return v_ver_proyecto(u, c.proyecto)
-    return False
-
-
 def _migracion_0048():
     return importlib.import_module("cuentas.migrations.0048_puertas_decididas")
 
@@ -421,9 +407,11 @@ class TestAlexLeeComentarios:
 
     def test_regla_general_sobre_cada_combinacion_de_roles(self, usuario_factory, proyecto_factory):
         """Sobre los 160 usuarios sintéticos (5 primarios × 32 combinaciones de
-        roles asignados): tras la 0048, cada quien lee exactamente lo que la
-        regla vieja le daría leyendo sus roles EFECTIVOS. Y sólo cambió quien
-        tiene asignado un rol del sistema que su primario no le daba."""
+        roles asignados), creados DESPUÉS de las migraciones —como quien recibe
+        un rol mañana—: cada quien lee exactamente lo que la regla vieja le
+        daría por sus roles EFECTIVOS, sin filas por persona (lo sostiene el
+        JSON de los roles, 0049). Y la 0048 corrida encima ya no cambia a nadie:
+        la regla es la misma por los dos caminos."""
         import itertools
 
         from apps.los_proyectos.models import ProyectoAsignacion
@@ -443,26 +431,50 @@ class TestAlexLeeComentarios:
                     ProyectoAsignacion.objects.create(proyecto=propio, usuario=u)
                     usuarios.append((primario, set(extra), u))
         esc = SimpleNamespace(propio=propio, ajeno=ajeno)
+        esperado_lee = _lee(esc, v_ver_comentario_efectivo)
         antes = {u.pk: _lee(esc, permisos.puede_ver_comentario)(u) for _p, _e, u in usuarios}
+        distintos = [f"{p}+{sorted(e)}" for p, e, u in usuarios if antes[u.pk] != esperado_lee(u)]
+        assert not distintos, distintos
+        # El caso de Alex, sin ninguna fila suya: lee todo por el rol.
+        alex = next(u for p, e, u in usuarios if p == "miembro" and e == {"dueno"})
+        assert antes[alex.pk] == TODAS
         _migracion_0048().aplicar(django_apps, None)
         permisos.invalidar_cache_permisos()
-        esperado_lee = _lee(esc, v_ver_comentario_por_roles_asignados)
-        distintos, cambiaron = [], set()
-        for primario, extra, u in usuarios:
-            ahora = _lee(esc, permisos.puede_ver_comentario)(u)
-            if ahora != esperado_lee(u):
-                distintos.append(f"{primario}+{sorted(extra)}")
-            if ahora != antes[u.pk]:
-                cambiaron.add((primario, frozenset(extra)))
-        assert not distintos, distintos
-        todos, fin = {"super_admin", "dueno", "contador", "disenador"}, {"super_admin", "dueno", "contador"}
-        # El caso de Alex, y el diseñador de primario que tiene asignado un rol
-        # que lee los internos, están entre los que cambiaron.
-        assert ("miembro", frozenset({"dueno"})) in cambiaron
-        assert ("disenador", frozenset({"contador"})) in cambiaron
-        for primario, extra in cambiaron:
-            assert (primario not in todos and extra & todos) or (primario not in fin and extra & fin), \
-                (primario, extra)
+        cambiaron = [f"{p}+{sorted(e)}" for p, e, u in usuarios
+                     if _lee(esc, permisos.puede_ver_comentario)(u) != antes[u.pk]]
+        assert not cambiaron, cambiaron
+
+    def test_quien_recibe_mañana_el_rol_director_lee_como_alex(self, foto, usuario_factory):
+        """La regla, no la foto: una persona nueva a la que se le asigna el rol
+        «Director» (clave `dueno`) de producción lee igual que Alex."""
+        from cuentas.models.rol import Rol
+
+        nuevo = usuario_factory(rol="miembro")
+        nuevo.roles_extra.add(Rol.objects.get(clave="dueno"))
+        permisos.invalidar_cache_permisos()
+        lee = _lee(foto, permisos.puede_ver_comentario)
+        assert lee(nuevo) == lee(foto.u[4]) == TODAS
+
+    def test_la_0049_sobre_los_roles_de_la_foto(self):
+        """Sólo el JSON de los roles del sistema; los personalizados, intactos."""
+        mig = importlib.import_module("cuentas.migrations.0049_comentarios_en_roles_del_sistema")
+        roles = [{"id": rid, "clave": c, "permisos": p} for rid, (c, _n, p) in FOTO_ROLES.items()]
+        # Como los dejó la 0047 (que quitó las dos acciones de todos).
+        from tests.test_permisos_sin_rol_literal import _migracion
+
+        usuarios = [{"id": uid, "rol": d["rol"], "roles": d["roles"]} for uid, d in FOTO_USUARIOS.items()]
+        json_0047, _f = _migracion().planear(usuarios, roles, _filas_de_la_foto())
+        roles = [{**r, "permisos": json_0047.get(r["id"], r["permisos"])} for r in roles]
+        plan = mig.planear(roles)
+        pizarron = {rid: set(p.get("pizarron", [])) - set(FOTO_ROLES[rid][2].get("pizarron", []))
+                    for rid, p in plan.items()}
+        assert set(plan) == {1, 2, 4}          # super_admin, Director, diseñador
+        assert pizarron[1] >= {"ver_comentarios"} and "ver_internos" in plan[1]["pizarron"]
+        assert {"ver_comentarios", "ver_internos"} <= set(plan[2]["pizarron"])
+        assert "ver_comentarios" in plan[4]["pizarron"] and "ver_internos" not in plan[4]["pizarron"]
+        # Idempotente.
+        roles = [{**r, "permisos": plan.get(r["id"], r["permisos"])} for r in roles]
+        assert mig.planear(roles) == {}
 
 
 # ═════════════════════════════════════════════════════════════════════════════

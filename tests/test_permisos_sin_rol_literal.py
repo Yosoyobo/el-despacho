@@ -79,6 +79,21 @@ def v_ver_comentario(u, c):
     return False
 
 
+def v_ver_comentario_efectivo(u, c):
+    """La regla vieja leyendo los roles EFECTIVOS (primario ∪ asignados) en vez
+    del primario: lo que decidió Oscar el 2026-09-28 (0048 por persona, 0049 en
+    el JSON de los roles del sistema). Es la regla VIGENTE de comentarios."""
+    roles = roles_efectivos(u)
+    if roles & _FIN:
+        return True
+    if "disenador" in roles:
+        if c.es_interno and c.autor_id != getattr(u, "pk", None):
+            return False
+        proyecto = c.proyecto or (c.tarea.proyecto if c.tarea else None)
+        return proyecto is not None and v_ver_proyecto(u, proyecto)
+    return False
+
+
 def v_comentar_interno(u):
     # el_pizarron/views.py: `if not es_admin(u) and u.rol != "contador": interno=False`
     return v_es_admin(u) or getattr(u, "rol", None) == "contador"
@@ -185,34 +200,37 @@ class TestComoHoy:
                     distintas.append(f"{etiqueta}: ver proyecto {cual}")
         assert not distintas, "Alguien ganó o perdió acceso:\n" + "\n".join(distintas)
 
-    def test_comentarios_igual_salvo_el_failsafe(self, escenario):
-        """La regla vieja leía el rol PRIMARIO. Única diferencia admitida: quien
-        tiene super_admin ASIGNADO sobre otro primario ahora lee todo (el
-        failsafe gana). Ese estado no existe en la vida real —asignar
-        super_admin desde El Directorio vuelve primario al super_admin
-        (`sincronizar_rol_primario`)— pero la prueba lo recorre igual."""
+    def test_comentarios_por_roles_efectivos(self, escenario):
+        """Cambio DECIDIDO (Oscar, 2026-09-28): la regla vieja leía el rol
+        PRIMARIO; ahora cada quien lee lo que la misma regla le da por sus roles
+        EFECTIVOS —el rol asignado cuenta—. Lo sostiene el JSON de los roles del
+        sistema (`cuentas/0049`), así que vale también para quien reciba el rol
+        mañana. El antes/después por persona de producción está en
+        `tests/test_puertas_decididas.py`."""
         distintas = []
         for etiqueta, u in escenario.usuarios:
             for cual, p in (("asignado", escenario.propio), ("ajeno", escenario.ajeno)):
                 for clase, c in _comentarios(escenario.ajeno.creado_por_id, p, u).items():
-                    esperado = v_ver_comentario(u, c) or permisos.es_super_admin(u)
-                    if esperado != permisos.puede_ver_comentario(u, c):
+                    if v_ver_comentario_efectivo(u, c) != permisos.puede_ver_comentario(u, c):
                         distintas.append(f"{etiqueta}: comentario {clase} en proyecto {cual}")
         assert not distintas, "\n".join(distintas)
 
-    def test_la_unica_diferencia_de_comentarios_es_ese_failsafe(self, escenario):
-        """Que la excepción de arriba no esconda nada: sólo cambia para quien
-        tiene super_admin asignado y NO lo tiene de primario."""
+    def test_solo_cambio_quien_tiene_asignado_un_rol_que_da_mas(self, escenario):
+        """Que el cambio no esconda nada: respecto a la regla por primario, sólo
+        lee distinto quien tiene ASIGNADO un rol del sistema que da más de lo
+        que su primario daba."""
+        todos, fin = {"super_admin", "dueno", "contador", "disenador"}, {"super_admin", "dueno", "contador"}
         cambian = set()
         for etiqueta, u in escenario.usuarios:
             for p in (escenario.propio, escenario.ajeno):
                 for c in _comentarios(escenario.ajeno.creado_por_id, p, u).values():
                     if v_ver_comentario(u, c) != permisos.puede_ver_comentario(u, c):
                         cambian.add(etiqueta)
-        assert cambian
+        assert "miembro+dueno" in cambian  # el caso de Alex
         for etiqueta in cambian:
             primario, extra = etiqueta.split("+", 1)
-            assert "super_admin" in extra.split("+") and primario in ("disenador", "miembro"), etiqueta
+            extra = set(extra.split("+"))
+            assert (primario not in todos and extra & todos) or (primario not in fin and extra & fin), etiqueta
 
     def test_las_pantallas_filtran_igual(self, escenario):
         """No sólo el helper: los querysets reales de cada pantalla."""
@@ -251,10 +269,9 @@ class TestComoHoy:
         regla vieja, sólo su nombre. La 0047 dejó el JSON de los roles del
         sistema diciendo lo mismo que el nombre.
 
-        Fuera de esta comparación, a propósito: los comentarios. Su regla vieja
-        leía el rol PRIMARIO real (el super_admin simulando seguía leyéndolo
-        todo); la nueva, el rol simulado — que es lo que «ver como rol»
-        promete."""
+        Los comentarios se comparan contra la regla VIGENTE (por roles
+        efectivos, que con un rol simulado son sólo ése): la 0049 devolvió
+        `ver_comentarios`/`ver_internos` al JSON de los roles del sistema."""
         from apps.los_proyectos.models import ProyectoAsignacion
 
         sa = usuario_factory(rol="super_admin")
@@ -264,6 +281,9 @@ class TestComoHoy:
         distintas = [n for n, vieja, nueva in PUERTAS if vieja(sa) != nueva(sa)]
         distintas += [f"proyecto {c}" for c, p in (("asignado", propio), ("ajeno", ajeno))
                       if v_ver_proyecto(sa, p) != permisos.puede_ver_proyecto(sa, p)]
+        distintas += [f"comentario {clase} en {c}" for c, p in (("asignado", propio), ("ajeno", ajeno))
+                      for clase, com in _comentarios(ajeno.creado_por_id, p, sa).items()
+                      if v_ver_comentario_efectivo(sa, com) != permisos.puede_ver_comentario(sa, com)]
         assert not distintas, f"simulando {simulado}: {distintas}"
 
     def test_el_disenador_ya_no_trae_editar_proyectos(self):
