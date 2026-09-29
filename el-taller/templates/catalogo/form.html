@@ -227,6 +227,11 @@ no se pliega: es herramienta de trabajo y ya se esconde sola si no aplica.{% end
                         <label for="prov-telefono" class="text-xs font-medium text-gray-600 dark:text-gray-300">Teléfono</label>
                         <input id="prov-telefono" type="text" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                     </div>
+                    <div class="sm:col-span-2">
+                        <label for="prov-direccion" class="text-xs font-medium text-gray-600 dark:text-gray-300">Dirección</label>
+                        <input id="prov-direccion" type="text" autocomplete="off" placeholder="Calle, número, colonia, ciudad" class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Con dirección, el pin del mapa se ubica solo.</p>
+                    </div>
                 </div>
                 <div class="mt-3 flex items-center gap-3">
                     <button type="button" id="prov-agregar" class="btn-primario whitespace-nowrap">Crear y marcar</button>
@@ -591,6 +596,7 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
         contacto: document.getElementById('prov-contacto'),
         email: document.getElementById('prov-email'),
         telefono: document.getElementById('prov-telefono'),
+        direccion: document.getElementById('prov-direccion'),
     };
     const msg = document.getElementById('prov-msg');
     const lista = document.getElementById('proveedores-lista');
@@ -612,6 +618,7 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
         body.append('nombre_contacto', inputs.contacto.value || '');
         body.append('email_contacto', inputs.email.value || '');
         body.append('telefono', inputs.telefono.value || '');
+        body.append('direccion', (inputs.direccion && inputs.direccion.value) || '');
         try {
             const resp = await fetch('{% url "catalogo-proveedor-quick-create" %}', {
                 method: 'POST',
@@ -626,8 +633,9 @@ lista: eliminar exige `catalogo.eliminar`, que sólo tiene el super admin.
             }
             // LC 2026-07-25: lo agrega al dropdown + lo marca + pinta su pastilla.
             if (window.provAgregarOpcion) window.provAgregarOpcion(data.id, data.razon_social);
-            Object.values(inputs).forEach(function(i) { i.value = ''; });
-            mostrarMsg('Proveedor "' + data.razon_social + '" creado y marcado.', false);
+            Object.values(inputs).forEach(function(i) { if (i) i.value = ''; });
+            mostrarMsg('Proveedor "' + data.razon_social + '" creado y marcado.' +
+                       (data.pin_programado ? ' El pin del mapa se ubica solo con su dirección.' : ''), false);
             btn.disabled = false;
         } catch (err) {
             mostrarMsg('Error de red.', true);

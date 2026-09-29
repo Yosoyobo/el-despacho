@@ -94,7 +94,8 @@ COMANDOS_DICTADO: list[dict] = [
         "tipo": "crear_proveedor",
         "titulo": "Crear proveedor",
         "ejemplo": 'Da de alta al proveedor "Telas del Norte", contacto Luis, tel 555-9090.',
-        "payload": "razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, notas?",
+        "payload": ("razon_social, nombre_contacto?, email_contacto?, telefono?, rfc?, direccion?, "
+                    "notas?. Con dirección, el pin del mapa se ubica solo"),
         "gating": "catalogo",
     },
     {

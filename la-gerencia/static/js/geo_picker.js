@@ -15,6 +15,9 @@
  *     un mini-mapa Leaflet con pin (clic/arrastre/«Mi ubicación»/radio opcional).
  *   - Sin mapa y con el campo como buscador (modo "texto") → solo autocompletado.
  *
+ * Desde afuera: `geo:fijar` ({detail: {lat, lng}}) sobre el contenedor mueve
+ * el pin y los ocultos SIN disparar input/change (no autoguarda).
+ *
  * Leaflet se carga PEREZOSAMENTE (sólo al abrir un mapa). Se re-inicializa en
  * `htmx:afterSwap` (modales/tabs). "gratis o abortamos": Nominatim + OSM,
  * debounce 600 ms, sin API key. Dual-copy (regla §18): idéntico en ambas apps.
@@ -173,6 +176,20 @@
       pintar(lat, lng, centrar);
     }
 
+    // Fija el pin desde afuera SIN avisar al formulario (ni input ni change):
+    // para quien ya tiene el dato guardado —la ficha del proveedor cuando el pin
+    // se ubicó en el fondo— y no quiere provocar un autoguardado. El valor va tal
+    // cual, sin redondear: el oculto dice exactamente lo que dice la base.
+    function fijar(lat, lng) {
+      lat = Number(lat); lng = Number(lng);
+      if (isNaN(lat) || isNaN(lng)) return;
+      if (latI) latI.value = String(lat);
+      if (lngI) lngI.value = String(lng);
+      if (coordsEl) coordsEl.textContent = lat.toFixed(6) + ", " + lng.toFixed(6);
+      abrir();
+      pintar(lat, lng, true);
+    }
+
     function reverse(lat, lng) {
       var destino = etiqI || textoI;
       if (!destino || destino.value.trim()) return;
@@ -226,7 +243,7 @@
     });
     if (root.getAttribute("data-mapa-abierto") === "1") abrir();
 
-    return { setCoords: setCoords, abrir: abrir };
+    return { setCoords: setCoords, abrir: abrir, fijar: fijar };
   }
 
   function initPicker(root) {
@@ -264,6 +281,13 @@
     var mapa = tieneMapa
       ? montarMapa(root, { latI: latI, lngI: lngI, etiqI: etiqI, radioI: radioI, textoI: campo }, endpoint)
       : null;
+
+    // `geo:fijar` ({lat, lng}) en el contenedor: mover el pin desde afuera sin
+    // autoguardar (ver `fijar`).
+    if (mapa) root.addEventListener("geo:fijar", function (e) {
+      var d = e.detail || {};
+      mapa.fijar(d.lat, d.lng);
+    });
 
     function onElegir(r) {
       if (mapa && r.lat != null && r.lng != null) { mapa.abrir(); mapa.setCoords(r.lat, r.lng, true); }
