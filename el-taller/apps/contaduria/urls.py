@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_carga
 
 app_name = "contaduria"
 
@@ -32,4 +32,13 @@ urlpatterns = [
     path("movimiento/nuevo/", views.movimiento_nuevo, name="movimiento-nuevo"),
     path("movimiento/traspaso/", views.movimiento_traspaso, name="movimiento-traspaso"),
     path("movimiento/ajuste/", views.movimiento_ajuste, name="movimiento-ajuste"),
+    # La Carga Contable: la contabilidad llevada fuera, de un jalón (S-Carga-Contable)
+    path("carga/", views_carga.carga_inicio, name="carga"),
+    path("carga/plantilla/", views_carga.carga_plantilla, name="carga-plantilla"),
+    path("carga/<int:pk>/", views_carga.carga_detalle, name="carga-detalle"),
+    path("carga/<int:pk>/recalcular/", views_carga.carga_recalcular, name="carga-recalcular"),
+    path("carga/<int:pk>/aplicar/", views_carga.carga_aplicar, name="carga-aplicar"),
+    path("carga/<int:pk>/deshacer/", views_carga.carga_deshacer, name="carga-deshacer"),
+    path("carga/<int:pk>/archivo/", views_carga.carga_archivo, name="carga-archivo"),
+    path("carga/<int:pk>/estado/<int:estado_pk>/", views_carga.carga_estado_archivo, name="carga-estado-archivo"),
 ]

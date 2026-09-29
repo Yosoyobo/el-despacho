@@ -22,6 +22,8 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
         "cotizaciones": permisos.puede_ver_cotizaciones,
         "facturacion": permisos.puede_ver_facturacion,
         "contaduria": permisos.puede_ver_contaduria,
+        # La carga contable enseña el cuadre de todo el libro: quien puede cargar.
+        "contaduria_carga": permisos.puede_cargar_contaduria,
         # LC #153: la acción canónica de lectura del catálogo es `ver_nombres`.
         "catalogo": lambda u: permisos.puede(u, "catalogo", "ver_nombres"),
         # Quien puede escribirle a un cliente puede ver con qué moldes cuenta.

@@ -24,6 +24,7 @@ ESTACIONES: list[tuple[str, str, str, bool, str, str]] = [
     ("analisis_negocio",   "Opinar del negocio",           "El Chalán analiza y opina del negocio (económicos, cobranza, ventas, márgenes) con datos reales: lo usa el chat y el análisis proactivo que llega como notificación clickeable.", False, "anthropic", "claude-sonnet-4-6"),
     ("correo_redaccion",   "Redactar correo (El Cartero)", "Redacta/mejora el HTML de las plantillas de correo respetando las variables.", False, "anthropic", "claude-haiku-4-5"),
     ("redaccion_asistida", "Redactar texto (widget 🤖)",   "El botón 🤖 redacta comentarios, notas y respuestas; resuelve @#$ a datos reales.", False, "anthropic", "claude-haiku-4-5"),
+    ("carga_contable",     "Revisar carga contable",       "Clasifica los movimientos de los estados de cuenta de la carga contable y sugiere cliente, factura, proveedor y centro. Sólo propone: una persona aplica.", False, "anthropic", "claude-haiku-4-5"),
     ("smoke",              "Smoke test",                   "Prueba mínima desde Los Ajustes — un saludo.", False, "anthropic", "claude-haiku-4-5"),
 ]
 

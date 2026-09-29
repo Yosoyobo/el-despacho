@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.09.07` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.08` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
 | 2026.09.07 | S-Fin-Sep29 · cabos | Grupos de recados por rol cuentan el rol asignado |
 | 2026.09.06 | S-Fin-Sep29 | Las 3 puertas por rol primario a permiso (decisión de Oscar); KPIs/avisos por permiso; comentarios por rol asignado; pin en el alta |
 | 2026.09.05 | S-Deuda-Sep28 | Ninguna puerta por rol literal («como hoy», `cuentas/0047`); pantalla de corte con roadmap automático; testigo en versiones de cotización; 8 limpiezas |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
 | 2026.08.50 | S-Ajustes-Ago28 · 3 | Vista previa de cotización: genera de verdad y deshace (evento con `on_commit` dentro del `atomic`) |
 | 2026.08.48 | S-Ajustes-Ago28 · 2 | `Tarea.producto`; buscador del Inicio abarca clientes/productos/proveedores |
-| 2026.08.47 | S-Ajustes-Ago28 · 1 | Duplicar producto, markup en catálogo, un solo control de proveedores |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -447,6 +447,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Formulario principal nuevo de un modelo editable → testigo de `lib/edicion.py` (si no, el último guardado pisa sin avisar).
 - Un envoltorio «invisible» (inputs ocultos, contenedor OOB) como hijo directo de un `grid` se come una celda: `class="contents"`, no `hidden` si adentro va algo que debe verse.
 - Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
+- Crear en bloque (importar, sembrar) sin `lib.carga_masiva.carga_masiva()` dispara los correos automáticos a clientes (pago, bienvenida) y difiere los asientos a `on_commit`.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
   al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).
 

@@ -19,9 +19,10 @@ from __future__ import annotations
 
 import logging
 
-from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+from lib.carga_masiva import diferir
 
 log = logging.getLogger("despacho.contaduria")
 
@@ -145,7 +146,7 @@ def _hook_ingreso(sender, instance, created, update_fields=None, **kwargs):
         except AsientoInvalido as e:
             log.warning("Asiento de ingreso %s inválido: %s", instance.codigo, e)
 
-    transaction.on_commit(_crear)
+    diferir(_crear)
 
 
 @receiver(post_save, sender="tesoreria.Egreso", dispatch_uid="contaduria_egreso")
@@ -206,4 +207,4 @@ def _hook_egreso(sender, instance, created, update_fields=None, **kwargs):
         except AsientoInvalido as e:
             log.warning("Asiento de egreso %s inválido: %s", instance.codigo, e)
 
-    transaction.on_commit(_crear)
+    diferir(_crear)

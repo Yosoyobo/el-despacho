@@ -17,6 +17,9 @@ class LaCarteraConfig(AppConfig):
         def _bienvenida(sender, instance, created, **kwargs):
             if not created:
                 return
+            from lib.carga_masiva import en_carga
+            if en_carga():
+                return  # un cliente que llega con la contabilidad histórica no es nuevo
             from lib.correos_auto import enviar_bienvenida
             transaction.on_commit(lambda: enviar_bienvenida(instance))
 

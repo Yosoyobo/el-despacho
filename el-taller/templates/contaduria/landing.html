@@ -19,6 +19,7 @@
         <a href="{% url 'contaduria:conciliacion-lista' %}" class="btn-secundario">Conciliación bancaria</a>
         <a href="{% url 'contaduria:cierre-lista' %}" class="btn-secundario">Cierres de periodo</a>
         <a href="{% url 'contaduria:export' %}" class="btn-secundario">Export contador</a>
+        {% if puede_cargar %}<a href="{% url 'contaduria:carga' %}" class="btn-secundario">Carga contable</a>{% endif %}
         {% if puede_capturar %}<a href="{% url 'contaduria:movimiento-nuevo' %}" class="btn-primario">+ Nuevo movimiento</a>{% endif %}
         {% if user|es_super_admin %}<a href="{% url 'contaduria:asiento-nuevo' %}" class="btn-secundario">+ Movimiento avanzado</a>{% endif %}
     </div>

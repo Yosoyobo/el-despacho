@@ -5,7 +5,8 @@ Patrón espejo de `apps/contaduria/signals.py`:
 - post_save Factura: si transiciona a estado='cancelada' → reverso.
 - Idempotente vía `referencia_externa`.
 - Silent skip si catálogo de cuentas incompleto.
-- transaction.on_commit para no acoplar al rollback de tx fallida.
+- transaction.on_commit para no acoplar al rollback de tx fallida (vía
+  `lib.carga_masiva.diferir`: dentro de una carga masiva se escribe en el acto).
 """
 
 from __future__ import annotations
@@ -13,9 +14,10 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+
+from lib.carga_masiva import diferir
 
 log = logging.getLogger("despacho.facturacion")
 
@@ -64,9 +66,9 @@ def _hook_factura(sender, instance, created, update_fields=None, **kwargs):
     )
 
     if transicion_a_emitida:
-        transaction.on_commit(lambda: _generar_asiento_emision(instance))
+        diferir(lambda: _generar_asiento_emision(instance))
     elif transicion_a_cancelada:
-        transaction.on_commit(lambda: _generar_asiento_cancelacion(instance))
+        diferir(lambda: _generar_asiento_cancelacion(instance))
 
 
 def _generar_asiento_emision(factura):

@@ -398,6 +398,12 @@ def puede_capturar_contaduria(user) -> bool:
     return puede(user, "contaduria", "capturar")
 
 
+def puede_cargar_contaduria(user) -> bool:
+    """Subir la plantilla de carga contable (S-Carga-Contable). Aplicarla mueve
+    saldos de todo el libro: acción aparte de `capturar` para poder delegarla sola."""
+    return puede(user, "contaduria", "cargar")
+
+
 def puede_anular_contaduria(user) -> bool:
     return puede(user, "contaduria", "anular")
 

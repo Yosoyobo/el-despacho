@@ -10604,3 +10604,74 @@ obsoletas; La Recepción y La Caja después; las 32 facturas en borrador no se t
   contraseña de la llave, cambiar la contraseña escrita en el chat): se verificarán
   en su momento.
 - Único pendiente de desarrollo: los sprints grandes La Recepción y La Caja.
+
+### S-Carga-Contable ✅ — La contabilidad de fuera, de un jalón (2026-09-29, VERSION 2026.09.08)
+
+Pedido de Oscar: «un setup wizard u hoja de Excel para hacer de un solo jalón toda
+la contabilidad que se ha llevado fuera de El Despacho, para que ahora sí todo
+cuadre». Lo que tienen fuera: **Excel y estados de cuenta**. Decisión de Oscar: la
+plantilla la hace el sistema y se descarga en El Taller; se sube la plantilla llena
+**y** los estados de cuenta. Fecha de arranque: por decidir (vive en la celda B2 de
+la plantilla; viene con el 1 de enero).
+
+- **Pantalla** `/contaduria/carga/` (botón «Carga contable» en Contaduría), permiso
+  nuevo **`contaduria.cargar`** (TODO_CONTADURIA → super_admin/dueño/contador;
+  `cuentas/0051` lo siembra a quien hoy tiene `contaduria.capturar` + super_admin, y
+  a los JSON de Rol que traen `capturar`).
+- **Plantilla** (`apps/contaduria/carga/plantilla.py`, openpyxl — dependencia nueva):
+  Léeme · 1 Arranque · 2 Ingresos · 3 Gastos · 4 Facturas · 5 Pólizas · 6 Saldos hoy
+  + hoja oculta de listas (cuentas, centros, clientes, proveedores, métodos). Hojas y
+  columnas en `carga/esquema.py`, que leen el generador y el lector.
+- **Lectura tolerante** (`carga/lectura.py`): fechas «3/2/26», «10/FEB/2026», seriales
+  de Excel; montos «$1,200.50», «(300)»; títulos sin acentos ni «*». Vacío hereda, 0
+  es cero. **Estados de cuenta** (`carga/estado_cuenta.py`): CSV/XLSX con preámbulo,
+  columnas Fecha/Descripción/Monto o Depósitos-Retiros (Abono/Cargo del banco); PDF y
+  .xls se guardan como evidencia y se avisa que no se pueden leer.
+- **Motor** (`carga/motor.py`): vista previa y aplicación son EL MISMO código (la
+  vista previa corre dentro de `atomic` y se deshace). Lo hace posible
+  `lib/carga_masiva.py` (ContextVar): con la bandera, `diferir()` escribe en el acto
+  los asientos que Contaduría/Facturación difieren a `on_commit`, y se silencian el
+  correo «recibimos tu pago», el de bienvenida y el evento por asiento.
+- **Cómo cuadra**: los saldos declarados se COMPARAN (apertura contra Utilidades
+  acumuladas 3.2.01, fechada al cierre del día anterior al arranque; cuadre de «Saldos
+  hoy» y del saldo final de cada estado de cuenta contra 6.0.01 Ajustes de captura,
+  un asiento por fecha). Duplicados: contra lo capturado (mismo monto ±3 días), contra
+  cargas previas (clave sha1 por renglón con ocurrencia), y del banco contra la
+  plantilla/pólizas y entre estados que se enciman. Lo anterior al arranque (factura
+  por cobrar, gasto pendiente, «cobrado antes») nace con su asiento automático y se le
+  cambia la partida de resultados/banco a 3.2.01 (`_reubicar`). Cobro sin factura se
+  liga solo sólo si es inequívoco; ambiguo = error. Un error bloquea aplicar.
+- **Deshacer**: anula asientos (por pk y por referencia, incl. anulaciones), ingresos,
+  egresos; cancela facturas y **libera su folio**; recalcula las facturas existentes
+  que recibieron cobros. Se niega si hubo cobros/pagos posteriores sobre lo importado.
+- **Facturas importadas** se insertan con `bulk_create` (el `save()` inventa folio
+  F### si viene vacío) y pasan a `emitida` con `save(update_fields=…)`.
+- **El Chalán procesa lo subido** (pedido de Oscar: «usa el AI del taller para que lo
+  hardcodeado no haga algo loco»): estación nueva `carga_contable`
+  (`chalanes/0021`, haiku-4-5) vía `lib.analistas.analizar`, en `carga/ia.py`.
+  Clasifica los movimientos que sólo trae el banco (cobro+factura, ingreso+cliente,
+  gasto/comisión+centro+proveedor, traspaso/impuesto/préstamo/aportación → asiento
+  `carga` contra la cuenta que diga, sin tocar resultados), sugiere centro a gastos
+  de la plantilla sin centro, y desempata cobros ambiguos SÓLO entre las candidatas.
+  Candados: todo se valida contra el catálogo (lo inventado se descarta), umbral de
+  confianza 0.6, y se pregunta UNA vez (al subir o «Recalcular», fuera de la
+  transacción) y se guarda en `CargaContable.ia`: la vista previa y `aplicar` leen
+  lo guardado (prueba: `aplicar` con la IA prohibida da lo mismo). Sin IA, regla de
+  siempre + aviso. El respaldo sin IA ya no es «el primer centro operativo del
+  alfabeto» (era «Impuestos y comisiones»): es el comodín «Otros».
+- **Chalán/MCP**: lectura `contaduria_carga` (gating `contaduria_carga` →
+  `puede_cargar_contaduria`) + línea en `CONSULTAS_CHAT`. Subir/aplicar no va por chat.
+- Modelos `CargaContable` (archivo, resumen, creados, claves) y `EstadoCuentaCarga`;
+  orígenes de asiento `apertura` y `carga` (`contaduria/0010`). Eventos
+  `contaduria.carga_aplicada/deshecha`. 32 pruebas en
+  `tests/taller/test_carga_contable.py` (cinco verificadas contra código mutado).
+
+**Deuda diseñada**
+- Sin El Chalán (o con poca confianza), lo que sólo viene en el banco va como ingreso
+  sin cliente / gasto de «Otros»: reclasificar es agregarlo a la plantilla y volver a
+  subir (o editarlo después). La IA no lee PDF de estados de cuenta todavía.
+- Una sola cuenta «Bancos» en el catálogo: si LC tiene dos bancos, dar de alta la
+  segunda cuenta en el catálogo antes de cargar sus estados de cuenta.
+- Si el arranque no es 1 de enero, lo ganado ese año antes del arranque queda en
+  Utilidades acumuladas (el estado de resultados del año empieza en el arranque).
+- PDF de estados de cuenta no se lee (sin OCR).

@@ -13521,3 +13521,18 @@ alta y en la ficha abierta. Operación: `portavoz:fallidos` respaldado y vaciado
 Los grupos de recados por rol cuentan el rol asignado; candado del aviso del pin en
 dos ventanas (la deuda no era real). Oscar retiró de la lista sus pendientes
 manuales. Queda sólo lo grande: La Recepción y La Caja.
+
+## 2026-09-29 — S-Carga-Contable (VERSION 2026.09.08)
+
+Oscar pidió un wizard o Excel para meter de un jalón la contabilidad llevada fuera
+(Excel y estados de cuenta) y que todo cuadre. Entregado: Contaduría → Carga
+contable. La plantilla se descarga del sistema (listas del catálogo vivo); se sube
+llena junto con hasta 4 estados de cuenta en CSV/Excel. Vista previa exacta (mismo
+código que la aplicación, dentro de una transacción que se deshace), cuadre por
+diferencias contra lo que ya tenía El Despacho, duplicados reconocidos, sin correos
+a clientes, y deshacer completo. A pedido de Oscar, El Chalán (estación
+`carga_contable`) revisa lo subido: clasifica lo que sólo trae el banco, sugiere
+centros y desempata cobros; sólo propone, se valida contra el catálogo y se
+pregunta una vez. Permiso nuevo `contaduria.cargar`. La fecha de
+arranque la decide Oscar en la plantilla (viene con el 1 de enero). Trabajo hecho en
+worktree propio porque había otra sesión en el árbol principal.

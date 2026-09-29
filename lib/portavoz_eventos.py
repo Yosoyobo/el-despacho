@@ -188,6 +188,8 @@ EventoTipo = Literal[
     "contaduria.conciliacion_creada",
     "contaduria.conciliacion_actualizada",
     "contaduria.exportado_xml",
+    "contaduria.carga_aplicada",
+    "contaduria.carga_deshecha",
     "cobranza.recordatorio_enviado",
     "cobranza.recordatorio_fallido",
     "ajuste.cobranza_configurada",

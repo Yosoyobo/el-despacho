@@ -18,6 +18,9 @@ class TesoreriaConfig(AppConfig):
         def _confirmar_pago(sender, instance, created, **kwargs):
             if not created or instance.anulado:
                 return
+            from lib.carga_masiva import en_carga
+            if en_carga():
+                return  # un pago histórico importado no se le «confirma» al cliente hoy
             from lib.correos_auto import enviar_confirmacion_pago
             transaction.on_commit(lambda: enviar_confirmacion_pago(instance))
 

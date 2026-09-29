@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Carga contable — Contaduría{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Contaduría" "/contaduria/" "Carga contable" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Carga contable" subtitulo="Sube de un jalón la contabilidad que se llevó fuera de El Despacho, para que desde ahí todo cuadre." breadcrumb_items=breadcrumb_items back_url="/contaduria/" back_label="Contaduría" %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="ta-card space-y-4 xl:col-span-2">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Cómo funciona</h2>
+        <ol class="list-decimal space-y-3 pl-5 text-sm text-gray-700 dark:text-gray-300">
+            <li>
+                <strong>Descarga la plantilla.</strong> Es un Excel con seis hojas y listas desplegables armadas con
+                tu catálogo de hoy (cuentas, centros de costo, clientes, proveedores). La primera hoja, «Léeme», explica cada una.
+                <div class="mt-2"><a href="{% url 'contaduria:carga-plantilla' %}" class="btn-primario">⬇ Descargar plantilla</a></div>
+            </li>
+            <li>
+                <strong>Llénala.</strong> La <em>fecha de arranque</em> (lo mejor: 1 de enero) con lo que había en bancos y caja
+                ese día; después cada ingreso, gasto y factura desde entonces, y al final el saldo real de hoy.
+                Puedes pegar directo del estado de cuenta.
+            </li>
+            <li>
+                <strong>Súbela junto con los estados de cuenta</strong> (o sólo los estados de cuenta) <strong>y revisa la vista previa.</strong> Ves exactamente qué se crea, qué ya estaba en El Despacho
+                (se reconoce solo y no se duplica), qué tiene error y cómo queda el balance. <strong>Nada se guarda hasta que
+                aprietas «Aplicar».</strong>
+            </li>
+        </ol>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+            No manda correos a clientes, no timbra y no modifica lo que ya existe. Una carga aplicada se puede deshacer completa.
+        </p>
+    </div>
+
+    <div class="ta-card">
+        <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Subir</h2>
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            {% include "_componentes_tailadmin/_file_upload.html" with name="plantilla" label="La plantilla llena" accept=".xlsx" hint="Excel (.xlsx), hasta 8 MB" %}
+            <fieldset class="space-y-3">
+                <legend class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Estados de cuenta</legend>
+                <p class="text-xs text-gray-500 dark:text-gray-400">En CSV o Excel, como los exporta la banca en línea. Un PDF se guarda, pero no se puede leer.</p>
+                {% for n in renglones_estado %}
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <input type="file" name="estado_{{ n }}" accept=".csv,.xlsx,.txt,.pdf" class="input text-xs" aria-label="Estado de cuenta {{ n }}">
+                    <select name="cuenta_{{ n }}" class="input text-xs" aria-label="Cuenta del estado de cuenta {{ n }}">
+                        {% for c in cuentas %}<option value="{{ c.pk }}" {% if c.pk == cuenta_default.pk %}selected{% endif %}>{{ c.codigo }} · {{ c.nombre }}</option>{% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+                <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" name="crear_desde_estados" value="1" checked class="mt-1">
+                    <span>Crear como ingreso o gasto lo que sólo venga en el estado de cuenta <span class="block text-xs text-gray-500">Si lo apagas, sólo se compara y la diferencia queda como ajuste.</span></span>
+                </label>
+            </fieldset>
+            <button type="submit" class="btn-primario w-full">Ver vista previa</button>
+        </form>
+    </div>
+</div>
+
+<div class="ta-card mt-6 overflow-x-auto">
+    <h2 class="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Cargas</h2>
+    <table data-tabla-movil class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <tr>
+                <th class="px-3 py-2 text-left">#</th>
+                <th class="px-3 py-2 text-left">Archivo</th>
+                <th class="px-3 py-2 text-left">Arranque</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-left">Subida</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            {% for c in cargas %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                <td class="px-3 py-2"><a href="{% url 'contaduria:carga-detalle' c.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">#{{ c.pk }}</a></td>
+                <td class="px-3 py-2">{{ c.nombre_archivo|default:"—" }}</td>
+                <td class="px-3 py-2">{{ c.fecha_arranque|date:"d/m/Y"|default:"—" }}</td>
+                <td class="px-3 py-2">
+                    {% if c.estado == "aplicada" %}<span class="badge badge-success">Aplicada</span>
+                    {% elif c.estado == "deshecha" %}<span class="badge badge-gray">Deshecha</span>
+                    {% else %}<span class="badge badge-orange">Vista previa</span>{% endif %}
+                </td>
+                <td class="px-3 py-2 text-gray-500 dark:text-gray-400">{{ c.creado_en|date:"d/m/Y H:i" }}{% if c.creado_por %} · {{ c.creado_por.nombre_completo|default:c.creado_por.email }}{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-3 py-10 text-center">{% include "_componentes_tailadmin/_empty_state.html" with titulo="Todavía no hay cargas" descripcion="Descarga la plantilla, llénala y súbela aquí." icono="folder" %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
