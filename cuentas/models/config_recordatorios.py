@@ -26,7 +26,7 @@ class ConfigRecordatorios(models.Model):
 
     incluir_asignado = models.BooleanField(default=True, help_text="Notificar al responsable de la tarea.")
     incluir_lider = models.BooleanField(default=True, help_text="Notificar al líder del proyecto.")
-    incluir_admins = models.BooleanField(default=False, help_text="Notificar también a super_admin y dueño.")
+    incluir_admins = models.BooleanField(default=False, help_text="Notificar también a quien gestiona proyectos (permiso proyectos.editar).")
 
     activo = models.BooleanField(default=True, help_text="Si se apaga, el cron no envía nada.")
 
