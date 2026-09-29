@@ -10530,3 +10530,63 @@ Oscar: «termina toda la deuda técnica». Cuatro agentes en worktrees propios
 - `proyectos.crear/asignar/cambiar_estado` siguen muertas (crear usa `editar`).
 - Pin: no se reubica en el alta de proveedor; el marcador de la ficha abierta no
   se mueve hasta recargar. En un corte que no es deploy la pantalla es la corta.
+
+### S-Fin-Sep29 ✅ — VERSION 2026.09.06 (2026-09-29)
+
+Oscar: «terminemos TODOS los pendientes». Tres agentes + trabajo directo.
+Suite integrada: 4441 passed (sólo los 4 locales de `test_portavoz_worker`).
+
+**Decisiones de Oscar (literales, 2026-09-28)**: las 3 puertas por rol primario
+pasan a permiso aunque cambien a alguien (sesión de La Gerencia, Google a La
+Gerencia, autocompletar `@#$`); a Alex se le prenden los comentarios; la pared del
+Vigía se queda con la pantalla exacta; vaciar `portavoz:fallidos`; borrar las ramas
+obsoletas; La Recepción y La Caja después; las 32 facturas en borrador no se tocan.
+
+**Entregado**
+- **Puertas decididas** (`tests/test_puertas_decididas.py`): `lib/middleware.py`
+  y `auth_google/views.py` por `gerencia.acceder` (en cada petición: quien pierde
+  el acceso sale al instante); autocompletar y búsqueda inversa
+  (`/api/referencias/proyectos|clientes/<id>`, antes sin candado) por
+  `proyectos.ver_todos`/asignados y `cartera.ver`. Cambian: usuario 5
+  (Administrativo) sale de La Gerencia con sesión abierta y deja de ver
+  clientes/proyectos al autocompletar; usuario 4 (Director sobre `miembro`) entra
+  con Google y lee comentarios.
+- **Comentarios por rol asignado**: `cuentas/0048_puertas_decididas` (filas por
+  persona) + `0049_comentarios_en_roles_del_sistema` (el JSON de los 4 roles del
+  sistema vuelve a traer `ver_comentarios`; `ver_internos` sin el diseñador), así
+  quien reciba mañana «Director» lee igual.
+- **`proyectos.crear/asignar/cambiar_estado` conectadas «como hoy»** (sembradas a
+  quien hoy tiene `editar`); sin `cambiar_estado` el campo estado se deshabilita,
+  sin `asignar` el autoguardado no toca el equipo. Chalán: crear/duplicar →
+  `crear`, asignar → `asignar`, actualizar con estado → `cambiar_estado`. Filtro
+  `|puede_crear_proyecto` en los 7 accesos a «Nuevo proyecto».
+  `ContextoUsuario.es_admin` borrado; Contaduría usa `|es_super_admin`.
+- **KPIs, Inicio y avisos por permiso** (`tests/test_kpis_por_permiso.py`):
+  `roles_visible` → permiso por KPI (`taller_home/permisos_kpi.py`,
+  `KPI.visible_para`); hero y zona compacta por `tesoreria.ver` y
+  `solo_proyectos_asignados`; destinatarios y categorías de push con
+  `usuarios_con_permiso`. Cambios inevitables sin inventar permisos: quien tiene
+  dueño/contador ASIGNADO sobre `miembro` ve lo de un dueño/contador; roles
+  personalizados ven los KPIs de lo que abren; el Director pierde 11 KPIs que lo
+  llevaban a 403; «ver como rol» muestra los KPIs del rol simulado.
+  `cuentas/0050` sólo cambia el help_text de `incluir_admins`.
+- **Pin del proveedor en el alta** (`ubicacion.programar_alta`: pantalla, alta
+  rápida de producto, de gasto/CFDI, de proyecto y `crear_proveedor` del Chalán) y
+  **marcador que se mueve en la ficha abierta** (sondeo `#prov-pin-vigia` cada 2 s,
+  286 lo apaga, vence a 120 s, en la exclusión de presencia; `geo:fijar` sin
+  disparar autoguardado; el testigo sólo actualiza la huella de lat/lng).
+- **Operación**: `portavoz:fallidos` (5,198) respaldado en
+  `backups/portavoz/fallidos-20260928.txt` (5,198 renglones JSON válidos) y
+  borrado; `/salud` vuelve a «ok». Ramas obsoletas borradas (local y GitHub) con
+  etiqueta local `respaldo/<rama>`: `ajustes-ago12-b` (ya en #44),
+  `correo-gmail-api` (el SMTP funciona desde el NUC), `osrm-opciones` (su contenido
+  ya estaba en main), `mcp-despacho` (rehecha en 2026.09.02). El `main` local se
+  alineó con `origin/main`.
+
+**Deuda que queda (menor)**
+- `recados/services.py` agrupa destinatarios por `rol__in` (audiencia elegida por
+  rol, no puerta) y el conteo de admins de El Directorio.
+- El CFDI 4.0 no trae domicilio del emisor: el alta rápida desde CFDI no llena la
+  dirección.
+- Con varias ventanas en la misma ficha, sólo la primera ve el aviso de «no se pudo
+  ubicar» (el pin sí llega a todas).

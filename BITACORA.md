@@ -13505,3 +13505,13 @@ edición pisada en las versiones de cotización del proyecto, y 8 limpiezas (PDF
 unidos, roles con universales, presencia sin 3xx, plantillas muertas, borde del
 asiento, botones ⧉ de 44×44, CFDI propio, pin del proveedor). Quedan 3 puertas
 por rol primario que decide Oscar (ver historial).
+
+## 2026-09-29 — S-Fin-Sep29 (VERSION 2026.09.06)
+
+Cierre de todos los pendientes que no son sprint nuevo. Oscar decidió pasar las 3
+puertas por rol primario a permiso (sesión y Google de La Gerencia, autocompletar),
+prenderle comentarios a Alex (y al rol Director), dejar la pared del Vigía como está,
+y dejar La Recepción, La Caja y las 32 facturas en borrador. Entregado: puertas,
+KPIs/avisos por permiso, acciones de proyecto separadas, pin del proveedor en el
+alta y en la ficha abierta. Operación: `portavoz:fallidos` respaldado y vaciado
+(`/salud` en «ok»), ramas obsoletas borradas con etiqueta de respaldo.
