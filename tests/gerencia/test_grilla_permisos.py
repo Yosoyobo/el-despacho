@@ -378,3 +378,33 @@ def test_plan_de_grilla_caso_por_caso(fila, antes, despues, elegido):
     else:
         assert efectivo == despues           # lo demás sigue a sus roles
     assert nueva is None or nueva != despues  # nunca queda una fila redundante
+
+
+def test_restablecer_a_quien_no_tiene_roles_le_devuelve_los_universales(client, admin, usuario_factory):
+    from cuentas.models.permiso_usuario import PermisoUsuario
+    from lib.permisos_defaults import PERMISOS_UNIVERSALES
+
+    u = usuario_factory(rol="miembro")
+    PermisoUsuario.objects.filter(usuario=u).update(activo=False)
+    client.post(f"/directorio/{u.pk}/permisos", {"restablecer": "1"})
+    universales = {(m, a) for m, acciones in PERMISOS_UNIVERSALES.items() for a in acciones}
+    assert {p for p, v in _efectivos(u).items() if v} == universales & set(UNIVERSO)
+
+
+def test_lo_que_el_rol_nuevo_ya_da_no_deja_fila(client, admin, usuario_factory):
+    """Asignar un rol en el mismo clic en que se marca (o ya estaba marcado a
+    mano) algo que ese rol da: la fila sobra —sin ella `puede()` contesta lo
+    mismo— y no se deja, para que quitar el rol después lo quite."""
+    from cuentas.models.permiso_usuario import PermisoUsuario
+
+    contador = _rol("contador")
+    u = usuario_factory(rol="miembro")
+    PermisoUsuario.objects.create(usuario=u, modulo="contaduria", permiso="ver", activo=True)
+    marcadas, _roles, _ = _grilla(client, u)
+    assert "contaduria.ver" in marcadas and "contaduria.capturar" not in marcadas
+    marcadas.append("contaduria.capturar")
+    client.post(f"/directorio/{u.pk}/panel/permisos",
+                {"roles_extra": [contador.pk], "permisos": marcadas})
+    assert not PermisoUsuario.objects.filter(usuario=u, modulo="contaduria").exists()
+    u = _fresco(u)
+    assert puede(u, "contaduria", "ver") and puede(u, "contaduria", "capturar")
