@@ -373,8 +373,8 @@ class TestRolPorRol:
             esperado = {s for s, aud in VIEJO.items() if clave in aud}
             # Sólo los KPIs que existían (como `n_catalogo`): los nuevos no
             # tienen regla vieja contra la cual compararse.
-            nuevos = {k.slug for k in kpis_aplicables_a_rol(clave)} & set(VIEJO)
-            assert nuevos == esperado, clave
+            viejos = {k.slug for k in kpis_aplicables_a_rol(clave)} & set(VIEJO)
+            assert viejos == esperado, clave
 
 
 # (etiqueta de combinación, zona) → por qué cambia. Todo lo demás debe ser igual.
