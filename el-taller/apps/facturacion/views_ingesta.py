@@ -35,6 +35,10 @@ CABECERA = "x-cfdi-token"
 #: tamaño cuesta nada y evita hasta leer lo que venga.
 MAX_CUERPO = 1024 * 1024
 
+#: La representación impresa (opcional) sí puede traer logotipos: un PDF de
+#: factura ronda los cien kilobytes; cinco megas ya no es eso.
+MAX_PDF = 5 * 1024 * 1024
+
 
 def _tokens() -> list[str]:
     """Los aceptados: el de Los Ajustes y el del entorno. Vacío = nadie pasa."""
@@ -85,6 +89,7 @@ def cfdi_entrante(request):
 
     contenido = b""
     nombre = "cfdi.xml"
+    pdf = b""
     try:
         subido = request.FILES.get("archivo") or request.FILES.get("file")
         if subido is not None:
@@ -93,6 +98,11 @@ def cfdi_entrante(request):
                                     status=413)
             contenido = subido.read()
             nombre = getattr(subido, "name", nombre)
+            # La representación impresa viaja, si viene, en el mismo envío.
+            # Opcional: sin ella el CFDI se procesa igual.
+            impreso = request.FILES.get("pdf")
+            if impreso is not None and impreso.size <= MAX_PDF:
+                pdf = impreso.read()
         else:
             contenido = request.body or b""
             if len(contenido) > MAX_CUERPO:
@@ -108,6 +118,15 @@ def cfdi_entrante(request):
                     nombre = datos.get("nombre") or nombre
                     contenido = (base64.b64decode(crudo) if datos.get("base64")
                                  else str(crudo).encode())
+                    if datos.get("pdf"):
+                        # El PDF siempre viaja en base64: es binario. Si no se
+                        # entiende, se sigue sin él — el XML es lo que importa.
+                        try:
+                            pdf = base64.b64decode(datos["pdf"])
+                        except Exception:  # noqa: BLE001
+                            pdf = b""
+                        if len(pdf) > MAX_PDF:
+                            pdf = b""
                 except Exception:  # noqa: BLE001 — se intenta tal cual
                     pass
     except Exception as exc:  # noqa: BLE001
@@ -120,7 +139,7 @@ def cfdi_entrante(request):
     try:
         from . import ingesta_cfdi
 
-        resultado = ingesta_cfdi.recibir(contenido, nombre=nombre)
+        resultado = ingesta_cfdi.recibir(contenido, nombre=nombre, pdf=pdf or None)
     except Exception as exc:  # noqa: BLE001 — al robot se le contesta, no se le tira una traza
         logger.exception("ingesta cfdi: falló el procesamiento")
         return JsonResponse({"ok": False, "error": f"error al procesar: {exc}"}, status=500)

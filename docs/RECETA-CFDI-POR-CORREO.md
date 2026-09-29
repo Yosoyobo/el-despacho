@@ -63,6 +63,13 @@ El endpoint acepta el XML de tres formas, para que no haya que pelearse con la
 configuración de n8n: crudo en el cuerpo, como archivo subido (`archivo`), o
 envuelto en JSON (`{"xml": "...", "base64": true}`).
 
+**El PDF, opcional (desde el 2026-09-28).** Si el correo trae también el PDF,
+mándalo en la misma petición: como segundo archivo subido (`pdf`) o dentro del
+JSON (`{"xml": "...", "pdf": "<base64>"}`). Se guarda junto al XML y es lo que
+se abre como comprobante del egreso o de la factura — un XML no lo lee nadie.
+Si no llega, no pasa nada: el comprobante queda con el XML. Tope de 5 MB, y se
+revisa que de verdad sea un PDF (lo que no empiece como PDF se descarta).
+
 ### 3. Qué contesta
 
 Siempre JSON, nunca una traza — del otro lado hay un robot:
@@ -92,12 +99,45 @@ Siempre JSON, nunca una traza — del otro lado hay un robot:
 
 ---
 
+## Resolver lo que quedó pendiente (desde el 2026-09-28)
+
+**El Taller → Tesorería → CFDI recibidos.** Cada comprobante dice qué es (factura
+de un proveedor, factura nuestra o «no se sabe»), por qué no se ligó solo, y
+ofrece la salida que le toca:
+
+- **Si es de un proveedor → es un gasto.** Se ofrece, en este orden:
+  1. **Ligarlo a un egreso que ya existe** — si hay uno del mismo proveedor, por
+     el mismo monto (±$1) y de fechas cercanas (±15 días) que todavía no tenga
+     su CFDI. Es lo primero a propósito: si el gasto ya se capturó a mano, crear
+     otro lo contaría dos veces.
+  2. **Crear el egreso** — abre el formulario de siempre, **ya lleno** con lo que
+     dice el comprobante: proveedor (por su RFC), monto total con IVA, fecha y
+     concepto, con el XML/PDF como comprobante. Una persona lo revisa y lo
+     guarda. **Nada se crea solo.** Si el proveedor no está en el catálogo, el
+     alta rápida ya trae su nombre y su RFC.
+- **Si es nuestro → se liga a su factura**, con el folio fiscal y el XML.
+- **Si no es nada** (un correo duplicado, una prueba) → se ignora, con motivo.
+
+Cada acción pide su permiso: capturar egresos (Tesorería) para lo de proveedores,
+editar facturas para ligar lo nuestro. Ver la lista pide ver Tesorería.
+
+Y **El Chalán** también puede: «¿qué CFDI de proveedor están pendientes?» lee la
+lista (con el egreso que ya casa, si hay), y «registra el egreso del CFDI de
+Plymouth» lo propone para que lo confirmes. Si ya hay un egreso que casa, en
+vez de crear otro te propone ligarlo.
+
+Un comprobante nunca respalda dos egresos: lo garantiza la base de datos (es uno
+a uno), no la esperanza de que nadie pique dos veces.
+
+---
+
 ## Lo que falta
 
-- **La pantalla de pendientes.** Hoy los CFDI que no se pudieron ligar quedan
-  registrados con su motivo, pero no hay una vista para resolverlos desde la
-  interfaz. Es lo siguiente.
-- **Los gastos de proveedor.** Se archivan, pero no generan el egreso solos:
-  eso pide decidir centro de costo y forma de pago, que es de quien captura.
 - **El aviso.** Cuando algo queda pendiente, nadie se entera hasta que entra a
   mirar. Un push del Interfón cerraría el círculo.
+- **Los que llegaron antes del 2026-09-28 no tienen su XML guardado.** Un error
+  en la ingesta lo tiraba en silencio (ya arreglado). Esos pendientes se
+  resuelven igual —el desglose se reconstruye del total— pero no tienen archivo
+  que abrir. Para recuperarlo basta **reenviar el correo** a facturas@: el folio
+  fiscal no se duplica, y lo que le faltaba (el XML, el PDF, el desglose) se
+  guarda en el registro que ya existía.

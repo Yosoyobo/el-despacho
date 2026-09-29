@@ -96,9 +96,13 @@ def recibir(contenido: bytes, *, nombre: str = "cfdi.xml", pdf: bytes | None = N
     # mismo correo diez veces no archive diez copias.
     previo = CfdiEntrante.objects.filter(uuid=lec.uuid).first()
     if previo:
+        completado = _completar_previo(previo, lec, contenido, nombre, pdf)
+        mensaje = "Ya se había recibido este comprobante."
+        if completado:
+            mensaje += f" Se guardó lo que le faltaba: {', '.join(completado)}."
         return {
             "ok": True, "estado": previo.estado, "uuid": lec.uuid,
-            "mensaje": "Ya se había recibido este comprobante.",
+            "mensaje": mensaje,
             "factura": getattr(previo.factura, "codigo", ""),
         }
 
@@ -108,6 +112,10 @@ def recibir(contenido: bytes, *, nombre: str = "cfdi.xml", pdf: bytes | None = N
         receptor_rfc=lec.receptor_rfc, receptor_nombre=lec.receptor_nombre[:200],
         total=lec.total, moneda=lec.moneda, fecha_cfdi=lec.fecha,
         referencia=lec.referencia[:60],
+        # El desglose se guarda ya: con él se propone el egreso sin volver a
+        # abrir el XML (S-Pendientes-Sep28).
+        subtotal=lec.subtotal, descuento=lec.descuento, iva=lec.iva,
+        retenciones=lec.retenciones, concepto=lec.concepto,
     )
 
     propio = _rfc_propio()
@@ -116,12 +124,15 @@ def recibir(contenido: bytes, *, nombre: str = "cfdi.xml", pdf: bytes | None = N
         # gasto. Se archiva pero NO se liga a una Factura, que representa lo
         # que nosotros le cobramos a un cliente. Confundirlos metería una
         # compra en los ingresos.
+        entrante.proveedor = _proveedor_por_rfc(lec.emisor_rfc)
         entrante.motivo = (
             f"Es una factura que nos emitió {lec.emisor_nombre or lec.emisor_rfc}. "
-            "Se archiva como comprobante recibido; el gasto se registra aparte."
+            "Se archiva como comprobante recibido; su egreso se registra en "
+            "Tesorería → CFDI recibidos, y lo confirma una persona."
         )
         entrante.save()
         _guardar_archivo(entrante, contenido, nombre)
+        _guardar_pdf(entrante, pdf)
         return {"ok": True, "estado": ESTADO_PENDIENTE, "uuid": lec.uuid,
                 "mensaje": entrante.motivo, "factura": ""}
 
@@ -134,6 +145,7 @@ def recibir(contenido: bytes, *, nombre: str = "cfdi.xml", pdf: bytes | None = N
         entrante.resuelto_en = timezone.now()
         entrante.save()
         _guardar_archivo(entrante, contenido, nombre)
+        _guardar_pdf(entrante, pdf)
         _ligar_a_factura(fac, contenido, nombre, pdf, lec.uuid)
         return {"ok": True, "estado": ESTADO_LIGADO, "uuid": lec.uuid,
                 "mensaje": f"Ligado a {fac.codigo}.", "factura": fac.codigo}
@@ -151,8 +163,90 @@ def recibir(contenido: bytes, *, nombre: str = "cfdi.xml", pdf: bytes | None = N
         )
     entrante.save()
     _guardar_archivo(entrante, contenido, nombre)
+    _guardar_pdf(entrante, pdf)
     return {"ok": True, "estado": ESTADO_PENDIENTE, "uuid": lec.uuid,
             "mensaje": entrante.motivo, "factura": ""}
+
+
+def _completar_previo(previo, lec, contenido: bytes, nombre: str, pdf) -> list[str]:
+    """Completa un comprobante que ya se había recibido, sin duplicarlo.
+
+    Hasta el 2026-09-28 la ingesta tiraba el XML en silencio (la llamada a
+    `subir` tronaba y el `except` se lo tragaba), así que hay pendientes sin
+    archivo. Reenviar el correo es la forma natural de recuperarlo: el folio
+    fiscal sigue siendo único, pero lo que falte —el XML, el PDF, el desglose—
+    se guarda ahora. Nada que ya exista se pisa.
+    """
+    completado: list[str] = []
+    if previo.subtotal is None and lec.subtotal is not None:
+        previo.subtotal, previo.descuento = lec.subtotal, lec.descuento
+        previo.iva, previo.retenciones = lec.iva, lec.retenciones
+        if not previo.concepto:
+            previo.concepto = lec.concepto
+        previo.save(update_fields=["subtotal", "descuento", "iva", "retenciones", "concepto"])
+        completado.append("el desglose")
+    if not previo.archivo_id:
+        _guardar_archivo(previo, contenido, nombre)
+        if previo.archivo_id:
+            completado.append("el XML")
+    if pdf and not previo.pdf_id:
+        _guardar_pdf(previo, pdf)
+        if previo.pdf_id:
+            completado.append("el PDF")
+    return completado
+
+
+def _proveedor_por_rfc(rfc: str):
+    """El proveedor del catálogo con ese RFC — sólo si es UNO.
+
+    Mismo criterio que el ligado a facturas: con dos candidatos no se adivina.
+    Queda vacío y la persona que lo resuelve elige.
+    """
+    rfc = (rfc or "").strip().upper()
+    if not rfc:
+        return None
+    try:
+        from apps.el_catalogo.models import Proveedor
+
+        encontrados = list(Proveedor.objects.filter(rfc__iexact=rfc, activo=True)[:2])
+    except Exception as exc:  # noqa: BLE001 — sin catálogo, se elige a mano
+        logger.debug("ingesta_cfdi: no se pudo buscar el proveedor: %s", exc)
+        return None
+    return encontrados[0] if len(encontrados) == 1 else None
+
+
+def como_archivo(contenido: bytes, nombre: str, mime: str):
+    """Bytes → el objeto de archivo que espera `lib.adjuntos.subir`.
+
+    `subir` recibe un `UploadedFile` (lee `name`, `size`, `content_type` y lo
+    recorre por trozos). Se le pasaban los bytes pelones con `nombre=` y
+    `mime=` como si fueran argumentos, y la llamada tronaba con TypeError
+    **en cada CFDI**: el `except` de abajo lo tragaba y el XML nunca se
+    guardaba. Cazado en S-Pendientes-Sep28, al ir a usarlo de comprobante.
+    """
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return SimpleUploadedFile(nombre or "archivo", contenido, content_type=mime)
+
+
+def _pdf_valido(pdf) -> bytes:
+    """Los bytes del PDF, o vacío si lo que llegó no es un PDF.
+
+    Llega de un buzón al que cualquiera escribe: lo que no empieza como PDF no
+    se guarda con etiqueta de PDF (y no se sirve después como si lo fuera).
+    """
+    if not pdf:
+        return b""
+    if not isinstance(pdf, bytes | bytearray):
+        try:
+            pdf = pdf.read()
+        except Exception:  # noqa: BLE001
+            return b""
+    pdf = bytes(pdf)
+    if not pdf.startswith(b"%PDF"):
+        logger.warning("ingesta_cfdi: el adjunto «pdf» no es un PDF; se ignora")
+        return b""
+    return pdf
 
 
 def _guardar_archivo(entrante, contenido: bytes, nombre: str) -> None:
@@ -160,26 +254,45 @@ def _guardar_archivo(entrante, contenido: bytes, nombre: str) -> None:
     try:
         from lib.adjuntos import subir
 
-        res = subir(contenido, nombre=nombre, mime="application/xml", subcarpeta="Facturas")
+        res = subir(como_archivo(contenido, nombre, "application/xml"), subcarpeta="Facturas")
         if getattr(res, "ok", False):
             entrante.archivo_id = (res.data or {}).get("id", "")
             entrante.save(update_fields=["archivo_id"])
+        else:
+            logger.warning("ingesta_cfdi: no se pudo guardar el XML: %s",
+                           getattr(res, "error", ""))
     except Exception as exc:  # noqa: BLE001
         logger.warning("ingesta_cfdi: no se pudo guardar el XML: %s", exc)
+
+
+def _guardar_pdf(entrante, pdf) -> None:
+    """Guarda la representación impresa si llegó con el correo. Best-effort."""
+    pdf = _pdf_valido(pdf)
+    if not pdf:
+        return
+    try:
+        from lib.adjuntos import subir
+
+        archivo = como_archivo(pdf, f"{entrante.uuid or 'cfdi'}.pdf", "application/pdf")
+        res = subir(archivo, subcarpeta="Facturas")
+        if getattr(res, "ok", False):
+            entrante.pdf_id = (res.data or {}).get("id", "")
+            entrante.save(update_fields=["pdf_id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ingesta_cfdi: no se pudo guardar el PDF: %s", exc)
 
 
 def _ligar_a_factura(fac, contenido: bytes, nombre: str, pdf, uuid: str) -> None:
     """Deja el comprobante en la factura por el camino de siempre."""
     try:
-        import io
-
         from . import services
 
-        xml = io.BytesIO(contenido)
-        xml.name = nombre
-        services.almacenar_cfdi(fac, xml_file=xml, pdf_file=pdf, cfdi_uuid=uuid)
+        xml = como_archivo(contenido, nombre, "application/xml")
+        pdf = _pdf_valido(pdf)
+        pdf_file = como_archivo(pdf, f"{uuid or 'cfdi'}.pdf", "application/pdf") if pdf else None
+        services.almacenar_cfdi(fac, xml_file=xml, pdf_file=pdf_file, cfdi_uuid=uuid)
     except Exception as exc:  # noqa: BLE001
         logger.warning("ingesta_cfdi: no se pudo ligar a %s: %s", fac.codigo, exc)
 
 
-__all__ = ["TOLERANCIA", "recibir"]
+__all__ = ["TOLERANCIA", "como_archivo", "recibir"]
