@@ -1,0 +1,49 @@
+<form id="kpi-{{ f.kpi.slug }}" data-kpi-fila data-buscar="{{ f.kpi.titulo }} {{ f.kpi.descripcion }} {{ f.kpi.slug }}"
+      method="post" action="{% url 'ajustes-kpis-catalogo-guardar' f.kpi.slug %}"
+      hx-post="{% url 'ajustes-kpis-catalogo-guardar' f.kpi.slug %}" hx-target="this" hx-swap="outerHTML"
+      class="campo-form grid grid-cols-1 gap-3 px-5 py-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.3fr)_auto] lg:items-center {% if not f.activo %}bg-gray-50 opacity-70 dark:bg-gray-800/40{% endif %}">
+    {% csrf_token %}
+    <div class="min-w-0">
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ f.kpi.titulo }}{% if not f.activo %} <span class="badge badge-gray">Apagado</span>{% endif %}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ f.kpi.descripcion }}</p>
+        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+            {{ f.acumula|capfirst }}{% if f.personal %} · personal (cada quien ve el suyo){% endif %}
+            {% if f.ultimo %} · último valor: <span class="tabular-nums text-gray-600 dark:text-gray-300">{{ f.ultimo }}</span> ({{ f.ultimo_fecha|date:"j M" }}){% endif %}
+        </p>
+    </div>
+    <div class="text-xs text-gray-600 dark:text-gray-300">
+        <span class="block text-[11px] uppercase tracking-wider text-gray-400 lg:hidden">Lo ve quien tiene</span>
+        {{ f.permisos }}
+    </div>
+    <label class="block text-xs text-gray-600 dark:text-gray-300">
+        <span class="mb-1 block text-[11px] uppercase tracking-wider text-gray-400">Hacia dónde es mejor</span>
+        <select name="direccion" class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900">
+            {% for valor, etiqueta in direcciones %}
+            <option value="{{ valor }}" {% if f.direccion_efectiva == valor %}selected{% endif %}>{{ etiqueta }}{% if valor == f.kpi.direccion %} (del catálogo){% endif %}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <div class="grid grid-cols-2 gap-2">
+        <label class="block text-xs">
+            <span class="mb-1 block text-[11px] uppercase tracking-wider text-warning-600 dark:text-warning-400">Amarillo</span>
+            <input type="text" inputmode="decimal" name="umbral_amarillo" value="{{ f.umbral_amarillo }}" placeholder="—"
+                   {% if f.direccion_efectiva == 'neutro' %}disabled title="Un KPI que sólo informa no lleva umbrales"{% endif %}
+                   class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm tabular-nums dark:border-gray-700 dark:bg-gray-900">
+        </label>
+        <label class="block text-xs">
+            <span class="mb-1 block text-[11px] uppercase tracking-wider text-error-600 dark:text-error-400">Rojo</span>
+            <input type="text" inputmode="decimal" name="umbral_rojo" value="{{ f.umbral_rojo }}" placeholder="—"
+                   {% if f.direccion_efectiva == 'neutro' %}disabled title="Un KPI que sólo informa no lleva umbrales"{% endif %}
+                   class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm tabular-nums dark:border-gray-700 dark:bg-gray-900">
+        </label>
+    </div>
+    <div class="flex items-center gap-3 lg:justify-end">
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <input type="checkbox" name="activo" value="1" class="rounded" {% if f.activo %}checked{% endif %}>
+            Prendido
+        </label>
+        <button type="submit" class="btn-secundario text-xs">Guardar</button>
+        {% if guardado %}<span class="text-xs text-success-600 dark:text-success-400" role="status">Guardado ✓</span>{% endif %}
+        {% if error %}<span class="text-xs text-error-600 dark:text-error-400" role="alert">{{ error }}</span>{% endif %}
+    </div>
+</form>

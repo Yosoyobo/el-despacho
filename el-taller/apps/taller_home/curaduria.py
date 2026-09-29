@@ -52,6 +52,9 @@ def _razon_y_peso(kpi, valor, resumen, cfg) -> tuple[str, float]:
     # 1. Lo que el propio KPI marca como alerta pesa más que cualquier otra cosa.
     if nota == "alerta":
         return "está en alerta", 100.0
+    semaforo = (resumen or {}).get("semaforo")
+    if semaforo == "rojo":
+        return "está en rojo según sus umbrales", 98.0
 
     # 2. Lo que se salió de su comportamiento normal.
     if anomalia.get("raro"):
@@ -62,16 +65,25 @@ def _razon_y_peso(kpi, valor, resumen, cfg) -> tuple[str, float]:
             90.0 + min(abs(anomalia["desviacion_pct"]) / 10, 9),
         )
 
-    # 3. Un cambio fuerte contra el periodo anterior.
+    # 3. Una meta en riesgo (proporcional al periodo y con su dirección).
+    meta = (resumen or {}).get("meta")
+    if meta and meta.get("estado") in ("en_riesgo", "excedida"):
+        if meta["estado"] == "excedida":
+            return f"ya se pasó de su tope ({meta['meta_txt']})", 85.0
+        return (f"va {meta['avance_pct']:.0f}% de su meta y a estas alturas se "
+                f"esperaba {meta['esperado_txt']}"), 80.0
+
+    # 4. Un cambio fuerte contra el periodo anterior.
     cambio = comparacion.get("cambio_pct")
     if cambio is not None and abs(cambio) >= 25:
         verbo = "subió" if cambio > 0 else "bajó"
-        return f"{verbo} {abs(cambio):.0f}% contra el periodo anterior", 70.0 + min(abs(cambio) / 10, 15)
-
-    # 4. Una meta en riesgo.
-    meta = (resumen or {}).get("meta")
-    if meta and meta.get("en_riesgo"):
-        return f"vas al {meta['avance_pct']:.0f}% de tu meta", 80.0
+        contra = ("el mismo día del periodo anterior" if comparacion.get("contra")
+                  else "el periodo anterior")
+        juicio = ""
+        if kpi.direccion in ("sube", "baja"):
+            bien = (cambio > 0) == (kpi.direccion == "sube")
+            juicio = " (va mejor)" if bien else " (va peor)"
+        return f"{verbo} {abs(cambio):.0f}% contra {contra}{juicio}", 70.0 + min(abs(cambio) / 10, 15)
 
     return "", 0.0
 
@@ -83,11 +95,18 @@ def destacados_de_hoy(usuario, *, cuantos: int = CUANTOS_DESTACAR) -> list[dict]
     levanta, en su historia y en la meta. Devuelve `[{kpi, valor, razon}]`.
     """
     from apps.taller_home import series
+    from apps.taller_home.kpi_valor import numero_del_resultado
     from apps.taller_home.kpis import kpis_aplicables
+    from apps.taller_home.metas import meta_para_tarjeta
     from apps.taller_home.models import MetaKPI
+    from apps.taller_home.tablero import configs, semaforo
+
+    from lib.permisos import solo_proyectos_asignados
 
     cfg = _cfg()
-    metas = {m.kpi_slug: m for m in MetaKPI.objects.filter(activa=True)}
+    cfgs = configs()
+    metas = list(MetaKPI.objects.filter(activa=True))
+    solo_suyo = solo_proyectos_asignados(usuario)
     candidatos: list[dict] = []
 
     for kpi in kpis_aplicables(usuario):
@@ -95,31 +114,28 @@ def destacados_de_hoy(usuario, *, cuantos: int = CUANTOS_DESTACAR) -> list[dict]
             r = kpi.calcular(usuario)
         except Exception:  # noqa: BLE001
             continue
-        valor = r.get("valor")
-        if isinstance(valor, str):
+        numero = numero_del_resultado(r)
+        if numero is None:
             continue
 
-        resumen = {
-            "nota": r.get("nota"),
-            "anomalia": series.es_raro(kpi.slug, valor),
-            "comparacion": series.comparar(kpi.slug),
-        }
-        meta = metas.get(kpi.slug)
-        if meta and meta.valor:
-            try:
-                avance = float(valor) / float(meta.valor) * 100
-                resumen["meta"] = {"avance_pct": avance, "en_riesgo": avance < 70}
-            except Exception:  # noqa: BLE001
-                pass
+        resumen = {"nota": r.get("nota"), "semaforo": semaforo(kpi, numero, cfgs.get(kpi.slug))}
+        # La historia es la del DESPACHO: no se compara contra ella el número
+        # de «mis tareas» ni el de quien sólo ve sus proyectos.
+        if not kpi.personal and not (kpi.acotado and solo_suyo):
+            resumen.update(series.juzgar(kpi, numero))
+        with_meta = meta_para_tarjeta(usuario, kpi, numero, metas=metas)
+        if with_meta:
+            resumen["meta"] = with_meta
 
-        razon, peso = _razon_y_peso(kpi, valor, resumen, cfg)
+        razon, peso = _razon_y_peso(kpi, numero, resumen, cfg)
         if not razon:
             continue
         candidatos.append({
             "slug": kpi.slug, "titulo": kpi.titulo, "categoria": kpi.categoria,
-            "valor": valor, "nota": r.get("nota") or "", "link": r.get("link") or "",
+            "valor": r.get("valor"), "numero": numero,
+            "nota": r.get("nota") or "", "link": r.get("link") or "",
             "razon": razon, "peso": peso,
-            "tendencia": series.tendencia(kpi.slug),
+            "tendencia": series.tendencia(kpi.slug) if not kpi.personal else "sin_datos",
         })
 
     candidatos.sort(key=lambda c: -c["peso"])
@@ -158,7 +174,9 @@ def sobran(usuario, *, dias_quieto: int = 30) -> list[dict]:
 # ── Metas propuestas ─────────────────────────────────────────────────────
 
 # Sólo tiene sentido ponerle meta a lo que se persigue. A un conteo de errores
-# no se le pone meta: se le pone alerta, que ya existe.
+# no se le pone meta: se le pone alerta (o umbral, desde La Gerencia). Además
+# de éstos se proponen todos los que acumulan por periodo y se persiguen
+# subiendo («… del mes»).
 SLUGS_CON_META = (
     "ingresos-mes", "utilidad-mes", "facturado-mes", "margen-real",
     "conversion-oportunidades", "cotizaciones-aprobadas-mes",
@@ -166,33 +184,46 @@ SLUGS_CON_META = (
 )
 
 
+def _candidatos_a_meta() -> list:
+    from apps.taller_home.kpis import KPIS
+
+    salida = []
+    for k in KPIS:
+        if not k.admite_meta("despacho"):
+            continue
+        if k.slug in SLUGS_CON_META or (k.acumula and k.direccion == "sube"):
+            salida.append(k)
+    return salida
+
+
 def proponer_metas(*, solo_faltantes: bool = True) -> list[dict]:
     """Metas realistas a partir de lo que de verdad se ha hecho.
 
-    No las guarda: las devuelve para que una persona las apruebe.
+    No las guarda: las devuelve para que una persona las apruebe (La Gerencia
+    → Ajustes → KPIs → Metas las ofrece con un botón «Usar»).
     """
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpi_por_slug
+    from apps.taller_home.kpi_valor import formatear
     from apps.taller_home.models import MetaKPI
 
-    ya_con_meta = set(MetaKPI.objects.values_list("kpi_slug", flat=True))
+    ya_con_meta = set(
+        MetaKPI.objects.filter(ambito="despacho").values_list("kpi_slug", flat=True)
+    )
     propuestas = []
-    for slug in SLUGS_CON_META:
-        if solo_faltantes and slug in ya_con_meta:
+    for kpi in _candidatos_a_meta():
+        if solo_faltantes and kpi.slug in ya_con_meta:
             continue
-        kpi = kpi_por_slug(slug)
-        if kpi is None:
-            continue
-        m = series.meta_sugerida(slug)
+        m = series.meta_sugerida(kpi.slug, acumula=kpi.acumula, direccion=kpi.direccion)
         if not m.get("hay_datos"):
             continue
+        cuando = {"semana": "por semana", "mes": "al mes", "ano": "al año"}.get(kpi.acumula, "")
         propuestas.append({
-            "slug": slug, "titulo": kpi.titulo,
+            "slug": kpi.slug, "titulo": kpi.titulo,
             "sugerida": m["sugerida"], "tipico": m["tipico"],
             "mejor": m["mejor"], "muestras": m["muestras"],
             "razon": (
-                f"en los últimos meses ronda {m['tipico']:,.0f} "
-                f"(su mejor día: {m['mejor']:,.0f})"
+                f"lo típico es {formatear(m['tipico'], kpi.formato)} {cuando}".rstrip()
+                + f" (lo mejor: {formatear(m['mejor'], kpi.formato)})"
             ),
         })
     return propuestas
@@ -212,15 +243,17 @@ def proponer_indicadores(usuario) -> list[dict]:
     from apps.taller_home.kpis import kpi_por_slug
     from apps.taller_home.models import PreferenciaKPI
     from apps.taller_home.negocio import hechos_de
+    from apps.taller_home.tablero import kpis_del_tablero
 
-    ocultos = set(
+    # Ni lo que ya está en su tablero ni lo que la persona quitó a propósito.
+    fuera = set(
         PreferenciaKPI.objects.filter(usuario=usuario, visible=False)
         .values_list("kpi_slug", flat=True)
-    )
+    ) | {k.slug for k in kpis_del_tablero(usuario)}
     propuestas: list[dict] = []
 
     def sugerir(slug: str, razon: str):
-        if slug in ocultos:
+        if slug in fuera:
             return
         kpi = kpi_por_slug(slug)
         if kpi is None:

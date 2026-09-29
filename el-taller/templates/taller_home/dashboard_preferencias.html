@@ -10,7 +10,9 @@
         <p class="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">Dashboard</p>
         <h1 class="mt-1 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Mi tablero</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Marca los KPIs que quieres ver. Por defecto se muestran todos los aplicables a tu rol.
+            Tu tablero lo arma La Gerencia para tu rol (lo marcado con «de tu rol»). Aquí
+            puedes quitar lo que no te sirve y agregar cualquier otro KPI que tu permiso
+            te deje ver. Lo marcado es lo que verás en «Tu tablero» del Inicio.
         </p>
         <div class="mt-3">
             <a href="{% url 'kpi-custom-lista' %}" class="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400">
@@ -73,7 +75,7 @@
                 <label class="flex items-start gap-3 rounded-lg border border-gray-100 p-3 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50">
                     <input type="checkbox" name="visible" value="{{ k.slug }}" class="mt-1 rounded" {% if k.visible %}checked{% endif %}>
                     <span class="flex-1">
-                        <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">{{ k.titulo }}</span>
+                        <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">{{ k.titulo }}{% if k.de_tu_rol %} <span class="ml-1 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">de tu rol</span>{% endif %}</span>
                         <span class="block text-xs text-gray-500 dark:text-gray-400">{{ k.descripcion }}</span>
                         {% if k.estado_kpi == 'pendiente_tesoreria' %}
                         <span class="mt-1 inline-block rounded-md bg-warning-50 px-2 py-0.5 text-[10px] font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">Completo con S2b.3</span>

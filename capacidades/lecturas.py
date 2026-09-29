@@ -309,14 +309,13 @@ def _h_rentabilidad_proyecto(args: dict, usuario) -> dict:
 def _h_serie_kpi(args: dict, usuario) -> dict:
     """Cómo viene un indicador: su serie, su tendencia y el cambio contra antes."""
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpi_por_slug
 
     slug = (args.get("slug") or "").strip()
     if not slug:
         return {"error": "Falta el indicador."}
-    kpi = kpi_por_slug(slug)
+    kpi = _kpi_visible(slug, usuario)
     if kpi is None:
-        return {"error": f"No existe el indicador «{slug}». Usa listar_kpis para verlos."}
+        return {"error": f"No existe el indicador «{slug}» o no lo puedes ver. Usa listar_kpis."}
     dias = args.get("dias") or 30
     try:
         dias = max(7, min(int(dias), 365))
@@ -340,10 +339,9 @@ def _h_serie_kpi(args: dict, usuario) -> dict:
 def _h_comparar_kpi(args: dict, usuario) -> dict:
     """Este periodo contra el anterior del mismo largo."""
     from apps.taller_home import series
-    from apps.taller_home.kpis import kpi_por_slug
 
     slug = (args.get("slug") or "").strip()
-    kpi = kpi_por_slug(slug) if slug else None
+    kpi = _kpi_visible(slug, usuario) if slug else None
     if kpi is None:
         return {"error": f"No existe el indicador «{slug}»."}
     dias = args.get("dias") or 30
@@ -375,15 +373,18 @@ def _h_kpis_a_mirar_hoy(args: dict, usuario) -> dict:
 def _h_anomalias_kpi(args: dict, usuario) -> dict:
     """Qué indicadores se salieron de su comportamiento normal."""
     from apps.taller_home import series
+    from apps.taller_home.kpi_valor import numero_del_resultado
     from apps.taller_home.kpis import kpis_aplicables
 
     raros = []
     for kpi in kpis_aplicables(usuario):
+        if kpi.personal or kpi.acumula:
+            continue   # su historia no es la suya / los juzga su meta, no la mediana
         try:
-            valor = kpi.calcular(usuario).get("valor")
+            valor = numero_del_resultado(kpi.calcular(usuario))
         except Exception:  # noqa: BLE001
             continue
-        if isinstance(valor, str):
+        if valor is None:
             continue
         r = series.es_raro(kpi.slug, valor)
         if r.get("raro"):
@@ -394,6 +395,111 @@ def _h_anomalias_kpi(args: dict, usuario) -> dict:
             })
     return {"cuantos": len(raros), "anomalias": raros[:10]} if raros else {
         "cuantos": 0, "resumen": "Todo dentro de lo normal.",
+    }
+
+
+def _kpi_visible(slug: str, usuario):
+    """El KPI si existe, está prendido y `usuario` lo puede ver; si no, None."""
+    from apps.taller_home.kpis import kpis_aplicables
+
+    return next((k for k in kpis_aplicables(usuario) if k.slug == slug), None)
+
+
+def _fila_meta(f: dict) -> dict:
+    ev = f["evaluacion"]
+    return {
+        "kpi": f["kpi"].titulo, "slug": f["kpi"].slug, "para": f["quien"],
+        "ambito": f["meta"].ambito, "periodo": f["meta"].get_periodo_display(),
+        "meta": f["meta_txt"], "lleva": f["valor_txt"],
+        "se_esperaba_hoy": f["esperado_txt"] if f["kpi"].acumula else None,
+        "estado": ev["etiqueta"], "avance_pct": ev["avance_pct"],
+        "menos_es_mejor": f["direccion"] == "baja", "activa": f["meta"].activa,
+    }
+
+
+def _h_metas_kpi(args: dict, usuario) -> dict:
+    """Las metas que `usuario` puede ver, con su estado de hoy.
+
+    Quien configura KPIs ve todas; los demás, las suyas y las del despacho de
+    los KPIs que pueden ver (nunca la de otra persona ni la de un cliente)."""
+    from apps.taller_home.kpis import kpis_aplicables
+    from apps.taller_home.metas import en_riesgo, estado_de_metas
+
+    from lib.permisos import puede_configurar_kpis
+
+    todas = puede_configurar_kpis(usuario)
+    visibles = {k.slug for k in kpis_aplicables(usuario)}
+
+    def _puede(meta) -> bool:
+        if todas:
+            return True
+        if meta.ambito == "persona":
+            return meta.usuario_id == usuario.pk
+        return meta.ambito == "despacho" and meta.kpi_slug in visibles
+
+    slug = (args.get("slug") or "").strip()
+    solo_riesgo = (args.get("estado") or "").strip() == "en_riesgo"
+    filas = [
+        f for f in estado_de_metas(activas_solo=True, filtro=_puede)
+        if (not slug or f["kpi"].slug == slug) and (not solo_riesgo or en_riesgo(f["evaluacion"]))
+    ]
+    if not filas:
+        return {"cuantas": 0, "resumen": ("Ninguna meta va en riesgo." if solo_riesgo
+                                          else "No hay metas activas que puedas ver.")}
+    return {"cuantas": len(filas),
+            "en_riesgo": sum(1 for f in filas if en_riesgo(f["evaluacion"])),
+            "metas": [_fila_meta(f) for f in filas]}
+
+
+def _h_mi_tablero_kpis(args: dict, usuario) -> dict:
+    """Lo que la persona ve en «Tu tablero» del Inicio, con semáforo y meta."""
+    from apps.taller_home.models import MetaKPI
+    from apps.taller_home.tablero import configs, kpis_del_tablero, tarjeta
+
+    cfgs = configs()
+    metas = list(MetaKPI.objects.filter(activa=True))
+    salida = []
+    for kpi in kpis_del_tablero(usuario):
+        try:
+            res = kpi.calcular(usuario)
+        except Exception:  # noqa: BLE001
+            continue
+        t = tarjeta(usuario, kpi, res, cfgs=cfgs, metas=metas)
+        fila = {"slug": t["slug"], "titulo": t["titulo"], "valor": t["valor"]}
+        if t["semaforo"]:
+            fila["semaforo"] = t["semaforo"]
+        if t["meta"]:
+            fila["meta"] = {"meta": t["meta"]["meta_txt"], "estado": t["meta"]["etiqueta"],
+                            "avance_pct": t["meta"]["avance_pct"]}
+        salida.append(fila)
+    return {"cuantos": len(salida), "tablero": salida}
+
+
+def _h_configuracion_kpi(args: dict, usuario) -> dict:
+    """Cómo está configurado un KPI en La Gerencia (requiere `kpis.configurar`)."""
+    from apps.taller_home.kpis import kpi_por_slug
+    from apps.taller_home.models import ConfigKPI, MetaKPI, TableroKPI
+
+    slug = (args.get("slug") or "").strip()
+    kpi = kpi_por_slug(slug)
+    if kpi is None:
+        return {"error": f"No existe el indicador «{slug}». Usa listar_kpis."}
+    cfg = ConfigKPI.objects.filter(kpi_slug=slug).first()
+    direccion = (cfg.direccion if cfg and cfg.direccion else "") or kpi.direccion
+    tableros = [t.rol.nombre if t.rol else "por omisión"
+                for t in TableroKPI.objects.filter(kpi_slug=slug).select_related("rol")]
+    return {
+        "slug": slug, "titulo": kpi.titulo,
+        "prendido": cfg.activo if cfg else True,
+        "hacia_donde_es_mejor": {"sube": "más es mejor", "baja": "menos es mejor",
+                                 "neutro": "sólo informa"}.get(direccion, direccion),
+        "umbral_amarillo": float(cfg.umbral_amarillo) if cfg and cfg.umbral_amarillo is not None else None,
+        "umbral_rojo": float(cfg.umbral_rojo) if cfg and cfg.umbral_rojo is not None else None,
+        "lo_ve_quien_tiene": list(kpi.permisos) or ["todos"],
+        "periodo": kpi.acumula or "saldo al corte",
+        "tableros_de_rol": tableros,
+        "metas": MetaKPI.objects.filter(kpi_slug=slug).count(),
+        "admite_meta": [a for a in ("despacho", "persona", "cliente") if kpi.admite_meta(a)],
     }
 
 
@@ -2063,6 +2169,37 @@ _LECTURAS: dict[str, Capacidad] = {
         ),
         args_schema={},
         gating="finanzas", fn=_h_resumen_ia,
+    ),
+    "metas_kpi": Capacidad(
+        nombre="metas_kpi",
+        descripcion=(
+            "Las metas de los KPIs (del despacho, de una persona o de un cliente) y cómo "
+            "van HOY: cumplida, en camino, en riesgo o se pasó, medidas proporcional al "
+            "periodo (el día 15, la mitad de la meta mensual es ir bien). Args opcionales: "
+            "slug, estado='en_riesgo'. Úsala para «¿qué metas van en riesgo?»."
+        ),
+        args_schema={"slug": {"tipo": "str", "requerido": False},
+                     "estado": {"tipo": "str", "requerido": False}},
+        gating="abierto", fn=_h_metas_kpi,
+    ),
+    "mi_tablero_kpis": Capacidad(
+        nombre="mi_tablero_kpis",
+        descripcion=(
+            "Lo que la persona ve en «Tu tablero» del Inicio (el de su rol más lo que "
+            "agregó o quitó): cada KPI con su valor, su semáforo y su meta."
+        ),
+        args_schema={},
+        gating="abierto", fn=_h_mi_tablero_kpis,
+    ),
+    "configuracion_kpi": Capacidad(
+        nombre="configuracion_kpi",
+        descripcion=(
+            "Cómo está configurado un KPI en La Gerencia → Ajustes → KPIs: prendido o "
+            "apagado, hacia dónde es mejor, umbrales, quién lo ve, en qué tableros de rol "
+            "está y cuántas metas tiene."
+        ),
+        args_schema={"slug": {"tipo": "str", "requerido": True}},
+        gating="kpis", fn=_h_configuracion_kpi,
     ),
     "serie_kpi": Capacidad(
         nombre="serie_kpi",

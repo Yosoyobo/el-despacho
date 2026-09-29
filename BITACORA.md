@@ -13609,3 +13609,13 @@ cotización quita o suma las suyas; firma, aceptación, folio, vigencia, QR, mar
 estado, patrón del nombre y PDF/A por tipo de documento. La factura entra a La
 Imprenta con su PDF comercial («Ver» / «Bajar PDF»; va al correo si no hay CFDI).
 El Chalán: `enlace_documento`. Segundo deploy de 4.
+## 2026-09-29 — S-KPIs-V2 · 1 (VERSION 2026.09.17)
+
+Ronda de KPIs con Oscar → fases 1 y 2. La Gerencia → Ajustes → KPIs: catálogo
+(prender/apagar, dirección, umbrales), tableros por rol y metas del despacho, por
+persona o por cliente, proporcionales al periodo y con aviso único por El Interfón si
+van en riesgo. El Inicio pinta el tablero del rol; Perfil → Tablero guarda sólo
+diferencias. 45 KPIs nuevos (agente en paralelo). La foto diaria nunca había guardado
+los KPIs de dinero (se saltaba el texto): arreglado. El Chalán: metas_kpi,
+mi_tablero_kpis, configuracion_kpi y fijar_meta_kpi; serie_kpi ya no filtra historia
+ajena. Permiso kpis.configurar sembrado «como hoy». Siguiente: el constructor (fase 3).

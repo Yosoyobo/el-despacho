@@ -18,6 +18,8 @@ def gate_ok(gating: str, usuario, modo: str = "lectura") -> bool:
     from lib import permisos
     fn = {
         "finanzas": permisos.puede_ver_finanzas,
+        # S-KPIs-V2: la configuración de KPIs (catálogo, tableros, metas).
+        "kpis": permisos.puede_configurar_kpis,
         "cartera": permisos.puede_ver_cartera,
         "cotizaciones": permisos.puede_ver_cotizaciones,
         "facturacion": permisos.puede_ver_facturacion,

@@ -105,14 +105,41 @@ def test_preferencia_default_opt_in(usuario_factory):
 
 
 def test_dashboard_preferencias_guarda_seleccion(client, usuario_factory):
+    """S-KPIs-V2: guardar escribe SÓLO lo que difiere del tablero del rol.
+
+    El tablero por omisión trae los 8 de siempre (ingresos-mes, …,
+    tareas-vencidas-equipo). Marcar uno de fuera lo agrega; desmarcar uno de
+    la base lo quita; lo demás no deja fila (sigue a lo que decida La Gerencia)."""
     from apps.taller_home.models import PreferenciaKPI
+    from apps.taller_home.tablero import kpis_del_tablero
+    from apps.taller_home.views import COMPACT_KPI_SLUGS
+
     u = usuario_factory(rol="dueno")
     client.force_login(u)
-    # Solo marca 'proyectos-activos' → el resto queda oculto.
-    resp = client.post("/perfil/dashboard/guardar", {"visible": ["proyectos-activos"]})
+    marcados = [s for s in COMPACT_KPI_SLUGS if s != "tareas-vencidas-equipo"] + ["proyectos-activos"]
+    resp = client.post("/perfil/dashboard/guardar", {"visible": marcados})
     assert resp.status_code == 302
     assert PreferenciaKPI.objects.filter(usuario=u, kpi_slug="proyectos-activos", visible=True).exists()
-    assert PreferenciaKPI.objects.filter(usuario=u, kpi_slug="buzon-sin-responder", visible=False).exists()
+    assert PreferenciaKPI.objects.filter(usuario=u, kpi_slug="tareas-vencidas-equipo", visible=False).exists()
+    # Lo que coincide con su base, o lo que ni estaba ni se marcó, no deja fila.
+    assert not PreferenciaKPI.objects.filter(usuario=u, kpi_slug="ingresos-mes").exists()
+    assert not PreferenciaKPI.objects.filter(usuario=u, kpi_slug="buzon-sin-responder").exists()
+
+    tablero = [k.slug for k in kpis_del_tablero(u)]
+    assert "proyectos-activos" in tablero
+    assert "tareas-vencidas-equipo" not in tablero
+    assert "buzon-sin-responder" not in tablero
+
+
+def test_guardar_tal_cual_no_escribe_nada(client, usuario_factory):
+    """Guardar la página sin cambiar nada no deja filas (antes: una por KPI)."""
+    from apps.taller_home.models import PreferenciaKPI
+    from apps.taller_home.views import COMPACT_KPI_SLUGS
+
+    u = usuario_factory(rol="dueno")
+    client.force_login(u)
+    client.post("/perfil/dashboard/guardar", {"visible": list(COMPACT_KPI_SLUGS)})
+    assert not PreferenciaKPI.objects.filter(usuario=u).exclude(kpi_slug__startswith="hero-").exists()
 
 
 def test_dashboard_preferencias_solo_modifica_kpis_del_rol(client, usuario_factory):
@@ -128,11 +155,36 @@ def test_dashboard_preferencias_solo_modifica_kpis_del_rol(client, usuario_facto
 # ── Sugerencias (Capa 2) ─────────────────────────────────────────────────
 
 
+def _fuera_del_tablero(slug):
+    """El tablero por omisión trae `slug`; para que la regla lo sugiera, se
+    saca (una sugerencia de algo que ya se ve sería falsa, S-KPIs-V2)."""
+    from apps.taller_home.models import TableroKPI
+
+    TableroKPI.objects.filter(kpi_slug=slug).delete()
+
+
+def test_no_se_sugiere_lo_que_ya_esta_en_su_tablero(usuario_factory, proyecto_factory):
+    from apps.el_pizarron.models import Tarea
+    from apps.taller_home.models import SugerenciaKPI
+    from apps.taller_home.sugerencias import evaluar_y_persistir
+
+    u = usuario_factory(rol="dueno")
+    otro = usuario_factory(rol="disenador")
+    p = proyecto_factory()
+    ayer = date.today() - timedelta(days=1)
+    for i in range(4):
+        Tarea.objects.create(proyecto=p, titulo=f"t{i}", asignada_a=otro, fecha_compromiso=ayer)
+
+    evaluar_y_persistir(u)  # tareas-vencidas-equipo viene en el tablero por omisión
+    assert not SugerenciaKPI.objects.filter(usuario=u, kpi_slug="tareas-vencidas-equipo").exists()
+
+
 def test_sugerencia_se_crea_cuando_regla_dispara(usuario_factory, proyecto_factory):
     from apps.el_pizarron.models import Tarea
     from apps.taller_home.models import SugerenciaKPI
     from apps.taller_home.sugerencias import evaluar_y_persistir
 
+    _fuera_del_tablero("tareas-vencidas-equipo")
     u = usuario_factory(rol="dueno")
     otro = usuario_factory(rol="disenador")
     p = proyecto_factory()
@@ -149,6 +201,7 @@ def test_sugerencia_no_se_duplica(usuario_factory, proyecto_factory):
     from apps.taller_home.models import SugerenciaKPI
     from apps.taller_home.sugerencias import evaluar_y_persistir
 
+    _fuera_del_tablero("tareas-vencidas-equipo")
     u = usuario_factory(rol="dueno")
     otro = usuario_factory(rol="disenador")
     p = proyecto_factory()
@@ -166,6 +219,7 @@ def test_sugerencia_descartada_no_vuelve_a_aparecer(usuario_factory, proyecto_fa
     from apps.taller_home.models import SugerenciaKPI
     from apps.taller_home.sugerencias import evaluar_y_persistir
 
+    _fuera_del_tablero("tareas-vencidas-equipo")
     u = usuario_factory(rol="dueno")
     otro = usuario_factory(rol="disenador")
     p = proyecto_factory()
@@ -187,6 +241,7 @@ def test_aceptar_sugerencia_activa_kpi(client, usuario_factory, proyecto_factory
     from apps.el_pizarron.models import Tarea
     from apps.taller_home.models import PreferenciaKPI, SugerenciaKPI
 
+    _fuera_del_tablero("tareas-vencidas-equipo")
     u = usuario_factory(rol="dueno")
     otro = usuario_factory(rol="disenador")
     p = proyecto_factory()

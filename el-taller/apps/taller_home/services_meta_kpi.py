@@ -1,57 +1,52 @@
-"""S-LC-Feedback-V5 c8 — helpers para aplicar metas a KPI hero cards.
+"""Compatibilidad: las metas de KPI para pantallas que no son el Inicio.
 
-Uso típico desde una view:
+Desde S-KPIs-V2 la lógica vive en `metas.py` (proporcional al periodo, con
+dirección, por persona y cliente). Esto la envuelve para quien ya la llamaba
+(La Tesorería):
 
-    from apps.taller_home.services_meta_kpi import enriquecer_con_meta
-    kpi_card_ctx = enriquecer_con_meta(kpi_card_ctx, "ingresos-mes")
-    # Ahora kpi_card_ctx tiene: meta_valor, meta_porcentaje, meta_porcentaje_clamp
+    ctx = enriquecer_con_meta({"valor": "$12,000"}, "ingresos-mes", valor_numerico=12000)
+    # ctx["meta"] → dict listo para `_kpi_card_hero.html` (param `meta`)
+    # ctx["meta_valor"/"meta_porcentaje"/"meta_porcentaje_clamp"] → forma vieja
 """
 
 from __future__ import annotations
 
 
 def obtener_meta(kpi_slug: str):
+    """La meta del DESPACHO activa de ese KPI (o None)."""
     try:
         from apps.taller_home.models.meta_kpi import MetaKPI
-        return MetaKPI.objects.filter(kpi_slug=kpi_slug, activa=True).first()
-    except Exception:
+        return MetaKPI.objects.filter(kpi_slug=kpi_slug, activa=True, ambito="despacho").first()
+    except Exception:  # noqa: BLE001
         return None
 
 
-def enriquecer_con_meta(ctx: dict, kpi_slug: str, *, valor_numerico=None) -> dict:
-    """Añade meta_valor/meta_porcentaje/meta_porcentaje_clamp al ctx si hay meta.
+def enriquecer_con_meta(ctx: dict, kpi_slug: str, *, valor_numerico=None, user=None) -> dict:
+    """Añade la meta del despacho de `kpi_slug`, ya evaluada, al contexto."""
+    from .kpi_valor import numero_de
+    from .kpis import kpi_por_slug
+    from .metas import meta_para_tarjeta
+    from .tablero import configs, efectivo
 
-    `valor_numerico`: el valor crudo del KPI (Decimal/int/float). Si no se
-    pasa, intenta parsear desde ctx["valor"] (str). Si no se puede parsear,
-    no añade meta.
-    """
+    kpi = kpi_por_slug(kpi_slug)
     meta = obtener_meta(kpi_slug)
-    if meta is None:
+    if kpi is None or meta is None:
         return ctx
-    if valor_numerico is None:
-        valor_numerico = ctx.get("valor")
-        if isinstance(valor_numerico, str):
-            try:
-                v = valor_numerico.replace("$", "").replace(",", "").strip()
-                valor_numerico = float(v) if v else None
-            except (ValueError, TypeError):
-                valor_numerico = None
-    if valor_numerico is None:
+    numero = numero_de(valor_numerico if valor_numerico is not None else ctx.get("valor"))
+    evaluada = meta_para_tarjeta(user, efectivo(kpi, configs()), numero, metas=[meta])
+    if not evaluada:
         return ctx
-    meta_v = float(meta.valor)
-    if meta_v <= 0:
-        return ctx
-    pct = (float(valor_numerico) / meta_v) * 100.0
-    ctx["meta_valor"] = f"${meta_v:,.0f}" if meta_v >= 100 else f"{meta_v}"
-    ctx["meta_porcentaje"] = round(pct, 1)
-    ctx["meta_porcentaje_clamp"] = min(max(round(pct), 0), 100)
+    ctx["meta"] = evaluada
+    ctx["meta_valor"] = evaluada["meta_txt"]
+    ctx["meta_porcentaje"] = evaluada["avance_pct"]
+    ctx["meta_porcentaje_clamp"] = evaluada["avance_clamp"]
     return ctx
 
 
 def listar_metas_aplicables() -> dict:
-    """Retorna `{kpi_slug: MetaKPI}` para todas las metas activas."""
+    """`{kpi_slug: MetaKPI}` de las metas del despacho activas."""
     try:
         from apps.taller_home.models.meta_kpi import MetaKPI
-        return {m.kpi_slug: m for m in MetaKPI.objects.filter(activa=True)}
-    except Exception:
+        return {m.kpi_slug: m for m in MetaKPI.objects.filter(activa=True, ambito="despacho")}
+    except Exception:  # noqa: BLE001
         return {}
