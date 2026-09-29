@@ -40,6 +40,19 @@ VARIABLES_TEXTO_LIBRE = ["asunto", "mensaje"]
 VARIABLES_LIBRES = VARIABLES_COMUNES + VARIABLES_PROYECTO + VARIABLES_TEXTO_LIBRE
 
 
+# La Caja: el botón «Pagar en línea». Sólo aparece si hay link (`link_pago`
+# llega vacío cuando La Caja está apagada o no hay nada que cobrar). Las
+# plantillas que ya estaban guardadas sin él lo reciben igual: quien manda el
+# correo lo anexa al final si el cuerpo no trae el enlace (`caja.services`).
+_BOTON_PAGO = (
+    "{% if link_pago %}"
+    '<p style="margin:20px 0;"><a href="{{ link_pago }}" '
+    'style="display:inline-block;background:#465fff;color:#ffffff;text-decoration:none;'
+    'padding:10px 18px;border-radius:8px;font-weight:bold;">Pagar en línea</a></p>'
+    "{% endif %}"
+)
+
+
 PLANTILLAS_DEFAULT: dict[str, dict] = {
     "cotizacion": {
         "nombre": "Cotización",
@@ -61,13 +74,14 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
         "nombre": "Factura",
         "asunto": "Factura {{ codigo }} · Learning Center",
         "variables": ["codigo", "titulo", "cliente", "total", "moneda",
-                      "fecha_emision", "vencimiento", "notas"],
+                      "fecha_emision", "vencimiento", "notas", "link_pago"],
         "cuerpo_html": (
             '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
             "<p>Estimado/a {{ cliente }}:</p>"
             "<p>Adjuntamos la factura <strong>{{ codigo }}</strong> — {{ titulo }}, "
             "con vencimiento <strong>{{ vencimiento }}</strong>.</p>"
             "<p>Total: <strong>{{ total }} {{ moneda }}</strong>.</p>"
+            f"{_BOTON_PAGO}"
             '<p style="font-size:12px;color:#98a2b3;">Documento comercial — no es un CFDI.</p>'
             f"{_FOOTER}"
             "</div>"
@@ -76,13 +90,15 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
     "cobranza": {
         "nombre": "Recordatorio de cobranza",
         "asunto": "Recordatorio de pago · Factura {{ codigo }}",
-        "variables": ["codigo", "cliente", "saldo", "moneda", "vencimiento", "dias_vencida"],
+        "variables": ["codigo", "cliente", "saldo", "moneda", "vencimiento", "dias_vencida",
+                      "link_pago"],
         "cuerpo_html": (
             '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
             "<p>Estimado/a {{ cliente }}:</p>"
             "<p>Le recordamos que la factura <strong>{{ codigo }}</strong> presenta un "
             "saldo pendiente de <strong>{{ saldo }} {{ moneda }}</strong>, con "
             "vencimiento el {{ vencimiento }}.</p>"
+            f"{_BOTON_PAGO}"
             "<p>Agradecemos su pronto pago. Si ya realizó el pago, ignore este mensaje.</p>"
             f"{_FOOTER}"
             "</div>"
@@ -99,6 +115,23 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
             "<strong>{{ monto }} {{ moneda }}</strong> el {{ fecha }}"
             "{% if referencia %} (referencia {{ referencia }}){% endif %}.</p>"
             "<p>¡Gracias por su confianza!</p>"
+            f"{_FOOTER}"
+            "</div>"
+        ),
+    },
+    "link_pago": {
+        "nombre": "Link de pago",
+        "asunto": "Su enlace de pago · {{ referencia }} · Learning Center",
+        "variables": ["cliente", "referencia", "concepto", "monto", "moneda", "vence", "link_pago"],
+        "cuerpo_html": (
+            '<div style="font-family:Arial,sans-serif;color:#1d2939;font-size:14px;line-height:1.5;">'
+            "<p>Estimado/a {{ cliente }}:</p>"
+            "<p>Le compartimos el enlace para pagar en línea <strong>{{ referencia }}</strong>"
+            "{% if concepto %} ({{ concepto }}){% endif %} por "
+            "<strong>{{ monto }} {{ moneda }}</strong>.</p>"
+            f"{_BOTON_PAGO}"
+            "<p>Puede pagar con tarjeta o con MercadoPago (según las opciones disponibles). "
+            "El enlace vence el {{ vence }}.</p>"
             f"{_FOOTER}"
             "</div>"
         ),
@@ -194,7 +227,7 @@ PLANTILLAS_DEFAULT: dict[str, dict] = {
 }
 
 # Orden de aparición en la lista del editor.
-SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "bienvenida",
+SLUGS_PLANTILLA = ["cotizacion", "factura", "cobranza", "pago", "link_pago", "bienvenida",
                    "ruta_runner", "mandado_en_camino", "generico"]
 
 

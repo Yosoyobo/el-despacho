@@ -109,6 +109,13 @@
     </tr>
   </table>
 
+  {% if link_pago %}
+  <div style="margin-bottom:10pt; padding:8pt; border:1px solid #d0d5dd; border-radius:6pt; font-size:10pt;">
+    <div style="font-weight:bold; color:#667085;">PAGO EN LÍNEA</div>
+    <div>Puede pagar el saldo con tarjeta o MercadoPago en: <a href="{{ link_pago }}" style="color:#465fff; word-break:break-all;">{{ link_pago }}</a></div>
+  </div>
+  {% endif %}
+
   {% if fac.notas %}
   <div style="margin-bottom:10pt; font-size:10pt;">
     <div style="font-weight:bold; color:#667085;">NOTAS</div>
