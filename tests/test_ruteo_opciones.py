@@ -319,8 +319,15 @@ def test_las_apps_reciben_la_direccion_del_mapa_de_bici():
 
 def test_el_despliegue_prende_la_bici_solo_con_su_mapa():
     """Y la apaga explícitamente cuando no está: dejar la variable con un valor
-    viejo apuntaría a un servidor que no existe."""
-    guion = (_raiz() / "infra/scripts/deploy_nuc.sh").read_text(encoding="utf-8")
+    viejo apuntaría a un servidor que no existe.
+
+    Desde 2026-09-28 la lista de compose (y con ella esta decisión) vive en
+    `_compose_nuc.sh`, que usan el deploy Y el arranque tras un reinicio: si
+    sólo la tuviera el deploy, un reinicio levantaría el NUC sin la bici."""
+    raiz = _raiz() / "infra/scripts"
+    for quien in ("deploy_nuc.sh", "arranque_nuc.sh"):
+        assert "_compose_nuc.sh" in (raiz / quien).read_text(encoding="utf-8"), quien
+    guion = (raiz / "_compose_nuc.sh").read_text(encoding="utf-8")
     assert "data/osrm-bici/mexico-latest.osrm.properties" in guion
     assert 'export OSRM_URL_BICI="http://osrm-bici:5000"' in guion
     assert 'export OSRM_URL_BICI=""' in guion
