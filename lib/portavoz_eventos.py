@@ -82,6 +82,12 @@ EventoTipo = Literal[
     "factura.eliminada",
     "pago.recibido",
     "pago.recordatorio",
+    # La Caja (links de pago con Stripe/MercadoPago).
+    "caja.link_creado",
+    "caja.link_anulado",
+    "caja.link_enviado",
+    "caja.pago_por_revisar",
+    "caja.pago_revisado",
     "usuario.creado",
     "usuario.bloqueado",
     "ajuste.credencial_guardada",

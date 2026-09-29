@@ -500,6 +500,26 @@ def puede_subir_papeleo(user) -> bool:
     return puede(user, "papeleo", "subir")
 
 
+def puede_ver_caja(user) -> bool:
+    """La Caja: links de pago y los pagos que llegaron por Stripe/MercadoPago."""
+    return puede(user, "caja", "ver")
+
+
+def puede_crear_link_caja(user) -> bool:
+    """Generar un link de pago (factura, anticipo o monto libre) y mandarlo."""
+    return puede(user, "caja", "crear_link")
+
+
+def puede_anular_link_caja(user) -> bool:
+    """Anular un link de pago vigente."""
+    return puede(user, "caja", "anular_link")
+
+
+def puede_revisar_pago_caja(user) -> bool:
+    """Decidir un pago que llegó y no cuadró: registrarlo o descartarlo."""
+    return puede(user, "caja", "revisar_pago")
+
+
 def usuarios_con_permiso(modulo: str, accion: str) -> list:
     """Usuarios activos que tienen `(modulo, accion)` — por fila propia o por
     cualquiera de sus roles.
