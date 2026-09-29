@@ -3,7 +3,7 @@ from __future__ import annotations
 from django import forms
 
 from cuentas.models.usuario import Usuario
-from lib.permisos import ROLES
+from lib.permisos_defaults import ROLES_SISTEMA as ROLES
 
 AUDIENCIA_OPCIONES = [
     ("todos", "Todos los usuarios activos"),

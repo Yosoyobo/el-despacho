@@ -21,7 +21,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from lib import novedades as _nov
-from lib.permisos import tiene_rol
+from lib.permisos import puede_acceder_gerencia
 
 
 def _ruta_manual() -> Path:
@@ -43,8 +43,9 @@ def _ruta_manual() -> Path:
 
 
 def _quizas_refresca(request) -> None:
-    # V6 Bloque 10: tiene_rol reconoce rol primario + roles personalizados.
-    if request.GET.get("refresh") == "1" and tiene_rol(request.user, "super_admin", "dueno"):
+    # Refrescar la caché es de quien entra a La Gerencia (antes, por rol:
+    # super_admin/dueño).
+    if request.GET.get("refresh") == "1" and puede_acceder_gerencia(request.user):
         _nov.invalidar_cache()
 
 

@@ -67,12 +67,10 @@ def _resultado(valor: Any, *, nota: str = "", link: str = "") -> dict[str, Any]:
 
 
 def _es_solo_disenador(user) -> bool:
-    """V6 Bloque 10: restringe el queryset a "sus" proyectos solo si el
-    usuario es diseñador (rol primario o personalizado vía roles_extra) y NO
-    tiene un rol amplio que le dé visibilidad total."""
-    from lib.permisos import roles_efectivos
-    roles = roles_efectivos(user)
-    return "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"})
+    """Restringe el queryset a "sus" proyectos a quien ve proyectos pero no
+    todos (`proyectos.ver` sin `ver_todos`; antes, «diseñador sin rol amplio»)."""
+    from lib.permisos import solo_proyectos_asignados
+    return solo_proyectos_asignados(user)
 
 
 # ── Cálculos por categoría ──────────────────────────────────────────────────

@@ -19,18 +19,17 @@ ESTADO_CANCELADO = "cancelado"
 def _proyectos_visibles_qs(user):
     from apps.los_proyectos.models import Proyecto
 
-    from lib.permisos import roles_efectivos
+    from lib.permisos import puede, puede_ver_todos_proyectos
 
-    # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
-    # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
-    roles = roles_efectivos(user)
+    # S-Deuda-Permisos: por permiso (antes, por rol) — `proyectos.ver_todos` ve
+    # todos, `proyectos.ver` los asignados, y sin ninguno no ve proyectos.
     # LC 2026-07: sin archivados. LC 2026-07-28 (Oscar): tampoco los CANCELADOS
     # — un proyecto que ya no va no tiene por qué seguir apareciendo en el
     # calendario ni en «Próximos eventos» del Dashboard (ambos leen de aquí).
     qs = Proyecto.activos.exclude(estado=ESTADO_CANCELADO).select_related("cliente")
-    if roles & {"super_admin", "dueno", "contador"}:
+    if puede_ver_todos_proyectos(user):
         return qs
-    if "disenador" in roles:
+    if puede(user, "proyectos", "ver"):
         return qs.filter(asignaciones__usuario=user).distinct()
     return Proyecto.objects.none()
 
@@ -39,18 +38,17 @@ def _tareas_visibles_qs(user):
     from apps.el_pizarron.models import Tarea
     from apps.los_proyectos.models import ProyectoAsignacion
 
-    from lib.permisos import roles_efectivos
+    from lib.permisos import solo_proyectos_asignados
 
-    # V6 Bloque 10: restringe a sus proyectos solo si es diseñador (primario
-    # o personalizado) sin un rol amplio que le dé visibilidad total.
-    roles = roles_efectivos(user)
+    # Se acota a sus proyectos a quien ve proyectos pero no todos (antes:
+    # «diseñador sin un rol amplio»).
     qs = (
         Tarea.objects.exclude(estado="completada")
         # Oscar 2026-07-28: las tareas de un proyecto CANCELADO tampoco.
         .exclude(proyecto__estado=ESTADO_CANCELADO)
         .select_related("proyecto", "asignada_a")
     )
-    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
+    if solo_proyectos_asignados(user):
         proyectos_ids = ProyectoAsignacion.objects.filter(usuario=user).values_list("proyecto_id", flat=True)
         qs = qs.filter(proyecto_id__in=list(proyectos_ids))
     return qs

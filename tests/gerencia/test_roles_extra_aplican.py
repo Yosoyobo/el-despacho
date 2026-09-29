@@ -1,13 +1,14 @@
 """Fix: los roles extra deben APLICAR a los checks gruesos por nombre de rol
-(es_admin, puede_ver_finanzas, requires_role), no solo al camino granular
-puede(). Regresión del reporte de LC "los roles no se aplican".
+(hoy: `puede_gestionar_proyectos`, `puede_ver_finanzas`…, que desde
+S-Deuda-Permisos leen el permiso que el rol trae), no solo al rol primario.
+Regresión del reporte de LC "los roles no se aplican".
 """
 
 import pytest
 
 from lib.permisos import (
-    es_admin,
     es_super_admin,
+    puede_gestionar_proyectos,
     puede_ver_cartera,
     puede_ver_finanzas,
     roles_efectivos,
@@ -39,9 +40,9 @@ def test_disenador_con_rol_extra_contador_ve_finanzas(usuario_factory):
 
 def test_disenador_con_rol_extra_dueno_es_admin(usuario_factory):
     u = usuario_factory(rol="disenador")
-    assert es_admin(u) is False
+    assert puede_gestionar_proyectos(u) is False
     u.roles_extra.add(_rol("dueno"))
-    assert es_admin(u) is True
+    assert puede_gestionar_proyectos(u) is True
 
 
 def test_rol_extra_super_admin_escala(usuario_factory):
@@ -64,4 +65,4 @@ def test_requires_role_honra_rol_extra(client, usuario_factory):
 def test_anonimo_y_sin_extra_no_rompe(usuario_factory):
     u = usuario_factory(rol="disenador")
     assert roles_efectivos(u) == {"disenador"}
-    assert es_admin(u) is False
+    assert puede_gestionar_proyectos(u) is False

@@ -1,23 +1,24 @@
-"""Permisos centralizados — 4 roles, decoradores y helpers.
+"""Permisos centralizados — `puede()`, decoradores y helpers.
 
-Roles:
-- super_admin : todo, único que toca Los Ajustes.
-- dueno       : todo operativo + reportes; NO Los Ajustes.
-- contador    : Contaduría, Facturación, Caja, Cobranza, reportes financieros.
-- disenador   : Proyectos y Pizarrón, restringido a sus asignaciones.
+Regla §4 #20: toda puerta pregunta por un permiso GRANULAR (`modulo.accion` del
+catálogo de `lib.permisos_defaults`), nunca por el nombre de un rol. El único rol
+que decide algo por sí mismo es `super_admin`, el failsafe anti lock-out
+(`es_super_admin`). `tests/test_permisos_sin_rol_literal.py` falla si reaparece
+otro nombre de rol en este archivo.
+
+Los roles siguen existiendo —son paquetes de permisos que se asignan desde El
+Directorio— y este módulo sabe resolverlos (`roles_efectivos`, `tiene_rol`),
+pero ninguna puerta de aquí los usa para decidir.
 """
 
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from functools import wraps
 
 from django.http import HttpRequest, HttpResponseForbidden
 from django.shortcuts import redirect
-
-ROLES = ("super_admin", "dueno", "contador", "disenador")
-ROL_DEFAULT = "disenador"
 
 
 def roles_efectivos(user) -> set[str]:
@@ -100,11 +101,8 @@ def sincronizar_rol_primario(user) -> str:
     return nuevo
 
 
-def es_admin(user) -> bool:
-    return bool(roles_efectivos(user) & {"super_admin", "dueno"})
-
-
 def es_super_admin(user) -> bool:
+    """El failsafe duro (§4 #20): el ÚNICO rol que decide algo por sí mismo."""
     return "super_admin" in roles_efectivos(user)
 
 
@@ -112,30 +110,74 @@ def puede_ver_ajustes(user) -> bool:
     return es_super_admin(user)
 
 
-def puede_ver_finanzas(user) -> bool:
-    return bool(roles_efectivos(user) & {"super_admin", "dueno", "contador"})
+# ── Puertas que antes decidían por ROL (S-Deuda-Permisos, 2026-09-28) ─────────
+#
+# Hasta aquí vivían `es_admin` (super_admin|dueño), `puede_ver_finanzas`
+# (super_admin|dueño|contador) y compañía: leían el NOMBRE del rol, así que no se
+# podían delegar desde El Directorio. Ahora cada una pregunta por una acción del
+# catálogo. Decisión de Oscar: «como hoy» — la migración
+# `cuentas/0047_permisos_sin_rol_literal` sembró cada acción exactamente a quien
+# el rol ya se la daba, y `tests/test_permisos_sin_rol_literal.py` compara, rol
+# por rol, la decisión vieja (copiada ahí, congelada) contra la nueva.
+#
+# `super_admin` sigue siendo failsafe en cada una: `puede()` no lo tiene.
+
+
+def puede_ver_todos_proyectos(user) -> bool:
+    """Ver TODOS los proyectos, no sólo aquellos donde uno está asignado.
+
+    Antes: super_admin/dueño/contador (el contador, para reconciliar pagos).
+    También abre todas las tareas del Pizarrón y el calendario completo.
+    """
+    return es_super_admin(user) or puede(user, "proyectos", "ver_todos")
+
+
+def puede_ver_proyectos_asignados(user) -> bool:
+    """Ver al menos los proyectos donde uno está asignado (antes: cualquiera de
+    los cuatro roles del sistema). Quien no lo tiene no ve proyectos."""
+    return puede_ver_todos_proyectos(user) or puede(user, "proyectos", "ver")
+
+
+def solo_proyectos_asignados(user) -> bool:
+    """¿Hay que acotar a este usuario a SUS proyectos?
+
+    Es la vieja condición «diseñador sin un rol amplio»: ve proyectos, pero no
+    todos. Ojo, a propósito como hoy: quien no tiene NINGÚN permiso de
+    proyectos no entra en esta condición (las pantallas que la usan ya lo
+    filtran por su cuenta o nunca lo acotaron).
+    """
+    return not puede_ver_todos_proyectos(user) and puede(user, "proyectos", "ver")
 
 
 def puede_ver_proyecto(user, proyecto) -> bool:
-    roles = roles_efectivos(user)
-    if roles & {"super_admin", "dueno", "contador"}:
-        # contador ve proyectos para reconciliar pagos (read-only enforced en vistas)
+    if puede_ver_todos_proyectos(user):
         return True
-    if "disenador" in roles:
+    if puede(user, "proyectos", "ver"):
         return proyecto.asignaciones.filter(usuario_id=user.pk).exists()
     return False
 
 
+def puede_gestionar_proyectos(user) -> bool:
+    """Crear, editar, asignar y cambiar de estado proyectos (`proyectos.editar`).
+
+    Antes: super_admin/dueño. El diseñador traía `editar` en sus defaults «sólo
+    donde asignado», pero la puerta era el rol y nunca editó nada; se le quitó
+    (decisión Oscar: «como hoy»). También abre la actividad de TODOS los
+    proyectos en Recados — quien los gestiona ve lo que pasa en ellos.
+    """
+    return es_super_admin(user) or puede(user, "proyectos", "editar")
+
+
 def puede_editar_proyecto(user, proyecto) -> bool:
-    """Crear/editar/cambiar estado de proyectos: solo admins. Diseñadores
-    pueden actuar sobre tareas pero no mutar el proyecto mismo."""
-    return es_admin(user)
+    """Mutar un proyecto (o crearlo, con `proyecto=None`). No depende del
+    proyecto: quien gestiona proyectos los gestiona todos."""
+    return puede_gestionar_proyectos(user)
 
 
 def puede_archivar_proyecto(user) -> bool:
-    """Archivar/reactivar proyectos (ocultar de prueba/duplicados): admins.
-    Distinto de «Cancelado» (estado real del ciclo)."""
-    return es_admin(user)
+    """Archivar/reactivar proyectos (ocultar de prueba/duplicados).
+    Distinto de «Cancelado» (estado real del ciclo). Antes: super_admin/dueño."""
+    return es_super_admin(user) or puede(user, "proyectos", "archivar")
 
 
 def puede_eliminar_proyecto(user) -> bool:
@@ -145,13 +187,66 @@ def puede_eliminar_proyecto(user) -> bool:
 
 
 def puede_ver_cartera(user) -> bool:
-    """Listar y ver clientes: admins + contador (read-only); diseñadores no."""
-    return bool(roles_efectivos(user) & {"super_admin", "dueno", "contador"})
+    """Listar y ver clientes. Antes: super_admin/dueño/contador."""
+    return es_super_admin(user) or puede(user, "cartera", "ver")
 
 
 def puede_editar_cartera(user) -> bool:
-    """Crear/editar/archivar clientes: solo admins."""
-    return es_admin(user)
+    """Crear/editar/archivar clientes. Antes: super_admin/dueño."""
+    return es_super_admin(user) or puede(user, "cartera", "editar")
+
+
+def puede_ver_finanzas(user) -> bool:
+    """Ver el dinero del despacho: La Tesorería y todo lo que enseña montos
+    (anticipos, rentabilidad, proveedores, gasto de IA…). Es `tesoreria.ver`:
+    antes la Tesorería misma se abría con este helper por ROL
+    (super_admin/dueño/contador) mientras sus CFDI ya pedían `tesoreria.ver`.
+    """
+    return es_super_admin(user) or puede(user, "tesoreria", "ver")
+
+
+def puede_comentar_interno(user) -> bool:
+    """Marcar un comentario como interno. Antes: super_admin/dueño o el rol
+    PRIMARIO contador (la vista leía `user.rol`)."""
+    return es_super_admin(user) or puede(user, "pizarron", "comentar_interno")
+
+
+def puede_eliminar_tarea(user, tarea) -> bool:
+    """Borrar para siempre una tarea: quien la creó, o quien tiene
+    `pizarron.eliminar` (antes: super_admin/dueño)."""
+    if tarea is not None and tarea.creado_por_id == getattr(user, "pk", None):
+        return True
+    return es_super_admin(user) or puede(user, "pizarron", "eliminar")
+
+
+def puede_ver_todos_mandados(user) -> bool:
+    """Ver los mandados de todo el equipo, no sólo los propios. Antes:
+    super_admin/dueño (el contador ve todas las TAREAS, pero sus mandados no)."""
+    return es_super_admin(user) or puede(user, "pizarron", "ver_todos_mandados")
+
+
+def puede_eliminar_buzon(user) -> bool:
+    """Borrar mensajes de la bandeja de soporte (además de `buzon.ver_todos`
+    para llegar a ella). Antes: super_admin/dueño."""
+    return es_super_admin(user) or puede(user, "buzon", "eliminar")
+
+
+def puede_usar_api_site(user) -> bool:
+    """El API JSON de El Site (`/api/site/…`). Antes: super_admin/dueño."""
+    return es_super_admin(user) or puede(user, "site", "api")
+
+
+def puede_acceder_gerencia(user) -> bool:
+    """Entrar a La Gerencia (y lo que va con ella: su tablero, refrescar la
+    caché de Novedades). super_admin siempre."""
+    return es_super_admin(user) or puede(user, "gerencia", "acceder")
+
+
+def puede_consultar_saldo_chalanes(user) -> bool:
+    """Consultar el saldo de un proveedor de IA. Es `chalanes.ver`, lo mismo que
+    pide la pantalla de Los Chalanes en La Gerencia. Antes, en El Taller:
+    super_admin/dueño."""
+    return es_super_admin(user) or puede(user, "chalanes", "ver")
 
 
 def puede_eliminar_cartera(user) -> bool:
@@ -455,19 +550,32 @@ def puede_exportar_checador(user) -> bool:
 
 
 def puede_ver_comentario(user, comentario) -> bool:
-    """Comentario interno: oculto a `disenador` salvo que sea el autor.
-    Comentario público: visible si el usuario ve el proyecto/tarea padre."""
-    rol = getattr(user, "rol", None)
-    if rol in ("super_admin", "dueno", "contador"):
+    """¿Este usuario lee este comentario de proyecto o tarea?
+
+    - sin `pizarron.ver_comentarios` no lee ninguno;
+    - con `pizarron.ver_internos` los lee todos;
+    - si no, lee los públicos —y los internos que él escribió— de los
+      proyectos que ve.
+
+    Hasta S-Deuda-Permisos esto se decidía por el rol PRIMARIO (`user.rol`), no
+    por los roles efectivos como todo lo demás: quien tiene un rol ASIGNADO
+    (p. ej. «Director» sobre un rol primario `miembro`) no leía ningún
+    comentario. La migración 0047 lo conservó «como hoy» —sembró
+    `ver_comentarios`/`ver_internos` sólo por rol primario—; para que alguien
+    más los lea basta prender el permiso en El Directorio.
+    """
+    if es_super_admin(user):
         return True
-    if rol == "disenador":
-        if comentario.es_interno and comentario.autor_id != getattr(user, "pk", None):
-            return False
-        proyecto = comentario.proyecto or (comentario.tarea.proyecto if comentario.tarea else None)
-        if proyecto is None:
-            return False
-        return puede_ver_proyecto(user, proyecto)
-    return False
+    if not puede(user, "pizarron", "ver_comentarios"):
+        return False
+    if puede(user, "pizarron", "ver_internos"):
+        return True
+    if comentario.es_interno and comentario.autor_id != getattr(user, "pk", None):
+        return False
+    proyecto = comentario.proyecto or (comentario.tarea.proyecto if comentario.tarea else None)
+    if proyecto is None:
+        return False
+    return puede_ver_proyecto(user, proyecto)
 
 
 # ── Caché de permisos por instancia de usuario ───────────────────────────────
@@ -584,32 +692,11 @@ def puede(usuario, modulo: str, permiso: str) -> bool:
         return False
 
 
-def requires_role(*roles: str) -> Callable:
-    """Decorador para vistas Django. Si no autenticado → redirect a login;
-    si autenticado pero rol no permitido → 403."""
-    def wrap(view: Callable) -> Callable:
-        @wraps(view)
-        def inner(request: HttpRequest, *args, **kwargs):
-            user = getattr(request, "user", None)
-            if not user or not user.is_authenticated:
-                login_url = getattr(request, "_login_url", "/sign-in")
-                return redirect(login_url)
-            if not (roles_efectivos(user) & set(roles)):
-                return HttpResponseForbidden("Sin permisos para esta acción.")
-            return view(request, *args, **kwargs)
-        return inner
-    return wrap
-
-
-def requires_any_role(roles: Iterable[str]) -> Callable:
-    return requires_role(*roles)
-
-
 def requiere_permiso(modulo: str, accion: str) -> Callable:
     """S-LC-Feedback-V10 — decorador de vista gateado por permiso GRANULAR.
 
-    Reemplaza a `@requires_role("super_admin", …)` en las áreas administrativas
-    para que el super_admin pueda DELEGAR el acceso desde
+    Reemplazó a `@requires_role(...)` (borrado en S-Deuda-Permisos: ya nadie lo
+    usaba y sólo invitaba a gatear por rol) para que el super_admin pueda DELEGAR el acceso desde
     `/directorio/<id>/permisos/`. El super_admin es failsafe duro: siempre pasa,
     aunque no exista la fila de permiso (evita lock-out del despacho). Para
     cualquier otro usuario, exige `puede(user, modulo, accion)`.

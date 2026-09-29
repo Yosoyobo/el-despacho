@@ -41,13 +41,14 @@ from django.views.decorators.http import require_POST
 from lib import edicion
 from lib.busqueda import q_texto
 from lib.permisos import (
-    es_admin,
+    puede,
     puede_archivar_proyecto,
+    puede_comentar_interno,
     puede_editar_proyecto,
     puede_eliminar_proyecto,
     puede_ver_finanzas,
     puede_ver_proyecto,
-    roles_efectivos,
+    puede_ver_todos_proyectos,
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -299,16 +300,16 @@ def _fmt_fechahora(dt):
 
 
 def _proyectos_visibles(user, *, solo_archivados=False):
-    """Queryset filtrado por rol. Por default EXCLUYE archivados (LC 2026-07);
-    con `solo_archivados=True` devuelve únicamente los archivados."""
-    # V6 Bloque 10: roles efectivos (rol primario + roles_extra) en lugar de
-    # user.rol duro — un "miembro" con rol personalizado "dueno" ve lo mismo.
-    roles = roles_efectivos(user)
+    """Queryset filtrado por permiso. Por default EXCLUYE archivados (LC 2026-07);
+    con `solo_archivados=True` devuelve únicamente los archivados.
+
+    `proyectos.ver_todos` → todos; `proyectos.ver` → los asignados; ninguno →
+    nada (S-Deuda-Permisos: antes, por rol)."""
     base = Proyecto.objects.filter(archivado=True) if solo_archivados else Proyecto.activos.all()
     qs = base.select_related("cliente")
-    if roles & {"super_admin", "dueno", "contador"}:
+    if puede_ver_todos_proyectos(user):
         return qs
-    if "disenador" in roles:
+    if puede(user, "proyectos", "ver"):
         return qs.filter(asignaciones__usuario=user).distinct()
     return Proyecto.objects.none()
 
@@ -414,7 +415,6 @@ def lista(request):
         "querystring_paginacion": "&".join(qs_filtros + ([f"orden={orden}"] if orden != "-creado_en" else [])),
         "cabeceras_proyectos": cabeceras,
         "puede_crear": puede_crear_proyecto,
-        "es_admin": es_admin(request.user),
         "ver_archivados": ver_archivados,
         "archivados_count": archivados_count,
         "kpis": kpis,
@@ -745,7 +745,7 @@ def detalle(request, pk):
         "estados_tarea": list(EstadoTarea.objects.filter(activo=True)),
         "tareas": proyecto.tareas.filter(archivada=False).select_related("asignada_a").order_by("estado", "-creado_en"),
         "comentarios": _comentarios_proyecto_visibles(request.user, proyecto),
-        "es_admin": es_admin(request.user),
+        "puede_comentar_interno": puede_comentar_interno(request.user),
         "puede_archivar_proyecto": puede_archivar_proyecto(request.user),
         "puede_eliminar_proyecto": puede_eliminar_proyecto(request.user),
         "ingresos_proyecto": proyecto.ingresos.filter(anulado=False).order_by("-fecha")[:50],
