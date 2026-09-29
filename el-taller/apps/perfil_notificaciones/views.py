@@ -53,11 +53,14 @@ CATEGORIAS = [
 
 
 def _categorias_para(user):
+    from lib import pasarelas
     from lib.permisos import puede
+    # Sin llaves La Caja es invisible (Oscar, 2026-09-29): su casilla tampoco sale.
+    ocultas = set() if pasarelas.encendida() else {"caja"}
     return [
         (slug, nombre, desc)
         for slug, nombre, desc, permiso in CATEGORIAS
-        if permiso is None or puede(user, *permiso)
+        if slug not in ocultas and (permiso is None or puede(user, *permiso))
     ]
 
 

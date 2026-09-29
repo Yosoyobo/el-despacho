@@ -806,10 +806,20 @@ class TestPantallas:
         assert enviados and enviados[0]["destinatario"] == "pagos@cliente.mx"
         assert link.url_publica() in enviados[0]["html"]
 
-    def test_menu_y_notificaciones(self, client, jefe, usuario_factory):
+    def test_sin_llaves_la_caja_es_invisible(self, client, jefe, llaves, cliente, usuario_factory):
+        """Oscar, 2026-09-29: sin llaves no hay renglón en el menú, ni botón en
+        Tesorería, ni casilla de aviso, ni botones en factura/cliente."""
+        fac = _factura(cliente, jefe)
         client.force_login(jefe)
+        paginas = [reverse("tesoreria:landing"), reverse("facturacion:detalle", args=[fac.pk]),
+                   reverse("cartera-detalle", args=[cliente.pk]), "/perfil/notificaciones/"]
+        for url in paginas:
+            html = client.get(url).content.decode()
+            assert "/tesoreria/caja/" not in html, url
+            assert "La Caja · pagos en línea" not in html, url
+        llaves()
         html = client.get(reverse("tesoreria:landing")).content.decode()
-        assert reverse("caja:landing") in html
+        assert html.count(reverse("caja:landing")) >= 2  # menú + botón de Tesorería
         html = client.get("/perfil/notificaciones/").content.decode()
         assert "La Caja · pagos en línea" in html
         client.force_login(usuario_factory(rol="disenador"))

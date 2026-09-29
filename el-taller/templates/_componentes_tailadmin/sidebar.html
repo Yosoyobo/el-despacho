@@ -1,4 +1,4 @@
-{% load static %}{% load permisos %}
+{% load static %}{% load permisos %}{% load caja %}
 {% comment %} Sidebar — El Taller. Items condicionales por permiso granular (Pre-S2b.2).
    Cada item se evalúa con `permisos_modulos.<modulo>` inyectado por context
    processor. Cambiar permisos desde Gerencia → Directorio → Permisos. {% endcomment %}
@@ -193,7 +193,7 @@
         {% comment %} Grupo "Finanzas" — colapsable. Se auto-expande si alguna URL del grupo está activa.
            Estado persistido en localStorage. Sub-items gated por permiso individual.
            Inyectamos finanzas_grupo_activo desde el context processor sidebar_extras. {% endcomment %}
-        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria or permisos_modulos.caja %}
+        {% if permisos_modulos.tesoreria or permisos_modulos.facturacion or permisos_modulos.contaduria %}
         {% if not sidebar_orden.finanzas.oculto %}
         <button type="button"
                 style="order: {{ sidebar_orden.finanzas.orden|default:110 }}"
@@ -217,7 +217,8 @@
                 Tesorería
             </a>
             {% endif %}
-            {% if permisos_modulos.caja %}
+            {% if permisos_modulos.caja %}{% caja_encendida as caja_on %}{% endif %}
+            {% if permisos_modulos.caja and caja_on %}
             <a href="{% url 'caja:landing' %}" class="menu-item {% if '/tesoreria/caja' in request.path %}menu-item-active{% else %}menu-item-inactive{% endif %}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 11h18M7 15h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 La Caja

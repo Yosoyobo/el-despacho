@@ -132,8 +132,10 @@ def resumen_para_ajustes() -> dict[str, str]:
         detalle = f" ({'; '.join(partes)})" if partes else ""
         return {
             "tono": "gris",
-            "texto": ("La Caja está APAGADA: no se ofrecen links de pago ni la página "
-                      f"para pagar hasta que una pasarela tenga su llave y el secreto de su webhook{detalle}."),
+            "texto": ("La Caja está APAGADA y no se ve en El Taller. Con la llave y el secreto del "
+                      "webhook de una pasarela se habilitan los links de pago (saldo de factura, "
+                      "anticipo o monto libre), la página para que el cliente pague con tarjeta u "
+                      f"OXXO/SPEI y el registro automático del cobro{detalle}."),
         }
     nombres = [e[p]["nombre"] + (" (modo prueba)" if e[p]["prueba"] else "") for p in e["pasarelas"]]
     texto = f"La Caja está ENCENDIDA con {' y '.join(nombres)}."

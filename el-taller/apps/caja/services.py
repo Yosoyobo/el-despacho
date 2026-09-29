@@ -335,6 +335,19 @@ def enviar_por_correo(link: LinkPago, *, actor):
 # ── Abrir el cobro en la pasarela ────────────────────────────────────────────
 
 
+def _correo_valido(valor) -> str:
+    """El correo del cliente sólo se le pasa a la pasarela si es válido: uno mal
+    capturado haría que Stripe rechace el cobro y el cliente no podría pagar."""
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+    valor = (valor or "").strip()
+    try:
+        validate_email(valor)
+    except ValidationError:
+        return ""
+    return valor
+
+
 def abrir_cobro(link: LinkPago, pasarela: str) -> str:
     """La URL de la pasarela a la que se manda al cliente. Reusa el cobro ya
     abierto (dos pestañas no deben abrir dos cobros). Lanza `ValueError` o
@@ -345,7 +358,7 @@ def abrir_cobro(link: LinkPago, pasarela: str) -> str:
     if pasarela not in pasarelas.estado()["pasarelas"]:
         raise ValueError("Esa forma de pago no está disponible.")
     ahora = timezone.now()
-    email = (getattr(link.cliente, "email_contacto", "") or "").strip()
+    email = _correo_valido(getattr(link.cliente, "email_contacto", ""))
     if pasarela == "stripe":
         if link.stripe_url and link.stripe_sesion_expira and link.stripe_sesion_expira > ahora + MARGEN_SESION:
             return link.stripe_url

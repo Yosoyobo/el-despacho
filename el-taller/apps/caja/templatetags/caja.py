@@ -30,3 +30,13 @@ def boton_link_pago(context, objeto, clase="btn-secundario"):
     request = context.get("request")
     user = getattr(request, "user", None)
     return mark_safe(boton_accion(user, objeto, clase=clase))  # noqa: S308 — format_html ya escapó
+
+
+@register.simple_tag
+def caja_encendida() -> bool:
+    """¿Hay llaves? Sin ellas La Caja es INVISIBLE en El Taller (decisión de
+    Oscar, 2026-09-29): ni renglón en el menú ni botones. Uso:
+    `{% caja_encendida as caja_on %}{% if caja_on %}…{% endif %}`. Sólo se
+    evalúa donde ya se sabe que el usuario tiene `caja.ver`."""
+    from lib import pasarelas
+    return pasarelas.encendida()

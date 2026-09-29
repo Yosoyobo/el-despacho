@@ -32,6 +32,12 @@ FILTROS = (("vigente", "Vigentes"), ("pagado", "Pagados"), ("anulado", "Anulados
 ESTADOS_FILTRO = {clave for clave, _ in FILTROS}
 
 
+def _base() -> str:
+    """La dirección pública del Taller (detrás de El Portero, la petición no la sabe)."""
+    from django.conf import settings
+    return getattr(settings, "TALLER_URL", "https://taller.learningcenter.mx/").rstrip("/")
+
+
 def _es_htmx(request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
@@ -84,8 +90,8 @@ def landing(request):
         "pagos": list(pagos.exclude(estado="por_revisar")[:40]),
         "puede_revisar": puede_revisar_pago_caja(request.user),
         "puede_anular": puede_anular_link_caja(request.user),
-        "webhook_stripe": request.build_absolute_uri(reverse("caja:webhook-stripe")),
-        "webhook_mp": request.build_absolute_uri(reverse("caja:webhook-mercadopago")),
+        "webhook_stripe": f"{_base()}{reverse('caja:webhook-stripe')}",
+        "webhook_mp": f"{_base()}{reverse('caja:webhook-mercadopago')}",
     })
 
 
