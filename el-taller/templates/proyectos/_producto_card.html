@@ -95,7 +95,7 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
                     hx-post="{% url 'proyectos-duplicar-producto' f.instance.proyecto_id f.instance.pk %}"
                     hx-params="none" hx-swap="none"
                     hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                    class="rounded p-1 text-[11px] leading-none text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400"
+                    class="toque-minimo rounded p-1 text-[11px] leading-none text-gray-400 transition hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/[0.06] dark:hover:text-brand-400"
                     title="Duplicar esta línea (con sus procesos) debajo" aria-label="Duplicar producto">⧉</button>
             {% endif %}
         </div>
