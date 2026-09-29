@@ -502,6 +502,23 @@ FILAS_ESPERADAS_ENCENDIDAS = (
 )
 
 
+# Y lo que cambia en el JSON de cada rol: {rol_id: {modulo: (agrega, quita)}}.
+_AGREGA_ADMIN = {
+    "proyectos": ({"archivar", "ver_todos"}, set()),
+    "buzon": ({"eliminar"}, set()),
+    "site": ({"api"}, set()),
+    # `ver_internos` sale: la regla de comentarios era por rol PRIMARIO.
+    "pizarron": ({"comentar_interno", "eliminar", "ver_todos_mandados"}, {"ver_internos"}),
+}
+JSON_ESPERADO = {
+    1: _AGREGA_ADMIN,                                   # super_admin
+    2: _AGREGA_ADMIN,                                   # «Director» (clave dueno)
+    4: {"proyectos": (set(), {"editar"})},              # diseñador: nunca editó
+    5: {"pizarron": (set(), {"ver_internos"})},         # «Runner»: acción sin efecto
+    # 6 «Administrativo»: rol personalizado, no se toca.
+}
+
+
 def _filas_de_la_foto():
     filas = {}
     for uid, datos in FOTO_USUARIOS.items():
@@ -525,6 +542,15 @@ class TestLaFotoDeProduccion:
         encendidas = {(u, m, a) for u, m, a, activo in filas if activo}
         assert apagadas == FILAS_ESPERADAS_APAGADAS
         assert encendidas == FILAS_ESPERADAS_ENCENDIDAS
+        cambios = {}
+        for rid, nuevo in _json.items():
+            viejo = FOTO_ROLES[rid][2]
+            cambios[rid] = {
+                m: (set(nuevo.get(m, [])) - set(viejo.get(m, [])), set(viejo.get(m, [])) - set(nuevo.get(m, [])))
+                for m in set(viejo) | set(nuevo)
+                if set(viejo.get(m, [])) != set(nuevo.get(m, []))
+            }
+        assert cambios == JSON_ESPERADO
 
     def test_nadie_gana_ni_pierde_con_los_datos_de_produccion(self, proyecto_factory):
         from apps.los_proyectos.models import ProyectoAsignacion
