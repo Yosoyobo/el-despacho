@@ -10461,5 +10461,13 @@ es `display: contents` (no genera caja; el aviso ya es `fixed`). `hidden` no
 servía: escondería el aviso. Candado en `test_edicion_pisada_sep28.py` por los 8
 formularios, con y sin choque (16 caen con el código viejo).
 
+**Y la barra de guardar** (Oscar: «la línea que se cruza en los botones»): estaba
+fija en `top-[4.75rem]` (76 px), calculada cuando sólo había header; la tira de
+pestañas del Deploy 3 termina en 97 px, así que su borde cruzaba «Deshacer»
+(translúcido deshabilitado). Ahora `ui.js` (dual-copy) mide header + tira
+(`acomodarBarra`, con `ResizeObserver`, scroll y resize) y se pone 12 px debajo;
+el piso de 76 px se conserva (La Gerencia no cambia). Medido: botones 76–118 →
+109–151 con la tira en 97.
+
 **Lección:** la suite renderiza HTML pero no mide layout — un envoltorio «que no
 se ve» metido en una retícula pasa todas las pruebas. Se cazó sólo mirando.

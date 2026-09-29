@@ -387,7 +387,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
-| 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda de los formularios en retícula |
+| 2026.09.04 | S-Pendientes-Sep28 · hotfix | El testigo de edición ya no se come la primera celda; la barra de guardar va debajo de las pestañas |
 | 2026.09.03 | S-Pendientes-Sep28 · 3 | Aviso de edición pisada; pestañas en El Taller; app Android; el deploy abre solo su ventana |
 | 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
 | 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |

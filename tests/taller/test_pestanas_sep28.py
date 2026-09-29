@@ -131,3 +131,16 @@ class TestLasDecisionesDeOscarEstanEnElGuion:
 def test_la_gerencia_no_lleva_pestanas():
     base = (RAIZ / "la-gerencia/templates/base.html").read_text()
     assert "pestanas.js" not in base
+
+
+def test_la_barra_de_guardar_se_acomoda_debajo_de_la_tira_de_pestanas():
+    """Con un `top` fijo, el borde de la tira de pestañas cruzaba «Deshacer» y
+    «Guardar» (Oscar, 2026-09-28). La barra se mide contra lo que hay arriba."""
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[2]
+    js = (raiz / "el-taller/static/js/ui.js").read_text(encoding="utf-8")
+    montar = js[js.index("function montarBarra()"):js.index("function acomodarPronto()")]
+    assert "barra.style.top" in js, "la barra volvió a un top fijo"
+    assert "'#barra-pestanas'" in montar and "acomodarBarra()" in montar
+    assert "ResizeObserver" in montar, "la tira aparece después: hay que observarla"

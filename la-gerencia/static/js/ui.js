@@ -1159,6 +1159,42 @@ window.abrirRickroll = function () {
     lista.className = 'flex items-center gap-2';
     barra.appendChild(lista);
     document.body.appendChild(barra);
+    acomodarBarra();
+    window.addEventListener('resize', acomodarPronto, { passive: true });
+    window.addEventListener('scroll', acomodarPronto, { passive: true });
+    // La tira de pestañas la arma pestanas.js DESPUÉS y cambia de alto al
+    // aparecer: se observa en vez de adivinar cuándo.
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(acomodarPronto);
+      ['header', '#barra-pestanas'].forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) ro.observe(el);
+      });
+    }
+  }
+
+  /* LC 2026-09-28 (Oscar: «la línea que se cruza en los botones»): la barra va
+     DEBAJO de lo que haya arriba —el header sticky y, en El Taller, la tira de
+     pestañas, que no es sticky y se va con el scroll—. Con un `top` fijo el
+     borde de la tira cruzaba «Deshacer» y «Guardar». 76 px (4.75rem) es lo de
+     siempre cuando sólo hay header. */
+  var PISO_BARRA = 76, acomodoPendiente = false;
+  function acomodarBarra() {
+    acomodoPendiente = false;
+    if (!barra) return;
+    var abajo = 0;
+    ['header', '#barra-pestanas'].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (!el || !el.getClientRects().length) return;   // no está o está oculta
+      var r = el.getBoundingClientRect();
+      if (r.height && r.bottom > abajo) abajo = r.bottom;
+    });
+    barra.style.top = Math.max(PISO_BARRA, Math.round(abajo + 12)) + 'px';
+  }
+  function acomodarPronto() {
+    if (acomodoPendiente) return;
+    acomodoPendiente = true;
+    window.requestAnimationFrame(acomodarBarra);
   }
 
   /* Estado de guardado, al lado del botón (LC 2026-08-13, Oscar: «el aviso de

@@ -13,6 +13,10 @@ izquierda y Notas con el resumen de dinero a la derecha. Con la actualización
 anterior la pantalla se había recorrido: dejaba un hueco arriba a la izquierda y
 mandaba Notas hasta abajo. No se perdió nada de lo capturado.
 
+**Los botones Guardar y Deshacer ya no quedan cruzados por una línea.** Con la
+barra de pestañas arriba, su borde pasaba a media altura de los botones; ahora se
+acomodan solos debajo de la barra.
+
 ## Novedades — Varias pantallas en pestañas, aviso si alguien más editó lo mismo, y la app para Android (28 de septiembre de 2026)
 
 **Pestañas dentro de El Taller (en la computadora).** Puedes tener hasta seis
