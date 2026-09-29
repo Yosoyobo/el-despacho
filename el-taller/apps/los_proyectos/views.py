@@ -250,16 +250,23 @@ def _anotar_tareas(formset):
     S-Latencia-Ago24). Las archivadas no cuentan — están escondidas del Pizarrón
     y de las listas, y aquí también.
     """
-    from apps.el_pizarron.models import Tarea
     pks = [f.instance.pk for f in formset.forms if getattr(f.instance, "pk", None)]
     por_producto: dict[int, list] = {pk: [] for pk in pks}
     if pks:
-        for t in (Tarea.objects.filter(producto_id__in=pks, archivada=False)
-                  .select_related("asignada_a")
-                  .order_by("fecha_compromiso", "orden", "pk")):
+        for t in _tareas_ligadas(pks):
             por_producto[t.producto_id].append(t)
     for f in formset.forms:
         f.tareas = por_producto.get(getattr(f.instance, "pk", None), [])
+
+
+def _tareas_ligadas(pks):
+    """Las tareas vigentes colgadas de estas líneas, en el orden de la tarjeta.
+    **Una sola consulta** — la comparten el formset y el repintado del bloque
+    tras crear una tarea rápida (así no hay dos criterios de «qué se lista»)."""
+    from apps.el_pizarron.models import Tarea
+    return (Tarea.objects.filter(producto_id__in=list(pks), archivada=False)
+            .select_related("asignada_a")
+            .order_by("fecha_compromiso", "orden", "pk"))
 
 
 def _sync_procesos_formset(formset):
@@ -1479,6 +1486,36 @@ def agregar_tarea_modal(request, pk):
         form = TareaForm()
     return render(request, "proyectos/_modal_agregar_tarea.html",
                   {"form": form, "proyecto": proyecto, "producto": producto})
+
+
+@login_required
+@require_POST
+def producto_tarea_rapida(request, pk, prod_pk):
+    """«@persona qué hacer [cuándo]» + Enter en el bloque de tareas de la tarjeta
+    de producto (LC 2026-09-28, Oscar): crea la tarea DIRECTO, sin IA, ligada a
+    esa línea. Responde el bloque repintado (lista nueva y campo limpio), o el
+    mismo bloque con el error y lo que se escribió para no perderlo.
+
+    Ver `apps.los_proyectos.tarea_rapida` para lo que no se adivina.
+    """
+    from . import tarea_rapida
+
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not puede_editar_proyecto(request.user, proyecto):
+        return HttpResponseForbidden("Sin permiso.")
+    linea = get_object_or_404(ProyectoProducto, pk=prod_pk, proyecto=proyecto)
+    texto = (request.POST.get("texto") or "").strip()
+    res = tarea_rapida.crear_desde_texto(
+        proyecto=proyecto, producto=linea, texto=texto, usuario=request.user)
+    ctx = {
+        "linea": linea,
+        "tareas": list(_tareas_ligadas([linea.pk])),
+        "texto_tarea": "" if res["ok"] else texto,
+        "error_tarea": res["error"],
+        "tarea_creada": res.get("tarea"),
+        "de_entrega": res.get("fecha_de_entrega", False),
+    }
+    return render(request, "proyectos/_producto_tareas.html", ctx)
 
 
 def _siguiente_orden_producto(proyecto) -> int:

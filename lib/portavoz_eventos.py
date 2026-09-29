@@ -119,6 +119,9 @@ EventoTipo = Literal[
     "catalogo.servicio_actualizado",
     "catalogo.servicio_imagen",
     "catalogo.costo_propagado",
+    # LC 2026-09-28: el proveedor ★ nuevo del catálogo baja a los proyectos
+    # que el usuario confirmó en el modal «¿También en estos proyectos?».
+    "catalogo.proveedor_propagado",
     "catalogo.variacion_creada",
     "catalogo.variacion_actualizada",
     "mandado.estado_cambiado",

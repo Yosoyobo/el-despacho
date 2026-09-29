@@ -1,0 +1,51 @@
+{% comment %}
+LC 2026-09-28 (Oscar): cambiar el proveedor ★ de un producto «pregunta al
+guardar». Este modal se abre solo en la ficha, justo después de guardar, con las
+líneas de proyecto donde el cambio tiene sentido —vivas, sin egreso, sin
+cotización pagada y con el proveedor ANTERIOR puesto—, todas marcadas. Sólo lo
+que se deja marcado cambia; cerrar el modal deja los proyectos como estaban.
+Patrón Wave 5: se inyecta en `#modal-slot` y el POST responde 204 + HX-Redirect.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm dark:bg-gray-900/80">
+    <div class="relative mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
+        <header class="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            <div class="min-w-0">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">¿También en estos proyectos?</h2>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    El proveedor principal de «{{ servicio.nombre }}» ahora es
+                    <strong class="text-gray-700 dark:text-gray-200">{{ nuevo.razon_social|default:"—" }}</strong>{% if anterior %} (antes {{ anterior.razon_social }}){% endif %}.
+                </p>
+            </div>
+            <button type="button" data-modal-slot-close class="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200" aria-label="Cerrar">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" stroke-linecap="round"/></svg>
+            </button>
+        </header>
+        {% if lineas %}
+        <form hx-post="{% url 'catalogo-propagar-proveedor' servicio.pk %}" hx-target="#modal-slot" hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="anterior" value="{{ anterior.pk }}">
+            <div class="max-h-[55vh] space-y-2 overflow-y-auto px-5 py-4">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Estos proyectos siguen abiertos y usan a {{ anterior.razon_social|default:"el proveedor anterior" }}. Desmarca los que se quedan como están.</p>
+                {% for linea in lineas %}
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 px-3 py-2 text-sm has-[:checked]:border-brand-400 has-[:checked]:bg-brand-50/60 dark:border-gray-800 dark:has-[:checked]:border-brand-500/50 dark:has-[:checked]:bg-brand-500/10">
+                    <input type="checkbox" name="lineas" value="{{ linea.pk }}" checked class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">
+                    <span class="min-w-0">
+                        <span class="block truncate font-medium text-gray-900 dark:text-gray-100">{{ linea.proyecto.nombre|default:linea.proyecto.codigo }}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ linea.proyecto.codigo }}{% if linea.proyecto.cliente %} · {{ linea.proyecto.cliente.razon_social }}{% endif %} · {{ linea.nombre_visible }} × {{ linea.cantidad }} pz</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+            <footer class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                <button type="button" data-modal-slot-close class="btn-secundario">Sólo el catálogo</button>
+                <button type="submit" class="btn-primario">Cambiar en los marcados</button>
+            </footer>
+        </form>
+        {% else %}
+        <div class="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">Ya no hay proyectos abiertos donde aplique el cambio.</div>
+        <footer class="flex justify-end border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+            <button type="button" data-modal-slot-close class="btn-secundario">Entendido</button>
+        </footer>
+        {% endif %}
+    </div>
+</div>

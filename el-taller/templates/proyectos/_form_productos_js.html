@@ -285,8 +285,8 @@
         };
     }
     // ── Color de la tarjeta ──────────────────────────────────────────────────
-    // Un color mencionado en el nombre o la descripción manda sobre el que se le
-    // repartió al darla de alta (misma regla que `ProyectoProducto.color_efectivo`,
+    // Un color mencionado en el alias o en el nombre del catálogo manda sobre el
+    // que se le repartió al darla de alta (misma regla que `ProyectoProducto.color_efectivo`,
     // aquí en vivo para que se vea mientras escribes). La lista de palabras la
     // sirve el mismo módulo de Python, así que no hay dos verdades.
     const COLORES_PALABRAS = {% colores_palabras_json %};
@@ -306,15 +306,14 @@
         return '';
     }
     // LC 2026-08-18 R2 (Oscar): los textos se revisan POR SEPARADO y en orden —
-    // alias del proyecto, luego el nombre del catálogo, y al final la
-    // descripción. Concatenados, «Números Azules» sobre un catálogo «Playera
-    // Roja» salía roja. Espeja `ProyectoProducto.color_efectivo`.
+    // alias del proyecto y luego el nombre del catálogo. Concatenados, «Números
+    // Azules» sobre un catálogo «Playera Roja» salía roja.
+    // LC 2026-09-28 (Oscar): «sólo alias y catálogo» — la descripción ya NO
+    // decide el color. Espeja `ProyectoProducto.color_efectivo`.
     function colorDeLaTarjeta(card) {
         const alias = card.querySelector('[data-alias-input]');
-        const desc = (card.querySelector('textarea[name$="-nota"]') || {}).value || '';
         return colorDelTexto(alias ? alias.value : '')
-            || colorDelTexto(nombreCatalogo(card))
-            || colorDelTexto(desc);
+            || colorDelTexto(nombreCatalogo(card));
     }
     function repintarColor(card) {
         if (!card.hasAttribute('data-card-color')) return;
@@ -850,10 +849,6 @@
         if (t.matches('input[name$="-precio_unitario"], input[name$="-costo_unitario"], .imp-costo, .proc-costo')) { recalcularEscalas(card); }
         // Al teclear el alias, el resumen de la cabecera lo refleja en vivo.
         if (t.matches('[data-alias-input]')) recalcular(card);
-        // La Descripción alimenta el color de la tarjeta (una playera «negra»
-        // sale en negro), así que al escribirla se repinta. Ya no se mide el
-        // textarea: de eso se encarga `ui.js` al enfocarlo.
-        if (t.matches('textarea[data-crece-al-enfocar]')) repintarColor(card);
     });
     document.addEventListener('click', function (e) {
         // LC 2026-07 (Oscar): renombrar el producto SOLO para este proyecto.
@@ -1369,5 +1364,44 @@ por un endpoint aparte.{% endcomment %}
     // Antes el toggle On subía la tarjeta al tope y Off la mandaba al fondo (y el
     // `Meta.ordering` del modelo repetía la jugada al recargar). Se retiró: el
     // orden lo manda SOLO el arrastre. Apagar una línea la atenúa en su lugar.
+})();
+</script>
+<script>
+{% comment %}LC 2026-09-28 (Oscar): «@persona crea una tarea ligada al producto»,
+directo y sin IA. El campo de dictado de cada tarjeta ya monta la lista de
+personas al teclear @ (`referencias.js`, por `data-referencias`); aquí sólo vive
+el Enter que CREA la tarea.
+
+- Con la lista de personas abierta, Enter ELIGE a la persona: `referencias.js`
+  lo atrapa en fase de captura y detiene el evento, así que este listener ni se
+  entera. Éste sólo corre con la lista cerrada.
+- Sólo crea si el texto trae una @mención; sin ella, Enter hace lo de siempre
+  (el dictado a El Chalán sigue siendo el botón de al lado).
+- Mayúsculas+Enter es salto de línea, y nunca a media composición de una letra
+  (una ñ o un acento se escriben en dos pulsaciones: regla de 2026-08-28).
+- Delegado en `document`: la tarjeta se repinta por HTMX y un listener pegado al
+  campo se perdería con ella.{% endcomment %}
+(function () {
+    var RE_MENCION = /(^|[^\w@])@[A-Za-z0-9_]/;
+    var pendiente = '';
+    document.addEventListener('keydown', function (e) {
+        var campo = e.target;
+        if (!campo || !campo.matches || !campo.matches('textarea[data-tarea-rapida-campo]')) return;
+        if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+        if (!RE_MENCION.test(campo.value || '')) return;
+        var pk = campo.getAttribute('data-tarea-rapida-campo');
+        var boton = document.querySelector('[data-tarea-rapida="' + pk + '"]');
+        if (!boton) return;
+        e.preventDefault();
+        pendiente = pk;
+        boton.click();
+    });
+    // Tras el repintado, el cursor vuelve al campo para seguir apuntando.
+    document.body.addEventListener('htmx:afterSettle', function () {
+        if (!pendiente) return;
+        var campo = document.getElementById('tareas-dictado-' + pendiente);
+        pendiente = '';
+        if (campo) campo.focus();
+    });
 })();
 </script>

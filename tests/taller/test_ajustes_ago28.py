@@ -57,11 +57,17 @@ def test_el_js_de_la_tarjeta_ya_no_mide_el_textarea():
     )
 
 
-def test_al_escribir_la_descripcion_se_sigue_repintando_el_color():
-    """Quitar la medición no puede llevarse el color: una playera «negra» sale
-    en negro justo mientras se escribe (regla de colores del 18-ago)."""
+def test_la_descripcion_ya_no_decide_el_color_de_la_tarjeta():
+    """LC 2026-09-28 (Oscar): «sólo alias y catálogo». Este test fijaba que al
+    escribir la Descripción se repintara el color (regla del 18-ago); la regla
+    se retiró a propósito, así que ahora fija lo contrario: el JS no lee la
+    Descripción para el color ni repinta al escribirla. El alias y el catálogo
+    siguen repintando (`recalcular` → `repintarColor`)."""
     src = TPL_JS_TARJETA.read_text(encoding="utf-8")
-    assert "textarea[data-crece-al-enfocar]" in src
+    ini = src.index("function colorDeLaTarjeta")
+    cuerpo = src[ini:src.index("function repintarColor")]
+    assert "-nota" not in cuerpo
+    assert "textarea[data-crece-al-enfocar]')) repintarColor" not in src
     assert "repintarColor" in src
 
 
