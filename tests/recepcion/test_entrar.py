@@ -1,5 +1,6 @@
-"""Entrar a La Recepción: el enlace de un solo uso, el correo que no delata a
-nadie, el rate-limit, revocar a media sesión y Google sólo con acceso."""
+"""Entrar a La Recepción: la llave personal que no caduca ni se gasta pero pide
+el correo al que se mandó (Oscar, 2026-09-29), el correo que no delata a nadie,
+el rate-limit, revocar a media sesión y Google sólo con acceso."""
 
 from __future__ import annotations
 
@@ -72,79 +73,167 @@ def test_en_la_base_solo_queda_el_hash_del_token(client, uno, correos):
     assert len(e.token_hash) == 64
 
 
-# ── Canjear ─────────────────────────────────────────────────────────────────
+# ── La llave: no caduca, no se gasta, pide el correo ─────────────────────
 
 
-def test_abrir_el_enlace_no_lo_gasta_y_el_post_si(client, uno, correos):
-    """Los filtros de correo abren los enlaces: el GET sólo enseña el botón."""
-    from portal.models import EnlaceAcceso
-
+def test_abrir_el_enlace_no_abre_sesion_y_el_post_con_su_correo_si(client, uno, correos):
+    """Los filtros de correo abren los enlaces: el GET sólo enseña la pantalla."""
     client.post("/entrar/", {"email": "ana@a.mx"})
     token = token_del_correo(correos[0][2])
     r = client.get(f"/entrar/{token}/")
     assert r.status_code == 200 and b"Entrar al portal" in r.content
-    assert EnlaceAcceso.objects.get().usado_en is None
+    assert b'name="email"' in r.content
     assert client.get("/").status_code == 302  # todavía sin sesión
 
-    r = client.post(f"/entrar/{token}/")
+    r = client.post(f"/entrar/{token}/", {"email": " ANA@a.mx "})
     assert r.status_code == 302 and r["Location"] == "/"
     assert client.get("/").status_code == 200
     uno["acceso"].refresh_from_db()
     assert uno["acceso"].ultima_entrada_en is not None
 
 
-def test_el_enlace_sirve_una_sola_vez(client, uno, correos):
+def test_la_pantalla_del_enlace_no_delata_el_correo(client, uno, correos):
+    """Quien tiene el enlace en la mano no se entera de a qué correo se mandó:
+    es justo lo que la llave pide."""
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    assert b"ana@a.mx" not in client.get(f"/entrar/{token}/").content
+    malo = client.post(f"/entrar/{token}/", {"email": "otro@x.mx"})
+    assert b"ana@a.mx" not in malo.content
+    # Tampoco el correo de la llave: si lo reenvían, no va con él.
+    assert "ana@a.mx" not in correos[0][2].split("Hola")[1].split("Entrar al portal")[1]
+
+
+def test_con_otro_correo_no_entra(client, uno, correos):
+    from portal.models import EventoPortal
+
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    r = client.post(f"/entrar/{token}/", {"email": "intruso@x.mx"})
+    assert r.status_code == 400
+    assert b"no es el correo" in r.content
+    assert client.get("/").status_code == 302
+    assert EventoPortal.objects.filter(tipo="correo_mal").count() == 1
+    r = client.post(f"/entrar/{token}/", {"email": ""})
+    assert r.status_code == 400 and client.get("/").status_code == 302
+
+
+def test_la_llave_sirve_una_y_otra_vez(client, uno, correos):
+    """El reclamo de Oscar: «los links expiran una vez que entras»."""
     from django.test import Client
 
-    client.post("/entrar/", {"email": "ana@a.mx"})
-    token = token_del_correo(correos[0][2])
-    assert client.post(f"/entrar/{token}/").status_code == 302
-    intruso = Client()
-    r = intruso.post(f"/entrar/{token}/")
-    assert r.status_code == 410
-    assert intruso.get("/").status_code == 302
-    assert intruso.get(f"/entrar/{token}/").status_code == 410
-
-
-def test_el_enlace_vencido_no_abre(client, uno, correos):
     from portal.models import EnlaceAcceso
 
     client.post("/entrar/", {"email": "ana@a.mx"})
     token = token_del_correo(correos[0][2])
-    EnlaceAcceso.objects.update(expira_en=timezone.now() - dt.timedelta(seconds=1))
-    assert client.post(f"/entrar/{token}/").status_code == 410
-    assert client.get("/").status_code == 302
-
-
-def test_el_enlace_de_entrada_vence_en_minutos(client, uno, correos):
-    from portal.models import EnlaceAcceso
-
-    client.post("/entrar/", {"email": "ana@a.mx"})
+    for _ in range(3):
+        http = Client()
+        assert http.post(f"/entrar/{token}/", {"email": "ana@a.mx"}).status_code == 302
+        assert http.get("/").status_code == 200
     e = EnlaceAcceso.objects.get()
-    assert dt.timedelta(minutes=15) <= e.expira_en - e.creado_en <= dt.timedelta(minutes=30)
+    assert e.usos == 3 and e.usado_en is not None and e.ultimo_uso_en is not None
 
 
-def test_solo_el_ultimo_enlace_sirve(client, uno, correos):
+def test_la_llave_no_caduca(client, uno, correos):
+    from portal.models import EnlaceAcceso
+
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    e = EnlaceAcceso.objects.get()
+    assert e.expira_en is None
+    # Un año después sigue abriendo.
+    EnlaceAcceso.objects.update(creado_en=timezone.now() - dt.timedelta(days=365))
+    assert client.post(f"/entrar/{token}/", {"email": "ana@a.mx"}).status_code == 302
+
+
+def test_con_la_sesion_abierta_el_enlace_entra_derecho(client, uno, correos):
+    """«Que picar el botón te lleve»: la segunda vez ni pregunta."""
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    client.post(f"/entrar/{token}/", {"email": "ana@a.mx"})
+    r = client.get(f"/entrar/{token}/")
+    assert r.status_code == 302 and r["Location"] == "/"
+
+
+def test_pedirlo_otra_vez_reenvia_la_misma_llave(client, uno, correos):
+    from portal.models import EnlaceAcceso
+
     client.post("/entrar/", {"email": "ana@a.mx"})
     client.post("/entrar/", {"email": "ana@a.mx"})
-    viejo, nuevo = token_del_correo(correos[0][2]), token_del_correo(correos[1][2])
-    assert client.post(f"/entrar/{viejo}/").status_code == 410
-    assert client.post(f"/entrar/{nuevo}/").status_code == 302
+    assert token_del_correo(correos[0][2]) == token_del_correo(correos[1][2])
+    assert EnlaceAcceso.objects.count() == 1
+
+
+def test_la_invitacion_y_el_pedido_son_la_misma_llave(client, uno, correos):
+    from portal import servicios
+
+    servicios.invitar(uno["cliente"], "ana@a.mx", None)
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    assert token_del_correo(correos[0][2]) == token_del_correo(correos[1][2])
+
+
+def test_cambiar_la_llave_anula_la_anterior(client, uno, correos):
+    from portal import servicios
+
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    viejo = token_del_correo(correos[0][2])
+    res = servicios.cambiar_enlace(uno["acceso"], None)
+    assert res.correo_ok
+    nuevo = token_del_correo(correos[1][2])
+    assert viejo != nuevo
+    r = client.post(f"/entrar/{viejo}/", {"email": "ana@a.mx"})
+    assert r.status_code == 410 and "se cambió".encode() in r.content
+    assert client.post(f"/entrar/{nuevo}/", {"email": "ana@a.mx"}).status_code == 302
+
+
+def test_una_llave_de_antes_se_cifra_al_usarla_y_desde_ahi_se_reenvia(client, uno, correos):
+    """Las de antes de 2026-09-29 sólo tienen el hash: al entrar con ellas se
+    cifran (el token viaja en esa petición) y «pedir mi enlace» manda la misma."""
+    import secrets as _s
+
+    from portal import servicios
+    from portal.models import EnlaceAcceso
+
+    token = _s.token_urlsafe(32)
+    EnlaceAcceso.objects.create(acceso=uno["acceso"], token_hash=servicios.hash_token(token),
+                                motivo="invitacion", expira_en=None)
+    assert client.post(f"/entrar/{token}/", {"email": "ana@a.mx"}).status_code == 302
+    assert EnlaceAcceso.objects.get().token_cifrado
+    from django.test import Client
+
+    Client().post("/entrar/", {"email": "ana@a.mx"})
+    assert token_del_correo(correos[0][2]) == token
+    assert EnlaceAcceso.objects.count() == 1
+
+
+def test_en_la_base_la_llave_va_cifrada_nunca_en_claro(client, uno, correos):
+    from portal.models import EnlaceAcceso
+
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    e = EnlaceAcceso.objects.get()
+    assert token not in e.token_cifrado and token not in e.token_hash
 
 
 def test_un_token_inventado_no_abre(client, uno):
-    assert client.post("/entrar/no-existe-este-token/").status_code == 410
+    assert client.post("/entrar/no-existe-este-token/", {"email": "ana@a.mx"}).status_code == 404
     assert client.get("/entrar/no-existe-este-token/").status_code == 404
     assert client.get("/").status_code == 302
 
 
 def test_la_sesion_es_nueva_al_entrar(client, uno, entrar_como):
-    """Llave de sesión nueva al canjear: nada de fijación de sesión."""
+    """Llave de sesión nueva al entrar: nada de fijación de sesión."""
     client.get("/entrar/")
     client.session.save()
     antes = client.session.session_key
     entrar_como(uno["acceso"])
     assert client.session.session_key != antes
+
+
+def test_el_correo_de_la_llave_dice_que_no_caduca(client, uno, correos):
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    html = correos[0][2]
+    assert "no caduca" in html and "una sola vez" not in html
 
 
 # ── Revocar cierra la sesión viva ───────────────────────────────────────────
@@ -163,13 +252,17 @@ def test_revocar_cierra_la_sesion_que_estaba_abierta(client, uno, entrar_como, c
     assert client.get("/proyectos/").status_code == 302
 
 
-def test_revocar_vence_los_enlaces_pendientes(client, uno, correos):
+def test_revocar_anula_la_llave(client, uno, correos):
     from portal import servicios
 
     client.post("/entrar/", {"email": "ana@a.mx"})
     token = token_del_correo(correos[0][2])
     servicios.revocar(uno["acceso"], None)
-    assert client.post(f"/entrar/{token}/").status_code == 410
+    assert client.post(f"/entrar/{token}/", {"email": "ana@a.mx"}).status_code == 404
+    # Y al volver a invitarla, la llave es otra: la de antes no revive.
+    servicios.invitar(uno["cliente"], "ana@a.mx", None)
+    assert token_del_correo(correos[-1][2]) != token
+    assert client.post(f"/entrar/{token}/", {"email": "ana@a.mx"}).status_code == 410
 
 
 def test_archivar_al_cliente_tambien_cierra_la_sesion(client, uno, entrar_como):
@@ -232,12 +325,17 @@ def test_sin_redis_el_portal_se_niega_en_vez_de_quedar_sin_freno(client, uno, co
     assert correos == []
 
 
-def test_el_canje_tambien_tiene_freno(client, uno, limite_real):
-    from apps.portal_cliente.views import LIMITE_POR_IP
+def test_probar_correos_en_una_llave_tiene_freno(client, uno, correos, limite_real):
+    """Con la llave en la mano no se pueden adivinar correos: 5 por enlace."""
+    from apps.portal_cliente.views import LIMITE_POR_ENLACE
 
-    for _ in range(LIMITE_POR_IP):
-        client.post("/entrar/token-falso/")
-    assert client.post("/entrar/token-falso/").status_code == 429
+    client.post("/entrar/", {"email": "ana@a.mx"})
+    token = token_del_correo(correos[0][2])
+    for i in range(LIMITE_POR_ENLACE):
+        assert client.post(f"/entrar/{token}/", {"email": f"prueba{i}@x.mx"}).status_code == 400
+    r = client.post(f"/entrar/{token}/", {"email": "ana@a.mx"})
+    assert r.status_code == 429
+    assert client.get("/").status_code == 302
 
 
 # ── Google (§4 #7: sólo con acceso, nunca auto-registro) ────────────────────
@@ -314,17 +412,16 @@ def test_una_sesion_de_antes_de_revocar_no_revive_al_reinvitar(client, uno, entr
     assert r.status_code == 302 and r["Location"].startswith("/entrar/")
 
 
-def test_revocar_deja_vencidos_en_la_base_los_enlaces_pendientes(uno):
-    """Defensa en profundidad: aunque el acceso inactivo ya no deja canjear, el
-    enlace pendiente queda vencido en la base (un respaldo restaurado o un
-    acceso reactivado a mano no lo revive)."""
+def test_revocar_deja_anulada_en_la_base_la_llave(uno):
+    """Defensa en profundidad: aunque el acceso inactivo ya no deja entrar, la
+    llave queda anulada en la base (un acceso reactivado a mano no la revive)."""
     from portal import servicios
     from portal.models import EnlaceAcceso
 
     servicios._crear_enlace(uno["acceso"], "entrada")
     servicios.revocar(uno["acceso"], None)
     e = EnlaceAcceso.objects.get()
-    assert e.expira_en <= timezone.now() and e.usado_en is None
+    assert e.anulado_en is not None and not e.vigente
 
 
 

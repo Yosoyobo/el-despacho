@@ -62,4 +62,13 @@ class SesionClienteMiddleware:
             if request.method == "GET" and request.path not in ("/", ""):
                 destino += "?next=" + quote(request.get_full_path(), safe="/")
             return redirect(destino)
-        return self.get_response(request)
+        response = self.get_response(request)
+        # 2026-09-29: de quién es la petición, para Peticiones en vivo (El Vigía /
+        # El Site). gunicorn la escribe en su log y El Portero la quita antes de
+        # que salga al navegador (`Caddyfile`, snippet `(sin_quien)`).
+        from lib.historial_actividad import CABECERA, cabecera_quien
+
+        quien = cabecera_quien(request)
+        if quien:
+            response[CABECERA] = quien
+        return response

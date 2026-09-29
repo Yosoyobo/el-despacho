@@ -1,4 +1,4 @@
-{% load forms_helpers presencia %}
+{% load forms_helpers presencia permisos %}
 {% for u in usuarios %}
 <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]{% if request.user.es_super_admin %} cursor-pointer{% endif %}"
     {% if request.user.es_super_admin %}hx-get="{% url 'directorio-panel' u.pk %}" hx-target="#modal-slot" hx-swap="innerHTML"{% endif %}>
@@ -33,6 +33,9 @@
     <td class="px-5 py-3">{% if u.is_active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-error">Bloqueado</span>{% endif %}</td>
     <td class="px-5 py-3 text-right" data-no-row-click onclick="event.stopPropagation()">
         <div class="inline-flex items-center gap-2">
+            {% if request.user|puede:"equipo.ver_historial" or u.pk == request.user.pk %}
+            <a href="{% url 'directorio-actividad' u.pk %}" class="text-sm font-medium text-gray-600 hover:text-brand-600 hover:underline dark:text-gray-300 dark:hover:text-brand-400">Actividad</a>
+            {% endif %}
             {% if request.user.es_super_admin %}
             <button type="button" hx-get="{% url 'directorio-panel' u.pk %}" hx-target="#modal-slot" hx-swap="innerHTML" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Abrir</button>
             {% else %}

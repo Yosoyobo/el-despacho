@@ -41,4 +41,7 @@ urlpatterns = [
     path("facturas/<int:pk>/", views.factura, name="recepcion-factura"),
     path("facturas/<int:pk>/pdf/", views.factura_pdf, name="recepcion-factura-pdf"),
     path("facturas/<int:pk>/xml/", views.factura_xml, name="recepcion-factura-xml"),
+    path("documentos/", views.documentos, name="recepcion-documentos"),
+    path("documentos/subir/", views.documento_subir, name="recepcion-documento-subir"),
+    path("documentos/<int:pk>/archivo/", views.documento_archivo, name="recepcion-documento-archivo"),
 ]

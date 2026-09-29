@@ -38,7 +38,9 @@ Las piezas en el código (`lib/permisos_defaults.py`):
 - **`DEFAULTS_POR_ROL`** — qué trae cada rol del sistema de fábrica (tabla abajo).
 - **`PERMISOS_UNIVERSALES`** — lo que **toda** persona trae desde que nace, sea
   cual sea su rol: hoy `equipo.ver_actividad` (ver quién está en línea). Se
-  revoca por persona, no por rol.
+  revoca por persona, no por rol. Ojo: `equipo.ver_historial` (ver el historial
+  de actividad de OTRAS personas, un año) **no** es universal — nace sólo para
+  super_admin y dueño; el propio historial lo ve cada quien sin permiso.
 
 ## Roles del sistema, roles personalizados y rol primario
 
@@ -103,7 +105,7 @@ producción manda lo que diga esa pantalla.
 | `catalogos` | todo | — | — | — |
 | `interfono` | todo | todo | — | — |
 | `mcp` | todo | — | — | — |
-| `equipo` | todo | todo | todo | todo |
+| `equipo` | todo | todo | ver_actividad | ver_actividad |
 | `recepcion` | todo | todo | — | — |
 <!-- tabla-roles:fin -->
 

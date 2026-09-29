@@ -10817,7 +10817,172 @@ ningún permiso efectivo (foto de producción y 5 primarios × todas las combina
 S-Roles-V2, no existe en producción) pierde el super_admin al guardar el panel
 (`sincronizar_rol_primario`), con o sin este arreglo.
 
-### S-Imprenta · Deploy 1 ✅ — VERSION 2026.09.12 (2026-09-29)
+### S-Historial-Actividad ✅ — Historial de actividad y quién hace cada petición (2026-09-29, VERSION 2026.09.12)
+
+Oscar: «ya tenemos la actividad del equipo, ahora sólo falta cruzar eso con las
+peticiones en vivo y almacenar la actividad de los usuarios». Decisiones (4
+preguntas): guardar **pantallas y acciones** (no cada petición, no sólo sesiones) ·
+**un año** · el de otros con **permiso nuevo sólo para dueños**, el propio siempre ·
+Peticiones en vivo con **nombre y además IP**.
+
+**Entregado** (`tests/test_historial_actividad.py`, 58; tres mutaciones vistas fallar)
+- **El cruce, sin escritura extra por petición.** `PresenciaMiddleware` pone
+  `X-Despacho-Quien` (`u:<id>`, `u:<real>><como>` impersonando, `c:<acceso>` desde
+  `SesionClienteMiddleware` del portal); gunicorn la loguea con
+  `"%({x-despacho-quien}o)s"` antes de `%(D)s` en las 3 apps (probado con gunicorn
+  23 real); `lib/site/actividad._RE_COLA_QUIEN` (se prueba ANTES que `_RE_COLA`,
+  que casaría los 3 últimos campos) + `con_personas()` (2 consultas por refresco).
+  El Portero la quita: snippet `(sin_quien)` con `header -X-Despacho-Quien`
+  (borrado diferido, alcanza al `reverse_proxy`) en taller/gerencia/recepción/`:80`.
+  La cabecera sólo se arma si `request.user` ya estaba cargado (no fuerza 2 consultas).
+- **Panel `_peticiones.html`** (compartido pared/El Site, §4 #22): nombre (+ empresa
+  si es cliente, «como X» si impersona) y la IP debajo; en El Site el nombre enlaza a
+  `directorio-actividad` si `equipo.ver_historial`. Arreglo de paso: La Recepción se
+  pintaba como «El Mostrador».
+- **`cuentas/0052_registro_actividad`** (esquema) + **`0053_seed_permiso_equipo_historial`**
+  (datos, super_admin + dueño por persona y JSON de sus roles). `RegistroActividad`:
+  usuario (el real), `como`, tipo pantalla/accion/entrada/salida, app, ruta +
+  url_name + kwargs de la PANTALLA, `destino` + `destino_url_name` del POST, IP, agente.
+- **`lib/historial_actividad.py`**: pantalla nueva = renglón; misma pantalla sólo si se
+  NAVEGA a ella otra vez tras 60 s (los fragmentos HTMX nunca); acción = POST <400
+  **incluidas 3xx** (guardar un form clásico redirige) desde `HX-Current-URL`/Referer,
+  misma acción <60 s no repite (autoguardado). Último renglón por tipo en caché
+  (fallback 1 consulta indexada). Sondeo excluido con `presencia.es_sondeo`. Texto al
+  mostrar reusando `presencia._PANTALLAS/_objeto` (nombre sólo si quien mira lo abre).
+  Tiempo activo = huecos topados a 5 min, no cuenta tras «salida». Días en hora MX.
+- **Pantallas**: vista compartida `cuentas/historial_views.py` (`vista_persona` /
+  `vista_propia`), partial dual-copy `_historial_actividad.html`; La Gerencia
+  `/directorio/<pk>/actividad` (+ «Actividad» en la fila), El Taller
+  `/directorio/<pk>/actividad/` («Ver su actividad» en la ficha) y `/perfil/actividad/`
+  («Mi actividad»). Navegación por días con actividad, 4 cifras, CSV del día / 30 días.
+- **El Chalán + MCP**: `historial_de_actividad(persona?, fecha?)` (gating abierto,
+  permiso re-chequeado dentro) + tool stdio en `mcp_despacho`.
+- **Purga**: `manage.py historial_actividad_purgar` (`--dry-run`) a las 4:35 en
+  `infra/cron/el-despacho.cron`, por tandas de 5 000.
+- **Aviso de privacidad** (Taller + Gerencia): párrafo «Registro de actividad del
+  equipo». El del portal ya declaraba IP y navegador.
+
+**Decisiones durables**
+- El historial NO reemplaza la presencia: son dos escritores con topes distintos
+  (presencia 1/min por los campos del usuario; historial por cambio de pantalla).
+- La identidad del flujo viaja en el log, no en Redis ni en una tabla: nombre al leer.
+- `equipo.ver_historial` NO es universal (`PERMISOS_UNIVERSALES` sigue sólo con
+  `ver_actividad`); constante `HISTORIAL_EQUIPO` en `permisos_defaults`.
+
+**Deuda**
+- Un POST que vuelve 200 con errores de formulario se anota como «guardó» (no se
+  distingue sin tocar cada vista).
+- Sin resumen diario permanente: a los 12 meses se borra todo el detalle (Oscar eligió
+  un año sin resumen).
+- La actividad de los clientes del portal no va al historial (sólo al flujo en vivo);
+  el portal tiene su propio `portal.EventoPortal`.
+- Líneas de log anteriores al deploy no traen identidad: salen sólo con IP hasta que
+  roten.
+- Costo medido: la primera visita a una pantalla suma 4 consultas (savepoint + INSERT,
+  y un SELECT si la caché no tiene el último renglón); repetirla dentro del minuto,
+  cero. Un test que compare consultas entre dos GET debe calentar antes (se ajustó
+  `test_ajustes_ago12::test_las_fichas_no_hacen_una_consulta_por_producto`).
+
+### S-KPIs-Guardar ✅ — VERSION 2026.09.13 (2026-09-29)
+
+Oscar: «los KPIs me dan error 500 al guardar». Causa: `la-gerencia/Dockerfile` no
+copiaba `el-taller/apps/taller_home/` ni estaba en `INSTALLED_APPS`, y La Gerencia
+importa `MetaKPI` (Los Ajustes → KPIs) y `KPICustom` (Los Chalanes → KPIs pendientes).
+El panel de metas lo importaba dentro de `try/except Exception` → salía vacío en
+silencio; el guardado y las tres vistas de aprobación → `ModuleNotFoundError` → 500.
+La suite no lo veía porque `tests/django_settings.py` instala todo junto (§14 Bug A).
+
+Entregado:
+- `COPY el-taller/apps/taller_home/` + `apps.taller_home` en `INSTALLED_APPS` de
+  Gerencia (sus modelos sólo dependen de `AUTH_USER_MODEL` y `chalanes`; las
+  migraciones ya las corría El Taller). Se quitó el `try/except` del panel.
+- Candado estático `tests/gerencia/test_gerencia_trae_lo_que_importa.py`: toda app
+  `apps.<x>` que importe `la-gerencia/` y no viva ahí debe tener su `COPY` y estar en
+  `INSTALLED_APPS`. Se vio fallar antes del arreglo.
+- `tests/gerencia/test_metas_kpi.py`: guardar → persistir → el panel lo muestra; vacío borra.
+- `lib/kpi_dsl/schema.py` nombraba campos inexistentes (FieldError al previsualizar):
+  `tarea.campo_autor=creada_por` → `creado_por`; `proyecto.tipo` → `archivado`;
+  `cliente.archivado` → `activo` (+ `estado`). Candado
+  `tests/test_kpi_dsl_campos_existen.py` resuelve cada campo contra el modelo real.
+- Verificado con la imagen de Gerencia simulada (árbol armado con los `COPY` del
+  Dockerfile): `manage.py check` limpio y la ruta de guardado resuelve.
+
+Deuda / siguiente: ronda de preguntas con Oscar sobre KPIs nuevos y configurarlos
+desde La Gerencia (el panel de metas tiene 6 slugs fijos en código; la curaduría
+propone metas para otros 8 que no se pueden capturar; el tablero compacto pinta 8
+slugs fijos aunque las preferencias ofrezcan ~90; la foto diaria guarda KPIs
+personales como si fueran del despacho).
+
+### S-Portal-Llave-Documentos ✅ — VERSION 2026.09.14 (2026-09-29)
+
+Oscar, dos pedidos sobre La Recepción: «los links expiran una vez que entras, debemos
+hacer que no expiren, siempre pide el correo al que se envió el registro y que picar
+el botón te lleve» y «que el cliente pueda subir documentación: comprobante de
+depósito, RFC, CSF, acta constitutiva, etc.». Plan enseñado antes de construir;
+decisiones (literales): **revivir el último enlace de cada quien**; el comprobante
+**sólo avisa** (no registra cobro); El Chalán lee la CSF y propone **«y además verifica
+que esté en rango de tiempo. Ese tiempo es configurable en la gerencia»**; lista de
+documentos pedidos configurable.
+
+**La llave** (`portal/models/enlace.py`, `portal/servicios.py`)
+- `EnlaceAcceso` ya no caduca (`expira_en` vacío) ni se gasta: `anulado_en`,
+  `token_cifrado` (La Bóveda, para reenviar LA MISMA), `usos`, `ultimo_uso_en`. Una viva
+  por persona; `llave_de()` la devuelve o crea. Invitar / reenviar / «pedir mi enlace»
+  mandan la misma; `cambiar_enlace()` anula y manda otra; revocar anula todas + sube la
+  `generacion` (corta la sesión como antes).
+- `canjear(token, email)`: GET pinta la pantalla (sigue sin abrir nada: filtros de
+  correo), POST exige el correo (`hmac.compare_digest`), rate-limit 20/IP y **5 por
+  enlace** (`LIMITE_POR_ENLACE`); con la sesión de esa persona abierta, el GET entra
+  derecho. La pantalla y el correo **no muestran el correo** (es lo que pide la llave;
+  un correo reenviado lo llevaría junto). Evento `correo_mal` en la bitácora.
+- Llaves de antes (sólo hash): se cifran la primera vez que alguien entra con ellas.
+- Ficha: «Copiar enlace» (evento `copiado`) y «Cambiar enlace» (Portavoz
+  `portal.enlace_cambiado`), permiso `recepcion.invitar`.
+- Migraciones: `portal/0004` esquema (+ documentos), `0005_revivir_ultima_llave`
+  (datos: la última de cada acceso activo sin caducidad, las demás anuladas).
+
+**Documentos** (`portal/models/documento.py`, `portal/documentos.py`, `portal/csf.py`)
+- `DocumentoCliente` (tipo, archivo en El Almacén + espejo Drive, nota, factura
+  opcional para comprobantes, estado recibido/aprobado/rechazado + motivo, `ia` +
+  `ia_estado`, aplicado_por/en). Se valida **por los primeros bytes** (PDF, JPEG, PNG,
+  WebP, HEIC), no por el `content_type`; 25 MB; nombre saneado.
+- La Recepción: `/documentos/` (subir, lo que se pide, lo entregado con estado y
+  motivo, descargar lo propio), «Subir comprobante» en la factura con saldo, aviso
+  «Nos falta papelería» en Inicio. Rate-limit 20 subidas/15 min por acceso. Todo por
+  `request.cliente`.
+- El Taller: recuadro «Documentos del cliente» en la ficha (`contexto_documentos`):
+  pendientes, ver (inline con `nosniff`; imágenes con CSP `sandbox`, PDFs sin él
+  porque Chrome no los pinta), revisar/rechazar con motivo, subir en nombre del
+  cliente, aplicar CSF (pide además `cartera.editar`), volver a leer.
+- Avisos: Interfón categoría nueva `portal_documentos` a `recepcion.documentos`; el
+  comprobante también a `facturacion.cobrar`. Sólo si lo subió el cliente. Portavoz
+  `portal.documento_subido` / `portal.documento_revisado`.
+- **CSF con El Chalán**: estación `documento_cliente` (visión, `chalanes/0022`),
+  texto del PDF con **`pypdf`** (dependencia nueva, Python puro) o la foto por visión.
+  Sólo propone; **cada dato tiene que aparecer en el texto del PDF** (RFC con forma
+  SAT, CP, fecha de emisión) o se descarta; se lee una vez en el fondo tras el commit.
+  Vigencia contra `ConfiguracionPortal.csf_vigencia_dias` (30 por default, 1–730); el
+  cliente ve el aviso si está vieja. `aplicar()` actualiza o crea la
+  `ClienteRazonSocial` del RFC y espeja la principal.
+- `ClienteRazonSocial.regimen_fiscal` + `codigo_postal` (`cartera/0009`, datos del
+  receptor CFDI 4.0) en el formulario y la ficha.
+- La Gerencia → Portal de clientes: interruptor de Documentos, lo que se pide
+  (`documentos_requeridos`, CSF por default), días de la CSF, e indicador real de si
+  la estación tiene un Chalán con llaves.
+- La Recepción ahora instala `chalanes` (+ `COPY chalanes/`) y monta `./data/media`.
+- Permiso `recepcion.documentos` (`portal/0006`, a quien tiene `recepcion.ver`, por
+  rol y por persona). Chalán/MCP: lectura `documentos_del_cliente` (gating
+  `recepcion_documentos`).
+- Pruebas: `tests/recepcion/test_documentos.py`, `tests/taller/test_documentos_cliente.py`,
+  `tests/gerencia/test_portal_documentos_ui.py`, `test_entrar.py` reescrito; 7 mutantes
+  de los candados (correo, aislamiento, tipo real, RFC inventado, llave de un uso,
+  aplicar sin cartera, aviso) verificados como caídos.
+
+**Deuda**: Paperless no recibe estos documentos (viven en El Almacén + Drive y en la
+ficha); la vigencia sólo se revisa al subir (una CSF aprobada no «vence» después);
+la foto de una CSF no se valida contra texto (no hay OCR propio), sólo por forma.
+
+### S-Imprenta · Deploy 1 ✅ — VERSION 2026.09.15 (2026-09-29)
 
 Oscar: «quiero poder editar, modificar y personalizar aún más la generación de
 PDFs». Plan aprobado en 4 deploys seguidos (cotización+factura+documentos nuevos,

@@ -24,6 +24,16 @@ class ClienteRazonSocial(models.Model):
         help_text="Nombre legal como aparece en el CFDI.",
     )
     rfc = models.CharField(max_length=13, blank=True, default="", db_index=True)
+    # Datos del receptor que pide el CFDI 4.0. Se llenan a mano o aplicando lo
+    # que El Chalán leyó de la Constancia de Situación Fiscal (portal/csf.py).
+    regimen_fiscal = models.CharField(
+        max_length=120, blank=True, default="",
+        help_text="Régimen fiscal como viene en la constancia, p. ej. «601 · General de Ley Personas Morales».",
+    )
+    codigo_postal = models.CharField(
+        max_length=5, blank=True, default="",
+        help_text="Código postal del domicilio fiscal.",
+    )
     principal = models.BooleanField(
         default=False,
         help_text="La que se usa por default al facturar.",

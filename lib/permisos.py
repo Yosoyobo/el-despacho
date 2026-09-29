@@ -490,6 +490,21 @@ def puede_ver_actividad_equipo(user) -> bool:
     return puede(user, "equipo", "ver_actividad")
 
 
+def puede_ver_historial_equipo(user) -> bool:
+    """Ver el historial de actividad de OTRAS personas (un año de pantallas y
+    acciones). Nace para super_admin y dueño; se delega por persona (§4 #20)."""
+    return puede(user, "equipo", "ver_historial")
+
+
+def puede_ver_historial_de(viewer, persona) -> bool:
+    """El propio historial lo ve cada quien; el de otro, con el permiso."""
+    if not viewer or not getattr(viewer, "is_authenticated", False):
+        return False
+    if persona is not None and getattr(persona, "pk", persona) == viewer.pk:
+        return True
+    return puede_ver_historial_equipo(viewer)
+
+
 def puede_ligar_papeleo(user) -> bool:
     """Decir de qué cliente, proyecto o proveedor es un documento."""
     return puede(user, "papeleo", "ligar")
@@ -513,6 +528,12 @@ def puede_invitar_portal(user) -> bool:
 def puede_revocar_portal(user) -> bool:
     """Quitarle a alguien el acceso a La Recepción (cierra su sesión viva)."""
     return puede(user, "recepcion", "revocar")
+
+
+def puede_documentos_portal(user) -> bool:
+    """Ver, subir y revisar la papelería que entregan los clientes (comprobantes,
+    constancia fiscal, actas). Es delicada: un acta trae datos de los socios."""
+    return puede(user, "recepcion", "documentos")
 def puede_ver_caja(user) -> bool:
     """La Caja: links de pago y los pagos que llegaron por Stripe/MercadoPago."""
     return puede(user, "caja", "ver")

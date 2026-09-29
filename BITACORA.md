@@ -13557,7 +13557,40 @@ La Caja y el Portal salen de la deuda por decisión de Oscar.
 La grilla de permisos de El Directorio ya reconoce el rol asignado: cada casilla dice
 de dónde viene y «Guardar permisos» ya no quita en silencio lo que da un rol asignado.
 
-## 2026-09-29 — S-Imprenta · Deploy 1 (VERSION 2026.09.12)
+## 2026-09-29 — S-Historial-Actividad (VERSION 2026.09.12)
+
+Oscar pidió cruzar la actividad del equipo con Peticiones en vivo y guardar la
+actividad de cada usuario. Decidió: pantallas y acciones, un año, el de otros sólo
+para dueños (permiso nuevo `equipo.ver_historial`), y en el flujo nombre y además IP.
+El nombre viaja en una cabecera que gunicorn escribe en su log y El Portero quita
+antes del navegador. Pantallas: Mi actividad (El Taller), Actividad en El Directorio
+y en la ficha de Equipo, CSV; El Chalán y MCP `historial_de_actividad`; purga nocturna;
+aviso de privacidad actualizado. Worktree propio (había otra sesión en el árbol).
+
+## 2026-09-29 — S-KPIs-Guardar (VERSION 2026.09.13)
+
+Guardar las metas de KPI en La Gerencia daba 500 y el panel salía vacío: la imagen de
+Gerencia no traía `apps.taller_home`. Se copia y se registra; también revive la
+aprobación de KPIs de equipo en Los Chalanes. Candado que compara los imports de
+Gerencia contra su Dockerfile/INSTALLED_APPS, prueba de punta a punta del formulario,
+y tres campos inexistentes del DSL de KPIs custom corregidos (con su candado).
+Siguiente: ronda de preguntas sobre KPIs nuevos configurables desde La Gerencia.
+
+## 2026-09-29 — S-Portal-Llave-Documentos (VERSION 2026.09.14)
+
+Oscar: «los links expiran una vez que entras; que no expiren, que siempre pida el
+correo y que picar el botón te lleve» y «que el cliente pueda subir documentación».
+La llave del portal ya no caduca ni se gasta: pide el correo al que se mandó (5
+intentos por enlace), se guarda cifrada para reenviar la misma, y la ficha suma
+«Copiar enlace» y «Cambiar enlace»; la migración revive la última llave de cada
+quien. Documentos: sección nueva del portal + «Subir comprobante» en la factura,
+recuadro en la ficha para revisar/rechazar/subir, lista de lo que se pide y días de
+vigencia de la CSF en La Gerencia, El Chalán lee la CSF y propone RFC/razón
+social/régimen/CP (candado contra el texto del PDF) y revisa la vigencia. Permiso
+`recepcion.documentos`. Decisiones: revivir enlaces viejos, el comprobante sólo avisa,
+checklist configurable. Worktree propio (había otra sesión en el árbol principal).
+
+## 2026-09-29 — S-Imprenta · Deploy 1 (VERSION 2026.09.15)
 
 La Imprenta: los PDF se personalizan desde Gerencia → Ajustes → Documentos. Marca
 (logotipo propio, letra, colores, tamaños), tablas, datos del despacho y firma, y

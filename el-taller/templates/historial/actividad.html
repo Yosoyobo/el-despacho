@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Actividad · {{ persona_nombre }}{% endblock %}
+{% block contenido %}
+{% comment %}El historial de actividad en El Taller (2026-09-29): Mi actividad (/perfil/actividad/) y el de alguien del equipo (/directorio/<pk>/actividad/, con equipo.ver_historial). El cuerpo es el partial dual-copy.{% endcomment %}
+{% if es_propia %}
+{% breadcrumb_items "Mi actividad" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Mi actividad" subtitulo="Lo que abriste y guardaste en el sistema, día por día. Se guarda un año." breadcrumb_items=breadcrumb_items %}
+{% else %}
+{% url 'directorio-perfil' persona.pk as url_ficha %}
+{% breadcrumb_items "Equipo" "/directorio/" persona_nombre url_ficha "Actividad" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Actividad de "|add:persona_nombre subtitulo="Qué pantallas abrió y qué guardó, día por día. Se guarda un año." breadcrumb_items=breadcrumb_items back_url=url_ficha back_label="Ficha" %}
+{% endif %}
+{% include "_componentes_tailadmin/_historial_actividad.html" %}
+{% endblock %}

@@ -30,6 +30,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+from lib.historial_actividad import leer_quien
 from lib.site import acciones
 from lib.site.contenedores import DOCKER_SOCK, _UnixHTTPConnection, disponible
 
@@ -67,6 +68,13 @@ _RE_MICROS = re.compile(r'"\s+(?P<micros>\d+)\s*$')
 # ancla al final de la línea, así que un campo después lo rompería en silencio.
 _RE_COLA = re.compile(
     r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+"(?P<xff>[^"]*)"\s+(?P<micros>\d+)\s*$'
+)
+# 2026-09-29: el formato de hoy suma un cuarto campo, `X-Despacho-Quien` (de quién
+# es la petición, lo pone `cuentas.middleware`). Se prueba ANTES que `_RE_COLA`:
+# con cuatro campos entrecomillados, `_RE_COLA` casaría los tres últimos y leería
+# la identidad como si fuera el XFF.
+_RE_COLA_QUIEN = re.compile(
+    r'"(?P<ref>[^"]*)"\s+"(?P<ua>[^"]*)"\s+"(?P<xff>[^"]*)"\s+"(?P<ident>[^"]*)"\s+(?P<micros>\d+)\s*$'
 )
 # El formato anterior no traía el XFF; se sigue leyendo para no perder las
 # líneas que ya estaban en el buffer cuando se recicló el contenedor.
@@ -152,7 +160,8 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
     m = _RE_GUNICORN.search(resto)
     if not m:
         return None
-    cola = _RE_COLA.search(resto) or _RE_COLA_VIEJA.search(resto)
+    cola = (_RE_COLA_QUIEN.search(resto) or _RE_COLA.search(resto)
+            or _RE_COLA_VIEJA.search(resto))
     ua = cola.group("ua") if cola else ""
     xff = cola.groupdict().get("xff") if cola else ""
     micros = cola.groupdict().get("micros") if cola else None
@@ -167,7 +176,77 @@ def _parsear_gunicorn(resto: str) -> dict[str, Any] | None:
         "ms": round(int(micros) / 1000, 1) if micros else None,
         "quien": acciones.quien(xff, ip.group("ip") if ip else None),
         "aparato": acciones.aparato(ua),
+        "ident": leer_quien(cola.groupdict().get("ident") or "") if cola else None,
     }
+
+
+def _nombre(u) -> str:
+    return (getattr(u, "nombre_completo", "") or getattr(u, "email", "") or "").strip()
+
+
+def con_personas(filas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Le pone nombre a cada petición que trae de quién es. Nunca lanza.
+
+    Dos consultas por refresco, sin importar cuántas filas: los ids se juntan y se
+    piden de un jalón. Quien no trae identidad (sin sesión, o una línea del
+    formato anterior) se queda con `persona = None` y el panel enseña sólo la IP.
+    """
+    ids_u: set[int] = set()
+    ids_c: set[int] = set()
+    for f in filas:
+        ident = f.get("ident")
+        if not ident:
+            continue
+        if ident["tipo"] == "u":
+            ids_u.add(ident["id"])
+            if ident.get("como"):
+                ids_u.add(ident["como"])
+        else:
+            ids_c.add(ident["id"])
+    usuarios: dict[int, Any] = {}
+    accesos: dict[int, Any] = {}
+    try:
+        if ids_u:
+            from cuentas.models.usuario import Usuario
+
+            usuarios = {u.pk: u for u in Usuario.objects.filter(pk__in=ids_u)}
+        if ids_c:
+            from portal.models.acceso import AccesoCliente
+
+            accesos = {
+                a.pk: a for a in AccesoCliente.objects.filter(pk__in=ids_c).select_related("cliente")
+            }
+    except Exception:  # noqa: BLE001 — sin nombres, el panel sigue con las IPs
+        pass
+    for f in filas:
+        ident = f.get("ident")
+        f["persona"] = None
+        if not ident:
+            continue
+        if ident["tipo"] == "u":
+            u = usuarios.get(ident["id"])
+            if u is None:
+                continue
+            como = usuarios.get(ident["como"]) if ident.get("como") else None
+            f["persona"] = {
+                "tipo": "equipo",
+                "id": u.pk,
+                "nombre": _nombre(u),
+                # Impersonando: la petición es del super_admin, mirando como alguien.
+                "detalle": f"como {_nombre(como)}" if como else "",
+            }
+        else:
+            a = accesos.get(ident["id"])
+            if a is None:
+                continue
+            cliente = getattr(a, "cliente", None)
+            f["persona"] = {
+                "tipo": "cliente",
+                "id": None,
+                "nombre": (a.nombre or a.email or "").strip(),
+                "detalle": getattr(cliente, "razon_social", "") or "",
+            }
+    return filas
 
 
 def peticiones(limite: int = 40, *, por_servicio: int = 400) -> list[dict[str, Any]]:
@@ -212,7 +291,7 @@ def peticiones(limite: int = 40, *, por_servicio: int = 400) -> list[dict[str, A
     # Sin marca de tiempo no hay forma de ordenar: van al final, no se descartan.
     filas.sort(key=lambda f: f["cuando"] or datetime.min.replace(tzinfo=UTC),
                reverse=True)
-    return filas[:limite]
+    return con_personas(filas[:limite])
 
 
 def resumen(filas: list[dict[str, Any]]) -> dict[str, Any]:
@@ -227,4 +306,4 @@ def resumen(filas: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-__all__ = ["SERVICIOS", "peticiones", "resumen"]
+__all__ = ["SERVICIOS", "con_personas", "peticiones", "resumen"]

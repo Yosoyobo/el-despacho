@@ -1,5 +1,7 @@
 from django.urls import path
 
+from cuentas.historial_views import vista_persona
+
 from . import views
 
 urlpatterns = [
@@ -8,6 +10,8 @@ urlpatterns = [
     path("<int:pk>/editar", views.editar, name="directorio-editar"),
     path("<int:pk>/bloquear", views.bloquear, name="directorio-bloquear"),
     path("<int:pk>/permisos", views.permisos, name="directorio-permisos"),
+    # 2026-09-29: el historial de actividad (vista compartida en cuentas/).
+    path("<int:pk>/actividad", vista_persona("historial/actividad.html"), name="directorio-actividad"),
     # S-Directorio-Panel-V1: modal de detalle con tabs.
     path("<int:pk>/panel", views.panel, name="directorio-panel"),
     path("<int:pk>/panel/datos", views.panel_datos, name="directorio-panel-datos"),

@@ -247,10 +247,18 @@ def vivo_peticiones(request):
     )
     pulso.anotar("peticiones", ultimo_min)
     res["por_minuto"] = ultimo_min
+    # El nombre enlaza a su historial sólo en El Site y sólo a quien puede verlo:
+    # la pared no tiene sesión y un enlace ahí llevaría a un login.
+    enlace_historial = False
+    if not _es_local(request):
+        from lib.permisos import puede_ver_historial_equipo
+
+        enlace_historial = puede_ver_historial_equipo(request.user)
     return render(request, "site/vivo/_peticiones.html", {
         "filas": filas,
         "resumen": res,
         "error": error,
+        "enlace_historial": enlace_historial,
     })
 
 

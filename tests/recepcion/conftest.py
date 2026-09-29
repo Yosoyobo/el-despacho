@@ -142,13 +142,13 @@ def acceso_de(db):
 
 @pytest.fixture
 def entrar_como(client):
-    """Abre la sesión del acceso por el camino de verdad: un enlace canjeado."""
+    """Abre la sesión del acceso por el camino de verdad: su llave y su correo."""
     from portal import servicios
 
     def _entrar(acceso, cliente_http=None):
         http = cliente_http or client
-        token = servicios._crear_enlace(acceso, "entrada")
-        r = http.post(f"/entrar/{token}/")
+        token = servicios.llave_de(acceso)
+        r = http.post(f"/entrar/{token}/", {"email": acceso.email})
         assert r.status_code == 302 and r["Location"] == "/", r.content[:300]
         return http
 

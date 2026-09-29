@@ -91,6 +91,11 @@ def perfil(request, pk: int):
         detalle_checador_url = reverse("checador:historial")
     else:
         detalle_checador_url = ""
+    # El historial de actividad (2026-09-29): el propio siempre; el de otro con
+    # `equipo.ver_historial`.
+    from lib.permisos import puede_ver_historial_de
+
+    puede_ver_historial = puede_ver_historial_de(request.user, empleado)
     # Quién puede editar la ficha (link a Gerencia): super_admin.
     puede_editar_ficha = tiene_rol(request.user, "super_admin")
     # "Ver como" (impersonar): super_admin, no a uno mismo, no a otro super_admin.
@@ -172,6 +177,7 @@ def perfil(request, pk: int):
         "roles_simulables": roles_simulables,
         "osm_src": osm_src,
         "es_self": es_self,
+        "puede_ver_historial": puede_ver_historial,
     })
 
 

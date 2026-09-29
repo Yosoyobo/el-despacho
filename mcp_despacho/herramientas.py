@@ -196,6 +196,15 @@ def accesos_portal(cliente: str) -> dict[str, Any]:
     return _h_accesos_portal({"cliente": cliente}, usuario)
 
 
+def documentos_del_cliente(cliente: str = "") -> dict[str, Any]:
+    """La papelería que entregan los clientes por el portal."""
+    from capacidades.lecturas import _h_documentos_del_cliente
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "recepcion", "documentos")
+    return _h_documentos_del_cliente({"cliente": cliente}, usuario)
+
+
 def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
     """La Caja: pagos que llegaron por Stripe/MercadoPago (registrados, por
     revisar, pendientes) y lo cobrado en línea este mes."""
@@ -239,3 +248,15 @@ def mi_recibo(fecha: str = "") -> dict[str, Any]:
 
     usuario = _usuario_actual()
     return _h_mi_recibo({"fecha": _texto(fecha, 10)}, usuario)
+
+
+def historial_de_actividad(persona: str = "", fecha: str = "") -> dict[str, Any]:
+    """Qué hizo alguien en un día (pantallas, cambios guardados, entradas y salidas,
+    tiempo activo). Sin persona es el de quien opera la conexión; el de otro pide
+    `equipo.ver_historial`, que se re-chequea dentro."""
+    from capacidades.lecturas import _h_historial_de_actividad
+
+    usuario = _usuario_actual()
+    return _h_historial_de_actividad(
+        {"persona": _texto(persona, 120), "fecha": _texto(fecha, 10)}, usuario,
+    )

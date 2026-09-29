@@ -6,7 +6,13 @@ Se crea al leer (`obtener`), no con una migración de datos (§14 Bug I).
 
 from __future__ import annotations
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
+
+def _requeridos_default() -> list[str]:
+    # La CSF es lo que el contador siempre pide para facturar (CFDI 4.0).
+    return ["csf"]
 
 
 class ConfiguracionPortal(models.Model):
@@ -22,6 +28,19 @@ class ConfiguracionPortal(models.Model):
             "Cloud Console. Sólo entra quien ya tiene acceso: Google nunca da "
             "de alta a nadie."
         ),
+    )
+    # Documentos (2026-09-29): el cliente sube su papelería desde el portal.
+    documentos_activo = models.BooleanField(
+        default=True,
+        help_text="Enseñar la sección «Documentos» en el portal para que el cliente suba su papelería.",
+    )
+    # Lo que se le pide a TODO cliente: el portal y la ficha dicen qué falta.
+    documentos_requeridos = models.JSONField(default=_requeridos_default, blank=True)
+    # Qué tan reciente tiene que ser la Constancia de Situación Fiscal. El Chalán
+    # lee su fecha de emisión y avisa si es más vieja.
+    csf_vigencia_dias = models.PositiveSmallIntegerField(
+        default=30, validators=[MinValueValidator(1), MaxValueValidator(730)],
+        help_text="Días máximos de antigüedad de la Constancia de Situación Fiscal.",
     )
     actualizado_en = models.DateTimeField(auto_now=True)
 

@@ -1,7 +1,8 @@
 {% comment %}
 «Portal de clientes» en la ficha del cliente (El Taller). Quién de este cliente
 puede entrar a La Recepción, cuándo entró por última vez, y los botones para
-invitar / reenviar / revocar.
+invitar / reenviar / copiar o cambiar su enlace / revocar. El enlace es una llave
+que no caduca: al abrirlo pide el correo al que se mandó.
 
 Se invita sólo a correos que el cliente ya tiene en su ficha (sus contactos y el
 correo de siempre): para invitar a alguien nuevo, primero se agrega como
@@ -58,6 +59,15 @@ cómo salió. La respuesta de error también es 200 — HTMX no pinta un 4xx.
                     {% if f.acceso and f.acceso.activo %}Reenviar invitación{% elif f.acceso %}Volver a invitar{% else %}Invitar al portal{% endif %}
                 </button>
                 {% endif %}
+                {% if portal_puede_invitar and f.acceso and f.acceso.activo %}
+                <button type="button" class="btn-secundario min-h-[44px] text-xs"
+                        hx-post="{% url 'portal-copiar-enlace' f.acceso.pk %}"
+                        hx-target="#portal-recuadro" hx-swap="outerHTML">Copiar enlace</button>
+                <button type="button" class="btn-secundario min-h-[44px] text-xs"
+                        hx-post="{% url 'portal-cambiar-enlace' f.acceso.pk %}"
+                        hx-confirm="¿Cambiarle el enlace a {{ f.email }}? El que tiene deja de abrir y le mandamos uno nuevo por correo. Úsalo si el enlace llegó a alguien que no debía."
+                        hx-target="#portal-recuadro" hx-swap="outerHTML">Cambiar enlace</button>
+                {% endif %}
                 {% if portal_puede_revocar and f.acceso.activo %}
                 <button type="button" class="btn-destructivo min-h-[44px] text-xs"
                         hx-post="{% url 'portal-revocar' f.acceso.pk %}"
@@ -66,12 +76,24 @@ cómo salió. La respuesta de error también es 200 — HTMX no pinta un 4xx.
                 {% endif %}
             </div>
             {% endif %}
+            {% if portal_copiado and f.acceso and portal_copiado.acceso_pk == f.acceso.pk %}
+            <div class="mt-2 rounded-lg bg-gray-50 p-2 dark:bg-gray-800/60">
+                <p class="mb-1 text-xs text-gray-600 dark:text-gray-300">Su enlace (el mismo del correo). Al abrirlo le pedirá <strong>{{ portal_copiado.email }}</strong>.</p>
+                <div class="flex gap-2">
+                    <input type="text" readonly value="{{ portal_copiado.url }}" aria-label="Enlace al portal de {{ portal_copiado.email }}"
+                           class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-mono text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                           onfocus="this.select()">
+                    <button type="button" class="btn-primario min-h-[44px] shrink-0 text-xs" data-url="{{ portal_copiado.url }}"
+                            onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(b.dataset.url).then(function(){b.textContent='Copiado ✓';});">Copiar</button>
+                </div>
+            </div>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
     {% else %}
     <p class="text-sm text-gray-500 dark:text-gray-400">Este cliente no tiene contactos con correo. Agrega uno en su ficha para poder invitarlo al portal.</p>
     {% endif %}
-    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Quien tiene acceso ve los proyectos, cotizaciones y facturas de este cliente —sin costos ni notas internas— y puede aprobar cotizaciones.</p>
+    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Quien tiene acceso ve los proyectos, cotizaciones y facturas de este cliente —sin costos ni notas internas— y puede aprobar cotizaciones y subir documentos. Su enlace no caduca: al abrirlo le pide el correo al que se mandó.</p>
     </div>
 </section>

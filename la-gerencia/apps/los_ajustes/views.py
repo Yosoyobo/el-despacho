@@ -982,13 +982,11 @@ def sidebar_guardar(request):
 
 @requiere_permiso("ajustes", "acceder")
 def metas_kpi_panel(request):
-    # Importamos perezosamente para evitar cargar `apps.taller_home` en
-    # los tests de Gerencia (sus settings pueden no incluir esa app).
-    try:
-        from apps.taller_home.models.meta_kpi import MetaKPI
-        existentes = {m.kpi_slug: m for m in MetaKPI.objects.all()}
-    except Exception:
-        existentes = {}
+    # Sin `try`: un `except Exception` aquí escondió que la imagen de La
+    # Gerencia no traía `apps.taller_home` — el panel salía vacío en
+    # silencio y el guardado daba 500 (2026-09-29).
+    from apps.taller_home.models.meta_kpi import MetaKPI
+    existentes = {m.kpi_slug: m for m in MetaKPI.objects.all()}
     # Slugs sugeridos (los más comunes); el super_admin puede agregar más
     # escribiendo el slug en el form. Esto es lista guía, no un cerrado.
     slugs_sugeridos = [
@@ -1676,20 +1674,35 @@ URL_REGRESO_GOOGLE_PORTAL = "https://recepcion.learningcenter.mx/auth/google/cal
 @requiere_permiso("ajustes", "acceder")
 @require_http_methods(["GET", "POST"])
 def portal_panel(request):
-    """Lo que decide un humano sobre La Recepción. Hoy: si el portal enseña
-    «Entrar con Google» (decisión de Oscar: apagado, sólo el enlace por correo).
+    """Lo que decide un humano sobre La Recepción: si enseña «Entrar con Google»
+    (decisión de Oscar: apagado, sólo el enlace por correo) y la papelería que
+    se le pide al cliente, con cuántos días puede tener su constancia fiscal.
     """
     from lib.google_oauth import GoogleOAuthConfig
-    from portal.models import ConfiguracionPortal
+    from portal.models import TIPOS_DOCUMENTO, ConfiguracionPortal, DocumentoCliente
 
     cfg = ConfiguracionPortal.obtener()
     if request.method == "POST":
+        validos = {t for t, _ in TIPOS_DOCUMENTO}
+        try:
+            dias = int(request.POST.get("csf_vigencia_dias") or cfg.csf_vigencia_dias)
+        except ValueError:
+            dias = 0
+        if not 1 <= dias <= 730:
+            messages.error(request, "Los días de la constancia fiscal van de 1 a 730.")
+            return redirect("ajustes-portal")
         cfg.google_activo = bool(request.POST.get("google_activo"))
+        cfg.documentos_activo = bool(request.POST.get("documentos_activo"))
+        cfg.documentos_requeridos = [t for t, _ in TIPOS_DOCUMENTO
+                                     if t in set(request.POST.getlist("requeridos")) & validos]
+        cfg.csf_vigencia_dias = dias
         cfg.save()
         emitir(EventoPortavoz(
             tipo="ajuste.portal_configurado",
             actor_id=request.user.pk, actor_email=request.user.email,
-            payload={"google_activo": cfg.google_activo},
+            payload={"google_activo": cfg.google_activo, "documentos_activo": cfg.documentos_activo,
+                     "documentos_requeridos": cfg.documentos_requeridos,
+                     "csf_vigencia_dias": cfg.csf_vigencia_dias},
         ))
         messages.success(request, "Ajustes del portal guardados.")
         return redirect("ajustes-portal")
@@ -1697,4 +1710,21 @@ def portal_panel(request):
         "cfg": cfg,
         "sso_configurado": GoogleOAuthConfig.esta_configurado(),
         "url_regreso": URL_REGRESO_GOOGLE_PORTAL,
+        # Lo que se puede pedir: todo menos el comprobante de pago, que no es
+        # papelería del alta sino de cada factura.
+        "tipos_pedibles": [(t, n) for t, n in TIPOS_DOCUMENTO if t not in ("comprobante_pago", "otro")],
+        "chalan_lee_csf": _chalan_lee_csf(),
+        "docs_por_revisar": DocumentoCliente.objects.filter(estado="recibido").count(),
     })
+
+
+def _chalan_lee_csf() -> bool:
+    """¿Hay un Chalán con llaves para la estación que lee las constancias? Es el
+    estado REAL: sin él la CSF se guarda pero la revisa una persona."""
+    try:
+        from lib.analistas.registry import cadena_de
+        from portal.csf import ESTACION
+
+        return any(a.esta_configurado() for a in cadena_de(ESTACION))
+    except Exception:  # noqa: BLE001
+        return False

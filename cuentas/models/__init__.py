@@ -3,6 +3,7 @@ from .intento_acceso import IntentoAcceso
 from .novedades import LecturaNovedades, NovedadAnunciada
 from .permiso_usuario import PermisoUsuario
 from .presupuesto_ia import PresupuestoIA
+from .registro_actividad import RegistroActividad
 from .rol import Rol
 from .sidebar_orden import (
     ICONOS_CARPETA,
@@ -13,4 +14,4 @@ from .sidebar_orden import (
 )
 from .usuario import Usuario
 
-__all__ = ["Usuario", "PermisoUsuario", "SidebarOrden", "SidebarOrdenUsuario", "SidebarCarpetaUsuario", "SLUGS_SIDEBAR_TALLER", "ICONOS_CARPETA", "Rol", "PresupuestoIA", "ConfigRecordatorios", "LecturaNovedades", "NovedadAnunciada", "IntentoAcceso"]
+__all__ = ["Usuario", "PermisoUsuario", "SidebarOrden", "SidebarOrdenUsuario", "SidebarCarpetaUsuario", "SLUGS_SIDEBAR_TALLER", "ICONOS_CARPETA", "Rol", "PresupuestoIA", "ConfigRecordatorios", "LecturaNovedades", "NovedadAnunciada", "IntentoAcceso", "RegistroActividad"]

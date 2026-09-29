@@ -5,7 +5,9 @@ Toda vista que muestra algo del cliente toma el cliente de `request.cliente`
 tiene sesión) y pide sus datos a `consultas`, que filtra por él. Nunca se busca
 un objeto por su id a secas.
 
-Sin mensajes ni chat (decisión de Oscar: «NO chat de cliente»). Sin El Chalán.
+Sin mensajes ni chat (decisión de Oscar: «NO chat de cliente»). El Chalán no
+platica con el cliente: sólo lee, en el fondo, la constancia fiscal que sube
+(`portal/csf.py`).
 """
 
 from __future__ import annotations
@@ -95,36 +97,57 @@ def entrar(request):
 
 _MOTIVO_TEXTO = {
     servicios.CANJE_INVALIDO: "Este enlace no es válido. Revisa que lo hayas abierto completo desde tu correo.",
-    servicios.CANJE_USADO: "Este enlace ya se usó. Cada enlace sirve una sola vez: pide uno nuevo.",
-    servicios.CANJE_EXPIRADO: "Este enlace ya venció. Pide uno nuevo: llega en un momento.",
+    servicios.CANJE_ANULADO: "Este enlace se cambió por uno nuevo. Busca en tu correo el mensaje más reciente de Learning Center, o pide que te lo mandemos otra vez.",
+    servicios.CANJE_EXPIRADO: "Este enlace ya no funciona. Pide que te lo mandemos otra vez: llega en un momento.",
     servicios.CANJE_SIN_ACCESO: "Este acceso ya no está activo. Si crees que es un error, avísale a tu contacto en Learning Center.",
 }
+
+#: Intentos con el correo equivocado por enlace (regla §4 #5).
+LIMITE_POR_ENLACE = 5
+
+
+def _enlace_invalido(motivo: str, status: int | None = None):
+    if status is None:
+        status = 410 if motivo in (servicios.CANJE_ANULADO, servicios.CANJE_EXPIRADO) else 404
+    return status, {"mensaje": _MOTIVO_TEXTO.get(motivo, _MOTIVO_TEXTO[servicios.CANJE_INVALIDO])}
 
 
 @require_http_methods(["GET", "POST"])
 def canjear(request, token: str):
-    """GET muestra el botón «Entrar»; el POST gasta el enlace (ver `portal.servicios`:
-    los filtros de correo abren los enlaces antes que la persona)."""
-    if request.method == "GET":
-        enlace, motivo = servicios.buscar_enlace(token)
-        if motivo:
-            email = enlace.acceso.email if (enlace is not None and motivo != servicios.CANJE_SIN_ACCESO) else ""
-            return render(request, "portal_cliente/enlace_invalido.html",
-                          {"mensaje": _MOTIVO_TEXTO[motivo], "email": email}, status=410
-                          if motivo in (servicios.CANJE_USADO, servicios.CANJE_EXPIRADO) else 404)
-        return render(request, "portal_cliente/canjear.html", {
-            "nombre": enlace.acceso.nombre_visible,
-            "empresa": enlace.acceso.cliente.razon_social,
-        })
+    """La llave personal: no caduca ni se gasta, pero sólo abre con el correo al
+    que se mandó (decisión de Oscar, 2026-09-29).
 
-    if not _limitar("portal_canje_ip", _ip(request), LIMITE_POR_IP):
-        return render(request, "portal_cliente/enlace_invalido.html",
-                      {"mensaje": "Demasiados intentos. Espera unos minutos."}, status=429)
-    acceso, motivo = servicios.canjear(token, request)
+    El GET pinta la pantalla y NO abre nada (los filtros de correo abren los
+    enlaces antes que la persona); el POST trae el correo. Quien ya tiene la
+    sesión de esa misma persona abierta entra derecho.
+    """
+    enlace, motivo = servicios.buscar_enlace(token)
+    if motivo:
+        status, ctx = _enlace_invalido(motivo)
+        return render(request, "portal_cliente/enlace_invalido.html", ctx, status=status)
+    ctx = {"nombre": enlace.acceso.nombre_visible, "empresa": enlace.acceso.cliente.razon_social}
+    if request.method == "GET":
+        if request.acceso is not None and request.acceso.pk == enlace.acceso_id:
+            return redirect("/")
+        return render(request, "portal_cliente/canjear.html", ctx)
+
+    if not (_limitar("portal_canje_ip", _ip(request), LIMITE_POR_IP)
+            and _limitar("portal_canje_enlace", servicios.hash_token(token)[:24], LIMITE_POR_ENLACE)):
+        ctx["error"] = "Demasiados intentos. Espera unos minutos y vuelve a intentarlo."
+        return render(request, "portal_cliente/canjear.html", ctx, status=429)
+    email = (request.POST.get("email") or "")[:254]
+    ctx["email"] = email
+    if not email.strip():
+        ctx["error"] = "Escribe tu correo."
+        return render(request, "portal_cliente/canjear.html", ctx, status=400)
+    acceso, motivo = servicios.canjear(token, email, request)
+    if motivo == servicios.CANJE_CORREO:
+        ctx["error"] = ("Ese no es el correo al que te mandamos este enlace. Escribe el "
+                        "correo en el que lo recibiste.")
+        return render(request, "portal_cliente/canjear.html", ctx, status=400)
     if acceso is None:
-        return render(request, "portal_cliente/enlace_invalido.html",
-                      {"mensaje": _MOTIVO_TEXTO.get(motivo, _MOTIVO_TEXTO[servicios.CANJE_INVALIDO])},
-                      status=410)
+        status, ctx_inv = _enlace_invalido(motivo)
+        return render(request, "portal_cliente/enlace_invalido.html", ctx_inv, status=status)
     servicios.abrir_sesion(request, acceso)
     return redirect("/")
 
@@ -229,9 +252,14 @@ def _error_google(request, mensaje: str, status: int = 400):
 
 @require_safe
 def inicio(request):
+    faltan = []
+    if _documentos_encendidos():
+        from portal import documentos as docs
+
+        faltan = [p for p in docs.pendientes_de(request.cliente) if p.estado in ("falta", "rechazado")]
     return render(request, "portal_cliente/inicio.html", {
         "resumen": consultas.resumen(request.cliente), "seccion": "inicio",
-        "pasos_ciclo": consultas.PASOS,
+        "pasos_ciclo": consultas.PASOS, "documentos_faltan": faltan,
     })
 
 
@@ -347,6 +375,121 @@ def cotizacion_rechazar(request, pk: int):
     return _responder(request, pk, aprobar=False)
 
 
+# ── Documentos: la papelería que el cliente le entrega al despacho ──────────
+
+#: Subidas por persona cada 15 minutos. Alcanza para toda la papelería de un
+#: alta; frena a quien quiera llenar el disco.
+LIMITE_SUBIDAS = 20
+
+#: Lo que el cliente ve de cada estado (el `get_estado_display` es del equipo).
+_ESTADO_CLIENTE = {
+    "recibido": ("En revisión", "azul"),
+    "aprobado": ("Recibido ✓", "verde"),
+    "rechazado": ("Hay que volver a subirlo", "rojo"),
+}
+
+
+def _documentos_encendidos() -> bool:
+    try:
+        from portal.models import ConfiguracionPortal
+
+        return ConfiguracionPortal.obtener().documentos_activo
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _fila_documento(d) -> dict:
+    texto, color = _ESTADO_CLIENTE.get(d.estado, ("En revisión", "azul"))
+    aviso = ""
+    if d.tipo == "csf" and d.ia_estado == "lista" and d.estado == "recibido":
+        if (d.ia or {}).get("es_csf") is False:
+            aviso = "Parece que este archivo no es una Constancia de Situación Fiscal. Revisa que hayas subido el correcto."
+        elif d.vigencia.get("vigente") is False:
+            aviso = (f"Tu constancia es del {d.vigencia.get('fecha_emision')} y pedimos una de máximo "
+                     f"{d.vigencia.get('limite')} días. Descarga una nueva en sat.gob.mx y súbela.")
+    return {"d": d, "estado": texto, "tono": color, "aviso": aviso}
+
+
+@require_safe
+def documentos(request):
+    if not _documentos_encendidos():
+        raise Http404
+    from portal import documentos as docs
+    from portal.models import TIPOS_DOCUMENTO
+
+    lista = docs.documentos_de(request.cliente)
+    facturas_con_saldo = [f for f in consultas.facturas_de(request.cliente) if f.saldo > 0]
+    tipo = request.GET.get("tipo", "")
+    factura = request.GET.get("factura", "")
+    return render(request, "portal_cliente/documentos.html", {
+        "seccion": "documentos",
+        "pendientes": docs.pendientes_de(request.cliente, lista),
+        "filas": [_fila_documento(d) for d in lista],
+        "tipos": TIPOS_DOCUMENTO,
+        "tipo_elegido": tipo if tipo in dict(TIPOS_DOCUMENTO) else "",
+        "factura_elegida": factura,
+        "facturas": facturas_con_saldo,
+        "acepta": docs.ACEPTA,
+    })
+
+
+@require_POST
+def documento_subir(request):
+    if not _documentos_encendidos():
+        raise Http404
+    from portal import documentos as docs
+
+    tipo = request.POST.get("tipo", "")
+    factura = None
+    if tipo == "comprobante_pago" and request.POST.get("factura"):
+        factura = consultas.factura_de(request.cliente, request.POST.get("factura"))
+    volver = f"/facturas/{factura.pk}/" if (factura is not None and request.POST.get("volver") == "factura") else "/documentos/"
+    if not _limitar("portal_documento", str(request.acceso.pk), LIMITE_SUBIDAS):
+        messages.error(request, "Subiste muchos archivos seguidos. Espera unos minutos y vuelve a intentarlo.")
+        return redirect(volver)
+    try:
+        doc = docs.subir(request.cliente, tipo, request.FILES.get("archivo"), acceso=request.acceso,
+                         nota=request.POST.get("nota", ""), factura=factura, request=request)
+    except servicios.ErrorPortal as exc:
+        messages.error(request, str(exc))
+        return redirect(volver)
+    if doc.tipo == "comprobante_pago":
+        messages.success(request, "¡Gracias! Recibimos tu comprobante. El equipo lo revisa y registra tu pago; "
+                                  "el saldo de la factura se actualiza cuando quede registrado.")
+    elif doc.tipo == "csf":
+        messages.success(request, "¡Gracias! Recibimos tu constancia. En un momento revisamos que esté vigente.")
+    else:
+        messages.success(request, f"¡Gracias! Recibimos tu {doc.tipo_nombre.lower()}.")
+    return redirect(volver)
+
+
+def documento_archivo(request, pk: int):
+    """El cliente vuelve a bajar lo que él mismo entregó. Sólo de SU empresa."""
+    if request.method not in ("GET", "HEAD"):
+        return HttpResponseNotAllowed(["GET"])
+    from portal.models import DocumentoCliente
+
+    doc = DocumentoCliente.objects.filter(cliente=request.cliente, pk=pk).first()
+    if doc is None:
+        raise Http404
+    try:
+        from lib import almacen
+
+        contenido, _, _ = almacen.leer(doc.archivo)
+    except Exception:  # noqa: BLE001
+        logger.warning("portal: no se pudo leer el documento %s", pk, exc_info=True)
+        messages.error(request, "No pudimos traer el archivo en este momento. Intenta en unos minutos.")
+        return redirect("/documentos/")
+    nombre = doc.nombre_archivo or "documento"
+    nombre_ascii = nombre.encode("ascii", "ignore").decode() or "documento"
+    resp = HttpResponse(contenido, content_type=doc.mime or "application/octet-stream")
+    resp["Content-Disposition"] = (f'attachment; filename="{nombre_ascii}"; '
+                                   f"filename*=UTF-8''{quote(nombre)}")
+    resp["Cache-Control"] = "private, no-store"
+    resp["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
 @require_safe
 def facturas(request):
     lista = consultas.facturas_de(request.cliente)
@@ -362,10 +505,17 @@ def factura(request, pk: int):
     f = consultas.factura_cliente(request.cliente, pk)
     if f is None:
         raise Http404
+    comprobantes = []
+    if _documentos_encendidos():
+        from portal.models import DocumentoCliente
+
+        comprobantes = [_fila_documento(d) for d in DocumentoCliente.objects.filter(
+            cliente=request.cliente, factura=f.obj, tipo="comprobante_pago").order_by("-creado_en")]
     return render(request, "portal_cliente/factura.html", {
         "f": f, "pagos": consultas.pagos_de_factura(f.obj),
         "url_pago": consultas.url_pago(f.obj) if f.saldo > 0 else None,
-        "seccion": "facturas",
+        "seccion": "facturas", "documentos_activo": _documentos_encendidos(),
+        "comprobantes": comprobantes,
     })
 
 
