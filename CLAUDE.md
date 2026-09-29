@@ -48,7 +48,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 |---|---|---|
 | **La Gerencia** | Panel admin (super_admin/dueño): Ajustes, Directorio, Sala de Juntas | 8001 |
 | **El Taller** | Staff (dueño/contador/diseñador): operación día a día | 8000 |
-| **La Recepción** | Portal de clientes B2B — andamio S1, UI completa en S5 | 8002 |
+| **La Recepción** | Portal de clientes B2B (enlace por correo, sin contraseña; app raíz `portal/` + `la-recepcion/apps/portal_cliente`) — encendida 2026.09.09 | 8002 (NUC 8203) |
 | **El Portero** | Caddy 2 + auto-HTTPS | 80/443 |
 | **La Sede** | Droplet de producción (DigitalOcean) | — |
 | **HAL** | Mac headless local — paridad con prod | — |
@@ -81,7 +81,7 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 | **Los Recados** | El Taller | Mensajería interna con `@/#/$` + push + historial | S2b.1 ✅ · S2b.1.5 ✅ |
 | **Las Cotizaciones** | El Taller | Propuestas comerciales (PDF aplazado) | S2b.cotizaciones-v1 ✅ |
 | **La Facturación** | El Taller | Invoices comerciales no fiscales + CxC | S2b.facturacion-v1 ✅ (PDF aplazado) |
-| **La Caja** | El Taller | Stripe + MercadoPago, links de pago | S2 |
+| **La Caja** | El Taller | Stripe + MercadoPago, links de pago — apagada e invisible sin llaves (nice-to-have) | 2026.09.09 ✅ |
 | **La Cobranza** | El Taller | Recordatorios automáticos vía Portavoz | S2 |
 | **La Tesorería** | El Taller | Ingresos/egresos/CxC/CxP/reembolsos + reportes + CSV | S2b.3 ✅ (V1) · S2b.3b (OCR+Sheets) |
 | **La Contaduría** | El Taller | Partida doble + estados financieros + export contador | S3.contaduria-v1/v2 ✅ |
@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.08` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.09` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.09 | S-Recepcion-Caja | Portal de clientes encendido (enlace por correo, aprobar cotizaciones, facturas); La Caja apagada sin llaves |
 | 2026.09.08 | S-Carga-Contable | Contaduría → Carga contable: plantilla Excel + estados de cuenta, El Chalán clasifica lo del banco, vista previa exacta, cuadre por diferencias, deshacer |
 | 2026.09.07 | S-Fin-Sep29 · cabos | Grupos de recados por rol cuentan el rol asignado |
 | 2026.09.06 | S-Fin-Sep29 | Las 3 puertas por rol primario a permiso (decisión de Oscar); KPIs/avisos por permiso; comentarios por rol asignado; pin en el alta |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.02 | S-Pendientes-Sep28 · 2 | Tablas→tarjetas en móvil; CFDI de proveedor→egreso; Papeleo une/convierte; usuarios en línea; 8 comandos del Chalán |
 | 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
 | 2026.08.50 | S-Ajustes-Ago28 · 3 | Vista previa de cotización: genera de verdad y deshace (evento con `on_commit` dentro del `atomic`) |
-| 2026.08.48 | S-Ajustes-Ago28 · 2 | `Tarea.producto`; buscador del Inicio abarca clientes/productos/proveedores |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -446,6 +446,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 - Dos sesiones en el mismo working tree se pisan: la segunda va en `git worktree`.
 - Formulario principal nuevo de un modelo editable → testigo de `lib/edicion.py` (si no, el último guardado pisa sin avisar).
 - Un envoltorio «invisible» (inputs ocultos, contenedor OOB) como hijo directo de un `grid` se come una celda: `class="contents"`, no `hidden` si adentro va algo que debe verse.
+- La Recepción carga modelos de El Taller: toda app que use necesita estar en su `INSTALLED_APPS` **y** su `COPY` en `la-recepcion/Dockerfile` (Bug A); un `reverse()` ahí usa SUS rutas (La Caja arma su URL con `apps.caja.urls_raiz`).
 - Toda `<table>` nueva lleva `data-tabla-movil`; todo sondeo nuevo (`hx-trigger="every"`) entra a la exclusión de presencia (`lib/presencia.py`) — los dos con candado.
 - Crear en bloque (importar, sembrar) sin `lib.carga_masiva.carga_masiva()` dispara los correos automáticos a clientes (pago, bienvenida) y difiere los asientos a `on_commit`.
 - Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;

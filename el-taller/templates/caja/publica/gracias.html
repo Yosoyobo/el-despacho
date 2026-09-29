@@ -1,0 +1,16 @@
+{% extends "caja/publica/base.html" %}
+{% block title %}Gracias — Learning Center{% endblock %}
+{% block contenido %}
+{% include "caja/publica/_modo_prueba.html" %}
+<div class="mb-4 flex items-center gap-3">
+    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success-50 text-success-600 dark:bg-success-500/10 dark:text-success-400">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">¡Gracias por tu pago!</h1>
+</div>
+{% include "caja/publica/_resumen.html" %}
+<p class="mt-5 text-sm text-gray-600 dark:text-gray-400">
+    {% if link.estado == "pagado" %}Tu pago ya quedó registrado.{% else %}La pasarela nos confirmará tu pago en unos minutos (si pagaste en OXXO o por transferencia, cuando se acredite). No hace falta que hagas nada más.{% endif %}
+    La pasarela te manda su comprobante por correo.
+</p>
+{% endblock %}

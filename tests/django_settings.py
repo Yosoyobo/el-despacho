@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.contaduria.apps.ContaduriaConfig",
     "apps.checador.apps.CheckadorConfig",
     "apps.ayuda.apps.AyudaConfig",
+    "apps.caja.apps.CajaConfig",
     # La Gerencia (apps es namespace pkg — convive con El Taller)
     "apps.auth_gerencia.apps.AuthGerenciaConfig",
     "apps.el_directorio.apps.ElDirectorioConfig",
@@ -70,6 +71,9 @@ INSTALLED_APPS = [
     "apps.estados_tarea.apps.EstadosTareaConfig",
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Recepción (S5): los accesos de clientes (app raíz) y el portal mismo.
+    "portal.apps.PortalConfig",
+    "apps.portal_cliente.apps.PortalClienteConfig",
     "apps.estados_buzon.apps.EstadosBuzonConfig",
     "apps.tipos_buzon.apps.TiposBuzonConfig",
     "apps.checador_admin.apps.CheckadorAdminConfig",

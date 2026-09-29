@@ -145,16 +145,49 @@ def invalidar_cache_estados_cot() -> None:
 
 # ── Fase: helpers de lectura ──────────────────────────────────────────────
 
+#: La fase de los slugs LITERALES que escribe el propio código cuando el catálogo
+#: no tiene un estado activo de esa fase: `marcar_rechazada` cae a «rechazada»,
+#: `marcar_aprobada` a «aprobada», `marcar_anulada` siempre escribe «anulada»
+#: (ver `embudo.slug_destino`). Es el mismo reparto que usó la migración 0019.
+#:
+#: Sin esto, una cotización con uno de esos slugs y SIN fila en el catálogo se
+#: leía como «armada» —y con su sello de envío, como «enviada»—: una rechazada o
+#: anulada volvía a contar como viva y se podía aprobar después (hallazgo de
+#: S5, 2026-09-29). Sólo aplica a slugs que el catálogo NO tiene: si el despacho
+#: creó su propio estado con ese slug, manda el que configuró.
+FASE_DE_SLUG_DEL_SISTEMA: dict[str, str] = {
+    "generada": FASE_ARMADA,
+    "enviada": FASE_ENVIADA,
+    "aprobada": FASE_GANADA,
+    "pagada": FASE_GANADA,
+    "rechazada": FASE_PERDIDA,
+    "anulada": FASE_PERDIDA,
+}
+
+
 def fase_de(slug: str) -> str:
-    """Qué fase es este estado. Un slug desconocido se trata como armada —
-    lo prudente: no lo cuenta como ganado ni como perdido."""
-    return (mapa_estados_cot().get(slug) or {}).get("fase") or FASE_ARMADA
+    """Qué fase es este estado. Primero el catálogo; si el slug no está en él,
+    la fase de los slugs literales del sistema; si tampoco, armada —lo prudente:
+    no lo cuenta como ganado ni como perdido."""
+    fila = mapa_estados_cot().get(slug)
+    if fila is not None:
+        return fila.get("fase") or FASE_ARMADA
+    return FASE_DE_SLUG_DEL_SISTEMA.get(slug, FASE_ARMADA)
 
 
 def slugs_de_fase(*fases: str) -> list[str]:
-    """Los slugs que caen en estas fases. Para filtrar querysets sin literales."""
+    """Los slugs que caen en estas fases. Para filtrar querysets sin literales.
+
+    Incluye los slugs literales del sistema que el catálogo no tiene (ver
+    `FASE_DE_SLUG_DEL_SISTEMA`): las cotizaciones que ya están guardadas con
+    ellos se cuentan en su fase sin tocar un solo dato."""
     quiero = set(fases)
-    return [e["slug"] for e in _estados_raw() if (e.get("fase") or FASE_ARMADA) in quiero]
+    estados = _estados_raw()
+    slugs = [e["slug"] for e in estados if (e.get("fase") or FASE_ARMADA) in quiero]
+    del_catalogo = {e["slug"] for e in estados}
+    slugs += [slug for slug, fase in FASE_DE_SLUG_DEL_SISTEMA.items()
+              if fase in quiero and slug not in del_catalogo]
+    return slugs
 
 
 def slugs_vivos() -> list[str]:

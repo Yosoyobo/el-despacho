@@ -74,6 +74,9 @@ TIPOS DE ACCIÓN VÁLIDOS:
   `cfdi_pendientes` ANTES: de ahí sale el folio fiscal, el proveedor sugerido y
   si ya hay un egreso que casa. Si lo hay, propón ligarlo con `egreso_codigo` en
   vez de crear otro: capturarlo dos veces cuenta el gasto doble)
+- invitar_portal (La Recepción: le manda a un contacto del cliente su invitación
+  al portal de clientes. Sólo contactos que YA están en la ficha con correo;
+  consulta `accesos_portal` antes para no invitar a quien ya entra)
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
@@ -86,6 +89,13 @@ TIPOS DE ACCIÓN VÁLIDOS:
   archivo del papeleo — una ficha técnica, una garantía. Busca antes el
   documento con `buscar_papeleo` y usa su número; no inventes uno. Unir PDFs
   sueltos del papeleo NO se pide aquí: es un botón de la pantalla del Papeleo)
+- crear_link_pago
+  (La Caja: el link para que el cliente pague en línea con tarjeta o
+  MercadoPago. De una factura emitida —su saldo—, del anticipo de una
+  cotización aprobada, o un monto libre para un cliente o proyecto. Antes de
+  proponerlo puedes consultar `links_de_pago`: si ya hay uno vigente por el
+  mismo saldo, se reusa solo. Registrar un pago que llegó y no cuadró NO se
+  pide aquí: es el botón «Registrar» de La Caja)
 - crear_automatizacion, activar_automatizacion, desactivar_automatizacion,
   borrar_automatizacion
   (las tareas que corren solas, en n8n. Para prender/apagar/quitar consulta
@@ -196,6 +206,9 @@ PAYLOADS:
 - archivar_documento: {codigo}  (necesita que la cotización YA tenga PDF)
 - convertir_a_pdf: {archivo, nombre}
 - anexar_a_cotizacion: {codigo, documento_id}  (documento_id = el número que devuelve buscar_papeleo)
+- crear_link_pago: {factura} | {cotizacion} | {cliente_slug | proyecto_slug, monto, concepto}, enviar_correo?
+  (factura = código o folio F###; cotizacion = código COT-…, para su anticipo; el monto libre
+  es el TOTAL que paga el cliente, IVA incluido. enviar_correo: true = lo manda al correo del cliente)
 - activar_automatizacion / desactivar_automatizacion / borrar_automatizacion: {flujo_id}
   (`flujo_id` acepta el id o el nombre tal como lo devuelve `listar_automatizaciones`.
   Prender una automatización hace que le escriba a clientes por su cuenta, así que
@@ -212,6 +225,7 @@ PAYLOADS:
   el CFDI a un egreso que ya existe; `crear_nuevo: true` sólo si es de verdad otro
   gasto. Una factura NUESTRA no va aquí sino en ligar_cfdi_a_factura)
 - ligar_cfdi_a_factura: {cfdi, factura_codigo (FAC-… o el folio F-…)}
+- invitar_portal: {cliente_slug, contacto (nombre o correo del contacto, tal como está en la ficha)}
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}
 - anular_ingreso: {codigo, motivo}

@@ -98,6 +98,28 @@ def serie_indicador(slug: str, dias: int = 90) -> dict[str, Any]:
     return herramientas.serie_indicador(slug, dias)
 
 
+@mcp.tool()
+def accesos_portal(cliente: str) -> dict[str, Any]:
+    """Quién de un cliente puede entrar al portal de clientes (La Recepción),
+    cuándo entró por última vez, y qué contactos con correo todavía no."""
+    return herramientas.accesos_portal(cliente)
+
+
+@mcp.tool()
+def pagos_en_linea(estado: str = "", limite: int = 20) -> dict[str, Any]:
+    """La Caja: pagos que llegaron por Stripe o MercadoPago —registrados solos,
+    por revisar (con el motivo) o por acreditar— y lo cobrado en línea este mes.
+    Filtra por estado: registrado, por_revisar, pendiente, rechazado, descartado."""
+    return herramientas.pagos_en_linea(estado, limite)
+
+
+@mcp.tool()
+def links_de_pago(estado: str = "", limite: int = 20) -> dict[str, Any]:
+    """La Caja: links de pago en línea de facturas, anticipos y montos libres.
+    Filtra por estado: vigente, pagado, anulado, vencido."""
+    return herramientas.links_de_pago(estado, limite)
+
+
 def main() -> None:
     """Sirve MCP sólo por stdio; no abre puertos ni omite autenticación HTTP."""
     mcp.run(transport="stdio")

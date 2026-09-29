@@ -50,8 +50,22 @@ def _slots_por_grupo():
             "slots": filas,
             "puestas": sum(1 for f in filas if f[3]),
             "total": len(filas),
+            "estado": _estado_de_grupo(filas),
         })
     return grupos
+
+
+def _estado_de_grupo(filas) -> dict | None:
+    """Una línea de «qué pasa hoy» para los grupos que encienden algo.
+
+    Por ahora sólo «Cobros en línea»: dice si La Caja está apagada, encendida
+    o en modo prueba (con llaves de prueba los links no cobran de verdad).
+    """
+    claves = {f[0] for f in filas}
+    if "stripe_secret_key" in claves:
+        from lib import pasarelas
+        return pasarelas.resumen_para_ajustes()
+    return None
 
 
 @requiere_permiso("ajustes", "acceder")
@@ -1748,3 +1762,35 @@ def automatizacion_instalar(request):
         payload={"nombre": nombre, "plantilla": plantilla, "avisos": len(avisos)},
     ))
     return redirect("ajustes-automatizaciones")
+
+
+# ── Portal de clientes (La Recepción) ───────────────────────────────────────
+
+URL_REGRESO_GOOGLE_PORTAL = "https://recepcion.learningcenter.mx/auth/google/callback"
+
+
+@requiere_permiso("ajustes", "acceder")
+@require_http_methods(["GET", "POST"])
+def portal_panel(request):
+    """Lo que decide un humano sobre La Recepción. Hoy: si el portal enseña
+    «Entrar con Google» (decisión de Oscar: apagado, sólo el enlace por correo).
+    """
+    from lib.google_oauth import GoogleOAuthConfig
+    from portal.models import ConfiguracionPortal
+
+    cfg = ConfiguracionPortal.obtener()
+    if request.method == "POST":
+        cfg.google_activo = bool(request.POST.get("google_activo"))
+        cfg.save()
+        emitir(EventoPortavoz(
+            tipo="ajuste.portal_configurado",
+            actor_id=request.user.pk, actor_email=request.user.email,
+            payload={"google_activo": cfg.google_activo},
+        ))
+        messages.success(request, "Ajustes del portal guardados.")
+        return redirect("ajustes-portal")
+    return render(request, "ajustes/portal_panel.html", {
+        "cfg": cfg,
+        "sso_configurado": GoogleOAuthConfig.esta_configurado(),
+        "url_regreso": URL_REGRESO_GOOGLE_PORTAL,
+    })

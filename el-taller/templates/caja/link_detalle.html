@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Link de pago — La Caja{% endblock %}
+{% block contenido %}
+{% breadcrumb_items "Tesorería" "/tesoreria/" "La Caja" "/tesoreria/caja/" link.referencia as breadcrumb_items %}
+<div class="mb-3">{% include "_componentes_tailadmin/_breadcrumb.html" with items=breadcrumb_items %}</div>
+<h1 class="mb-5 text-title-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">Link de pago</h1>
+{% include "caja/_aviso_estado.html" %}
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <section class="ta-card">
+        {% include "caja/_link_panel.html" %}
+    </section>
+    <aside class="ta-card text-sm">
+        <dl class="space-y-2">
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Tipo</dt><dd class="text-right text-gray-800 dark:text-gray-200">{{ link.get_tipo_display }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Cliente</dt><dd class="min-w-0 break-words text-right">{% if link.cliente %}<a href="{% url 'cartera-detalle' link.cliente.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ link.cliente.razon_social }}</a>{% else %}—{% endif %}</dd></div>
+            {% if link.proyecto %}<div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Proyecto</dt><dd class="min-w-0 break-words text-right"><a href="{% url 'proyectos-detalle' link.proyecto.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ link.proyecto.nombre|default:link.proyecto.codigo }}</a></dd></div>{% endif %}
+            {% if link.factura %}<div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Factura</dt><dd class="text-right"><a href="{% url 'facturacion:detalle' link.factura.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ link.factura.folio_display }}</a></dd></div>{% endif %}
+            {% if link.cotizacion %}<div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Cotización</dt><dd class="text-right"><a href="{% url 'cotizaciones:detalle' link.cotizacion.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ link.cotizacion.codigo }}</a></dd></div>{% endif %}
+            <div class="flex justify-between gap-3"><dt class="text-gray-500 dark:text-gray-400">Creado</dt><dd class="text-right text-gray-800 dark:text-gray-200">{{ link.creado_en|date:"d/m/Y H:i" }}{% if link.creado_por %}<span class="block text-xs text-gray-500">{{ link.creado_por.nombre_completo }}</span>{% endif %}</dd></div>
+        </dl>
+        {% if pagos %}
+        <h2 class="mt-5 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Pagos de este link</h2>
+        <ul class="mt-2 divide-y divide-gray-100 dark:divide-gray-800">
+            {% for p in pagos %}
+            <li class="py-2">
+                <span class="font-semibold tabular-nums">{{ p.monto|dinero }}</span> · {{ p.get_pasarela_display }} · <span class="badge badge-sm {% if p.estado == 'registrado' %}badge-success{% elif p.estado == 'por_revisar' %}badge-warning{% else %}badge-gray{% endif %}">{{ p.get_estado_display }}</span>
+                {% if p.motivo %}<span class="block text-xs text-warning-700 dark:text-warning-400">{{ p.motivo }}</span>{% endif %}
+                {% if p.ingreso %}<a href="{% url 'tesoreria:ingreso-detalle' p.ingreso.pk %}" class="block font-mono text-xs text-brand-600 hover:underline dark:text-brand-400">{{ p.ingreso.codigo }}</a>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

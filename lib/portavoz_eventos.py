@@ -80,8 +80,20 @@ EventoTipo = Literal[
     "cfdi.ligado_factura",
     "cfdi.ignorado",
     "factura.eliminada",
+    # La Recepción (portal de clientes, S5): el despacho invita/revoca y el
+    # cliente responde una cotización desde el portal.
+    "portal.acceso_invitado",
+    "portal.acceso_revocado",
+    "portal.cotizacion_aprobada",
+    "portal.cotizacion_rechazada",
     "pago.recibido",
     "pago.recordatorio",
+    # La Caja (links de pago con Stripe/MercadoPago).
+    "caja.link_creado",
+    "caja.link_anulado",
+    "caja.link_enviado",
+    "caja.pago_por_revisar",
+    "caja.pago_revisado",
     "usuario.creado",
     "usuario.bloqueado",
     "ajuste.credencial_guardada",
@@ -157,6 +169,7 @@ EventoTipo = Literal[
     "papeleo.desligado",
     "papeleo.subido",
     "ajuste.papeleo_configurado",
+    "ajuste.portal_configurado",
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",

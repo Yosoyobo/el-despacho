@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  Pantalla de mantenimiento — VERSIÓN CORTA (regla §4 #23, tercera pieza).
+
+  La sirve El Portero (Caddy, en La Sede) desde el snippet `(lc_failover)` del
+  Caddyfile cuando el NUC no contesta: durante el `up -d` de un despliegue o en un
+  corte. Si hay un despliegue en curso, El Portero sirve en su lugar
+  `data/caddy/mantenimiento/en-curso.html`, que la mudanza escribe al empezar y
+  borra al terminar (la arma `infra/scripts/pantalla_mantenimiento.py` con la
+  plantilla `en-curso.plantilla.html` de esta carpeta). Borrarla es lo que
+  «devuelve la pantalla a su versión corta»: ésta.
+
+  Todo va en línea (estilos y script): cualquier otra petición al dominio
+  también cae en el failover, así que un .css aparte nunca llegaría.
+
+  El video es PEDIDO EXPLÍCITO DE OSCAR (2026-08-23). No lo quites (va entre
+  los comentarios «video» y «/video»: la variante del portal de clientes
+  lo quita por ahí, decisión de Oscar 2026-09-29 — ver pantalla_mantenimiento.py): ver la nota
+  del Caddyfile.
+-->
+<html lang="es" data-pantalla="corta">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Volvemos en unos minutos</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.6;overflow-wrap:anywhere}
+main{flex:1;width:100%;max-width:40rem;margin:0 auto;padding:2.5rem 1rem 1rem;text-align:center}
+.icono{font-size:3rem;line-height:1}
+h1{font-size:1.5rem;line-height:1.3;margin:.85rem 0 .5rem;color:#fff}
+.lema{color:#94a3b8;max-width:34rem;margin:0 auto 2rem}
+.video{max-width:38rem;margin:0 auto}
+.marco{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.marco iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+.nota{color:#64748b;font-size:.8rem;margin:.75rem 0 0}
+footer{color:#64748b;font-size:.8rem;text-align:center;padding:1.5rem 1rem 2rem}
+footer a{color:#60a5fa;font-weight:500}
+</style>
+</head>
+<body>
+<main>
+  <div class="icono" aria-hidden="true">&#128736;&#65039;</div>
+  <h1>Volvemos en unos minutos</h1>
+  <p class="lema">Estamos mejorando el sistema. Tus datos est&aacute;n a salvo; esta p&aacute;gina se revisa sola y te regresa en cuanto el sistema responda.</p>
+</main>
+<footer>Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener">NoKo Devs</a> &middot; &copy; 2026 Learning Center</footer>
+<script>
+// Cada 20 s pregunta por esta misma dirección. Si ya no contesta El Portero con
+// su 503 (el sistema volvió) o contesta con OTRA pantalla (empezó o terminó un
+// despliegue), se recarga. `replace` y no `reload`: si esta pantalla fue la
+// respuesta a un formulario, `reload` volvería a mandarlo.
+(function () {
+  var marca = document.documentElement.getAttribute("data-pantalla");
+  function revisa() {
+    fetch(location.href, { cache: "no-store", credentials: "same-origin" }).then(function (r) {
+      if (r.status !== 503) { location.replace(location.href); return; }
+      return r.text().then(function (t) {
+        var m = t.match(/data-pantalla="([^"]*)"/);
+        if (!m || m[1] !== marca) location.replace(location.href);
+      });
+    }).catch(function () {});
+  }
+  setInterval(revisa, 20000);
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load forms_helpers proyectos_extras %}
+{% load forms_helpers proyectos_extras caja %}
 {% block title %}{{ cliente.razon_social }} — Clientes{% endblock %}
 {% block contenido %}
 {% spaceless %}
@@ -12,11 +12,16 @@
     {% comment %}LC 2026-07-26 (Oscar, ronda 3): la pastilla de color con el slug
     se quitó de aquí — la referencia `$slug` vive en el recuadro «Identificación»
     del costado, que es donde se busca.{% endcomment %}
+    {% comment %}La Caja: «Cobrar con link» (monto libre). Sale vacío si La Caja está
+    apagada o si no tienes `caja.crear_link`.{% endcomment %}
+    <span class="ml-auto flex flex-wrap items-center gap-2">
+    {% boton_link_libre cliente=cliente %}
     {% if permisos_modulos.comunicacion and cliente.email_contacto %}
     <button type="button" hx-get="{% url 'cartera-cliente-correo' cliente.pk %}"
             hx-target="#modal-slot" hx-swap="innerHTML"
-            class="btn-secundario ml-auto">✉️ Enviar correo</button>
+            class="btn-secundario">✉️ Enviar correo</button>
     {% endif %}
+    </span>
 </div>
 
 {# Header cards del cliente. #}
@@ -187,6 +192,9 @@ del plegable o no se pliega (y no avisa). Candado en
                 {% endfor %}
             </ul>
         </section>
+
+        {# La Recepción: quién de este cliente entra al portal (invitar / revocar). #}
+        {% if portal_visible %}{% include "portal/_recuadro_ficha.html" %}{% endif %}
 
         {# Ubicación + dirección (última visita geolocalizada + fiscal). #}
         {% include "cartera/_ubicacion.html" with nombre=cliente.razon_social direccion=cliente.direccion direccion_fiscal=cliente.direccion_fiscal fiscal_igual=cliente.fiscal_igual ultima_visita=ultima_visita plegable="ubicacion" %}

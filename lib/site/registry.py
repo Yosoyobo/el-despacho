@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from lib import pasarelas
+
 from . import droplet, integraciones, postgres, redis_status
 
 # El estado del chequeo siempre es uno de:
@@ -28,6 +30,9 @@ PLATAFORMAS: dict[str, Callable[[], dict[str, Any]]] = {
     "docker": integraciones.chequear_docker,
     "tailscale": integraciones.chequear_tailscale,
     "n8n_tailscale": integraciones.chequear_n8n,
+    # La Caja (links de pago). Sin llave, «no configurada» — no cuenta como falla.
+    "stripe": pasarelas.probar_stripe,
+    "mercadopago": pasarelas.probar_mercadopago,
 }
 
 

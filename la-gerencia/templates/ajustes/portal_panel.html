@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Portal de clientes — Ajustes{% endblock %}
+
+{% comment %}
+La Recepción (el portal de clientes). Por decisión de Oscar los clientes entran
+SÓLO con el enlace que les llega por correo; «Entrar con Google» se prende aquí,
+y antes hay que registrar la dirección de regreso en Google Cloud Console.
+{% endcomment %}
+
+{% block contenido %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "Portal de clientes" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Portal de clientes" subtitulo="Cómo entran los clientes a La Recepción" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+
+<form method="post" class="max-w-2xl space-y-6">
+    {% csrf_token %}
+    <section class="campo-form rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-2 text-theme-xl font-medium text-gray-900 dark:text-white">Cómo entran</h2>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+            Siempre con un enlace de un solo uso que les llega a su correo, sin
+            contraseña. Sólo entra quien alguien del despacho invitó desde la
+            ficha del cliente.
+        </p>
+        <label class="flex items-start gap-3">
+            <input type="checkbox" name="google_activo" value="1" {% if cfg.google_activo %}checked{% endif %}>
+            <span class="text-sm">
+                <span class="block text-gray-900 dark:text-gray-100">Enseñar también «Entrar con Google»</span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                    Antes, registra <code class="break-all font-mono">{{ url_regreso }}</code>
+                    en Google Cloud Console (en el cliente OAuth del SSO, «URIs de
+                    redireccionamiento autorizados»): sin eso, Google contesta con un
+                    error y el botón no sirve. Sólo entra con Google quien ya tiene
+                    acceso con ese mismo correo; Google nunca da de alta a nadie.
+                </span>
+                {% if not sso_configurado %}
+                <span class="mt-2 block text-xs text-warning-700 dark:text-warning-400">
+                    El inicio de sesión con Google no tiene sus credenciales en Los
+                    Ajustes: aunque lo prendas, el botón no aparece hasta que las tenga.
+                </span>
+                {% endif %}
+            </span>
+        </label>
+    </section>
+    <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="btn-primario">Guardar</button>
+        <a href="/ajustes/" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

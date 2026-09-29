@@ -729,8 +729,10 @@ def test_la_ficha_del_cliente_pliega_lo_de_consulta_y_deja_a_la_vista_lo_demas(
     html = resp.content.decode()
     p = _Plegables(html)
     assert not p.rotos(), p.rotos()
+    # «portal» (La Recepción, S5): quién del cliente entra al portal — se consulta
+    # de vez en cuando, así que nace plegado como el papeleo.
     assert set(p.secciones) == {"cotizaciones", "facturas", "ingresos", "ubicacion",
-                                "papeleo", "identificacion"}
+                                "papeleo", "portal", "identificacion"}
     assert "Paga a 30 días" in html
 
 

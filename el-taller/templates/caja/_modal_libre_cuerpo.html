@@ -1,0 +1,20 @@
+{% include "caja/_aviso_estado.html" %}
+<p class="mb-3">Un link para que <strong>{{ cliente.razon_social }}</strong> pague un monto que tú escribes{% if proyecto %}, ligado al proyecto <strong>{{ proyecto.nombre|default:proyecto.codigo }}</strong>{% endif %}.</p>
+{% if error %}<p role="alert" class="mb-3 rounded-lg bg-error-50 px-3 py-2 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-400">{{ error }}</p>{% endif %}
+<form hx-post="{% url 'caja:link-libre' %}" hx-target="#modal-slot" hx-swap="innerHTML" method="post" action="{% url 'caja:link-libre' %}" class="campo-form space-y-4">
+    {% csrf_token %}
+    {% if proyecto %}<input type="hidden" name="proyecto" value="{{ proyecto.pk }}">{% else %}<input type="hidden" name="cliente" value="{{ cliente.pk }}">{% endif %}
+    <div>
+        <label for="caja-monto">Monto a cobrar (IVA incluido)</label>
+        <input id="caja-monto" type="text" inputmode="decimal" name="monto" value="{{ monto }}" placeholder="0.00" required autofocus>
+    </div>
+    <div>
+        <label for="caja-concepto">Concepto</label>
+        <input id="caja-concepto" type="text" name="concepto" value="{{ concepto }}" maxlength="200" placeholder="Ej. Anticipo de muestras" required>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Lo ve el cliente al pagar. Al cobrarse entra como ingreso del cliente{% if proyecto %} y del proyecto{% endif %}.</p>
+    </div>
+    <div class="flex justify-end gap-2">
+        <button type="button" data-modal-slot-close class="btn-secundario">Cancelar</button>
+        <button type="submit" class="btn-primario">Generar link</button>
+    </div>
+</form>

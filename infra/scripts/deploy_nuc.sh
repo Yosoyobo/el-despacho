@@ -160,7 +160,7 @@ rm -f docker-compose.prod.yml.previo
 # de digests que este mismo despliegue trajo.
 echo "=== Comprobando que lo que corre ES lo que se acaba de traer ==="
 DIGEST_MAL=""
-for svc in el-taller la-gerencia portavoz-worker; do
+for svc in el-taller la-gerencia la-recepcion portavoz-worker; do
   CID=$(docker compose $COMPOSE_FILES ps -q "$svc" 2>/dev/null | head -1)
   if [ -z "$CID" ]; then
     DIGEST_MAL="$DIGEST_MAL ${svc}=sin-contenedor"

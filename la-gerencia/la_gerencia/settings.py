@@ -83,6 +83,15 @@ INSTALLED_APPS = [
     # aquí se instala solo para que La Gerencia corra su migración (Bug B §14).
     "campanas.apps.CampanasConfig",
     "papeleo.apps.PapeleoConfig",
+    # La Recepción (S5): los accesos de clientes al portal. La UI vive en El
+    # Taller (ficha del cliente) y en La Recepción; aquí sólo se instala para
+    # que La Gerencia corra su migración (es la única que corre migrate, Bug B).
+    "portal.apps.PortalConfig",
+    # La Caja (links de pago): el modelo vive en El Taller (apps.caja); aquí se
+    # instala para que La Gerencia corra su migración (Bug B) y para que su
+    # panel de Los Ajustes («Cobros en línea») lea el estado. Sus FK (cartera,
+    # proyectos, cotizaciones, facturación, tesorería) ya están instaladas.
+    "apps.caja.apps.CajaConfig",
     # S-Checador E5: CRUD de horarios + bandeja de correcciones (admin).
     "apps.checador_admin.apps.CheckadorAdminConfig",
     # S2b.cotizaciones-v1 + S2b.facturacion-v1 + S3.contaduria-v1/v2:

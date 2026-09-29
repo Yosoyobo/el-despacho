@@ -115,6 +115,19 @@ TODO_MCP = ["usar"]
 # (incluido `miembro`, que no tiene defaults). Sigue siendo granular (§4 #20):
 # el super_admin lo revoca por usuario desde /directorio/<id>/permisos/.
 TODO_EQUIPO = ["ver_actividad"]
+# La Recepción (portal de clientes, S5 2026-09-29): quién ve los accesos de un
+# cliente, quién lo invita y quién le quita el acceso. «Como hoy»: lo trae quien
+# edita la cartera (super_admin y dueño por default; la migración
+# `portal/0002` lo siembra por persona a quien hoy tiene `cartera.editar`).
+TODO_RECEPCION = ["ver", "invitar", "revocar"]
+# La Caja (links de pago con Stripe y MercadoPago, 2026-09-29). «Como hoy»: la
+# recibe quien ya ve el dinero (`tesoreria.ver`) o cobra facturas
+# (`facturacion.cobrar`) — la migración `caja/0002_seed_permisos_caja` la siembra.
+#   ver          → la pantalla de La Caja, los pagos y el aviso de pago recibido
+#   crear_link   → generar el link (factura, anticipo, monto libre) y mandarlo
+#   anular_link  → matar un link vigente
+#   revisar_pago → decidir un pago que llegó y no cuadró (registrarlo o descartarlo)
+TODO_CAJA = ["ver", "crear_link", "anular_link", "revisar_pago"]
 
 # Permisos que nacen activos para TODO usuario sin importar su rol primario.
 # `defaults_de()` los suma encima de los del rol, y el signal que siembra a los
@@ -146,6 +159,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": list(TODO_CATALOGO),
         "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
         "facturacion": list(TODO_FACTURACION),
+        "caja": list(TODO_CAJA),
         "chalan": list(TODO_CHALAN),
         # El Análisis: sólo super_admin por default — enseña dinero de todo el
         # despacho. Se delega por usuario desde El Directorio.
@@ -165,6 +179,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "interfono": list(TODO_INTERFONO),
         "mcp": list(TODO_MCP),
         "equipo": list(TODO_EQUIPO),
+        "recepcion": list(TODO_RECEPCION),
     },
     "dueno": {
         "cartera": list(TODO_CARTERA),
@@ -186,6 +201,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "catalogo": ["ver_nombres", "ver_precios", "crear", "editar", "editar_precios", "archivar"],
         "cotizaciones": list(TODO_COTIZACIONES),
         "facturacion": list(TODO_FACTURACION),
+        "caja": list(TODO_CAJA),
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
@@ -199,6 +215,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "site": list(TODO_SITE),
         "interfono": list(TODO_INTERFONO),
         "equipo": list(TODO_EQUIPO),
+        "recepcion": list(TODO_RECEPCION),
     },
     "contador": {
         # Contador ve cartera read-only; no edita proyectos ni pizarrón.
@@ -218,6 +235,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Contador arma y envía cotizaciones pero no aprueba/rechaza/anula.
         "cotizaciones": ["ver", "crear", "editar", "enviar"],
         "facturacion": list(TODO_FACTURACION),
+        "caja": list(TODO_CAJA),
         "chalan": list(TODO_CHALAN),
         # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
         # no aprueba correcciones ni configura horarios.
@@ -267,6 +285,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     # por default (failsafe) + delegable por usuario.
     "cotizaciones": [*TODO_COTIZACIONES, "eliminar"],
     "facturacion": list(TODO_FACTURACION),
+    # La Caja: links de pago y pagos en línea.
+    "caja": list(TODO_CAJA),
     "chalan": list(TODO_CHALAN),
     # El Análisis nació (S-Chalan-Analisis) en `DEFAULTS_POR_ROL` pero no aquí,
     # así que no aparecía en `/directorio/<id>/permisos/` y NO se podía delegar
@@ -294,6 +314,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "mcp": list(TODO_MCP),
     # Ver quién está en línea y su última actividad (nace activo para todos).
     "equipo": list(TODO_EQUIPO),
+    # La Recepción: ver / invitar / revocar el acceso de un cliente al portal.
+    "recepcion": list(TODO_RECEPCION),
 }
 
 

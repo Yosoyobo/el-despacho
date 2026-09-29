@@ -1,7 +1,7 @@
 """Lo que el servidor está atendiendo AHORA, leído de los logs de Docker.
 
 Alimenta la pantalla de El Vigía (`/site/vivo/`): el flujo de peticiones que
-atienden El Taller, La Gerencia y El Mostrador, conforme pasan.
+atienden El Taller, La Gerencia, La Recepción y El Mostrador, conforme pasan.
 
 **Por qué de los logs y no de un middleware.** Un middleware que fuera anotando
 cada petición en Redis o en una tabla sería una escritura extra en el camino
@@ -37,6 +37,7 @@ from lib.site.contenedores import DOCKER_SOCK, _UnixHTTPConnection, disponible
 SERVICIOS: tuple[tuple[str, str], ...] = (
     ("despacho-el-taller", "Taller"),
     ("despacho-gerencia", "Gerencia"),
+    ("despacho-la-recepcion", "Recepción"),
     ("despacho-el-mostrador", "Mostrador"),
 )
 

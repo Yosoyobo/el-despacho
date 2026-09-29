@@ -2,7 +2,8 @@
 #
 # Este archivo NO se usa en la ventana ni en HAL local. Hace seis cosas:
 #   1. Saca a El Portero del stack (Caddy vive en la ventana).
-#   2. Publica los puertos que la ventana consume por el tailnet.
+#   2. Publica los puertos que la ventana consume por el tailnet (8200 Taller,
+#      8201 Gerencia, 8202 El Mostrador, 8203 La Recepción).
 #   3. Sube el tuning de Postgres y Redis, que en el compose base está calibrado
 #      para el droplet de 1 GB.
 #   4. Pone `restart: always`, el segundo candado del arranque tras un apagón.
@@ -103,6 +104,17 @@ services:
       GUNICORN_THREADS: "8"
       MALLOC_ARENA_MAX: "8"
       SITE_SERVICIOS_ESPERADOS: "1"
+
+  # La Recepción (el portal de clientes, S5): 8203 por el tailnet, igual que las
+  # otras dos. 2 × 4 alcanza de sobra: la usan clientes que entran a ver cómo va
+  # su pedido, no el equipo trabajando todo el día.
+  la-recepcion:
+    ports:
+      - "8203:8002"
+    restart: always
+    environment:
+      GUNICORN_WORKERS: "2"
+      GUNICORN_THREADS: "4"
 
   # ── Postgres ────────────────────────────────────────────────────────────────
   # El compose base está tuneado para "droplet de 1 GB" (shared_buffers=64MB).
@@ -276,5 +288,5 @@ services:
 # sitio vuelva solo tras un corte de luz, así que reinicia pase lo que pase.
 #
 # El precio: si paras un servicio a propósito y la máquina reinicia, vuelve. Para
-# apagar algo de verdad se usa su profile (como La Recepción) o
+# apagar algo de verdad se usa un profile o
 # `docker update --restart=no <contenedor>`.

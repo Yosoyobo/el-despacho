@@ -5,6 +5,29 @@
 
 ---
 
+## Novedades — Ya hay portal de clientes (29 de septiembre de 2026)
+
+**Tus clientes ya pueden ver sus cosas en recepcion.learningcenter.mx.** Ven cómo
+van sus proyectos (estado y fecha de entrega), sus cotizaciones y sus facturas con
+sus pagos. Pueden **aprobar o rechazar una cotización con su nombre** y te llega el
+aviso. No ven costos, proveedores, notas ni comentarios internos, y cada cliente ve
+sólo lo suyo.
+
+**Nadie entra hasta que tú lo invites.** En la ficha del cliente hay un recuadro
+nuevo, «Portal de clientes»: ahí invitas a un contacto (tiene que tener su correo en
+la ficha), reenvías la invitación o le quitas el acceso, y ves cuándo entró por
+última vez. El cliente entra con un botón que le llega por correo, sin contraseña.
+También se lo puedes pedir a El Chalán: «invita al portal a Ana de $Optimist» o
+«¿quién tiene acceso al portal de Optimist?».
+
+**Las cotizaciones rechazadas o anuladas ya no se cuentan como pendientes** ni se
+pueden aprobar después.
+
+**Cobros en línea (opcional, apagado).** El sistema ya sabe generar links de pago con
+tarjeta o MercadoPago, pero no se ve nada mientras nadie ponga las llaves en La
+Gerencia → Los Ajustes → Cobros en línea. Si algún día se encienden, el cobro se
+registra solo.
+
 ## Novedades — La contabilidad de fuera entra de un jalón, con la plantilla y los estados de cuenta (29 de septiembre de 2026)
 
 **Nueva: Contaduría → Carga contable.** Para subir de una vez lo que se llevó fuera
@@ -5282,13 +5305,11 @@ Cosas que cambiamos en el camino porque resultó mejor así:
 
 ### 🚧 Lo que falta (roadmap)
 
-En orden aproximado de prioridad:
+1. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
 
-1. **La Caja** — links de pago con Stripe y MercadoPago.
-2. **El Checador V2** — nómina y costo por proyecto a partir de las horas.
-3. **La Recepción (portal de clientes)** — que el cliente vea el avance de sus
-   proyectos, apruebe cotizaciones y consulte sus facturas y pagos. Es la gran
-   etapa final.
+> **Portal de clientes y cobros en línea: listos.** La Recepción ya está encendida
+> (ver «Portal de clientes») y La Caja existe apagada hasta que se pongan llaves
+> (ver «Cobros en línea»).
 
 > **Contabilidad avanzada y cobranza: listas.** El cierre de periodo, la
 > conciliación bancaria, la estimación de ISR/PTU y el export XML para el
@@ -6076,6 +6097,32 @@ Quién puede ver el equipo, aprobar correcciones, configurar horarios o exportar
 
 ---
 
+
+### Portal de clientes (La Recepción)
+
+En la ficha del cliente, el recuadro **«Portal de clientes»**:
+
+- **Invitar**: elige un contacto con correo (el de la ficha o de sus contactos). Le
+  llega un correo con un botón para entrar; la invitación vale 72 horas. Después,
+  cada vez que quiera entrar, escribe su correo en recepcion.learningcenter.mx y le
+  llega un botón nuevo (vale 20 minutos y sirve una sola vez). No hay contraseñas.
+- **Reenviar** la invitación o **Quitar acceso** (le cierra la sesión en ese momento).
+- Ves quién tiene acceso y cuándo entró por última vez.
+
+**Qué ve el cliente:** sus proyectos vivos con su estado y fecha de entrega, sus
+cotizaciones enviadas (con el PDF, y los botones **Aprobar** / **Rechazar** con su
+nombre en la última versión vigente), y sus facturas con saldo, pagos y documentos.
+Cualquier contacto invitado ve todo lo de su empresa y nada de otra. **No** ve
+costos, proveedores, utilidad, notas ni comentarios internos, ni hay chat.
+
+Cuando un cliente aprueba o rechaza, te llega el aviso y la cotización queda con su
+nombre y la fecha. «Entrar con Google» está apagado; se prende en La Gerencia → Los
+Ajustes → Portal de clientes (antes hay que registrar la dirección del portal en
+Google Cloud Console).
+
+Con El Chalán: «invita al portal a Ana de $Optimist», «¿quién tiene acceso al portal
+de Optimist?».
+
 ### Todo lo que un cliente tiene ligado
 
 La ficha del cliente muestra, además de sus **proyectos** (agrupados por estado):
@@ -6843,6 +6890,25 @@ Chalán: «¿qué facturas de proveedores faltan por registrar?».
 ### Stripe y MercadoPago
 
 Cuando un ingreso entra con método Stripe o MercadoPago, el dinero aparece en su saldo (no en el banco). Hay un atajo "↓ Payout Stripe" / "↓ Retiro MP" que crea el traspaso al banco cuando el procesador te deposita.
+
+### Cobros en línea (La Caja) — opcional, apagado
+
+Mientras nadie ponga llaves en **La Gerencia → Los Ajustes → Cobros en línea**, La
+Caja no aparece en ningún lado. Si se encienden:
+
+- En una **factura emitida**, una **cotización aprobada con anticipo** o la ficha de un
+  **cliente o proyecto** (monto libre) aparece un botón discreto **«Link de pago»**:
+  se copia o se manda por correo. El cliente paga con tarjeta (Stripe) o con
+  MercadoPago (tarjeta, OXXO, SPEI) sin entrar al sistema.
+- Al confirmarse el pago, el ingreso se registra solo y la factura queda pagada; te
+  llega un aviso. Si algo no cuadra (otro monto, ya estaba pagada, link anulado),
+  queda en **Tesorería → La Caja → Pagos por revisar** con el motivo.
+- El recordatorio de cobranza y la factura llevan el botón «Pagar en línea», y en el
+  portal de clientes aparece «Pagar».
+- Para encenderla, cada pasarela necesita su llave **y** el secreto de su aviso
+  (webhook); los pasos exactos están en `docs/LLAVES_Y_CREDENCIALES.md`. Con llaves
+  de prueba todo avisa «Modo prueba».
+- Con El Chalán: «hazme el link de pago de la F120», «¿qué pagos llegaron en línea?».
 
 ---
 

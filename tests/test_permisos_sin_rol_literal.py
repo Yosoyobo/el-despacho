@@ -670,7 +670,8 @@ DEUDA = {
 
 CARPETAS_VISTAS = ("el-taller/apps", "la-gerencia/apps", "la-recepcion/apps",
                    "capacidades", "mcp_despacho", "campanas", "papeleo", "referencias",
-                   "auth_google", "buzon", "interfono", "chalanes", "cuentas/management")
+                   "auth_google", "buzon", "interfono", "chalanes", "cuentas/management",
+                   "portal")
 
 
 def _literales_de_rol(ruta: Path) -> list[tuple[int, str]]:

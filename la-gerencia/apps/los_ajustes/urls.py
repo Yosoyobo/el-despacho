@@ -54,6 +54,8 @@ urlpatterns = [
     path("analisis/", views.analisis_panel, name="ajustes-analisis"),
     path("rutas/", views.rutas_panel, name="ajustes-rutas"),
     path("papeleo/", views.papeleo_panel, name="ajustes-papeleo"),
+    # La Recepción (portal de clientes): «Entrar con Google», apagado por default.
+    path("portal/", views.portal_panel, name="ajustes-portal"),
     path("documentos/", views.documentos_panel, name="ajustes-documentos"),
     path("servicios/", views.servicios_panel, name="ajustes-servicios"),
     path("cfdi/", views.cfdi_panel, name="ajustes-cfdi"),

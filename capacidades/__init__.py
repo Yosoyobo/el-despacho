@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from . import (
     lecturas,  # noqa: F401,E402 — registra capacidades de lectura
+    lecturas_caja,  # noqa: F401,E402 — La Caja: links y pagos en línea
     propuestas,  # noqa: F401,E402 — registra capacidades de escritura (propuesta)
 )
 from .gating import gate_ok

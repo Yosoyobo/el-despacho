@@ -10675,3 +10675,73 @@ la plantilla; viene con el 1 de enero).
 - Si el arranque no es 1 de enero, lo ganado ese año antes del arranque queda en
   Utilidades acumuladas (el estado de resultados del año empieza en el arranque).
 - PDF de estados de cuenta no se lee (sin OCR).
+
+### S-Recepcion-Caja ✅ — VERSION 2026.09.09 (2026-09-29)
+
+Oscar: «termina TODOS TODOS los pendientes». Los dos sprints grandes, con ronda de
+decisiones (literales, 2026-09-29).
+
+**Decisiones**
+- La Caja: las dos pasarelas; se cobra saldo de factura, anticipo de cotización y
+  monto libre; el cobro se registra solo al confirmarse (webhook firmado); «listo
+  para llaves» (apagada sin ellas). Y después: **«Stripe y Mercado Pago son nice to
+  have… los socios no le ven utilidad»** → invisible sin llaves, sin ruido en
+  pantallas diarias.
+- La Recepción: acceso por enlace de correo (sin contraseña); ve avance de proyectos,
+  aprueba/rechaza cotizaciones, facturas y pagar; NO mensajes; cada contacto ve todo
+  lo de su empresa; **encendida sin invitar a nadie**; sin video en la pantalla de
+  espera de los clientes; «Entrar con Google» oculto (casilla en Los Ajustes).
+
+**La Caja** (`el-taller/apps/caja/`, `lib/pasarelas.py` con `httpx`, sin SDK;
+`tests/taller/test_caja.py`, 72 con pasarelas simuladas)
+- `LinkPago` (factura | anticipo | libre; token al azar firmado; vigente/pagado/
+  anulado/vencido) y `PagoRecibido` (único por pasarela + id externo). `caja/0001`
+  esquema, `0002_seed_permisos_caja` (depende de `cuentas/0050`): `caja.ver` a quien
+  tiene `tesoreria.ver`/`facturacion.cobrar`; `crear_link/anular_link/revisar_pago`
+  a quien tiene `facturacion.cobrar`.
+- `/pagar/<token>/` pública (noindex, no-referrer, rate-limit, 404 sin llaves o token
+  falso) → Stripe Checkout / MercadoPago Checkout Pro. Webhooks
+  `/caja/webhook/{stripe,mercadopago}/`: firma HMAC en tiempo constante (Stripe con
+  tolerancia de 300 s; MercadoPago además consulta el pago en su API), idempotentes
+  (`UniqueConstraint` + `select_for_update`). Confirmado → `registrar_cobro` /
+  factura de anticipo emitida y cobrada / Ingreso libre; lo que no cuadra →
+  «por revisar» con motivo. `pago.recibido` + Interfón a `caja.ver`.
+- `url_pago(objeto)` (contrato con el portal) arma la URL con `apps.caja.urls_raiz`
+  para funcionar desde cualquier app. `apps.caja` también en La Gerencia (migra).
+- El Chalán: `links_de_pago`, `pagos_recientes`, propuesta `crear_link_pago`; MCP
+  `pagos_en_linea`/`links_de_pago`. Encendido: `docs/LLAVES_Y_CREDENCIALES.md`.
+
+**La Recepción** (app raíz `portal/` + `la-recepcion/apps/portal_cliente/`;
+`tests/recepcion/`, `tests/taller/test_recepcion_ficha.py`, `tests/test_recepcion_infra.py`)
+- `AccesoCliente`, `EnlaceAcceso` (sólo hash; entrada 20 min, invitación 72 h; sirve
+  sólo el último), `EventoPortal`, `ConfiguracionPortal` (`portal/0001` esquema,
+  `0002` permisos `recepcion.invitar/revocar`, `0003` configuración). Sesión propia
+  `recepcion_session` sin `AuthenticationMiddleware`; el middleware cierra todo por
+  default; todas las consultas pasan por `consultas.*_de(cliente, …)`.
+- Carga los modelos de El Taller que necesita sin `migrate` (Bug B; migra La
+  Gerencia) y con su `COPY` (Bug A, candado contra `INSTALLED_APPS`).
+- Entrar: correo → enlace (misma respuesta exista o no), rate-limit 5/correo y
+  20/IP cada 15 min (sin Redis se niega). El GET del enlace no lo gasta (los filtros
+  de correo lo abren): se gasta al picar «Entrar».
+- Ve: proyectos vivos (sin archivados/cancelados; fecha de entrega desde «En
+  diseño»), cotizaciones enviadas (aprobar/rechazar sólo la última versión vigente,
+  con nombre, IP y fecha; aviso al equipo), facturas emitidas/con CFDI, pagos,
+  PDF/XML desde Drive; botón «Pagar» con La Caja.
+- Invitar/revocar desde la ficha del cliente (recuadro «Portal de clientes»; revocar
+  cierra la sesión viva). El Chalán: `accesos_portal`, propuesta `invitar_portal`.
+- Encendida: sin `profiles`, NUC puerto 8203 por el tailnet, `UPSTREAM_RECEPCION` en
+  `docker-compose.ventana.yml`, Caddy `reverse_proxy` + `lc_failover` con variante
+  del portal sin video (`index-portal.html` / `en-curso-portal.html`, derivadas de la
+  del equipo quitando el bloque `<!-- video -->`).
+- **Arreglo del sistema**: `fase_de`/`slugs_de_fase` reconocen los literales
+  «rechazada»/«anulada» (perdida) y «aprobada»/«pagada» (ganada) cuando el catálogo
+  no los tiene: las rechazadas/anuladas dejaban de contarse como enviadas vivas.
+
+**Pasos manuales** (opcionales): para «Entrar con Google» en el portal, registrar
+`https://recepcion.learningcenter.mx/auth/google/callback` (y el origen) en Google
+Cloud Console y luego prender la casilla. Para La Caja, llaves + secretos de webhook
+en Los Ajustes.
+
+**Deuda**: devoluciones/contracargos de la pasarela no se procesan (se descartan en
+«por revisar»); payouts siguen a mano; cambiar `DJANGO_SECRET_KEY` invalida los links
+enviados.

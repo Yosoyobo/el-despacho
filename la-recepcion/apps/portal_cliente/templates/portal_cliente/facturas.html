@@ -1,0 +1,22 @@
+{% extends "portal_cliente/base.html" %}
+{% block title %}Facturas{% endblock %}
+{% block contenido %}
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Facturas</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Lo que te hemos facturado, lo que ya pagaste y lo que falta.</p>
+
+<section class="mt-6">
+    <h2 class="titulo-seccion">Por pagar</h2>
+    {% if con_saldo %}
+    <ul class="mt-3 space-y-3">{% for f in con_saldo %}{% include "portal_cliente/_factura_fila.html" %}{% endfor %}</ul>
+    {% else %}
+    <p class="tarjeta mt-3 text-sm text-gray-600 dark:text-gray-300">Estás al corriente: no hay facturas con saldo.</p>
+    {% endif %}
+</section>
+
+{% if pagadas %}
+<section class="mt-8">
+    <h2 class="titulo-seccion">Pagadas</h2>
+    <ul class="mt-3 space-y-3">{% for f in pagadas %}{% include "portal_cliente/_factura_fila.html" %}{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

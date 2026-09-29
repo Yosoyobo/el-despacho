@@ -7,7 +7,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "lib", "el-taller", "la-gerencia"]
+pythonpath = [".", "lib", "el-taller", "la-gerencia", "la-recepcion"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 DJANGO_SETTINGS_MODULE = "tests.django_settings"

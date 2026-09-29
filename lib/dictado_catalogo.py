@@ -194,6 +194,15 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "cfdi (folio fiscal o serie-folio), factura_codigo (FAC-… o el folio F-…). El XML y el folio fiscal quedan guardados en la factura",
         "gating": "facturacion_editar",
     },
+    # La Recepción (S5): invitar al portal de clientes. Siempre propuesta: la
+    # invitación manda un correo con la llave de entrada, alguien lo confirma.
+    {
+        "tipo": "invitar_portal",
+        "titulo": "Invitar a un contacto al portal de clientes",
+        "ejemplo": "Invita al portal a Ana López de $heladeria-la-nieve.",
+        "payload": "cliente_slug (o nombre del cliente), contacto (nombre o correo de un contacto que YA está en la ficha del cliente). Le llega un correo con su enlace de entrada; consulta `accesos_portal` antes para no invitar a quien ya entra",
+        "gating": "recepcion_invitar",
+    },
     {
         "tipo": "reembolsar_egreso",
         "titulo": "Reembolsar egreso",
@@ -534,6 +543,17 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo, documento_id (el número que da buscar_papeleo)",
         "gating": "cotizaciones_anexar",
     },
+    {
+        # La Caja: el link para que el cliente pague en línea (Stripe/MercadoPago).
+        "tipo": "crear_link_pago",
+        "titulo": "Crear un link de pago en línea",
+        "ejemplo": ("Hazme el link de pago de la factura F120. O: «link de pago del anticipo de la "
+                    "COT-2026-0044». O: «cóbrale a Optimist $3,500 de muestras con link»."),
+        "payload": ("factura (código o folio) | cotizacion (código, para su anticipo) | "
+                    "cliente_slug o proyecto_slug + monto + concepto (monto libre, IVA incluido); "
+                    "enviar_correo? (true = se lo manda al correo del cliente)"),
+        "gating": "caja_crear_link",
+    },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
@@ -585,6 +605,10 @@ def _gating_checks():
         # uno solo no alcanza — el ejecutor pide los dos también.
         "cotizaciones_anexar": lambda u: (permisos.puede_editar_cotizaciones(u)
                                           and permisos.puede_ver_papeleo(u)),
+        # La Recepción: mandarle a un contacto su invitación al portal.
+        "recepcion_invitar": permisos.puede_invitar_portal,
+        # La Caja: generar (y mandar) un link de pago en línea.
+        "caja_crear_link": permisos.puede_crear_link_caja,
     }
 
 
@@ -659,6 +683,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso). La cotización dice además qué anexos lleva pegados al final del PDF. Pregunta: «¿la COT-2026-0044 ya lleva la ficha técnica?»."},
     {"nombre": "buscar_papeleo / detalle_papeleo / papeleo_de", "que": "Busca en el archivo del papeleo por lo que dicen los documentos adentro, lee uno, o dice qué papeleo tiene un cliente, proyecto o proveedor (requiere permiso de Papeleo). Para anexar uno a una cotización se propone `anexar_a_cotizacion` con su número. Pregunta: «busca la garantía del termo» o «¿qué papeleo tiene Optimist?»."},
     {"nombre": "Papeleo · unir y convertir", "que": "Unir varios documentos del papeleo en un solo PDF NO se pide por chat: es el botón «Unir en un PDF» de la pantalla del Papeleo (marcas las tarjetas). Convertir Word/Excel tampoco hace falta pedirlo: al subir al Papeleo o anexar a una cotización se convierten a PDF solos. El aviso de papeleo nuevo y el ligado automático corren solos (se prenden en Gerencia → Papeleo)."},
+    {"nombre": "links_de_pago / pagos_recientes", "que": "La Caja: los links de pago en línea (Stripe / MercadoPago) —de qué factura, anticipo o monto libre, si siguen vigentes y su URL— y los pagos que llegaron: cuáles se registraron solos y cuáles quedaron por revisar y por qué (requiere permiso de La Caja). Pregunta: «¿qué pagos llegaron en línea?», «¿hay pagos por revisar?», «dame el link de pago de la F120». Para hacer uno nuevo, El Chalán propone `crear_link_pago` y tú confirmas; registrar un pago que no cuadró NO se pide por chat: es el botón «Registrar» de La Caja."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "contaduria_carga", "que": "Cómo quedó la última carga contable y si cuadró («¿cuadró la carga contable?»). Subirla es en pantalla: Contaduría → Carga contable (requiere permiso de carga contable)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
@@ -673,6 +698,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "resumen_perdidos", "que": "Lo que se perdió: cotizaciones caídas y su monto, proyectos cancelados con su motivo, propuestas enfriadas sin respuesta y trabajos que se ganaron pero dejaron pérdida (requiere permiso de Cotizaciones). Pregunta: «¿por qué estamos perdiendo trabajos?»."},
     {"nombre": "resumen_clientes", "que": "Quién deja más dinero, quién debe más, quién dejó de comprar y el ticket promedio (requiere permiso de Clientes). Pregunta: «¿cuáles son mis mejores clientes?»."},
     {"nombre": "cfdi_pendientes", "que": "Los CFDI que llegaron por correo y esperan que alguien decida: de quién son, por cuánto, por qué no se ligaron solos, qué proveedor o factura parece ser y si ya hay un egreso que casa (requiere permiso de Finanzas). Pregunta: «¿qué facturas de proveedores faltan por registrar?». Para resolverlos, El Chalán propone `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura` y tú confirmas."},
+    {"nombre": "accesos_portal", "que": "Quién de un cliente puede entrar al portal de clientes (La Recepción) y cuándo entró por última vez, y qué contactos con correo todavía no tienen acceso (requiere permiso del portal). Pregunta: «¿quién tiene acceso al portal de Optimist?». Para dar acceso, El Chalán propone `invitar_portal` y tú confirmas; revocar se hace en la ficha del cliente. El portal mismo no tiene Chalán."},
     {"nombre": "resumen_proveedores", "que": "A quién se le compra más, cuánto se le debe y qué egresos quedaron sin proveedor (requiere permiso de Finanzas). Pregunta: «¿a quién le debemos más?»."},
     {"nombre": "resumen_equipo", "que": "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y horas de la semana — sólo de la gente que tú puedes ver. Pregunta: «¿quién está saturado?» o «¿qué se está entregando tarde?»."},
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},

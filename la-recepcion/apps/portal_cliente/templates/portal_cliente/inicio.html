@@ -1,0 +1,82 @@
+{% extends "portal_cliente/base.html" %}
+{% load forms_helpers portal_ui %}
+{% block title %}Inicio{% endblock %}
+{% block contenido %}
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Hola, {{ acceso_portal.nombre_visible }}</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Así van las cosas de <strong class="text-gray-900 dark:text-white">{{ cliente_portal.razon_social }}</strong> con Learning Center.</p>
+
+<div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <a href="{% url 'recepcion-proyectos' %}" class="tarjeta block hover:border-brand-300 dark:hover:border-brand-700">
+        <p class="titulo-seccion">Proyectos en curso</p>
+        <p class="mt-1 text-title-xs font-semibold tabular-nums text-gray-900 dark:text-white">{{ resumen.proyectos_activos|length }}</p>
+        {% if resumen.proyectos_terminados %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ resumen.proyectos_terminados }} terminado{{ resumen.proyectos_terminados|pluralize }}</p>{% endif %}
+    </a>
+    <a href="{% url 'recepcion-cotizaciones' %}" class="tarjeta block hover:border-brand-300 dark:hover:border-brand-700">
+        <p class="titulo-seccion">Cotizaciones por responder</p>
+        <p class="mt-1 text-title-xs font-semibold tabular-nums {% if resumen.por_responder %}text-warning-600 dark:text-warning-400{% else %}text-gray-900 dark:text-white{% endif %}">{{ resumen.por_responder|length }}</p>
+    </a>
+    <a href="{% url 'recepcion-facturas' %}" class="tarjeta block hover:border-brand-300 dark:hover:border-brand-700">
+        <p class="titulo-seccion">Saldo por pagar</p>
+        <p class="mt-1 text-title-xs font-semibold tabular-nums text-gray-900 dark:text-white">{{ resumen.saldo_total|dinero_exacto }}</p>
+        {% if resumen.facturas_con_saldo %}<p class="text-xs text-gray-500 dark:text-gray-400">en {{ resumen.facturas_con_saldo|length }} factura{{ resumen.facturas_con_saldo|length|pluralize }}</p>{% endif %}
+    </a>
+</div>
+
+{% if resumen.por_responder %}
+<section class="mt-8">
+    <h2 class="text-theme-xl font-semibold text-gray-900 dark:text-white">Esperan tu respuesta</h2>
+    <ul class="mt-3 space-y-3">
+        {% for c in resumen.por_responder %}
+        <li>
+            <a href="{% url 'recepcion-cotizacion' c.pk %}" class="tarjeta flex flex-wrap items-center justify-between gap-3 hover:border-brand-300 dark:hover:border-brand-700">
+                <span class="min-w-0">
+                    <span class="block font-medium text-gray-900 dark:text-white">{{ c.titulo }}</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400"><span class="font-mono">{{ c.codigo }}</span>{% if c.fecha_validez %} · vigente hasta el {{ c.fecha_validez|date:"d M Y" }}{% endif %}</span>
+                </span>
+                <span class="flex items-center gap-3">
+                    <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ c.total|dinero_exacto }}</span>
+                    <span class="btn-primario">Revisar</span>
+                </span>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="mt-8">
+    <div class="flex items-baseline justify-between gap-3">
+        <h2 class="text-theme-xl font-semibold text-gray-900 dark:text-white">Proyectos en curso</h2>
+        <a href="{% url 'recepcion-proyectos' %}" class="enlace text-sm">Ver todos</a>
+    </div>
+    {% if resumen.proyectos_activos %}
+    <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {% for p in resumen.proyectos_activos|slice:":4" %}{% include "portal_cliente/_proyecto_tarjeta.html" with pasos=pasos_ciclo %}{% endfor %}
+    </div>
+    {% else %}
+    <p class="tarjeta mt-3 text-sm text-gray-600 dark:text-gray-300">Por ahora no hay proyectos en curso.</p>
+    {% endif %}
+</section>
+
+{% if resumen.facturas_con_saldo %}
+<section class="mt-8">
+    <h2 class="text-theme-xl font-semibold text-gray-900 dark:text-white">Facturas por pagar</h2>
+    <ul class="mt-3 space-y-3">
+        {% for f in resumen.facturas_con_saldo %}
+        <li>
+            <a href="{% url 'recepcion-factura' f.pk %}" class="tarjeta flex flex-wrap items-center justify-between gap-3 hover:border-brand-300 dark:hover:border-brand-700">
+                <span class="min-w-0">
+                    <span class="block font-medium text-gray-900 dark:text-white">Factura {{ f.folio }}</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">{% if f.fecha_vencimiento %}Vence el {{ f.fecha_vencimiento|date:"d M Y" }}{% endif %}</span>
+                </span>
+                <span class="text-right">
+                    <span class="block font-semibold tabular-nums text-gray-900 dark:text-white">{{ f.saldo|dinero_exacto }}</span>
+                    <span class="chip {{ f.tono|tono }}">{{ f.estado }}</span>
+                </span>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

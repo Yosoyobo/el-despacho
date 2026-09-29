@@ -212,6 +212,40 @@ Sin token, `/salud` contesta sólo la cara pública (el estado de cada pieza); c
 contrato del taller, en `CELADOR_TOKEN` del `.env`. Detalle en
 **[MONITOR_SALUD.md](MONITOR_SALUD.md)**.
 
+### La Caja — Stripe y MercadoPago (links de pago)
+
+Cuatro slots en Los Ajustes → «Cobros en línea». **Cada pasarela se enciende con
+DOS cosas: su llave y el secreto de su webhook.** Con una sola, no se ofrece (el
+cliente podría pagar y el sistema nunca se enteraría). Sin ninguna, La Caja está
+apagada: no hay botones ni página de pago. Los Ajustes dice en qué estado está.
+
+**Stripe** (tarjeta):
+1. dashboard.stripe.com → Desarrolladores → Claves de API → «Clave secreta»
+   (`sk_live_…`; la `sk_test_…` es modo prueba) → slot `stripe_secret_key`.
+2. Desarrolladores → Webhooks → «Agregar destino»: URL
+   `https://taller.learningcenter.mx/caja/webhook/stripe/`, eventos
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` y
+   `checkout.session.async_payment_failed`. Copia el «Secreto de firma»
+   (`whsec_…`) → slot `stripe_webhook_secret`.
+3. El webhook de prueba y el real son distintos: cada modo tiene su propio
+   `whsec_…`. Un evento de prueba con llave real (o al revés) se ignora.
+
+**MercadoPago** (tarjeta, OXXO, SPEI, saldo MP):
+1. mercadopago.com.mx/developers → Tus integraciones → la aplicación →
+   Credenciales de producción → «Access Token» (`APP_USR-…`; el `TEST-…` es
+   modo prueba) → slot `mercadopago_access_token`.
+2. En la misma aplicación → Webhooks → «Configurar notificaciones»: URL de
+   producción `https://taller.learningcenter.mx/caja/webhook/mercadopago/`,
+   evento **Pagos**. Guarda y copia la «Clave secreta» que muestra → slot
+   `mercadopago_webhook_secret`.
+
+**Cómo se comprueba:** El Site → Integraciones → «Probar» en `stripe` y
+`mercadopago` (lee el saldo / la cuenta, no cobra). Y la prueba de verdad: con
+llaves de prueba, genera un link desde una factura emitida, págalo con la
+tarjeta de prueba de la pasarela y mira que en La Caja aparezca «Registrado» y
+la factura quede pagada. Con llaves de prueba la página de pago y La Caja
+avisan «Modo prueba».
+
 ### El Envoltorio — keystore de Android
 
 No es una credencial del sistema sino la **firma de la app** de El Taller para
@@ -226,12 +260,6 @@ Instrucciones en **[../envoltorio/README.md](../envoltorio/README.md)**.
 - **`rfc_empresa`** — es un dato, no un secreto: el RFC de Learning Center, que
   se usa en el export fiscal XML (Anexo 24). Vive en La Bóveda por comodidad.
   Confírmalo con el contador antes de presentar nada al SAT.
-
-- **Stripe y MercadoPago** — los cuatro slots (`stripe_secret_key`,
-  `stripe_webhook_secret`, `mercadopago_access_token`,
-  `mercadopago_webhook_secret`) **están declarados pero ningún código los lee
-  todavía**: La Caja no está implementada. Pegarlos hoy no habilita nada. Se
-  dejaron listos para cuando entre ese sprint.
 
 - **`anthropic_api_key` y `openai_api_key`** — slots **legacy**, de antes de que
   existieran Los Chalanes. Los reemplazan `chalan_anthropic_api_key` y
