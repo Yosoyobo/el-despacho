@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* La Recepción — portal de clientes. Hoja propia: el portal no comparte
+   componentes con El Taller (otra audiencia, otra navegación), sólo los tokens
+   de `tailwind.config.js`. */
+
+@layer base {
+  body { @apply font-inter; }
+}
+
+@layer components {
+  .tarjeta {
+    @apply rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900;
+  }
+  .titulo-seccion {
+    @apply text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400;
+  }
+  .campo {
+    @apply w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-brand-800;
+  }
+  .etiqueta {
+    @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300;
+  }
+  /* Botones: 44 px de alto como mínimo, que es lo que se puede picar con el
+     dedo sin atinarle al de al lado. */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring focus:ring-brand-500/20;
+  }
+  .btn-primario { @apply btn bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600; }
+  .btn-secundario { @apply btn border border-gray-300 bg-white text-gray-700 shadow-theme-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700; }
+  .btn-exito { @apply btn bg-success-600 text-white shadow-theme-xs hover:bg-success-700; }
+  .btn-peligro { @apply btn border border-error-300 bg-white text-error-700 hover:bg-error-50 dark:border-error-500/40 dark:bg-transparent dark:text-error-400 dark:hover:bg-error-500/10; }
+  .enlace { @apply font-medium text-brand-600 hover:text-brand-700 hover:underline dark:text-brand-400; }
+
+  .chip { @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium; }
+
+  .pestana { @apply shrink-0 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white; }
+  .pestana-activa { @apply bg-brand-50 text-brand-700 hover:bg-brand-50 hover:text-brand-700 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/15 dark:hover:text-brand-300; }
+}
+
+/* El banner de la ventana de mantenimiento «respira» (§4 #23): latido lento de
+   opacidad, igual que en El Taller y La Gerencia. */
+@keyframes respirar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+.respira { animation: respirar 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .respira { animation: none; }
+}

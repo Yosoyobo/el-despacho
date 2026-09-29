@@ -1,0 +1,15 @@
+{
+  "name": "Learning Center · Portal de clientes",
+  "short_name": "Learning Center",
+  "description": "Tus proyectos, cotizaciones y facturas con Learning Center.",
+  "lang": "es-MX",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#465fff",
+  "icons": [
+    {"src": "/static/branding/Icono_LC-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/branding/Icono_LC-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

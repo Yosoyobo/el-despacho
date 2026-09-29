@@ -1,0 +1,18 @@
+{% extends "portal_cliente/base.html" %}
+{% block title %}Revisa tu correo{% endblock %}
+{% block contenido %}
+<div class="mx-auto max-w-md">
+    <div class="tarjeta p-6 sm:p-8">
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300" aria-hidden="true">
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        </div>
+        <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Revisa tu correo</h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Si <strong class="break-all text-gray-900 dark:text-white">{{ email }}</strong> tiene acceso al portal, te acabamos de mandar un botón para entrar.</p>
+        <ul class="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-600 dark:text-gray-300">
+            <li>El botón sirve <strong>una sola vez</strong> y vence en 20 minutos.</li>
+            <li>Puede tardar un par de minutos. Si no llega, revisa tu carpeta de correo no deseado.</li>
+        </ul>
+        <a href="{% url 'recepcion-entrar' %}?email={{ email|urlencode }}" class="btn-secundario mt-6 w-full">Pedir otro enlace</a>
+    </div>
+</div>
+{% endblock %}

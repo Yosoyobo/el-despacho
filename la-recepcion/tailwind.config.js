@@ -1,39 +1,23 @@
 /** @type {import('tailwindcss').Config} */
-// Tokens portados de TailAdmin Pro 2.3.0 (Tailwind v4 CSS-first) a Tailwind v3
-// JS config para El Despacho. Sprint S-TailAdmin-1.
+// La Recepción (portal de clientes, S5 2026-09-29).
 //
-// Cualquier cambio aquí hay que replicarlo en el-taller/tailwind.config.js y
-// la-recepcion/tailwind.config.js (dos copias sincronizadas — patrón de
-// partials del sprint). Si surge drift, unificar en sprint futuro.
+// Los TOKENS (`theme`) son los de El Taller / La Gerencia —paleta TailAdmin Pro
+// 2.3.0 portada a Tailwind v3— para que el portal se vea de la misma casa. Si
+// cambian allá, se copian aquí. Lo que NO se copia es `content` ni `safelist`:
+// el portal tiene sus propias plantillas y no arma clases desde JS.
+//
+// Rutas relativas a /app (el contenedor): `la-recepcion/` se copia plano ahí.
 module.exports = {
   darkMode: 'class',
-  // Mantener sincronizado con la-gerencia/tailwind.config.js (regla §18).
-  safelist: [
-    'text-success-500', 'text-warning-500', 'text-error-500',
-    'bg-success-500', 'bg-warning-500', 'bg-error-500',
-    'fill-success-500', 'fill-warning-500', 'fill-error-500',
-    'stroke-success-500', 'stroke-warning-500', 'stroke-error-500',
-    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-(50|500)$/ },
-    { pattern: /^text-(brand|success|error|warning|blue-light|orange|purple)-(400|500|600|700)$/ },
-    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-500\/(10|15|20)$/, variants: ['dark'] },
-    { pattern: /^text-(brand|success|error|warning|blue-light|orange|purple)-(400|500|600|700)$/, variants: ['dark'] },
-    { pattern: /^bg-(brand|success|error|warning|blue-light|orange|purple)-(50|100)$/ },
-    // Kanban: outlines de color por estado de proyecto (border-t/l, runtime).
-    { pattern: /^border-(t|l)-(brand|success|error|warning|blue-light|orange|gray)-400$/ },
-  ],
+  // Como en El Taller: `hover:` sólo donde hay puntero de verdad. En el celular
+  // un hover «pegado» deja resaltada la tarjeta que tocaste.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./templates/**/*.html",
     "./apps/**/templates/**/*.html",
-    "./apps/**/forms.py",
-    "./apps/**/views.py",
-    // Hotfix S2b.1.5: las clases generadas dinámicamente en JS (dropdown de
-    // referencias.js, ui.js) deben quedar en el CSS compilado.
-    "./static/**/*.js",
-    "./apps/**/static/**/*.js",
-    "../referencias/static/**/*.js",
-    "../interfono/static/**/*.js",
-    "./referencias/static/**/*.js",
-    "./interfono/static/**/*.js",
+    // Los tonos de las etiquetas de estado se arman en Python.
+    "./apps/**/templatetags/*.py",
+    "./static/js/**/*.js",
   ],
   theme: {
     extend: {

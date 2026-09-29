@@ -1,0 +1,51 @@
+{% extends "portal_cliente/base.html" %}
+{% load portal_ui %}
+{% block title %}{{ p.nombre }}{% endblock %}
+{% block contenido %}
+<a href="{% url 'recepcion-proyectos' %}" class="enlace text-sm">← Proyectos</a>
+<div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+        <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">{{ p.nombre }}</h1>
+        <p class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ p.codigo }}</p>
+    </div>
+    <span class="chip {{ p.tono|tono }}">{{ p.estado }}</span>
+</div>
+
+<div class="tarjeta mt-5">
+    {% if p.en_pausa %}
+    <p class="text-sm text-gray-600 dark:text-gray-300">Este proyecto está en pausa. Tu contacto en Learning Center te avisará cuando retome.</p>
+    {% else %}
+    <ol class="grid grid-cols-4 gap-2" aria-label="Avance del proyecto">
+        {% for paso in pasos %}
+        <li>
+            <span class="block h-2 rounded-full {{ p.paso|paso_clase:forloop.counter }}"></span>
+            <span class="mt-1.5 block text-xs {% if forloop.counter == p.paso %}font-semibold text-gray-900 dark:text-white{% else %}text-gray-500 dark:text-gray-400{% endif %}">{{ paso }}</span>
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+    <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div>
+            <dt class="text-gray-500 dark:text-gray-400">{% if p.entrega_real %}Se entregó{% else %}Fecha de entrega{% endif %}</dt>
+            <dd class="font-medium text-gray-900 dark:text-white">{% if p.entrega_real %}{{ p.entrega_real|date:"d \d\e F \d\e Y" }}{% elif p.entrega %}{{ p.entrega|date:"d \d\e F \d\e Y" }}{% else %}Por definir{% endif %}</dd>
+        </div>
+        <div>
+            <dt class="text-gray-500 dark:text-gray-400">Estado</dt>
+            <dd class="font-medium text-gray-900 dark:text-white">{{ p.estado }}</dd>
+        </div>
+    </dl>
+</div>
+
+<section class="tarjeta mt-5">
+    <h2 class="titulo-seccion">Productos</h2>
+    {% if p.productos %}
+    <ul class="mt-3 divide-y divide-gray-100 text-sm dark:divide-gray-800">
+        {% for pr in p.productos %}
+        <li class="flex items-baseline justify-between gap-4 py-2.5"><span class="min-w-0 text-gray-800 dark:text-gray-100">{{ pr.nombre }}</span><span class="shrink-0 tabular-nums text-gray-600 dark:text-gray-300">× {{ pr.cantidad }}</span></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">Todavía no hay productos definidos.</p>
+    {% endif %}
+</section>
+{% endblock %}

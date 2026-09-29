@@ -1,0 +1,75 @@
+{% extends "portal_cliente/base.html" %}
+{% load forms_helpers portal_ui %}
+{% block title %}Factura {{ f.folio }}{% endblock %}
+{% block contenido %}
+<a href="{% url 'recepcion-facturas' %}" class="enlace text-sm">← Facturas</a>
+<div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+        <h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Factura {{ f.folio }}</h1>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{% if f.concepto %}{{ f.concepto }}{% endif %}{% if f.proyecto %} · {{ f.proyecto }}{% endif %}</p>
+    </div>
+    <span class="chip {{ f.tono|tono }}">{{ f.estado }}</span>
+</div>
+
+<div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+    <section class="tarjeta lg:col-span-2">
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div class="col-span-2 sm:col-span-1">
+                <dt class="text-gray-500 dark:text-gray-400">Saldo</dt>
+                <dd class="text-title-xs font-semibold tabular-nums {% if f.saldo > 0 %}text-gray-900 dark:text-white{% else %}text-success-600 dark:text-success-400{% endif %}">{{ f.saldo|dinero_exacto }} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ f.moneda }}</span></dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Total</dt>
+                <dd class="font-medium tabular-nums text-gray-900 dark:text-white">{{ f.total|dinero_exacto }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Pagado</dt>
+                <dd class="font-medium tabular-nums text-gray-900 dark:text-white">{{ f.cobrado|dinero_exacto }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Emitida</dt>
+                <dd class="font-medium text-gray-900 dark:text-white">{{ f.fecha_emision|date:"d M Y"|default:"—" }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 dark:text-gray-400">Vence</dt>
+                <dd class="font-medium {% if f.vencida %}text-error-600 dark:text-error-400{% else %}text-gray-900 dark:text-white{% endif %}">{{ f.fecha_vencimiento|date:"d M Y"|default:"—" }}</dd>
+            </div>
+        </dl>
+
+        <h2 class="titulo-seccion mt-6">Pagos recibidos</h2>
+        {% if pagos %}
+        <ul class="mt-2 divide-y divide-gray-100 text-sm dark:divide-gray-800">
+            {% for p in pagos %}
+            <li class="flex items-baseline justify-between gap-4 py-2.5">
+                <span class="text-gray-700 dark:text-gray-200">{{ p.fecha|date:"d M Y" }} <span class="text-gray-500 dark:text-gray-400">· {{ p.metodo }}</span></span>
+                <span class="shrink-0 font-medium tabular-nums text-gray-900 dark:text-white">{{ p.monto|dinero_exacto }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Todavía no hay pagos registrados en esta factura.</p>
+        {% endif %}
+    </section>
+
+    <aside class="space-y-5">
+        {% if url_pago %}
+        <div class="tarjeta">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Pagar en línea</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Con tarjeta, OXXO o transferencia, en una página segura.</p>
+            <a href="{{ url_pago }}" class="btn-primario mt-4 w-full" rel="noopener">Pagar {{ f.saldo|dinero_exacto }}</a>
+        </div>
+        {% endif %}
+        <div class="tarjeta">
+            <h2 class="font-semibold text-gray-900 dark:text-white">Documentos</h2>
+            {% if f.tiene_pdf or f.tiene_xml %}
+            <div class="mt-3 flex flex-col gap-2">
+                {% if f.tiene_pdf %}<a href="{% url 'recepcion-factura-pdf' f.pk %}" class="btn-secundario w-full">Descargar PDF</a>{% endif %}
+                {% if f.tiene_xml %}<a href="{% url 'recepcion-factura-xml' f.pk %}" class="btn-secundario w-full">Descargar XML</a>{% endif %}
+            </div>
+            {% else %}
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">El documento fiscal todavía no está disponible aquí.</p>
+            {% endif %}
+        </div>
+    </aside>
+</div>
+{% endblock %}

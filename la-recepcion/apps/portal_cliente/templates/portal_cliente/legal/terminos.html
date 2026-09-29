@@ -1,0 +1,29 @@
+{% extends "portal_cliente/base.html" %}
+{% block title %}Términos de uso{% endblock %}
+{% block contenido %}
+<article class="tarjeta mx-auto max-w-3xl space-y-4 p-6 text-sm leading-relaxed text-gray-700 sm:p-8 dark:text-gray-300 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-gray-900 dark:[&_h2]:text-white [&_a]:font-medium [&_a]:text-brand-600 dark:[&_a]:text-brand-400">
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Términos de uso del portal de clientes</h1>
+<p class="text-xs text-gray-500 dark:text-gray-400">Última actualización: 29 de septiembre de 2026.</p>
+
+<h2>Qué es este portal</h2>
+<p>«La Recepción» es el espacio donde los clientes de Learning Center consultan el avance de sus proyectos, revisan y responden sus cotizaciones y consultan sus facturas y pagos. El acceso lo da Learning Center a las personas que tu empresa designa.</p>
+
+<h2>Tu acceso</h2>
+<p>Tu acceso es personal. El enlace de entrada llega a tu correo y sirve una sola vez: no lo reenvíes. Si alguien más de tu empresa necesita entrar, pide a Learning Center que lo invite. Learning Center puede retirar un acceso en cualquier momento, por ejemplo cuando una persona deja la empresa.</p>
+
+<h2>Responder una cotización</h2>
+<p>Al aprobar una cotización desde el portal, escribes tu nombre y confirmas que la revisaste y que la apruebas en nombre de tu empresa. Esa aprobación queda registrada con tu nombre, tu correo y la fecha, y tiene el mismo valor que una aprobación por correo. Los precios, alcances y condiciones son los del documento de la cotización.</p>
+
+<h2>Pagos</h2>
+<p>Cuando hay pago en línea, se hace en la página segura de la pasarela (Stripe o MercadoPago), no en este portal. El pago se refleja en tu factura cuando la pasarela lo confirma.</p>
+
+<h2>Información que ves</h2>
+<p>La información del portal es la misma que maneja el equipo de Learning Center y se actualiza conforme avanza el trabajo. Si ves algo que no cuadra, avísale a tu contacto.</p>
+
+<h2>Privacidad</h2>
+<p>El uso de tus datos se explica en el <a href="{% url 'legal-privacidad' %}">aviso de privacidad</a>.</p>
+
+<h2>Contacto</h2>
+<p>Dudas sobre estos términos: <a href="mailto:soporte@learningcenter.mx">soporte@learningcenter.mx</a>.</p>
+</article>
+{% endblock %}

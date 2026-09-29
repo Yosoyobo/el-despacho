@@ -1,0 +1,22 @@
+{% extends "portal_cliente/base.html" %}
+{% block title %}Cotizaciones{% endblock %}
+{% block contenido %}
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Cotizaciones</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Las propuestas que te mandamos. Ábrelas para ver el documento y darnos tu respuesta.</p>
+
+<section class="mt-6">
+    <h2 class="titulo-seccion">Esperan tu respuesta</h2>
+    {% if por_responder %}
+    <ul class="mt-3 space-y-3">{% for c in por_responder %}{% include "portal_cliente/_cotizacion_fila.html" %}{% endfor %}</ul>
+    {% else %}
+    <p class="tarjeta mt-3 text-sm text-gray-600 dark:text-gray-300">No tienes cotizaciones pendientes de respuesta.</p>
+    {% endif %}
+</section>
+
+{% if respondidas %}
+<section class="mt-8">
+    <h2 class="titulo-seccion">Ya respondidas</h2>
+    <ul class="mt-3 space-y-3">{% for c in respondidas %}{% include "portal_cliente/_cotizacion_fila.html" %}{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% load forms_helpers portal_ui %}
+<li>
+    <a href="{% url 'recepcion-cotizacion' c.pk %}" class="tarjeta flex flex-wrap items-center justify-between gap-3 hover:border-brand-300 dark:hover:border-brand-700">
+        <span class="min-w-0">
+            <span class="block font-medium text-gray-900 dark:text-white">{{ c.titulo }}</span>
+            <span class="block text-xs text-gray-500 dark:text-gray-400"><span class="font-mono">{{ c.codigo }}</span>{% if c.proyecto %} · {{ c.proyecto }}{% endif %}{% if c.fecha_emision %} · {{ c.fecha_emision|date:"d M Y" }}{% endif %}</span>
+        </span>
+        <span class="flex items-center gap-3">
+            <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ c.total|dinero_exacto }}</span>
+            <span class="chip {{ c.tono|tono }}">{{ c.estado }}</span>
+        </span>
+    </a>
+</li>

@@ -1,0 +1,29 @@
+{% extends "portal_cliente/base.html" %}
+{% block title %}Proyectos{% endblock %}
+{% block contenido %}
+<h1 class="text-title-xs font-semibold text-gray-900 dark:text-white">Proyectos</h1>
+<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">En qué va cada uno y para cuándo lo tenemos.</p>
+
+<section class="mt-6">
+    <h2 class="titulo-seccion">En curso</h2>
+    {% if activos %}
+    <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {% for p in activos %}{% include "portal_cliente/_proyecto_tarjeta.html" %}{% endfor %}
+    </div>
+    {% else %}
+    <p class="tarjeta mt-3 text-sm text-gray-600 dark:text-gray-300">Por ahora no hay proyectos en curso.</p>
+    {% endif %}
+</section>
+
+{% if terminados %}
+<details class="mt-8 group">
+    <summary class="flex min-h-[44px] cursor-pointer list-none items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+        <span class="transition group-open:rotate-90" aria-hidden="true">&#9656;</span>
+        Terminados ({{ terminados|length }})
+    </summary>
+    <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {% for p in terminados %}{% include "portal_cliente/_proyecto_tarjeta.html" %}{% endfor %}
+    </div>
+</details>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% load forms_helpers portal_ui %}
+<li>
+    <a href="{% url 'recepcion-factura' f.pk %}" class="tarjeta flex flex-wrap items-center justify-between gap-3 hover:border-brand-300 dark:hover:border-brand-700">
+        <span class="min-w-0">
+            <span class="block font-medium text-gray-900 dark:text-white">Factura {{ f.folio }}</span>
+            <span class="block text-xs text-gray-500 dark:text-gray-400">{% if f.concepto %}{{ f.concepto|truncatechars:60 }} · {% endif %}{{ f.fecha_emision|date:"d M Y" }}</span>
+        </span>
+        <span class="text-right">
+            <span class="block font-semibold tabular-nums text-gray-900 dark:text-white">{% if f.saldo > 0 %}{{ f.saldo|dinero_exacto }}{% else %}{{ f.total|dinero_exacto }}{% endif %}</span>
+            <span class="chip {{ f.tono|tono }}">{{ f.estado }}</span>
+        </span>
+    </a>
+</li>

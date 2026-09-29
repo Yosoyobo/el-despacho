@@ -1,0 +1,101 @@
+{% load static %}<!doctype html>
+<html lang="es-mx">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Learning Center">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Portal de clientes{% endblock %} · Learning Center</title>
+    <script>
+        // Anti-FOUC (§4 #19): el tema se aplica antes del primer pintado. Misma
+        // llave que El Taller y La Gerencia: `despacho-tema`.
+        (function() {
+            try {
+                var g = localStorage.getItem('despacho-tema');
+                if (g === 'dark') { document.documentElement.classList.add('dark'); }
+                else if (g === 'light') { document.documentElement.classList.remove('dark'); }
+                else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+    <meta name="theme-color" content="#465fff">
+    <link rel="icon" href="{% static 'branding/Icono_LC-32.png' %}" sizes="32x32" type="image/png">
+    <link rel="icon" href="{% static 'branding/Icono_LC-64.png' %}" sizes="64x64" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'branding/Icono_LC-192.png' %}">
+    {% comment %}HTMX sólo para el banner de mantenimiento (§4 #23), que se
+    reemplaza solo cada 10 s. El portal no usa HTMX para nada más: sus
+    formularios son POST normales.{% endcomment %}
+    <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+</head>
+<body class="flex min-h-screen flex-col bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+{% include "_componentes_tailadmin/_banner_deploy.html" %}
+<header class="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <a href="/" class="flex min-w-0 items-center gap-2.5">
+            <img src="{% static 'branding/Icono_LC-64.png' %}" alt="" width="36" height="36" class="h-9 w-9 shrink-0 rounded-lg">
+            <span class="min-w-0 leading-tight">
+                <span class="block truncate text-sm font-semibold text-gray-900 dark:text-white">Learning Center</span>
+                <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{% if cliente_portal %}{{ cliente_portal.razon_social }}{% else %}Portal de clientes{% endif %}</span>
+            </span>
+        </a>
+        <div class="ml-auto flex shrink-0 items-center gap-2">
+            {% if acceso_portal %}
+            <span class="hidden text-right text-xs leading-tight text-gray-500 dark:text-gray-400 sm:block">
+                <span class="block font-medium text-gray-700 dark:text-gray-200">{{ acceso_portal.nombre_visible }}</span>
+                {{ acceso_portal.email }}
+            </span>
+            {% endif %}
+            <button type="button" id="toggle-tema" aria-label="Cambiar entre tema claro y oscuro"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">
+                <svg class="block h-5 w-5 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="hidden h-5 w-5 dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+            {% if acceso_portal %}
+            <form method="post" action="{% url 'recepcion-salir' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-secundario">Salir</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% if acceso_portal %}
+    <nav aria-label="Secciones del portal" class="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
+        <a href="{% url 'recepcion-inicio' %}" class="pestana {% if seccion == 'inicio' %}pestana-activa{% endif %}"{% if seccion == 'inicio' %} aria-current="page"{% endif %}>Inicio</a>
+        <a href="{% url 'recepcion-proyectos' %}" class="pestana {% if seccion == 'proyectos' %}pestana-activa{% endif %}"{% if seccion == 'proyectos' %} aria-current="page"{% endif %}>Proyectos</a>
+        <a href="{% url 'recepcion-cotizaciones' %}" class="pestana {% if seccion == 'cotizaciones' %}pestana-activa{% endif %}"{% if seccion == 'cotizaciones' %} aria-current="page"{% endif %}>Cotizaciones</a>
+        <a href="{% url 'recepcion-facturas' %}" class="pestana {% if seccion == 'facturas' %}pestana-activa{% endif %}"{% if seccion == 'facturas' %} aria-current="page"{% endif %}>Facturas</a>
+    </nav>
+    {% endif %}
+</header>
+
+<main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
+    {% if messages %}
+    <div class="mb-5 space-y-2">
+        {% for m in messages %}
+        <div role="status" class="rounded-lg border px-4 py-3 text-sm {% if m.tags == 'error' %}border-error-200 bg-error-50 text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300{% elif m.tags == 'success' %}border-success-200 bg-success-50 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300{% else %}border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">{{ m }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+</main>
+
+<footer class="border-t border-gray-200 px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-center text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+    © 2026 Learning Center · <a href="{% url 'legal-privacidad' %}" class="underline hover:text-gray-700 dark:hover:text-gray-300">Privacidad</a>
+    · <a href="{% url 'legal-terminos' %}" class="underline hover:text-gray-700 dark:hover:text-gray-300">Términos</a>
+    <span class="mx-2 text-gray-300 dark:text-gray-700">·</span>
+    Desarrollado por <a href="https://devs.noko.mx" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline dark:text-brand-400">NoKo Devs</a>
+    <span class="mx-2 text-gray-300 dark:text-gray-700">·</span>
+    <span class="font-mono text-[10px] tracking-tight text-gray-400 dark:text-gray-600" title="Actualizado el {{ app_version_fecha }}">v{{ app_version }}</span>
+</footer>
+<script src="{% static 'js/tema.js' %}" defer></script>
+</body>
+</html>
