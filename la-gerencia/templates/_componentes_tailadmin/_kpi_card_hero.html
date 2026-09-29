@@ -39,7 +39,7 @@ con su estado y, si la meta es proporcional, lo que se esperaba llevar hoy.
             <span class="font-semibold {% if meta.color == 'error' %}text-error-600 dark:text-error-400{% elif meta.color == 'warning' %}text-warning-600 dark:text-warning-400{% elif meta.color == 'success' %}text-success-600 dark:text-success-400{% endif %}">{{ meta.etiqueta }}{% if meta.avance_pct is not None %} · {{ meta.avance_pct|floatformat:0 }}%{% endif %}</span>
         </div>
         <div class="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div class="h-full rounded-full bg-{{ meta.color }}-500 transition-all" style="width: {{ meta.avance_clamp }}%"></div>
+            <div class="h-full rounded-full transition-all {% if meta.color == 'success' %}bg-success-500{% elif meta.color == 'warning' %}bg-warning-500{% elif meta.color == 'error' %}bg-error-500{% elif meta.color == 'gray' %}bg-gray-400{% else %}bg-brand-500{% endif %}" style="width: {{ meta.avance_clamp }}%"></div>
             {% if meta.proporcional and meta.fraccion < 1 %}<div class="absolute inset-y-0 w-0.5 bg-gray-400 dark:bg-gray-500" style="left: {% widthratio meta.fraccion 1 100 %}%" aria-hidden="true"></div>{% endif %}
         </div>
         {% if meta.proporcional %}<p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">Hoy se esperaba {{ meta.esperado_txt }}</p>{% endif %}

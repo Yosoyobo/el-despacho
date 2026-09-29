@@ -1,0 +1,4 @@
+{% load forms_helpers %}
+{% breadcrumb_items "Ajustes" "/ajustes/" "KPIs" as breadcrumb_items %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="KPIs" subtitulo="Qué se mide, quién lo ve, hacia dónde es mejor y a qué meta se apunta" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
+{% include "_componentes_tailadmin/_tabs.html" with tabs=tabs activo=activo %}

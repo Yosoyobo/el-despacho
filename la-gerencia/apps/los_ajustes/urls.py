@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_kpis
 
 urlpatterns = [
     path("", views.panel, name="ajustes-panel"),
@@ -42,8 +42,16 @@ urlpatterns = [
     path("sidebar/", views.sidebar_panel, name="ajustes-sidebar"),
     path("sidebar/guardar", views.sidebar_guardar, name="ajustes-sidebar-guardar"),
     # S-LC-Feedback-V5 c8: metas KPI.
-    path("metas-kpi/", views.metas_kpi_panel, name="ajustes-metas-kpi"),
-    path("metas-kpi/guardar", views.metas_kpi_guardar, name="ajustes-metas-kpi-guardar"),
+    # S-KPIs-V2: la pantalla de KPIs (catálogo, tableros, metas, constructor).
+    # La URL vieja de metas lleva a su pestaña.
+    path("metas-kpi/", views_kpis.metas_viejo, name="ajustes-metas-kpi"),
+    path("kpis/", views_kpis.catalogo, name="ajustes-kpis"),
+    path("kpis/catalogo/<slug:slug>/guardar", views_kpis.catalogo_guardar, name="ajustes-kpis-catalogo-guardar"),
+    path("kpis/tableros/", views_kpis.tableros, name="ajustes-kpis-tableros"),
+    path("kpis/tableros/accion", views_kpis.tablero_accion, name="ajustes-kpis-tablero-accion"),
+    path("kpis/metas/", views_kpis.metas, name="ajustes-kpis-metas"),
+    path("kpis/metas/crear", views_kpis.meta_crear, name="ajustes-kpis-meta-crear"),
+    path("kpis/metas/<int:pk>/guardar", views_kpis.meta_guardar, name="ajustes-kpis-meta-guardar"),
     # S-Chalanes-UX #4: recordatorios de tareas por vencer (config global).
     path("recordatorios/", views.recordatorios_panel, name="ajustes-recordatorios"),
     # S3 resto: La Cobranza — recordatorios de pago al cliente.
