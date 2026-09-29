@@ -39,7 +39,8 @@ TODO_TESORERIA = [
     "dictado_gasto", "anular", "reportes", "exportar",
 ]
 TODO_DICTADO = ["crear_proyecto", "actualizar_proyecto", "crear_tarea", "registrar_ingreso", "registrar_egreso"]
-TODO_CONTADURIA = ["ver", "capturar", "anular", "reportes"]
+# "cargar" (S-Carga-Contable): subir de un jalón la contabilidad llevada fuera.
+TODO_CONTADURIA = ["ver", "capturar", "anular", "reportes", "cargar"]
 # Pre-S2b.2: el Catálogo se mudó a El Taller con 7 permisos toggleables
 # individualmente por super_admin desde /directorio/<id>/permisos/.
 TODO_CATALOGO = [

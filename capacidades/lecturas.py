@@ -924,6 +924,31 @@ def _h_contaduria_balance(args: dict, usuario) -> dict:
     return {"cuentas": salida[: _TOP_N * 3], "total_cuentas": len(salida)}
 
 
+def _h_contaduria_carga(args: dict, usuario) -> dict:
+    """La última carga contable (S-Carga-Contable): qué trajo y si cuadró."""
+    from apps.contaduria.models import CargaContable
+
+    carga = CargaContable.objects.defer("archivo").exclude(estado="deshecha").order_by("-creado_en").first()
+    if carga is None:
+        return {"cargas": 0, "nota": "Todavía no hay cargas. Se hacen en Contaduría → Carga contable."}
+    r = carga.resumen or {}
+    diferencias = [
+        {"cuenta": f"{ln['codigo']} {ln['nombre']}", "fecha": ln.get("fecha_texto", ""),
+         "declarado": ln["declarado"], "el_despacho": ln["sistema"], "diferencia": ln["diferencia"]}
+        for bloque in ("apertura", "cuadre") for ln in (r.get(bloque) or {}).get("lineas", [])
+    ]
+    return {
+        "carga": carga.pk, "estado": carga.get_estado_display(),
+        "fecha_arranque": r.get("fecha_arranque_texto", ""), "errores": r.get("errores", 0),
+        "por_hoja": r.get("conteos", {}), "diferencias": diferencias[: _TOP_N * 3],
+        "clientes_segun_libro": (r.get("cxc") or {}).get("libro"),
+        "facturas_pendientes": (r.get("cxc") or {}).get("facturas"),
+        "descuadre_balance": (r.get("balance") or {}).get("descuadre"),
+        "avisos": (r.get("avisos") or [])[:_TOP_N],
+        "url": f"/contaduria/carga/{carga.pk}/",
+    }
+
+
 def _h_proximos_eventos(args: dict, usuario) -> dict:
     from datetime import date, timedelta
 
@@ -1729,6 +1754,16 @@ _LECTURAS: dict[str, Capacidad] = {
         descripcion="Balance de comprobación: saldo por cuenta con movimiento.",
         args_schema={},
         gating="contaduria", fn=_h_contaduria_balance,
+    ),
+    "contaduria_carga": Capacidad(
+        nombre="contaduria_carga",
+        descripcion=(
+            "La última carga contable (la contabilidad de fuera subida con la plantilla y los estados "
+            "de cuenta): cuántos renglones se crearon o ya estaban, errores, y si los saldos cuadraron "
+            "contra lo declarado (arranque y saldos reales). Para «¿cuadró la carga?», «¿qué falta?»."
+        ),
+        args_schema={},
+        gating="contaduria_carga", fn=_h_contaduria_carga,
     ),
     "proximos_eventos": Capacidad(
         nombre="proximos_eventos",

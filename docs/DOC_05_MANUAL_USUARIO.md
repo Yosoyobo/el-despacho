@@ -5,6 +5,30 @@
 
 ---
 
+## Novedades — La contabilidad de fuera entra de un jalón, con la plantilla y los estados de cuenta (29 de septiembre de 2026)
+
+**Nueva: Contaduría → Carga contable.** Para subir de una vez lo que se llevó fuera
+de El Despacho y que, desde ahí, todo cuadre.
+
+1. **Descarga la plantilla** (un Excel con listas de tus cuentas, clientes,
+   proveedores y centros de costo) y llénala: la fecha de arranque con lo que había
+   en bancos y caja, los ingresos, gastos y facturas desde entonces, y el saldo real
+   de hoy.
+2. **Súbela junto con los estados de cuenta del banco** (en CSV o Excel, como los
+   baja la banca en línea). También puedes subir sólo los estados de cuenta.
+3. **Revisa la vista previa**: ves qué se crea, qué ya estaba (no se duplica), qué
+   tiene error y cómo quedan los saldos. **Nada se guarda hasta que aprietas
+   «Aplicar».** Si algo tiene error, lo corriges en el Excel y lo vuelves a subir.
+
+**El Chalán revisa lo que subes**: te dice qué es cada movimiento del banco que no
+venía en la plantilla (un cobro y de qué factura, un gasto y su centro de costo, un
+traspaso a caja, un pago de impuestos), qué centro lleva un gasto que no lo traía y a
+qué factura corresponde un cobro dudoso. Lo que sugiere sale marcado con 🤖 en la
+vista previa y sólo se guarda si aplicas.
+
+Lo que ya capturaste se reconoce solo; subir el mismo archivo dos veces no duplica;
+no se manda ningún correo a clientes; y una carga aplicada **se puede deshacer
+completa**. A El Chalán puedes preguntarle «¿cuadró la carga contable?».
 ## Novedades — Los recados a «Dirección» y «Finanzas» llegan a todos los que tienen ese rol (29 de septiembre de 2026)
 
 **Los recados a un grupo llegan también a quien tiene el rol asignado.** Si tu rol
@@ -6868,6 +6892,87 @@ tienes registrado:
    casar a mano con el botón **Casar**.
 4. Arriba ves la **diferencia** entre el saldo del banco y el de tus libros. Si
    es cero, todo cuadra.
+
+### Carga contable (la contabilidad de fuera, de un jalón)
+
+En **Contaduría → Carga contable** subes de una vez la contabilidad que se llevó
+fuera de El Despacho (en Excel, con el contador, en el banco) para que desde ahí
+todo cuadre. La ve quien tiene el permiso **Carga contable** (super admin, dueño y
+contador por default; se da o se quita por persona en El Directorio).
+
+**1. Descarga la plantilla.** Es un Excel con listas desplegables armadas con tu
+catálogo del día (cuentas, centros de costo, clientes, proveedores). La primera
+pestaña, «Léeme», explica cada hoja:
+
+| Hoja | Qué va |
+|---|---|
+| **1 Arranque** | La **fecha de arranque** (celda B2: el primer día desde el que El Despacho debe tenerlo todo; lo mejor es el 1 de enero) y lo que había en cada cuenta al empezar ese día: bancos, caja, capital. Vacío = no tocar; 0 = vale cero. |
+| **2 Ingresos** | Cada entrada de dinero desde el arranque. «Factura que paga» liga el cobro a su factura; si lo dejas vacío y no hay duda (mismo cliente y monto), se liga solo. |
+| **3 Gastos** | Cada gasto desde el arranque, y los de antes que seguían sin pagarse o por reembolsar (quedan como cuentas por pagar). |
+| **4 Facturas** | Las emitidas desde el arranque y las anteriores que seguían sin cobrarse (con lo que ya habían pagado en «Cobrado antes del arranque»). Un cliente que no exista se da de alta. |
+| **5 Pólizas** | Opcional, para el contador: pago de impuestos, préstamos, aportaciones. Cada póliza debe cuadrar. |
+| **6 Saldos hoy** | El saldo real de bancos y caja hoy. |
+
+**2. Súbela con los estados de cuenta.** En la misma pantalla subes la plantilla y
+hasta cuatro estados de cuenta, cada uno con la cuenta a la que pertenece. Tienen
+que ser **CSV o Excel** (la banca en línea los exporta así); un PDF se guarda como
+evidencia, pero no se puede leer. De cada estado de cuenta:
+
+- Lo que **ya viene en la plantilla** o **ya está en El Despacho** (mismo monto,
+  ±3 días) se reconoce y no se duplica.
+- Lo que **sólo viene en el banco** lo revisa El Chalán (ver abajo) y se crea
+  según lo que es: cobro de una factura, ingreso, gasto con su centro de costo,
+  o —si es un traspaso, un pago de impuestos, un préstamo o una aportación— un
+  movimiento contable entre cuentas, sin inflar ingresos ni gastos. Si El Chalán
+  no está seguro, va como ingreso sin cliente o gasto de «Otros», marcado para que
+  lo revises. Si prefieres que no se cree nada, apaga la casilla «Crear como
+  ingreso o gasto…».
+- El **saldo del último día** sirve de comprobación: no tienes que capturarlo.
+
+**El Chalán ayuda a procesar lo que subes.** Al subir, El Chalán (la IA del
+Taller, estación «Revisar carga contable» en Los Chalanes) revisa lo que una regla
+fija no puede saber: qué es cada movimiento que sólo trae el banco, qué centro de
+costo lleva un gasto de la plantilla que no lo traía, y a cuál de varias facturas
+corresponde un cobro dudoso. Tres candados:
+
+- **Sólo propone.** Lo que sugiere sale marcado con 🤖 y su confianza en la vista
+  previa; nada se guarda hasta que aplicas.
+- **Sólo con datos reales.** Si sugiere un cliente, factura, centro o cuenta que no
+  existe, o no está seguro, se descarta y ese renglón va con la regla de siempre,
+  marcado para revisarlo.
+- **No cambia de opinión.** Contesta una vez al subir; «Aplicar» guarda exactamente
+  lo que viste. «Recalcular» le vuelve a preguntar lo que no revisó.
+
+Si El Chalán no está disponible, la carga funciona igual, con las reglas de siempre
+y un aviso.
+
+**3. Revisa la vista previa.** Nada se guarda todavía. Ves por hoja qué se crea,
+qué ya estaba y qué tiene error; cómo quedan los saldos (antes y después); lo que
+dicen los clientes según el libro contra las facturas pendientes; y si el balance
+cuadra. Con **un solo renglón con error no se puede aplicar**: lo corriges en el
+Excel y vuelves a subir.
+
+**4. Aplica.** Se guarda todo junto o nada. Así cuadra:
+
+- **Los saldos se comparan, no se suman.** Sólo se registra la diferencia entre
+  lo que declaraste y lo que El Despacho ya tenía; nada se cuenta dos veces. La
+  del arranque va contra *Utilidades acumuladas*; la que quede al final contra los
+  saldos reales va como *ajuste*, a la vista, para revisarla con el contador.
+- **Lo anterior al arranque no infla el año.** Una factura vieja que seguía sin
+  cobrarse queda como cuenta por cobrar, pero su ingreso no cuenta en los ingresos
+  de este año; igual un gasto viejo pendiente.
+- **No sale ningún correo a clientes** (ni «recibimos tu pago» ni de bienvenida).
+- Volver a subir el mismo archivo no duplica nada.
+
+**Deshacer.** En el detalle de una carga aplicada, «Deshacer esta carga» (pide un
+motivo) anula todo lo que trajo: ingresos, gastos, facturas y movimientos
+contables quedan anulados, visibles pero fuera de los saldos, y los folios de las
+facturas quedan libres para volver a cargarlas. No se puede si alguien ya cobró o
+pagó sobre lo importado.
+
+**Con El Chalán:** pregúntale «¿cuadró la carga contable?» o «¿qué quedó sin
+cuadrar?» y te dice cómo quedó la última carga. Subir y aplicar se hace en la
+pantalla, no por chat.
 
 ### Export para el contador (XML)
 

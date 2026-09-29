@@ -117,6 +117,12 @@ def crear_asiento(
                 orden=p["orden"],
             )
 
+    from lib.carga_masiva import en_carga
+    if en_carga():
+        # La carga masiva emite UN evento al aplicarse, no cientos (y la vista
+        # previa, que se deshace, no debe anunciar asientos que no existirán).
+        return asiento
+
     emitir(EventoPortavoz(
         tipo="contaduria.asiento_creado",
         actor_id=getattr(creado_por, "id", None),

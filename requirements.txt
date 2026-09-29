@@ -28,6 +28,9 @@ drf-spectacular-sidecar==2024.12.1
 # se accede, así que tenerlas instaladas es inocuo.
 google-api-python-client==2.155.0
 google-auth==2.36.0
+# S-Carga-Contable: genera la plantilla de carga contable y lee la llena y los
+# estados de cuenta en Excel. Python puro, sin paquetes del sistema.
+openpyxl==3.1.5
 # Tests
 pytest==8.3.4
 pytest-django==4.9.0

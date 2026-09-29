@@ -17,6 +17,7 @@ from lib.busqueda import q_texto
 from lib.permisos import (
     puede_anular_contaduria,
     puede_capturar_contaduria,
+    puede_cargar_contaduria,
     puede_reportes_contaduria,
     puede_ver_contaduria,
 )
@@ -60,6 +61,7 @@ def landing(request):
         "kpis": services.kpis_landing(),
         "ultimos": ultimos,
         "puede_capturar": puede_capturar_contaduria(request.user),
+        "puede_cargar": puede_cargar_contaduria(request.user),
     })
 
 

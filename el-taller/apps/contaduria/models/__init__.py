@@ -3,6 +3,7 @@ from .asiento import (
     Asiento,
     Partida,
 )
+from .carga import CargaContable, EstadoCuentaCarga
 from .cierre import CierrePeriodo
 from .conciliacion import ConciliacionBancaria, LineaBancaria
 from .cuenta_contable import (
@@ -18,6 +19,8 @@ __all__ = [
     "Asiento",
     "Partida",
     "ORIGEN_ASIENTO",
+    "CargaContable",
+    "EstadoCuentaCarga",
     "CierrePeriodo",
     "ConciliacionBancaria",
     "LineaBancaria",

@@ -24,6 +24,8 @@ ORIGEN_ASIENTO = (
     ("auto_factura_cancelada", "Automático · factura cancelada"),
     ("auto_reembolso", "Automático · reembolso a empleado"),
     ("ajuste", "Ajuste contable"),
+    ("apertura", "Saldos de arranque (carga contable)"),
+    ("carga", "Póliza importada (carga contable)"),
     ("cierre", "Cierre de periodo"),
 )
 
