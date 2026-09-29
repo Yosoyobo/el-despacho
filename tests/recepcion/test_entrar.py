@@ -251,6 +251,7 @@ def _perfil(email, verificado=True):
 
 
 def _callback(client, monkeypatch, perfil):
+    monkeypatch.setattr("apps.portal_cliente.views._google_disponible", lambda: True)
     monkeypatch.setattr("lib.google_oauth.intercambiar_codigo_por_perfil", lambda code, uri: perfil)
     s = client.session
     s["_portal_google_state"] = "estado"
@@ -281,6 +282,7 @@ def test_google_sin_correo_verificado_no_entra(client, uno, monkeypatch):
 
 
 def test_google_con_state_falso_no_entra(client, uno, monkeypatch):
+    monkeypatch.setattr("apps.portal_cliente.views._google_disponible", lambda: True)
     monkeypatch.setattr("lib.google_oauth.intercambiar_codigo_por_perfil",
                         lambda code, uri: _perfil("ana@a.mx"))
     r = client.get("/auth/google/callback", {"code": "c", "state": "otro"})
@@ -323,3 +325,56 @@ def test_revocar_deja_vencidos_en_la_base_los_enlaces_pendientes(uno):
     servicios.revocar(uno["acceso"], None)
     e = EnlaceAcceso.objects.get()
     assert e.expira_en <= timezone.now() and e.usado_en is None
+
+
+
+# ── «Entrar con Google» se prende en La Gerencia (decisión de Oscar) ────────
+
+
+@pytest.fixture
+def sso(db):
+    from ajustes.models.credencial import Credencial
+
+    Credencial.guardar("google_oauth_client_id", "cliente.apps.googleusercontent.com")
+    Credencial.guardar("google_oauth_client_secret", "secreto")
+
+
+def test_google_nace_apagado_aunque_el_sso_tenga_credenciales(client, uno, sso, monkeypatch):
+    html = client.get("/entrar/").content.decode()
+    assert "Entrar con Google" not in html
+    # Y sus rutas no abren nada: ni mandan a Google ni aceptan un regreso.
+    r = client.get("/auth/google/iniciar")
+    assert r.status_code == 302 and r["Location"] == "/entrar/"
+    monkeypatch.setattr("lib.google_oauth.intercambiar_codigo_por_perfil",
+                        lambda code, uri: _perfil("ana@a.mx"))
+    s = client.session
+    s["_portal_google_state"] = "estado"
+    s.save()
+    r = client.get("/auth/google/callback", {"code": "c", "state": "estado"})
+    assert r.status_code == 302 and r["Location"] == "/entrar/"
+    assert client.get("/").status_code == 302
+
+
+def test_prendido_en_la_gerencia_aparece_y_entra(client, uno, sso, monkeypatch):
+    from portal.models import ConfiguracionPortal
+
+    cfg = ConfiguracionPortal.obtener()
+    cfg.google_activo = True
+    cfg.save()
+    assert "Entrar con Google" in client.get("/entrar/").content.decode()
+    r = client.get("/auth/google/iniciar")
+    assert r.status_code == 302 and r["Location"].startswith("https://accounts.google.com/")
+    monkeypatch.setattr("lib.google_oauth.intercambiar_codigo_por_perfil",
+                        lambda code, uri: _perfil("ana@a.mx"))
+    state = client.session["_portal_google_state"]
+    assert client.get("/auth/google/callback", {"code": "c", "state": state}).status_code == 302
+    assert client.get("/").status_code == 200
+
+
+def test_prendido_pero_sin_credenciales_no_hay_boton(client, uno):
+    from portal.models import ConfiguracionPortal
+
+    cfg = ConfiguracionPortal.obtener()
+    cfg.google_activo = True
+    cfg.save()
+    assert "Entrar con Google" not in client.get("/entrar/").content.decode()

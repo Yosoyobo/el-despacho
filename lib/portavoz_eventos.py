@@ -169,6 +169,7 @@ EventoTipo = Literal[
     "papeleo.desligado",
     "papeleo.subido",
     "ajuste.papeleo_configurado",
+    "ajuste.portal_configurado",
     "deploy.iniciado",
     "deploy.exitoso",
     "deploy.rollback",

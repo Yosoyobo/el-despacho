@@ -68,9 +68,8 @@ def test_con_llaves_la_factura_trae_la_url_publica_de_el_taller(adentro, llaves)
 
 def test_la_url_del_portal_es_la_misma_que_arma_el_taller(adentro, llaves, settings):
     """Mismo link, dos urlconf: el de La Recepción y el de El Taller."""
-    from django.urls import reverse
-
     from apps.caja.models import LinkPago
+    from django.urls import reverse
 
     llaves()
     adentro["http"].get(f"/facturas/{adentro['factura'].pk}/")

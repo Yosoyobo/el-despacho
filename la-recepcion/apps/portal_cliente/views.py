@@ -159,10 +159,14 @@ SESION_NEXT = "_portal_google_next"
 
 
 def _google_disponible() -> bool:
+    """«Entrar con Google» sólo si La Gerencia lo prendió (Los Ajustes → Portal
+    de clientes; decisión de Oscar: apagado por default, sólo el enlace por
+    correo) Y el SSO tiene sus credenciales. Apagado, ni el botón ni las rutas."""
     try:
         from lib.google_oauth import GoogleOAuthConfig
+        from portal.models import ConfiguracionPortal
 
-        return GoogleOAuthConfig.esta_configurado()
+        return ConfiguracionPortal.obtener().google_activo and GoogleOAuthConfig.esta_configurado()
     except Exception:  # noqa: BLE001
         return False
 
@@ -191,6 +195,8 @@ def google_callback(request):
         redirect_uri_desde_request,
     )
 
+    if not _google_disponible():
+        return redirect("/entrar/")
     esperado = request.session.pop(SESION_STATE, None)
     siguiente = request.session.pop(SESION_NEXT, "/") or "/"
     code, state = request.GET.get("code", ""), request.GET.get("state", "")
