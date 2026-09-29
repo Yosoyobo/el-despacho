@@ -225,6 +225,19 @@ ratón/trackpad.{% endcomment %}
 <div class="lc-hoja">
 {% endif %}
 
+  {% comment %}La portada (La Imprenta · Deploy 4): una hoja de presentación antes del
+  documento. Sólo con el motor propio —es un ajuste visual, así que la versión de
+  Google llega sin ella— y el salto de hoja lo respeta Chromium.{% endcomment %}
+  {% if c.doc.portada and not c.basico %}
+  <div style="page-break-after:always; break-after:page; text-align:center; padding-top:2in;">
+    {% if logo_url %}<p align="center" style="margin:0; text-align:center;"><img src="{{ logo_url }}" alt="{{ c.despacho.nombre }}" width="{{ e.logo_ancho|add:e.logo_ancho }}" height="{{ e.logo_pt|add:e.logo_pt }}" style="width:{{ e.logo_ancho|add:e.logo_ancho }}pt; height:{{ e.logo_pt|add:e.logo_pt }}pt;"></p>{% endif %}
+    <p style="{{ e.titulo }} font-size:{{ e.titulo_pt|add:10 }}pt; margin:28pt 0 10pt 0;">{{ titulo_documento }}</p>
+    <p style="margin:0 0 6pt 0; font-weight:bold;">{{ cot.cliente.razon_social }}</p>
+    <p style="margin:0 0 6pt 0; {{ e.suave_css }}">{{ cot.fecha_emision|date:"j" }} de {{ cot.fecha_emision|date:"F"|lower }} de {{ cot.fecha_emision|date:"Y" }}</p>
+    {% if c.doc.portada_texto %}<p style="margin:16pt 0 0 0; white-space:pre-line;">{{ c.doc.portada_texto }}</p>{% endif %}
+    <p style="margin:44pt 0 0 0; {{ e.suave_css }}">{{ c.despacho.nombre }}</p>
+  </div>
+  {% endif %}
   {# Encabezado: fecha · logotipo (chico y al centro) · cliente #}
   {# LC 2026-08-04: el aire bajo el encabezado pasó de 24pt a 12pt. #}
   <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">

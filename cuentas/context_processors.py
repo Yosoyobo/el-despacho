@@ -55,7 +55,7 @@ ACCION_VISIBLE_POR_MODULO = {
 MODULOS_VISIBLES = (
     "cartera", "proyectos", "pizarron", "buzon", "recados",
     "tesoreria", "contaduria", "catalogo", "cotizaciones",
-    "facturacion", "caja", "chalan", "analisis", "checador", "nomina", "comunicacion", "runner",
+    "facturacion", "compras", "caja", "chalan", "analisis", "checador", "nomina", "comunicacion", "runner",
     "rutas", "papeleo", "equipo", "recepcion",
     "directorio", "ajustes", "kpis", "documentos", "chalanes", "site",
     "catalogos", "interfono",

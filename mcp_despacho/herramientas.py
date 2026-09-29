@@ -250,6 +250,16 @@ def enlace_documento(tipo: str, codigo: str) -> dict[str, Any]:
     return _h_enlace_documento({"tipo": _texto(tipo, 20), "codigo": _texto(codigo, 30)}, usuario)
 
 
+def ordenes_de_compra(estado: str = "", proveedor: str = "", limite: int = 20) -> dict[str, Any]:
+    """Las órdenes de compra a proveedores (compras.ver)."""
+    from capacidades.lecturas_imprenta import _h_ordenes_de_compra
+
+    usuario = _usuario_actual()
+    _exigir_permiso(usuario, "compras", "ver")
+    return _h_ordenes_de_compra({"estado": _texto(estado, 20), "proveedor": _texto(proveedor, 80),
+                                 "limite": limite}, usuario)
+
+
 def mi_recibo(fecha: str = "") -> dict[str, Any]:
     """El recibo de nómina de quien opera la conexión (sólo quincenas cerradas)."""
     from capacidades.lecturas_nomina import _h_mi_recibo

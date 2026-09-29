@@ -55,6 +55,8 @@ urlpatterns = [
     path("", include("portal.urls_taller")),
     # La Imprenta: los documentos nuevos (recibo, estado de cuenta, remisión…).
     path("documentos/", include("imprenta.urls_taller")),
+    # Órdenes de compra a proveedores (La Imprenta · Deploy 4).
+    path("compras/", include("apps.compras.urls")),
 ]
 
 handler404 = _err.handler404

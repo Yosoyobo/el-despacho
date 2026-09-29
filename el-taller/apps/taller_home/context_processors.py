@@ -16,6 +16,7 @@ def sidebar_grupos(request):
             or "/facturacion" in path
             or "/contaduria" in path
             or "/nomina" in path
+            or "/compras" in path
         ),
     }
 

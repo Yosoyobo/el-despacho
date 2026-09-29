@@ -146,6 +146,11 @@ def _documentos_con_pdf():
         return (Proyecto.objects.filter(codigo__iexact=codigo).first()
                 or Proyecto.objects.filter(nombre__iexact=codigo).first())
 
+    def orden_compra(codigo):
+        from apps.compras.models import OrdenCompra
+
+        return OrdenCompra.objects.filter(codigo__iexact=codigo).first()
+
     def cliente(codigo):
         from apps.la_cartera.models import Cliente
 
@@ -158,7 +163,7 @@ def _documentos_con_pdf():
     }
     for tipo, buscar in (("recibo_pago", ingreso), ("reembolso", egreso),
                          ("remision", proyecto), ("orden_trabajo", proyecto),
-                         ("estado_cuenta", cliente)):
+                         ("estado_cuenta", cliente), ("orden_compra", orden_compra)):
         documentos[tipo] = nuevo(tipo, buscar)
     return documentos
 
@@ -180,7 +185,41 @@ def _h_enlace_documento(args: dict, usuario) -> dict:
             "nota": "El PDF sale con el formato de Ajustes → Documentos de La Gerencia."}
 
 
+def _h_ordenes_de_compra(args: dict, usuario) -> dict:
+    from apps.compras.models import OrdenCompra
+
+    qs = OrdenCompra.objects.select_related("proveedor", "proyecto").prefetch_related("items")
+    estado = (args.get("estado") or "").strip().lower()
+    if estado:
+        qs = qs.filter(estado=estado)
+    prov = (args.get("proveedor") or "").strip()
+    if prov:
+        qs = qs.filter(proveedor__razon_social__icontains=prov)
+    limite = max(1, min(int(args.get("limite") or 20), 50))
+    return {"ordenes": [
+        {"codigo": o.codigo, "proveedor": o.proveedor.razon_social,
+         "proyecto": (o.proyecto.nombre if o.proyecto_id else None),
+         "estado": o.get_estado_display(), "fecha": o.fecha.isoformat(),
+         "para": o.fecha_entrega.isoformat() if o.fecha_entrega else None,
+         "total": float(o.total), "pdf": f"/documentos/orden_compra/{o.pk}/pdf/"}
+        for o in qs[:limite]],
+        "nota": "Crear o cambiar una orden de compra se hace en Finanzas → Compras, no por chat."}
+
+
 _LECTURAS = {
+    "ordenes_de_compra": Capacidad(
+        nombre="ordenes_de_compra",
+        descripcion=(
+            "Las órdenes de compra a proveedores: folio, proveedor, proyecto, estado "
+            "(borrador, enviada, recibida, cancelada), para cuándo, total y enlace al "
+            "PDF. Args opcionales: estado, proveedor (texto), limite. Crearlas o "
+            "cambiarlas NO se hace por chat: es Finanzas → Compras."
+        ),
+        args_schema={"estado": {"tipo": "str", "requerido": False},
+                     "proveedor": {"tipo": "str", "requerido": False},
+                     "limite": {"tipo": "int", "requerido": False}},
+        gating="compras", fn=_h_ordenes_de_compra,
+    ),
     "enlace_documento": Capacidad(
         nombre="enlace_documento",
         descripcion=(
@@ -188,8 +227,8 @@ _LECTURAS = {
             "(COT-2026-0044), `factura` (F12; la COMERCIAL, no el CFDI), "
             "`recibo_pago` (código del ingreso), `reembolso` (código del egreso), "
             "`remision` u `orden_trabajo` (código o nombre del proyecto) y "
-            "`estado_cuenta` (nombre del cliente). Pide el permiso del módulo de ese "
-            "documento."
+            "`estado_cuenta` (nombre del cliente) y `orden_compra` (OC-2026-0001). "
+            "Pide el permiso del módulo de ese documento."
         ),
         args_schema={"tipo": {"tipo": "str", "requerido": True},
                      "codigo": {"tipo": "str", "requerido": True}},

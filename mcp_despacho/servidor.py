@@ -158,6 +158,14 @@ def enlace_documento(tipo: str, codigo: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def ordenes_de_compra(estado: str = "", proveedor: str = "", limite: int = 20) -> dict[str, Any]:
+    """Las órdenes de compra a proveedores: folio, proveedor, proyecto, estado
+    (borrador, enviada, recibida, cancelada), para cuándo, total y enlace al PDF.
+    Requiere permiso de compras. Crearlas o cambiarlas no se hace por aquí."""
+    return herramientas.ordenes_de_compra(estado, proveedor, limite)
+
+
+@mcp.tool()
 def mi_recibo(fecha: str = "") -> dict[str, Any]:
     """Tu recibo de nómina de una quincena ya cerrada: sueldo, conceptos, neto
     y si ya se depositó. Sólo el de quien opera esta conexión."""

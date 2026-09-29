@@ -13636,3 +13636,13 @@ periodo, reparto por persona/cliente, porcentajes, duraciones y comparación, co
 previa en vivo y El Chalán que llena el formulario. Los KPIs custom ya llevan el permiso
 de su dato y entran al catálogo, tableros y metas. Probado también en Chromium.
 Cierra la ronda de KPIs (fases 1, 2 y 3).
+
+## 2026-09-29 — S-Imprenta · Deploy 4 (VERSION 2026.09.20)
+
+Arreglo: las pestañas de Ajustes → Documentos caían todas en «Hoja y motor» (enlace
+duplicado `?tab=marcamarca`), reportado por Oscar. Órdenes de compra a proveedores
+(Finanzas → Compras): captura con renglones, folio por
+año, estados, El Testigo, permiso propio sembrado para quien ve el dinero, y su PDF con
+La Imprenta. Portada opcional de la cotización. El Chalán consulta las órdenes. Cierra
+el arco de 4 deploys de La Imprenta pedido por Oscar («personalizar aún más la
+generación de PDFs»), hecho de jalón en worktree propio con otra sesión en paralelo.

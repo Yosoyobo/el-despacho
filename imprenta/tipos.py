@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .esquema import Bloque, Columna, DefinicionTipo, Marca
+from .esquema import BOOL, TEXTO_LARGO, Bloque, Campo, Columna, DefinicionTipo, Marca
 
 #: Las notas con las que Learning Center cotiza (antes fijas en
 #: `apps.cotizaciones.notas`; desde La Imprenta se editan en La Gerencia).
@@ -63,6 +63,15 @@ COTIZACION = DefinicionTipo(
         Columna("rotulo_condiciones", "Condiciones adicionales"),
     ),
     vigencia=True,
+    # La portada: una hoja de presentación antes del documento, para las
+    # cotizaciones grandes. Sólo con el motor propio (el salto de hoja de Google
+    # no es confiable), por eso es visual.
+    extra=(
+        Campo("portada", BOOL, "Portada (una hoja de presentación al principio)", False,
+              "El logotipo grande, el título, el cliente y la fecha. Sólo con el motor propio."),
+        Campo("portada_texto", TEXTO_LARGO, "Texto de la portada", "",
+              "Una o dos líneas debajo del cliente (opcional).", largo=300),
+    ),
     notas_default=NOTAS_COTIZACION,
     nota_automatica="la forma de pago (anticipo o un solo pago)",
     aceptacion_texto="Acepto esta cotización y sus condiciones.",
@@ -213,10 +222,12 @@ def _adaptador_de(doc) -> Adaptador:
 
 def _documentos() -> dict:
     from .documentos.cartera import ESTADO_CUENTA
+    from .documentos.compras import ORDEN_COMPRA
     from .documentos.proyectos import ORDEN_TRABAJO, REMISION
     from .documentos.tesoreria import RECIBO, REEMBOLSO
 
-    return {d.slug: d for d in (RECIBO, ESTADO_CUENTA, REMISION, ORDEN_TRABAJO, REEMBOLSO)}
+    return {d.slug: d for d in (RECIBO, ESTADO_CUENTA, REMISION, ORDEN_TRABAJO, REEMBOLSO,
+                                ORDEN_COMPRA)}
 
 
 #: slug → `Documento` de los tipos nuevos (Deploy 3 en adelante).

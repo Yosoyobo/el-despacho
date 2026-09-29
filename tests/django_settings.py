@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     # plantillas de los documentos (las ve El Taller, que imprime, y La Gerencia,
     # que configura y previsualiza).
     "imprenta.apps.ImprentaConfig",
+    # Las órdenes de compra a proveedores (La Imprenta · Deploy 4).
+    "apps.compras.apps.ComprasConfig",
     # La Recepción (S5): los accesos de clientes (app raíz) y el portal mismo.
     "portal.apps.PortalConfig",
     "apps.portal_cliente.apps.PortalClienteConfig",

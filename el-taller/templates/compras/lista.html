@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}Órdenes de compra — Compras{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Órdenes de compra" subtitulo="Lo que se le pide a cada proveedor, con su PDF" breadcrumb_items=breadcrumb_items %}
+
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-2">
+        <input type="search" name="q" value="{{ q }}" placeholder="Folio, proveedor, proyecto o producto"
+               class="min-h-[44px] w-72 max-w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+        <select name="estado" onchange="this.form.submit()" class="min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+            <option value="">Todas</option>
+            {% for clave, etiqueta in estados %}<option value="{{ clave }}" {% if estado == clave %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+        </select>
+    </form>
+    {% if puede_crear %}<a href="{% url 'compras:nueva' %}" class="inline-flex min-h-[44px] items-center rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600">+ Nueva orden</a>{% endif %}
+</div>
+
+<div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <table data-tabla-movil class="min-w-full text-sm">
+        <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+            <tr><th class="px-4 py-3 text-left">Folio</th><th class="px-4 py-3 text-left">Proveedor</th><th class="px-4 py-3 text-left">Proyecto</th><th class="px-4 py-3 text-left">Fecha</th><th class="px-4 py-3 text-left">Estado</th><th class="px-4 py-3 text-right">Total</th></tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+            {% for o in ordenes %}
+            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5" data-href="{% url 'compras:detalle' o.pk %}">
+                <td class="px-4 py-3 font-medium"><a href="{% url 'compras:detalle' o.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{{ o.codigo }}</a></td>
+                <td class="px-4 py-3">{{ o.proveedor.razon_social }}</td>
+                <td class="px-4 py-3">{% if o.proyecto %}{% firstof o.proyecto.nombre o.proyecto.codigo %}{% else %}—{% endif %}</td>
+                <td class="px-4 py-3">{{ o.fecha|date:"d/m/Y" }}</td>
+                <td class="px-4 py-3">{{ o.get_estado_display }}</td>
+                <td class="px-4 py-3 text-right tabular-nums">{{ o.total|dinero }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Todavía no hay órdenes de compra.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

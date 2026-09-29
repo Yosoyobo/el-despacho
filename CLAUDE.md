@@ -46,7 +46,6 @@ Stripe + MercadoPago · cobranza · contabilidad intermedia · IA asistente
 
 | Pieza | Función | Puerto |
 |---|---|---|
-| 2026.09.19 | S-KPIs-V2 · 2 | Constructor de KPIs en La Gerencia sobre el DSL v2 (entidades, porcentajes, duraciones, agrupar, comparar); KPIs custom con el permiso de su dato |
 | **La Gerencia** | Panel admin (super_admin/dueño): Ajustes, Directorio, Sala de Juntas | 8001 |
 | **El Taller** | Staff (dueño/contador/diseñador): operación día a día | 8000 |
 | **La Recepción** | Portal de clientes B2B (enlace por correo, sin contraseña; app raíz `portal/` + `la-recepcion/apps/portal_cliente`) — encendida 2026.09.09 | 8002 (NUC 8203) |
@@ -383,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.19` (+ n8n 2.40.7 con MCP
+**Estado al 2026-09-29:** producción en `VERSION 2026.09.20` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -395,6 +394,8 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.20 | S-Imprenta · 4 | Órdenes de compra a proveedores (app `compras`, permiso propio, El Testigo) con su PDF; portada de la cotización |
+| 2026.09.19 | S-KPIs-V2 · 2 | Constructor de KPIs en La Gerencia sobre el DSL v2 (entidades, porcentajes, duraciones, agrupar, comparar); KPIs custom con el permiso de su dato |
 | 2026.09.18 | S-Imprenta · 3 | Recibo de pago, estado de cuenta, remisión, orden de trabajo y reembolso en PDF (una vista `/documentos/<tipo>/<pk>/`, permiso del módulo); la vista previa filtra por permiso |
 | 2026.09.17 | S-KPIs-V2 · 1 | Ajustes → KPIs (catálogo, tableros por rol, metas por despacho/persona/cliente proporcionales con aviso); 45 KPIs nuevos; la foto diaria por fin guarda el dinero; `kpis.configurar` |
 | 2026.09.16 | S-Imprenta · 2 | Notas editables (globales + por cotización, permiso propio), firma/aceptación, folio/vigencia/QR, marcas por estado, patrón de nombre, PDF/A; la factura en La Imprenta con PDF comercial |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.13 | S-KPIs-Guardar | Guardar metas de KPI y aprobar KPIs de equipo ya no dan 500 (la imagen de Gerencia no traía `taller_home`); 3 campos fantasma del DSL de KPIs custom |
 | 2026.09.12 | S-Historial-Actividad | Historial de actividad de un año (pantallas y acciones; `equipo.ver_historial` sólo dueños); Peticiones en vivo con nombre + IP vía `X-Despacho-Quien` en el log |
 | 2026.09.11 | S-Grilla-Permisos | La grilla de El Directorio reconoce el rol asignado; guardarla ya no quita permisos |
-| 2026.09.10 | S-Checador-V2 | Nómina quincenal de sueldo fijo (recibos, préstamos, reembolsos, Mis recibos, costeo por sueldo); `.venv` 3.12 + suite portable; `ROLES.md` generado |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
@@ -431,6 +431,8 @@ renglones, el más viejo sale al entrar uno nuevo):
 - `Proveedor.Meta.ordering` es alfabético: «el primero marcado» viaja en un hidden.
 - Handlers de `input` no tocan layout durante `isComposing` (se comen acentos/ñ).
 - Nunca `not in resp.content` con un literal corto (el token CSRF lo genera por azar).
+- `_tabs.html`: pasarle `url` Y `clave` duplica la clave (`?tab=xx`); pasa sólo `clave`. Prueba las pestañas siguiendo los `href` dibujados.
+- `|dinero` recorta los `.00` (`$195`, no `195.00`): una aserción de «no sale el precio» con el literal `195.00` pasa siempre.
 - Medir consultas: armar el formset DENTRO de la medición (el `_result_cache` esconde el N+1).
 - `{% static %}` a un archivo inexistente = 500 en prod (no lo caza la suite). Los settings de prueba NO sirven `la-gerencia/static`: una prueba de navegador (live_server) tiene que ponerlo en `STATICFILES_DIRS` y limpiar `finders.get_finder`.
 - El valor de un KPI puede venir pintado («$12,345», «32%»): todo lo que JUZGA (foto diaria, metas, umbrales) lo lee con `kpi_valor.numero_del_resultado()`; con `isinstance(valor, str)` el dinero se quedó meses sin historia.

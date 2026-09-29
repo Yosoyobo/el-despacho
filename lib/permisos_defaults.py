@@ -122,6 +122,9 @@ TODO_KPIS = ["configurar"]
 # «Como hoy»: nace para quien hoy entra a Ajustes (la pantalla de Documentos
 # vivía ahí) — lo siembra `imprenta/0002_seed_permisos_documentos`.
 TODO_DOCUMENTOS = ["ver", "editar_estilo", "editar_notas", "editar_datos"]
+# Las órdenes de compra a proveedores (2026-09-29). «Como hoy»: nace para quien
+# ve el dinero del despacho (`tesoreria.ver`) — lo siembra `compras/0002`.
+TODO_COMPRAS = ["ver", "crear", "editar", "cancelar"]
 # `ver` lista · `gestionar` alta/edición básica (lo que el dueño ya tenía) ·
 # `panel`/`ia`/`permisos`/`roles` son el panel avanzado de usuario, solo-super_admin.
 TODO_DIRECTORIO = ["ver", "gestionar", "panel", "ia", "permisos", "roles"]
@@ -209,6 +212,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "ajustes": list(TODO_AJUSTES),
         "kpis": list(TODO_KPIS),
         "documentos": list(TODO_DOCUMENTOS),
+        "compras": list(TODO_COMPRAS),
         "directorio": list(TODO_DIRECTORIO),
         "chalanes": list(TODO_CHALANES),
         "site": list(TODO_SITE),
@@ -351,6 +355,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     "kpis": list(TODO_KPIS),
     # La Imprenta: los documentos PDF (estilo, notas, datos del despacho).
     "documentos": list(TODO_DOCUMENTOS),
+    # Órdenes de compra a proveedores.
+    "compras": list(TODO_COMPRAS),
     "directorio": list(TODO_DIRECTORIO),
     "chalanes": list(TODO_CHALANES),
     "site": list(TODO_SITE),

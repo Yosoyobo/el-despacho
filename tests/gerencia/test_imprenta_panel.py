@@ -70,12 +70,30 @@ URL = "ajustes-documentos"
 
 @pytest.mark.parametrize("tab", ["general", "marca", "despacho", "cotizacion", "factura",
                                  "recibo_pago", "estado_cuenta", "remision", "orden_trabajo",
-                                 "reembolso", "historial"])
+                                 "reembolso", "orden_compra", "historial"])
 def test_cada_pestana_abre(client, jefe, cot, tab):
     client.force_login(jefe)
     r = client.get(reverse(URL), {"tab": tab})
     assert r.status_code == 200, tab
     assert b"Documentos" in r.content
+
+
+def test_cada_enlace_de_pestana_abre_su_pestana(client, jefe):
+    """Se siguen los enlaces DIBUJADOS, no la URL armada a mano: el 2026-09-29
+    todos salían `?tab=marcamarca` y caían de vuelta en «Hoja y motor»."""
+    import re
+    from urllib.parse import parse_qs, urlparse
+
+    client.force_login(jefe)
+    html = client.get(reverse(URL)).content.decode()
+    nav = html[html.index('aria-label="Tabs"'):html.index("</nav>", html.index('aria-label="Tabs"'))]
+    enlaces = re.findall(r'href="([^"]*)"', nav)
+    assert len(enlaces) >= 6
+    for href in enlaces:
+        clave = parse_qs(urlparse(href).query)["tab"][0]
+        pagina = client.get(reverse(URL) + href).content.decode()
+        activa = re.search(r'<a href="[^"]*" aria-current="page"', pagina)
+        assert activa and f"tab={clave}\"" in activa.group(0), f"{href} no abrió su pestaña"
 
 
 def test_la_pestana_de_marca_pinta_los_campos_del_esquema(client, jefe):

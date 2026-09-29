@@ -59,6 +59,8 @@ COPY el-taller/apps/checador/ /app/apps/checador/
 COPY el-taller/apps/el_pizarron/ /app/apps/el_pizarron/
 # La Caja: Gerencia corre su migración (Bug B) y lee su estado en Los Ajustes.
 COPY el-taller/apps/caja/ /app/apps/caja/
+# Órdenes de compra: Gerencia corre su migración y previsualiza el documento.
+COPY el-taller/apps/compras/ /app/apps/compras/
 # Metas de KPI + aprobación de KPIs custom leen MetaKPI/KPICustom
 # (apps.taller_home). Faltaba: guardar las metas daba 500 (2026-09-29).
 # `tests/gerencia/test_gerencia_trae_lo_que_importa.py` lo exige.

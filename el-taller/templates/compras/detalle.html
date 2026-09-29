@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load forms_helpers %}
+{% block title %}{{ orden.codigo }} — Compras{% endblock %}
+{% block contenido %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo=orden.codigo subtitulo=orden.get_estado_display breadcrumb_items=breadcrumb_items back_url="/compras/" back_label="Compras" %}
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="min-w-0 space-y-6 xl:col-span-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Proveedor</p>
+            <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ orden.proveedor.razon_social }}</p>
+            {% if orden.proyecto %}<p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Proyecto: <a href="{% url 'proyectos-detalle' orden.proyecto.pk %}" class="text-brand-600 hover:underline dark:text-brand-400">{% firstof orden.proyecto.nombre orden.proyecto.codigo %}</a></p>{% endif %}
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Fecha {{ orden.fecha|date:"d/m/Y" }}{% if orden.fecha_entrega %} · Para el {{ orden.fecha_entrega|date:"d/m/Y" }}{% endif %}</p>
+        </section>
+        <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <table data-tabla-movil class="min-w-full text-sm">
+                <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
+                    <tr><th class="px-4 py-3 text-left">Descripción</th><th class="px-4 py-3 text-right">Cantidad</th><th class="px-4 py-3 text-right">P. unitario</th><th class="px-4 py-3 text-right">Importe</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                    {% for it in items %}
+                    <tr><td class="px-4 py-3">{{ it.descripcion }}</td><td class="px-4 py-3 text-right">{{ it.cantidad|floatformat:"-2" }} {{ it.unidad }}</td><td class="px-4 py-3 text-right tabular-nums">{{ it.precio_unitario|dinero }}</td><td class="px-4 py-3 text-right tabular-nums">{{ it.subtotal|dinero }}</td></tr>
+                    {% empty %}<tr><td colspan="4" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">Sin renglones.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+            <p class="px-4 py-3 text-right text-base font-semibold text-gray-900 dark:text-gray-100">Total {{ orden.total|dinero }} {{ orden.moneda }}</p>
+        </div>
+        {% if orden.condiciones or orden.notas %}
+        <section class="rounded-2xl border border-gray-200 bg-white p-6 text-sm shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            {% if orden.condiciones %}<p class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Condiciones</p><p class="mt-1 whitespace-pre-line text-gray-800 dark:text-gray-200">{{ orden.condiciones }}</p>{% endif %}
+            {% if orden.notas %}<p class="mt-4 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Notas</p><p class="mt-1 whitespace-pre-line text-gray-800 dark:text-gray-200">{{ orden.notas }}</p>{% endif %}
+        </section>
+        {% endif %}
+    </div>
+    <aside class="space-y-6">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Documento</h3>
+            {% include "imprenta/_botones_documento.html" with tipo="orden_compra" pk=orden.pk etiqueta="Orden de compra" %}
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Qué sigue</h3>
+            <div class="flex flex-wrap gap-2">
+                {% if puede_editar %}
+                <a href="{% url 'compras:editar' orden.pk %}" class="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm dark:border-gray-700 dark:text-gray-200">Editar</a>
+                {% if orden.estado == "borrador" %}
+                <form method="post" action="{% url 'compras:estado' orden.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="enviada"><button class="min-h-[44px] rounded-lg bg-brand-500 px-4 text-sm font-medium text-white">Marcar enviada</button></form>
+                {% endif %}
+                {% if orden.estado != "recibida" %}
+                <form method="post" action="{% url 'compras:estado' orden.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="recibida"><button class="min-h-[44px] rounded-lg border border-success-300 px-4 text-sm text-success-700 dark:text-success-400">Marcar recibida</button></form>
+                {% endif %}
+                {% endif %}
+                {% if puede_cancelar %}
+                <form method="post" action="{% url 'compras:estado' orden.pk %}" onsubmit="return confirm('¿Cancelar esta orden de compra?');">{% csrf_token %}<input type="hidden" name="estado" value="cancelada"><button class="min-h-[44px] rounded-lg border border-error-300 px-4 text-sm text-error-600">Cancelar orden</button></form>
+                {% endif %}
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

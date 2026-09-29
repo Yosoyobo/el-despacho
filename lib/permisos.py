@@ -642,6 +642,22 @@ def puede_exportar_checador(user) -> bool:
 # Módulo `documentos` (La Imprenta), sembrado «como hoy» por
 # `imprenta/0002_seed_permisos_documentos`: quien entraba a Ajustes → Documentos.
 
+def puede_ver_compras(user) -> bool:
+    return es_super_admin(user) or puede(user, "compras", "ver")
+
+
+def puede_crear_compras(user) -> bool:
+    return es_super_admin(user) or puede(user, "compras", "crear")
+
+
+def puede_editar_compras(user) -> bool:
+    return es_super_admin(user) or puede(user, "compras", "editar")
+
+
+def puede_cancelar_compras(user) -> bool:
+    return es_super_admin(user) or puede(user, "compras", "cancelar")
+
+
 def puede_ver_documentos(user) -> bool:
     return es_super_admin(user) or puede(user, "documentos", "ver")
 

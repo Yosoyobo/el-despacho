@@ -46,4 +46,6 @@ urlpatterns = [
     # La Recepción (S5): invitar y revocar el acceso de un cliente al portal.
     path("", include("portal.urls_taller")),
     path("documentos/", include("imprenta.urls_taller")),
+    # Órdenes de compra a proveedores (La Imprenta · Deploy 4).
+    path("compras/", include("apps.compras.urls")),
 ]
