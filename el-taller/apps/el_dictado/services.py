@@ -79,9 +79,11 @@ def _normalizar_accion(tipo: str, payload: dict):
 _ESCALON_EJECUCION: dict[str, int] = {
     # 1. Catálogo: un producto puede necesitar a su proveedor.
     "crear_proveedor": 10,
+    "actualizar_proveedor": 10,
     "crear_servicio": 20,
     "crear_variacion": 20,
     "actualizar_servicio": 20,
+    "actualizar_variacion": 20,
     # 2. Clientes.
     "crear_cliente": 30,
     "actualizar_cliente": 30,

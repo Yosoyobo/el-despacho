@@ -1,0 +1,40 @@
+{% comment %}
+«Quién está conectado» — el recuadro chico del Dashboard (2026-09-28).
+
+Lo pide `directorio-en-linea` cada minuto por HTMX (sondeo: no cuenta como
+actividad). Sólo en línea y ausentes, sin uno mismo; la lista completa vive en
+Equipo. Cada renglón usa el mismo partial de presencia que El Directorio y
+Equipo, así las tres pantallas dicen lo mismo con las mismas palabras.
+{% endcomment %}
+<div class="ta-card">
+    <a href="{% url 'directorio-lista' %}" class="mb-3 flex items-center justify-between gap-2 hover:text-brand-600 dark:hover:text-brand-400">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quién está conectado</h2>
+        <span class="flex items-center gap-2 text-xs">
+            {% if conteo.en_linea %}<span class="inline-flex items-center gap-1 font-medium text-success-600 dark:text-success-400"><span class="h-2 w-2 rounded-full bg-success-500"></span>{{ conteo.en_linea }} en línea</span>{% endif %}
+            {% if conteo.ausente %}<span class="inline-flex items-center gap-1 font-medium text-warning-600 dark:text-warning-400"><span class="h-2 w-2 rounded-full bg-warning-500"></span>{{ conteo.ausente }} ausente{{ conteo.ausente|pluralize }}</span>{% endif %}
+            <svg class="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+    </a>
+    {% if conectados %}
+    <ul class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+        {% for act in conectados %}
+        <li class="flex min-w-0 items-start gap-2.5">
+            <a href="{% url 'directorio-perfil' act.usuario.pk %}" class="relative shrink-0" title="Ver la ficha de {{ act.nombre }}">
+                {% if act.usuario.avatar_url %}
+                <img src="{{ act.usuario.avatar_url }}" alt="" class="h-8 w-8 rounded-full object-cover">
+                {% else %}
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ act.nombre|slice:":1"|upper }}</span>
+                {% endif %}
+                {% include "_componentes_tailadmin/_presencia.html" with act=act modo="punto" clase_extra="absolute -bottom-0.5 -right-0.5" %}
+            </a>
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ act.nombre }}</p>
+                {% include "_componentes_tailadmin/_presencia.html" with act=act modo="linea" %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="py-2 text-center text-xs text-gray-400 dark:text-gray-500">Nadie más conectado ahora.</p>
+    {% endif %}
+</div>

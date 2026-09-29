@@ -1393,10 +1393,16 @@ def cfdi_panel(request):
     if filtro != "todos":
         qs = qs.filter(estado=filtro)
 
+    from django.conf import settings
+
     return render(request, "ajustes/cfdi_panel.html", {
         "cfdis": list(qs[:200]),
         "filtro": filtro,
         "pendientes": CfdiEntrante.objects.filter(estado=ESTADO_PENDIENTE).count(),
+        # Resolverlos es operación, así que vive en El Taller → Tesorería
+        # (S-Pendientes-Sep28). Aquí queda la vista de configuración.
+        "taller_cfdi_url": getattr(settings, "TALLER_URL", "https://taller.learningcenter.mx/").rstrip("/")
+        + "/tesoreria/cfdi-recibidos/",
     })
 
 

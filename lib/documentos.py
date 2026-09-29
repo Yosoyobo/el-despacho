@@ -26,8 +26,9 @@ en otra cuenta, así que los archivos no se hacen públicos.
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +102,35 @@ class ResultadoPdf:
     #: Quién lo armó: "gotenberg" o "google". Sirve para diagnosticar por qué
     #: un documento salió con un formato y no con otro.
     motor: str = ""
+    #: Lo que salió bien pero no del todo — p. ej. un anexo que no se pudo pegar.
+    #: El documento existe; esto es lo que quien lo pidió tiene que saber.
+    avisos: list[str] = field(default_factory=list)
+
+
+def _con_anexos(pdf_bytes: bytes, anexos: list[bytes] | None) -> tuple[bytes, list[str]]:
+    """Pega `anexos` al final del PDF. Nunca lanza.
+
+    Si no se pueden unir (Gotenberg caído, un anexo corrupto), el documento sale
+    SIN ellos y se avisa: una cotización sin su ficha técnica es mejor que una
+    cotización que no sale.
+    """
+    utiles = [a for a in (anexos or []) if a]
+    if not utiles or not pdf_bytes:
+        return pdf_bytes, []
+    from lib import gotenberg
+
+    try:
+        if not gotenberg.disponible():
+            raise RuntimeError("el servicio que une los PDF no está contestando")
+        return gotenberg.unir([pdf_bytes, *utiles]), []
+    except Exception as exc:  # noqa: BLE001 — el documento sale sin anexos
+        logger.warning("documentos: no se pudieron pegar los anexos: %s", exc)
+        return pdf_bytes, [f"El PDF salió sin sus anexos: {exc}."]
 
 
 def generar_pdf(
     *, html: str, nombre: str, subcarpeta: str | None = None,
-    pagina: dict | None = None,
+    pagina: dict | None = None, anexos: list[bytes] | None = None,
 ) -> ResultadoPdf:
     """Genera un PDF desde `html` y lo guarda en Drive. Fallback gracioso.
 
@@ -114,6 +139,10 @@ def generar_pdf(
     `pagina` (opcional) ajusta márgenes y pie del documento — ver
     `lib.google_drive.GoogleDriveWrapper._ajustar_pagina`. Quien no lo manda
     conserva los márgenes por default de Google.
+
+    `anexos` (opcional, Sep28): PDFs que se pegan AL FINAL, en ese orden — las
+    fichas técnicas de la cotización. Se pegan ANTES de guardar en Drive, así la
+    copia guardada es la misma que se descarga y se manda por correo.
     """
     from lib import gotenberg
     from lib.google_drive import NoConfiguradoError, drive
@@ -130,12 +159,13 @@ def generar_pdf(
         except Exception as exc:  # noqa: BLE001 — se intenta con Google
             logger.warning("gotenberg falló, se intenta con Google: %s", exc)
         else:
+            pdf_bytes, avisos = _con_anexos(pdf_bytes, anexos)
             nombre_pdf = nombre if nombre.lower().endswith(".pdf") else f"{nombre}.pdf"
             if not drive.esta_configurado():
                 # El documento existe aunque no haya dónde guardarlo. Se
                 # devuelve para que el caller pueda al menos entregarlo.
                 return ResultadoPdf(
-                    ok=False, pdf_bytes=pdf_bytes, motor="gotenberg",
+                    ok=False, pdf_bytes=pdf_bytes, motor="gotenberg", avisos=avisos,
                     error="El PDF se generó pero Google Drive no está conectado para guardarlo.",
                 )
             try:
@@ -144,10 +174,11 @@ def generar_pdf(
                     pdf_bytes, nombre_pdf, carpeta_id, "application/pdf")
             except Exception as exc:  # noqa: BLE001
                 return ResultadoPdf(
-                    ok=False, pdf_bytes=pdf_bytes, motor="gotenberg",
+                    ok=False, pdf_bytes=pdf_bytes, motor="gotenberg", avisos=avisos,
                     error=f"El PDF se generó pero no se pudo guardar en Drive: {exc}",
                 )
-            return ResultadoPdf(ok=True, data=meta, pdf_bytes=pdf_bytes, motor="gotenberg")
+            return ResultadoPdf(ok=True, data=meta, pdf_bytes=pdf_bytes,
+                                motor="gotenberg", avisos=avisos)
 
     # ── Camino de siempre: la conversión de Google ──────────────────────────
     if not drive.esta_configurado():
@@ -165,4 +196,24 @@ def generar_pdf(
         return ResultadoPdf(ok=False, error=f"Drive no pudo generar el PDF: {exc}")
 
     pdf_bytes = meta.pop("pdf_bytes", None)
-    return ResultadoPdf(ok=True, data=meta, pdf_bytes=pdf_bytes, motor="google")
+    avisos: list[str] = []
+    if anexos and pdf_bytes:
+        # Google ya guardó el PDF SIN anexos. Si se pueden pegar, se guarda la
+        # versión completa y se borra la otra, para que lo guardado siga siendo
+        # lo mismo que se descarga.
+        completo, avisos = _con_anexos(pdf_bytes, anexos)
+        if completo is not pdf_bytes:
+            try:
+                carpeta_id = drive.obtener_o_crear_subcarpeta(subcarpeta) if subcarpeta else None
+                nombre_pdf = nombre if nombre.lower().endswith(".pdf") else f"{nombre}.pdf"
+                nueva = drive._subir_contenido(completo, nombre_pdf, carpeta_id,
+                                               "application/pdf")
+                with contextlib.suppress(Exception):
+                    drive.borrar(meta.get("id", ""))
+                meta = nueva
+            except Exception as exc:  # noqa: BLE001 — se entrega igual, completo
+                logger.warning("documentos: no se pudo guardar la versión con "
+                               "anexos en Drive: %s", exc)
+            pdf_bytes = completo
+    return ResultadoPdf(ok=True, data=meta, pdf_bytes=pdf_bytes, motor="google",
+                        avisos=avisos)

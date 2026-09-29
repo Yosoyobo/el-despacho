@@ -15,6 +15,12 @@ una suposición que nadie revisó.
 {% breadcrumb_items "Ajustes" "/ajustes/" "CFDI recibidos" as breadcrumb_items %}
 {% include "_componentes_tailadmin/_page_header.html" with titulo="CFDI recibidos" subtitulo="Comprobantes que llegaron por correo" breadcrumb_items=breadcrumb_items back_url="/ajustes/" back_label="Ajustes" %}
 
+<p class="mb-4 max-w-3xl rounded-xl bg-brand-50 p-3 text-sm text-brand-800 dark:bg-brand-500/10 dark:text-brand-200">
+    Ligar un comprobante a su factura o registrar el gasto de un proveedor se hace en
+    <a href="{{ taller_cfdi_url }}" class="font-medium underline">El Taller → Tesorería → CFDI recibidos</a>.
+    Aquí queda la vista de lo que ha llegado.
+</p>
+
 <div class="mb-5 flex flex-wrap items-center gap-2">
     <a href="?estado=pendiente" class="pill-filtro {% if filtro == 'pendiente' %}pill-filtro-on{% endif %}">
         Pendientes{% if pendientes %} ({{ pendientes }}){% endif %}
@@ -68,9 +74,9 @@ una suposición que nadie revisó.
                 <input type="hidden" name="accion" value="ignorar">
                 <button type="submit" class="btn-secundario text-xs">Ignorar</button>
             </form>
-            <span class="text-xs text-gray-400 dark:text-gray-500">
-                Para ligarlo a mano, ábrelo desde la factura correspondiente.
-            </span>
+            <a href="{{ taller_cfdi_url }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">
+                Resolverlo en El Taller → Tesorería → CFDI recibidos →
+            </a>
         </div>
         {% endif %}
     </article>

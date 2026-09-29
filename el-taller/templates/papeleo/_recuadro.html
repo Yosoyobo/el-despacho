@@ -9,12 +9,18 @@ dice en lugar de dejar un enlace que no abre.
 
 Espera en el contexto: `papeleo` (lista de PapeleoLigado) y
 `puede_ligar_papeleo`. Acepta `clase_extra` para el reorden en móvil.
+
+LC 2026-09-28: con `plegable="<slug>"` el recuadro se pliega en el celular (la
+ficha del cliente). Sin el parámetro —proyecto, proveedor— no cambia nada. El
+enlace del encabezado sigue navegando: `ui.js` no pliega cuando el clic cae en
+un enlace dentro del asa.
 {% endcomment %}
-<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 {{ clase_extra }}">
-    <div class="mb-3 flex items-center justify-between gap-3">
-        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-white">Papeleo</h2>
+<section {% if plegable %}data-movil-plegable="{{ plegable }}" {% endif %}class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900 {{ clase_extra }}">
+    <div {% if plegable %}data-movil-asa {% endif %}class="flex items-center justify-between gap-3">
+        <h2 class="text-theme-xl font-medium text-gray-900 dark:text-white">Papeleo{% if plegable %}<span data-movil-flecha class="ml-1 text-sm font-normal text-gray-400 md:hidden">&#9656;</span>{% endif %}</h2>
         <a href="/papeleo/" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">Buscar en el archivo →</a>
     </div>
+    <div {% if plegable %}data-movil-cuerpo {% endif %}class="mt-3">
 
     {% if papeleo %}
     <ul class="divide-y divide-gray-200 text-sm dark:divide-gray-800">
@@ -54,4 +60,5 @@ Espera en el contexto: `papeleo` (lista de PapeleoLigado) y
         se ligue solo, si eso está encendido en Gerencia → Papeleo.
     </p>
     {% endif %}
+    </div>
 </section>

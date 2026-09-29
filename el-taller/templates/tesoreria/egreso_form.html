@@ -17,6 +17,7 @@
 
     {% comment %} Columna principal: dinero + clasificación. {% endcomment %}
     <div class="min-w-0 space-y-6 xl:col-span-2">
+        {% if cfdi_origen %}{% include "tesoreria/_cfdi_origen.html" %}{% endif %}
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -54,10 +55,11 @@
                     <label for="{{ form.proveedor.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</label>
                     {{ form.proveedor }}
                     {% for e in form.proveedor.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
-                    <details class="mt-2 text-sm">
+                    <details class="mt-2 text-sm"{% if prov_prellenado_razon %} open{% endif %}>
                         <summary class="cursor-pointer text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proveedor</summary>
                         <div class="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-2 dark:border-gray-700">
-                            <input type="text" id="prov-razon" placeholder="Razón social *" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="prov-razon" placeholder="Razón social *" value="{{ prov_prellenado_razon|default:'' }}" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
+                            <input type="text" id="prov-rfc" placeholder="RFC" value="{{ prov_prellenado_rfc|default:'' }}" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                             <input type="text" id="prov-contacto" placeholder="Contacto" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                             <input type="email" id="prov-email" placeholder="Email" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
                             <input type="text" id="prov-tel" placeholder="Teléfono" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
@@ -133,8 +135,10 @@
     btn.addEventListener("click", async () => {
         const razon = document.getElementById("prov-razon").value.trim();
         if (!razon) { document.getElementById("prov-razon").focus(); return; }
+        const rfcEl = document.getElementById("prov-rfc");
         const body = new URLSearchParams({
             razon_social: razon,
+            rfc: rfcEl ? rfcEl.value.trim() : "",
             nombre_contacto: document.getElementById("prov-contacto").value.trim(),
             email_contacto: document.getElementById("prov-email").value.trim(),
             telefono: document.getElementById("prov-tel").value.trim(),
@@ -151,7 +155,7 @@
                 const opt = new Option(data.razon_social, data.id, true, true);
                 sel.add(opt);
                 sel.value = String(data.id);
-                ["prov-razon","prov-contacto","prov-email","prov-tel"].forEach(id => document.getElementById(id).value = "");
+                ["prov-razon","prov-rfc","prov-contacto","prov-email","prov-tel"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
             } else {
                 alert(data.error || "No se pudo crear el proveedor.");
             }

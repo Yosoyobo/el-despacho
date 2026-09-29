@@ -510,3 +510,126 @@
   /* El de la tarjeta de producto es más bajo: cabe en su renglón. */
   textarea[data-crece-al-enfocar] { max-height: 260px; }
 }
+
+/* ── LC 2026-09-28 (Oscar): en el celular las tablas anchas se leen como
+   TARJETAS. «Tarjetas en móvil, todas; en escritorio no cambia nada.»
+
+   Una tabla de seis o siete columnas mide 640–900px y un iPhone 390: se leía
+   con scroll de lado, y lo de la derecha —el estado, la fecha, los botones de
+   Ver/Editar/Duplicar— caía FUERA de la pantalla. Es el mismo bug de los
+   mandados del 2026-08-23, que se arregló ahí solo; aquí se arregla para todas.
+
+   Es un MÓDULO, no un arreglo por pantalla: basta `data-tabla-movil` en la
+   <table>. Cada renglón se vuelve una tarjeta con sus celdas en una rejilla de
+   dos columnas, cada una con su etiqueta ARRIBA (tomada del encabezado de su
+   columna). Las etiquetas y el papel de cada celda los pone `ui.js` —al cargar,
+   tras cada swap de HTMX y cuando un script agrega renglones—, así ninguna lista
+   duplica su HTML para el celular ni sus formularios.
+
+   Contrato:
+     <table data-tabla-movil>            etiquetas del <thead>
+     <table data-tabla-movil="A|B|C">    tabla sin <thead>: etiquetas en orden
+   Por columna en su <th> (o por celda en el <td>), `data-movil=`:
+     titulo        encabeza la tarjeta: sin etiqueta y a todo lo ancho
+     acciones      botones al pie, a la derecha
+     ancho         a todo lo ancho (textos largos, cuadros de texto)
+     sin-etiqueta  sin etiqueta
+     oculta        no se muestra en el celular
+     asa           la manija de arrastrar, en la esquina
+     casilla       la casilla de selección, en la esquina
+   Sin anotar, ui.js adivina lo obvio (la primera columna con nombre es el
+   título; una columna sin nombre con botones son las acciones; la manija y la
+   casilla se reconocen solas). Lo que diga la plantilla gana siempre.
+
+   Si la cabecera ordena (enlaces) o marca todo (casilla) no se esconde: queda
+   como una fila de pastillas arriba, para que en el celular también se ordene.
+   En escritorio la media query no aplica y la tabla es la de siempre. */
+@media (max-width: 767px) {
+  table[data-tabla-movil] { display: block; width: 100%; min-width: 0; }
+  table[data-tabla-movil] > colgroup,
+  table[data-tabla-movil] > caption { display: none; }
+
+  /* Cabecera: fuera, salvo lo que se puede picar. */
+  table[data-tabla-movil] > thead { display: none; }
+  table[data-tabla-movil] > thead:has(a[href], input[type="checkbox"]) {
+    display: block;
+    position: static;
+  }
+  table[data-tabla-movil] > thead > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+  }
+  table[data-tabla-movil] > thead > tr > th { display: none; padding: 0; }
+  table[data-tabla-movil] > thead > tr > th:has(a[href], input[type="checkbox"]) { display: inline-flex; }
+  table[data-tabla-movil] > thead > tr > th > a {
+    @apply rounded-full border border-gray-200 bg-white px-2.5 py-1 normal-case tracking-normal dark:border-gray-700 dark:bg-gray-900;
+  }
+
+  /* Cada renglón, una tarjeta: rejilla de dos columnas. */
+  table[data-tabla-movil] > tbody,
+  table[data-tabla-movil] > tfoot { display: block; }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem 0.75rem;
+    padding: 0.875rem 1rem;
+    position: relative;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > :is(td, th) {
+    display: block;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  /* Un campo no se sale de su media tarjeta aunque traiga ancho fijo (w-48)
+     o el ancho natural de su opción más larga: se encoge a su celda. */
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > :is(td, th) :is(select, textarea, input:not([type="checkbox"]):not([type="radio"])) {
+    max-width: 100%;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    @apply text-[11px] font-medium uppercase leading-4 tracking-wide text-gray-500 dark:text-gray-400;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > :is([data-movil="titulo"], [data-movil="acciones"], [data-movil="ancho"], [data-movil-fila]) {
+    grid-column: 1 / -1;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-movil="titulo"] {
+    @apply text-sm font-semibold text-gray-900 dark:text-gray-100;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-movil="acciones"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  /* El aviso de «sin registros» (una sola celda) conserva su aire. */
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-movil-fila] {
+    padding: 0.5rem 0;
+    text-align: center;
+  }
+  /* La manija y la casilla van en las esquinas; el renglón les hace lugar. */
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr:has(> [data-movil="asa"]) { padding-right: 2.75rem; }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr:has(> [data-movil="casilla"]) { padding-left: 2.75rem; }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-movil="asa"] {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.5rem;
+  }
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > [data-movil="casilla"] {
+    position: absolute;
+    top: 0.9375rem;
+    left: 1rem;
+  }
+  /* Lo que la plantilla ya escondía en pantalla chica, sigue escondido. */
+  table[data-tabla-movil] > :is(tbody, tfoot) > tr > :is(.hidden, [data-movil="oculta"]) { display: none; }
+}

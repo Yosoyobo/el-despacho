@@ -1,0 +1,63 @@
+{% comment %}
+El equipo ahora: quién está en línea, en qué app y en qué pantalla
+(sprint de pendientes 2026-09-28). Panel COMPARTIDO por la pared del NUC y por
+El Site (regla §4 #22): mismo endpoint (`site-vivo-equipo`), este mismo partial
+y la hoja `vigia-paneles.css`.
+
+«En línea» = actividad en los últimos 5 minutos; de 5 a 30, ausente; más, se
+fue — con la hora de su última vez. La actividad la marca una persona, no una
+pestaña abierta: pedir este panel (y cualquier otro de El Vigía) no cuenta.
+
+Una franja ancha y baja a propósito: en la pared hay que leerla de lejos sin
+quitarle alto a los paneles de abajo. Los conectados van en tarjetas; los que se
+fueron, en un solo renglón al pie.
+{% endcomment %}
+<div class="flex h-full flex-col">
+  <div class="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b vg-borde px-4 py-2.5">
+    <h2 class="text-sm font-semibold uppercase tracking-wider vg-2">El equipo ahora</h2>
+    {% if conteo %}
+    <p class="flex flex-wrap items-center gap-x-3 text-xs vg-3">
+      <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-success-400"></span>{{ conteo.en_linea|default:"0" }} en línea</span>
+      <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-warning-400"></span>{{ conteo.ausente|default:"0" }} ausente{{ conteo.ausente|pluralize }}</span>
+      <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full vg-riel-bg"></span>{{ conteo.fuera|default:"0" }} fuera</span>
+    </p>
+    {% endif %}
+  </div>
+
+  {% if sin_permiso %}
+    <p class="px-4 py-3 text-xs vg-4">No tienes permiso para ver la actividad del equipo. Se concede en El Directorio.</p>
+  {% elif error %}
+    <p class="px-4 py-3 text-xs text-error-400">No se pudo leer la actividad: {{ error }}</p>
+  {% elif not personas %}
+    <p class="px-4 py-3 text-xs vg-4">Todavía no hay nadie con actividad registrada.</p>
+  {% else %}
+  <div class="min-h-0 flex-1 px-4 py-2.5">
+    {% if conectados %}
+    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {% for p in conectados %}
+      <div class="min-w-0 rounded-xl vg-realce-suave px-3 py-2" title="{{ p.dispositivo.texto }}">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if p.estado == 'en_linea' %}bg-success-400{% else %}bg-warning-400{% endif %}"></span>
+          <span class="min-w-0 flex-1 truncate text-sm font-semibold vg-1">{{ p.nombre }}</span>
+          <span class="shrink-0 text-[11px] vg-4">{{ p.hace }}</span>
+        </div>
+        <p class="mt-0.5 truncate text-[11px] vg-3">
+          {% if p.app_label %}{{ p.app_label }} · {% endif %}{% if p.pantalla %}{% if p.url and not es_pared %}<a href="{{ p.url }}" class="hover:underline">{{ p.pantalla }}</a>{% else %}{{ p.pantalla }}{% endif %}{% else %}{{ p.seccion|default:"—" }}{% endif %}
+        </p>
+        {% if p.dispositivo.texto %}<p class="truncate text-[10px] vg-4">{{ p.dispositivo.icono }} {{ p.dispositivo.texto }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs vg-4">Nadie en línea ahora mismo.</p>
+    {% endif %}
+
+    {% if desconectados %}
+    <p class="vigia-parte mt-2 text-[11px] leading-relaxed vg-4">
+      <span class="vg-3">Fuera:</span>
+      {% for p in desconectados %}<span class="whitespace-nowrap">{{ p.nombre }}{% if p.hace %} <span class="vg-5">({{ p.hace }})</span>{% endif %}</span>{% if not forloop.last %} · {% endif %}{% endfor %}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

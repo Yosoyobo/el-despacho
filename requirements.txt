@@ -13,6 +13,8 @@ pillow==11.0.0
 # tomada con un iPhone se acepta (el MIME está en la whitelist), se guarda, y
 # queda SIN derivado: el navegador no la pinta y parece que se subió mal.
 # Trae sus propias ruedas manylinux — no necesita paquetes del sistema.
+# Desde 2026-09-28 además convierte el HEIC a JPEG AL GUARDARLO
+# (`lib.almacen._heif_a_jpeg`), así el original también se ve en todos lados.
 pillow-heif==0.21.0
 markdown==3.7
 pywebpush==2.0.0

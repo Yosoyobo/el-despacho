@@ -60,6 +60,22 @@ VARIANTES: dict[str, int] = {"w400": 400, "w1000": 1000}
 # todavía se lee bien; más abajo se ensucian los bordes.
 CALIDAD_JPEG = 82
 
+# Calidad con la que un HEIC de iPhone se vuelve JPEG AL GUARDARLO (LC
+# 2026-09-28, Oscar: «convertir a JPEG»). Es el ORIGINAL que se queda, no una
+# miniatura, así que va más alto que los derivados.
+CALIDAD_ORIGINAL_JPEG = 90
+
+# Cómo se reconoce un HEIC/HEIF. El navegador no siempre lo dice: Chrome en
+# Windows suele mandar el tipo vacío, así que también se mira la extensión y,
+# como último recurso, la «marca» del contenedor (bytes 4-12: `ftyp` + brand).
+MIMES_HEIF = frozenset({
+    "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence",
+})
+_EXT_HEIF = (".heic", ".heif", ".hif")
+_MARCAS_HEIF = frozenset({
+    b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1",
+})
+
 # Prefijo de las rutas públicas (el `root` de El Portero apunta a `pub/`).
 PREFIJO_URL = "/medios"
 
@@ -217,6 +233,19 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
             return {**existente, "id": clave_final, "duplicado": True}
 
         destino_dir.mkdir(parents=True, exist_ok=True)
+        # LC 2026-09-28 (Oscar): un HEIC de iPhone se GUARDA ya como JPEG. Así
+        # lo ve todo lo que sirve el original tal cual —el avatar, los
+        # comprobantes, el visor de adjuntos, la copia en Drive—, no sólo lo que
+        # pinta los derivados. La llave sigue siendo el sha del archivo que
+        # subió la persona: la misma foto subida dos veces cae aquí arriba como
+        # duplicado sin convertirse otra vez.
+        convertido_de = ""
+        if es_heif(_cabecera(tmp_ruta), mime=mime, nombre=nombre) and _heif_a_jpeg(tmp_ruta):
+            convertido_de = (mime or "image/heic").lower()
+            mime = "image/jpeg"
+            nombre = _nombre_jpg(nombre)
+            with contextlib.suppress(OSError):
+                total = tmp_ruta.stat().st_size
         # `mkstemp` crea el temporal en 0600 y `os.replace` conserva el modo, así
         # que sin esto el original queda legible SÓLO por root. Se notó el
         # 2026-08-21: el rsync de `archivo.sh` corre como el usuario del host y
@@ -241,6 +270,8 @@ def guardar_fileobj(fileobj, *, mime: str = "", nombre: str = "archivo",
         "bytes": total,
         "variantes": {},
     }
+    if convertido_de:
+        datos["convertido_de"] = convertido_de
     _escribir_meta(clave_final, datos)
     # Los derivados actualizan el meta con `variantes`, `ancho` y `alto`.
     derivar(clave_final)
@@ -273,6 +304,104 @@ def _trozos(fileobj, tamano: int = 1024 * 512):
         yield trozo
 
 
+# ── HEIC → JPEG (LC 2026-09-28) ─────────────────────────────────────────────
+
+def _cabecera(ruta: Path, n: int = 16) -> bytes:
+    try:
+        with open(ruta, "rb") as f:
+            return f.read(n)
+    except OSError:
+        return b""
+
+
+def es_heif(cabecera: bytes = b"", *, mime: str = "", nombre: str = "") -> bool:
+    """¿Esto es un HEIC/HEIF? Por el tipo, por la extensión o por la marca del
+    contenedor — en ese orden. Nunca lanza."""
+    if (mime or "").lower() in MIMES_HEIF:
+        return True
+    if (nombre or "").lower().endswith(_EXT_HEIF):
+        return True
+    cab = cabecera or b""
+    return len(cab) >= 12 and cab[4:8] == b"ftyp" and cab[8:12] in _MARCAS_HEIF
+
+
+def _nombre_jpg(nombre: str) -> str:
+    """«IMG_0042.HEIC» → «IMG_0042.jpg». Sin nombre, «foto.jpg»."""
+    base = (nombre or "").strip() or "foto"
+    raiz_nombre, _, ext = base.rpartition(".")
+    if raiz_nombre and ext.lower() in {e.lstrip(".") for e in _EXT_HEIF}:
+        base = raiz_nombre
+    return f"{base}.jpg"
+
+
+def _a_rgb(img):
+    """La imagen lista para JPEG: orientación aplicada y sin transparencia (el
+    fondo transparente se aplana sobre blanco — en negro se vería sucio)."""
+    from PIL import Image, ImageOps
+
+    img = ImageOps.exif_transpose(img) or img
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        fondo = Image.new("RGB", rgba.size, (255, 255, 255))
+        fondo.paste(rgba, mask=rgba.split()[-1])
+        return fondo
+    return img.convert("RGB")
+
+
+def _heif_a_jpeg(ruta: Path) -> bool:
+    """Reescribe el archivo HEIC de `ruta` como JPEG, en su lugar. `True` si
+    quedó. Nunca lanza: sin decodificador, o con un archivo que no abre, se deja
+    el original como estaba (se guarda igual, sólo que sin convertir)."""
+    if not hay_decodificador_heic():
+        return False
+    salida = ruta.with_name(ruta.name + ".jpg.tmp")
+    try:
+        from PIL import Image
+
+        with Image.open(ruta) as img:
+            icc = img.info.get("icc_profile")
+            lista = _a_rgb(img)
+            opciones = {"format": "JPEG", "quality": CALIDAD_ORIGINAL_JPEG,
+                        "optimize": True}
+            # El perfil de color se conserva: las fotos de iPhone vienen en
+            # Display P3 y sin él los rojos y los verdes salen lavados. El EXIF
+            # no se copia a propósito: la orientación ya se aplicó (copiarla la
+            # giraría dos veces) y así la foto tampoco carga la ubicación GPS.
+            if icc:
+                opciones["icc_profile"] = icc
+            lista.save(salida, **opciones)
+        os.replace(salida, ruta)
+        return True
+    except Exception:  # noqa: BLE001 — formato raro o archivo corrupto
+        with contextlib.suppress(Exception):
+            salida.unlink()
+        return False
+
+
+def heif_a_jpeg_bytes(contenido: bytes) -> bytes | None:
+    """Los mismos bytes HEIC, ya como JPEG; `None` si no se pudo. Para quien
+    tiene la foto en memoria y no en disco (lo que se le manda a un Chalán con
+    visión: sus APIs no aceptan HEIC). Nunca lanza."""
+    if not contenido or not hay_decodificador_heic():
+        return None
+    import io
+
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(contenido)) as img:
+            icc = img.info.get("icc_profile")
+            lista = _a_rgb(img)
+            salida = io.BytesIO()
+            opciones = {"format": "JPEG", "quality": CALIDAD_ORIGINAL_JPEG}
+            if icc:
+                opciones["icc_profile"] = icc
+            lista.save(salida, **opciones)
+        return salida.getvalue()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 # ── Derivados ────────────────────────────────────────────────────────────────
 
 def hay_decodificador_heic() -> bool:
@@ -286,6 +415,9 @@ def hay_decodificador_heic() -> bool:
     se guarda y se queda SIN derivado; el navegador no la pinta y parece que se
     subió mal. Si se retira la dependencia, hay que sacar `image/heic`/`image/heif`
     de la whitelist para que el error sea claro en vez de silencioso.
+
+    Desde 2026-09-28 además se usa al GUARDAR: el HEIC se vuelve JPEG antes de
+    quedarse en `orig/` (ver `_heif_a_jpeg`).
     """
     try:
         import pillow_heif  # type: ignore[import-not-found]
@@ -520,6 +652,16 @@ def _importar_de_drive(clave: str) -> tuple[bytes, str, str]:
         raise ArchivoNoDisponible(f"«{clave}» llegó vacío de Drive.")
     with contextlib.suppress(Exception):
         guardar_bytes(contenido, mime=mime, nombre=nombre, clave=clave)
+    # Si quedó guardado, se entrega lo que quedó (un HEIC ya vuelto JPEG) y no
+    # lo que llegó de Drive: la primera lectura no debe verse distinta de las
+    # siguientes.
+    ruta = _dir_orig(clave) / _NOMBRE_ORIGINAL
+    if ruta.is_file():
+        datos = meta(clave) or {}
+        with contextlib.suppress(OSError):
+            return (ruta.read_bytes(),
+                    datos.get("mime") or mime or "application/octet-stream",
+                    datos.get("nombre") or nombre or "archivo")
     return contenido, mime or "application/octet-stream", nombre or "archivo"
 
 
@@ -556,6 +698,8 @@ __all__ = [
     "derivar",
     "derivar_por_huella",
     "dir_orig_por_huella",
+    "es_heif",
+    "heif_a_jpeg_bytes",
     "dir_pub_por_huella",
     "existe",
     "guardar_bytes",

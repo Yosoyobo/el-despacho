@@ -1,3 +1,4 @@
+from .anexo import CotizacionAnexo
 from .cotizacion import (
     ESTADOS_COTIZACION,
     Cotizacion,
@@ -23,6 +24,7 @@ from .estado_cotizacion import (
 
 __all__ = [
     "Cotizacion",
+    "CotizacionAnexo",
     "CotizacionItem",
     "CotizacionImpuesto",
     "ESTADOS_COTIZACION",

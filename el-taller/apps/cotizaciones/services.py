@@ -634,8 +634,21 @@ def generar_pdf(cot: Cotizacion, actor):
     # El precalentado vive dentro de `construir_html_pdf` (ahí se MIDEN las fotos
     # para acotarlas), así que aquí ya no se repite.
     html = construir_html_pdf(cot)
+    # Sep28: las fichas técnicas anexadas se pegan AL FINAL, antes de guardar en
+    # Drive — así lo guardado es lo mismo que se descarga y se manda por correo.
+    # Un anexo que no se pueda leer se salta con aviso: el documento sale igual.
+    from . import anexos as _anexos
+
+    pdfs_anexos, avisos_anexos = _anexos.pdfs_para_documento(cot)
+    kwargs = {"anexos": pdfs_anexos} if pdfs_anexos else {}
     res = _gen(html=html, nombre=cot.nombre_pdf, subcarpeta="Cotizaciones",
-               pagina=pagina_documento(cot))
+               pagina=pagina_documento(cot), **kwargs)
+    if avisos_anexos:
+        import contextlib
+
+        # `suppress` por los dobles de prueba que no traen ese campo.
+        with contextlib.suppress(Exception):
+            res.avisos = [*avisos_anexos, *(getattr(res, "avisos", None) or [])]
     if not res.ok:
         return res
 
@@ -793,6 +806,10 @@ def duplicar(cot: Cotizacion, actor) -> Cotizacion:
             )
         for ci in cot.impuestos.all():
             CotizacionImpuesto.objects.create(cotizacion=nueva, tasa=ci.tasa)
+        # La copia se lleva también sus anexos (Sep28): son parte del documento.
+        from . import anexos as _anexos
+
+        _anexos.heredar(cot, nueva)
     emitir_creada(nueva, actor)
     return nueva
 
@@ -1007,6 +1024,12 @@ def generar_desde_proyecto(proyecto, actor) -> Cotizacion:
         # v1/v2/… del recuadro «Productos involucrados».
         from apps.los_proyectos import services_version
         services_version.fotografiar(cot, pares_foto)
+        # Sep28: los anexos (fichas técnicas) se heredan como los interruptores
+        # del documento — la v+1 no te hace volver a subir la ficha del termo.
+        # Se copia la fila, no el archivo: la llave de El Almacén es la misma.
+        from . import anexos as _anexos
+
+        _anexos.heredar(ultima_cot, cot)
         # Solo el régimen 'iva' usa las tasas de la M2M; 'honorarios' y 'exento'
         # se calculan con lógica dedicada (lib.fiscal) y no dependen de tasas.
         # `iva_exento` legacy sigue vetando las tasas (back-compat).

@@ -6,10 +6,14 @@ defaults del rol. Idempotente — usa get_or_create por fila.
 Los `_invalidar_permisos_*` descartan el memo de `lib.permisos.puede()` cuando
 algo cambia los permisos, para que una petición que los muta y los relee no vea
 los viejos.
+
+`_presencia_al_entrar` / `_presencia_al_salir`: marcan la actividad del usuario
+al iniciar y cerrar sesión (ver `lib.presencia`).
 """
 
 from __future__ import annotations
 
+from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
@@ -23,10 +27,13 @@ def auto_seedear_permisos(sender, instance: Usuario, created: bool, **kwargs):
     if not created:
         return
     try:
-        from lib.permisos_defaults import DEFAULTS_POR_ROL
+        from lib.permisos_defaults import defaults_de
     except Exception:
         return
-    para_rol = DEFAULTS_POR_ROL.get(instance.rol, {})
+    # `defaults_de` = los del rol + los universales (los que TODO usuario trae
+    # desde que nace, p. ej. ver quién está en línea). Así un `miembro` recién
+    # dado de alta —que no tiene defaults de rol— también los recibe.
+    para_rol = defaults_de(instance.rol)
     for modulo, permisos in para_rol.items():
         for permiso in permisos:
             PermisoUsuario.objects.get_or_create(
@@ -67,3 +74,25 @@ def _invalidar_permisos_por_roles_extra(sender, **kwargs):
     from lib.permisos import invalidar_cache_permisos
 
     invalidar_cache_permisos()
+
+
+# ── Presencia: entrar y salir también es actividad ──────────────────────────
+#
+# Entrar al sistema es la primera señal de que alguien está aquí, y salir es la
+# única forma de saber que se fue ANTES de que pasen los 30 minutos. Los dos
+# escriben en los campos `actividad_*` del usuario (ver `lib.presencia`). Nunca
+# lanzan: la presencia jamás puede ser el motivo de que un login falle.
+
+
+@receiver(user_logged_in, weak=False)
+def _presencia_al_entrar(sender, request=None, user=None, **kwargs):
+    from lib import presencia
+
+    presencia.marcar_entrada(request, user)
+
+
+@receiver(user_logged_out, weak=False)
+def _presencia_al_salir(sender, request=None, user=None, **kwargs):
+    from lib import presencia
+
+    presencia.marcar_salida(request, user)

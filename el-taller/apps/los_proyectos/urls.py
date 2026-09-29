@@ -23,6 +23,9 @@ urlpatterns = [
     path("<int:pk>/editar-fechas", views.editar_fechas, name="proyectos-editar-fechas"),
     path("<int:pk>/editar-economico", views.editar_economico, name="proyectos-editar-economico"),
     path("<int:pk>/agregar-tarea", views.agregar_tarea_modal, name="proyectos-agregar-tarea"),
+    # LC 2026-09-28: «@persona» + Enter en la tarjeta de producto crea la tarea.
+    path("<int:pk>/producto/<int:prod_pk>/tarea-rapida", views.producto_tarea_rapida,
+         name="proyectos-producto-tarea-rapida"),
     # Mini-Chalán de tareas (LC 2026-07-29): dictar → preview → confirmar.
     path("<int:pk>/tareas-chalan", views.tareas_chalan_modal, name="proyectos-tareas-chalan"),
     path("<int:pk>/tareas-chalan/aplicar", views.tareas_chalan_aplicar, name="proyectos-tareas-chalan-aplicar"),

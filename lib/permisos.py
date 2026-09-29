@@ -201,6 +201,14 @@ def puede_eliminar_catalogo(user) -> bool:
     return puede(user, "catalogo", "eliminar")
 
 
+def puede_editar_proveedores(user) -> bool:
+    """Editar la ficha de un proveedor. La pantalla (alta, edición y ficha en
+    línea) la gatea con `catalogo.gestionar_categorias`, no con `editar`, así
+    que El Chalán pide lo mismo: lo que no se puede con clicks no se puede
+    dictando (sprint de pendientes 2026-09-28)."""
+    return puede(user, "catalogo", "gestionar_categorias")
+
+
 def puede_ver_tarea(user, tarea) -> bool:
     """Tareas: heredan la visibilidad del proyecto."""
     return puede_ver_proyecto(user, tarea.proyecto)
@@ -344,6 +352,14 @@ def puede_ver_papeleo(user) -> bool:
     return puede(user, "papeleo", "ver")
 
 
+def puede_ver_actividad_equipo(user) -> bool:
+    """Ver quién está en línea y en qué pantalla anda cada quien (El Directorio,
+    El Site / El Vigía, Equipo y el Dashboard). Nace activo para todos — decisión
+    de Oscar, 2026-09-28: «quién ve: todos» — pero sigue siendo granular: se
+    revoca por usuario desde El Directorio (§4 #20)."""
+    return puede(user, "equipo", "ver_actividad")
+
+
 def puede_ligar_papeleo(user) -> bool:
     """Decir de qué cliente, proyecto o proveedor es un documento."""
     return puede(user, "papeleo", "ligar")
@@ -352,6 +368,23 @@ def puede_ligar_papeleo(user) -> bool:
 def puede_subir_papeleo(user) -> bool:
     """Mandar un archivo al archivo del papeleo."""
     return puede(user, "papeleo", "subir")
+
+
+def usuarios_con_permiso(modulo: str, accion: str) -> list:
+    """Usuarios activos que tienen `(modulo, accion)` — por fila propia o por
+    cualquiera de sus roles.
+
+    Existe para los avisos que se reparten «a quien puede ver X» (§4 #20: nada
+    por rol literal). Pasa por `puede()` usuario por usuario a propósito: es la
+    ÚNICA definición de quién tiene un permiso, con su precedencia (una fila
+    individual apagada revoca aunque el rol lo dé). Un filtro en SQL que la
+    imitara acabaría disintiendo de ella en el primer caso raro. Con los pocos
+    usuarios del despacho, recorrerlos cuesta nada.
+    """
+    from cuentas.models.usuario import Usuario
+
+    return [u for u in Usuario.objects.filter(is_active=True).order_by("pk")
+            if puede(u, modulo, accion)]
 
 
 def usuarios_runner():

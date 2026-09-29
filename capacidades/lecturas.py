@@ -194,6 +194,9 @@ def _h_detalle_cotizacion(args: dict, usuario) -> dict:
         "cliente": c.cliente.razon_social if c.cliente_id else None,
         "estado": getattr(c, "estado_visible", c.get_estado_display()),
         "total": getattr(c, "total", None),
+        # Sep28: lo que va pegado al final del PDF, en ese orden. Así el Chalán
+        # puede contestar «¿ya lleva la ficha técnica?» sin abrir el documento.
+        "anexos": [a.nombre for a in c.anexos.order_by("orden", "pk")],
         "link": f"/cotizaciones/{c.pk}/",
     }
 
@@ -834,6 +837,64 @@ def _h_tareas_de_producto(args: dict, usuario) -> dict:
     return {"proyecto": p.codigo, "productos": salida}
 
 
+
+def _h_quien_esta_en_linea(args: dict, usuario) -> dict:
+    """Quién del equipo está conectado ahora y dónde anda (sprint 2026-09-28).
+
+    «En línea» es actividad en los últimos 5 minutos y «ausente» de 5 a 30; lo
+    demás es «desconectado» con la hora de su última vez. La actividad la marca
+    una persona picando cosas, no una pestaña abierta: los sondeos de fondo no
+    cuentan.
+
+    Con `persona` se acota a una sola, por nombre o correo. Si dos coinciden
+    **no se adivina**: se dice cuáles hay, igual que el resto de los
+    resolvedores del repo. La pantalla sale con el nombre del registro sólo si
+    quien pregunta lo puede ver; si no, sólo la sección.
+    """
+    from lib import presencia
+
+    items = presencia.equipo_ahora(viewer=usuario)
+    aguja = presencia.normalizar(args.get("persona") or "").lstrip("@")
+    if aguja:
+        def _clave(item):
+            u = item["usuario"]
+            return presencia.normalizar(u.nombre_completo or ""), presencia.normalizar(u.email or "")
+
+        exactas = [i for i in items if aguja in _clave(i)]
+        casan = exactas or [
+            i for i in items
+            if any(aguja in campo for campo in _clave(i))
+        ]
+        if not casan:
+            return {"error": "persona_no_encontrada", "persona": aguja}
+        if len(casan) > 1:
+            return {"error": "ambiguo",
+                    "coinciden": [presencia.para_chalan(i)["nombre"] for i in casan]}
+        return {"regla": _REGLA_PRESENCIA, "persona": presencia.para_chalan(casan[0])}
+
+    cuenta = presencia.conteo(items)
+    return {
+        "regla": _REGLA_PRESENCIA,
+        "en_linea": [presencia.para_chalan(i) for i in items if i["estado"] == "en_linea"],
+        "ausentes": [presencia.para_chalan(i) for i in items if i["estado"] == "ausente"],
+        "fuera": [
+            {"nombre": presencia.para_chalan(i)["nombre"],
+             "ultima_actividad": presencia.para_chalan(i)["ultima_actividad"]}
+            for i in items if i["estado"] in ("desconectado", "nunca")
+        ],
+        "conteo": {
+            "en_linea": cuenta.get("en_linea", 0),
+            "ausentes": cuenta.get("ausente", 0),
+            "fuera": cuenta.get("desconectado", 0) + cuenta.get("nunca", 0),
+        },
+    }
+
+
+_REGLA_PRESENCIA = (
+    "En línea = actividad en los últimos 5 minutos; ausente = de 5 a 30; "
+    "desconectado = más de 30. Una pestaña abierta sin usar no cuenta."
+)
+
 def _h_contaduria_saldo_cuenta(args: dict, usuario) -> dict:
     from apps.contaduria.models import CuentaContable
     from apps.contaduria.services import saldo_cuenta
@@ -1279,6 +1340,55 @@ def _h_papeleo_de(args: dict, usuario) -> dict:  # noqa: ARG001
 
 
 
+# ── Los CFDI que llegaron por correo y esperan dueño ─────────────────────────
+# S-Pendientes-Sep28. Es la lectura que va ANTES de proponer
+# `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura`: de aquí salen el folio
+# fiscal, el proveedor sugerido y —lo que evita contar un gasto dos veces— si ya
+# hay un egreso que casa con el comprobante.
+
+
+def _h_cfdi_pendientes(args: dict, usuario) -> dict:  # noqa: ARG001
+    from apps.facturacion import cfdi_recibidos
+
+    tipo = str(args.get("tipo") or "").strip().lower()
+    try:
+        limite = max(1, min(int(args.get("limite") or 10), 30))
+    except (TypeError, ValueError):
+        limite = 10
+    propio = cfdi_recibidos.rfc_propio()
+    todos = list(cfdi_recibidos.pendientes()[:200])
+    resumenes = []
+    por_tipo = {cfdi_recibidos.TIPO_PROVEEDOR: 0, cfdi_recibidos.TIPO_PROPIO: 0,
+                cfdi_recibidos.TIPO_DUDOSO: 0}
+    for c in todos:
+        t = cfdi_recibidos.clasificar(c, propio)
+        por_tipo[t] = por_tipo.get(t, 0) + 1
+        if tipo and t != tipo:
+            continue
+        if len(resumenes) < limite:
+            r = cfdi_recibidos.resumen(c, propio)
+            r["ver"] = f"/tesoreria/cfdi-recibidos/#cfdi-{c.pk}"
+            resumenes.append(r)
+    if not todos:
+        return {"total": 0, "pendientes": [],
+                "nota": "No hay CFDI recibidos esperando: todo lo que llegó por correo ya tiene dueño."}
+    return {
+        "total": len(todos),
+        "por_tipo": {
+            "de_proveedor": por_tipo[cfdi_recibidos.TIPO_PROVEEDOR],
+            "nuestros": por_tipo[cfdi_recibidos.TIPO_PROPIO],
+            "sin_saber": por_tipo[cfdi_recibidos.TIPO_DUDOSO],
+        },
+        "pendientes": resumenes,
+        "nota": (
+            "Los de proveedor se resuelven con registrar_egreso_desde_cfdi (si "
+            "`egresos_que_casan` trae un código, lígalo con egreso_codigo en vez de "
+            "crear otro). Los nuestros con ligar_cfdi_a_factura. Nada se aplica "
+            "sin que la persona lo confirme. En pantalla: Tesorería → CFDI recibidos."
+        ),
+    }
+
+
 # ── Las herramientas del servidor ──────────────────────────────────────────
 # Oscar, 2026-08-24: «si puedo clickear, teclear, lo puede hacer el chalán».
 # Estaban instaladas y él no las alcanzaba: podía medir una ruta por calles y
@@ -1336,6 +1446,20 @@ def _h_estado_herramientas(args: dict, usuario) -> dict:  # noqa: ARG001
 
 
 _LECTURAS: dict[str, Capacidad] = {
+    "cfdi_pendientes": Capacidad(
+        nombre="cfdi_pendientes",
+        descripcion=(
+            "Los CFDI que llegaron por correo y esperan que alguien decida: de quién "
+            "son, por cuánto, por qué no se ligaron solos, el proveedor o las "
+            "facturas que parecen ser, y los egresos que ya casan. Úsala ANTES de "
+            "proponer registrar_egreso_desde_cfdi o ligar_cfdi_a_factura. Args: "
+            "tipo (opcional: proveedor|propio|dudoso), limite (opcional)."
+        ),
+        args_schema={"tipo": {"tipo": "str", "requerido": False,
+                              "enum": ["proveedor", "propio", "dudoso"]},
+                     "limite": {"tipo": "int", "requerido": False}},
+        gating="finanzas", fn=_h_cfdi_pendientes,
+    ),
     "distancia_entre": Capacidad(
         nombre="distancia_entre",
         descripcion=(
@@ -1583,6 +1707,17 @@ _LECTURAS: dict[str, Capacidad] = {
                      "producto": {"tipo": "str", "requerido": False},
                      "solo_abiertas": {"tipo": "bool", "requerido": False}},
         gating="abierto", fn=_h_tareas_de_producto,
+    ),
+    "quien_esta_en_linea": Capacidad(
+        nombre="quien_esta_en_linea",
+        descripcion=(
+            "Quién del equipo está conectado ahora, quién está ausente y quién se "
+            "fue (con la hora de su última actividad), en qué app, sección y "
+            "pantalla anda cada uno y desde qué aparato. Arg opcional `persona` "
+            "(nombre o correo) para preguntar por una sola."
+        ),
+        args_schema={"persona": {"tipo": "str", "requerido": False}},
+        gating="equipo_actividad", fn=_h_quien_esta_en_linea,
     ),
     "contaduria_saldo_cuenta": Capacidad(
         nombre="contaduria_saldo_cuenta",

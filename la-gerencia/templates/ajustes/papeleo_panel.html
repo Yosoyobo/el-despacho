@@ -86,11 +86,14 @@ saberlo antes de tocar los ajustes.
             <input type="checkbox" name="ligar_automatico" value="1"
                    {% if cfg.ligar_automatico %}checked{% endif %}>
             <span class="text-sm">
-                <span class="block text-gray-900 dark:text-gray-100">Ligarlo solo cuando entra</span>
+                <span class="block text-gray-900 dark:text-gray-100">Ligarlo solo en cuanto se lea</span>
                 <span class="block text-xs text-gray-500 dark:text-gray-400">
                     Busca en el texto a qué cliente, proveedor o proyecto se
                     refiere. <strong>Sólo liga cuando no hay duda</strong>: si
                     coinciden dos, lo deja sin ligar para que alguien lo decida.
+                    Cada 15 minutos se repasa lo que llegó en las últimas 48
+                    horas y sigue sin dueño (el archivo tarda unos minutos en
+                    leer cada documento).
                 </span>
             </span>
         </label>
@@ -122,8 +125,11 @@ saberlo antes de tocar los ajustes.
             <span class="text-sm">
                 <span class="block text-gray-900 dark:text-gray-100">Avisar cuando llegue papeleo nuevo</span>
                 <span class="block text-xs text-gray-500 dark:text-gray-400">
-                    Apagado a propósito: si entran veinte remisiones el lunes,
-                    veinte avisos enseñan al equipo a ignorarlos.
+                    Le llega por El Interfón a quien tiene permiso de ver el
+                    papeleo, cuando algo entra por el buzón; cada quien lo puede
+                    silenciar en sus notificaciones. Apagado a propósito: si
+                    entran veinte remisiones el lunes, veinte avisos enseñan al
+                    equipo a ignorarlos.
                 </span>
             </span>
         </label>

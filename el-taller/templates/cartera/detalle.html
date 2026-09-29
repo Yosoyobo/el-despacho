@@ -27,6 +27,14 @@
     {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Por cobrar" valor=kpis_cliente.por_cobrar|dinero color="warning" %}
 </div>
 
+{% comment %}LC 2026-09-28 (Oscar): en el celular la ficha del cliente nace con
+lo que se consulta de vez en cuando PLEGADO — Cotizaciones, Facturas, Ingresos,
+Ubicación, Papeleo e Identificación—, y a la vista lo que se busca: las notas (un
+aviso), los proyectos (la razón de entrar) y el contacto (a quién llamar). En
+escritorio no cambia nada: el pliegue vive en una media query de `input.css`.
+Contrato `data-movil-plegable` / `-asa` / `-cuerpo`; el cuerpo es HIJO DIRECTO
+del plegable o no se pliega (y no avisa). Candado en
+`tests/taller/test_producto_sep28.py`.{% endcomment %}
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
         {% if cliente.notas %}
@@ -59,7 +67,7 @@
                 </div>
                 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
+                        <table data-tabla-movil="Proyecto|Código|Compromiso" class="min-w-full text-sm">
                             <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                                 {% for p in grupo.proyectos %}
                                 <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'proyectos-detalle' p.pk %}">
@@ -89,11 +97,12 @@
         {% comment %}LC 2026-07-25 (Oscar): en la ficha del cliente se ve TODO lo
         que tiene ligado — cotizaciones, facturas e ingresos. Antes no se veían en
         ningún lado, y eran justo lo que impedía eliminar al cliente.{% endcomment %}
-        <section>
-            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cotizaciones <span class="text-sm font-normal text-gray-400">{{ ligado.cotizaciones|length }}</span></h2>
+        <section data-movil-plegable="cotizaciones">
+            <h2 data-movil-asa class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Cotizaciones <span class="text-sm font-normal text-gray-400">{{ ligado.cotizaciones|length }}</span><span data-movil-flecha class="ml-1 text-sm font-normal text-gray-400 md:hidden">&#9656;</span></h2>
+            <div data-movil-cuerpo class="mt-3">
             <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 <div class="overflow-x-auto">
-                    <table class="min-w-[520px] text-sm md:min-w-full">
+                    <table data-tabla-movil="Cotización|Proyecto|Estado|Emisión" class="min-w-[520px] text-sm md:min-w-full">
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                             {% for c in ligado.cotizaciones %}
                             <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'cotizaciones:detalle' c.pk %}">
@@ -109,13 +118,15 @@
                     </table>
                 </div>
             </div>
+            </div>
         </section>
 
-        <section>
-            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Facturas <span class="text-sm font-normal text-gray-400">{{ ligado.facturas|length }}</span></h2>
+        <section data-movil-plegable="facturas">
+            <h2 data-movil-asa class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Facturas <span class="text-sm font-normal text-gray-400">{{ ligado.facturas|length }}</span><span data-movil-flecha class="ml-1 text-sm font-normal text-gray-400 md:hidden">&#9656;</span></h2>
+            <div data-movil-cuerpo class="mt-3">
             <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 <div class="overflow-x-auto">
-                    <table class="min-w-[520px] text-sm md:min-w-full">
+                    <table data-tabla-movil="Factura|Proyecto|Estado|Total" class="min-w-[520px] text-sm md:min-w-full">
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                             {% for f in ligado.facturas %}
                             <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02]" data-href="{% url 'facturacion:detalle' f.pk %}">
@@ -131,13 +142,15 @@
                     </table>
                 </div>
             </div>
+            </div>
         </section>
 
-        <section>
-            <h2 class="mb-3 text-theme-xl font-medium text-gray-900 dark:text-gray-100">Ingresos <span class="text-sm font-normal text-gray-400">{{ ligado.ingresos|length }}</span></h2>
+        <section data-movil-plegable="ingresos">
+            <h2 data-movil-asa class="text-theme-xl font-medium text-gray-900 dark:text-gray-100">Ingresos <span class="text-sm font-normal text-gray-400">{{ ligado.ingresos|length }}</span><span data-movil-flecha class="ml-1 text-sm font-normal text-gray-400 md:hidden">&#9656;</span></h2>
+            <div data-movil-cuerpo class="mt-3">
             <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
                 <div class="overflow-x-auto">
-                    <table class="min-w-[520px] text-sm md:min-w-full">
+                    <table data-tabla-movil="Ingreso|Proyecto|Fecha|Monto" class="min-w-[520px] text-sm md:min-w-full">
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
                             {% for i in ligado.ingresos %}
                             <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] {% if i.anulado %}opacity-50{% endif %}" data-href="{% url 'tesoreria:ingreso-detalle' i.pk %}">
@@ -152,6 +165,7 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
             </div>
         </section>
     </div>
@@ -175,14 +189,15 @@
         </section>
 
         {# Ubicación + dirección (última visita geolocalizada + fiscal). #}
-        {% include "cartera/_ubicacion.html" with nombre=cliente.razon_social direccion=cliente.direccion direccion_fiscal=cliente.direccion_fiscal fiscal_igual=cliente.fiscal_igual ultima_visita=ultima_visita %}
+        {% include "cartera/_ubicacion.html" with nombre=cliente.razon_social direccion=cliente.direccion direccion_fiscal=cliente.direccion_fiscal fiscal_igual=cliente.fiscal_igual ultima_visita=ultima_visita plegable="ubicacion" %}
 
         {# El papeleo de este cliente. Sale de nuestra base, no de Paperless. #}
-        {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" %}{% endif %}
+        {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" with plegable="papeleo" %}{% endif %}
 
         {# Identificación. #}
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Identificación</h3>
+        <section data-movil-plegable="identificacion" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+            <h3 data-movil-asa class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Identificación<span data-movil-flecha class="ml-1 text-sm md:hidden">&#9656;</span></h3>
+            <div data-movil-cuerpo>
             {% comment %}LC 2026-07-26: un cliente puede facturar bajo varias
             razones sociales; cada una con su RFC en la misma línea.{% endcomment %}
             <div class="mt-3 space-y-2">
@@ -205,6 +220,7 @@
                 <div class="flex justify-between gap-2"><dt class="text-gray-500 dark:text-gray-400" title="Con este nombre se le menciona en El Chalán y con $ en los textos">Referencia</dt><dd class="font-mono text-gray-800 dark:text-gray-100">${{ cliente.slug }}</dd></div>
                 <div class="flex justify-between gap-2"><dt class="text-gray-500 dark:text-gray-400">Creado</dt><dd class="text-gray-800 dark:text-gray-100">{{ cliente.creado_en|date:"d M Y" }}</dd></div>
             </dl>
+            </div>
         </section>
     </aside>
 </div>

@@ -159,6 +159,52 @@ def listar(limite: int = TOPE) -> list[dict] | None:
     return [_resumir(d) for d in (datos.get("results") or [])]
 
 
+#: Para decidir de quién es un documento hace falta más texto que para
+#: enseñárselo a alguien: el nombre del cliente puede venir en la segunda hoja.
+#: Este texto NO sale del servidor — se compara aquí contra la cartera —, por eso
+#: su tope es otro que `TOPE_TEXTO`.
+TOPE_TEXTO_LIGADO = 20000
+
+#: Cuántos documentos recientes se repasan de una vez. Un despacho no recibe
+#: cien documentos en dos días; si algún día pasa, el repaso siguiente toma el
+#: resto.
+TOPE_RECIENTES = 100
+
+
+def recientes(horas: int = 48, limite: int = TOPE_RECIENTES) -> list[dict] | None:
+    """Lo que ENTRÓ al archivo en las últimas `horas`, con su texto.
+
+    Existe para el ligado automático: el OCR de Paperless termina minutos
+    después de subir, así que al entrar un documento todavía no hay texto que
+    leer. El repaso posterior (`papeleo_ligar_pendientes`) pide aquí lo que ya
+    pasó por el lector.
+
+    Se filtra por `added` (cuándo llegó al archivo), no por `created` (la fecha
+    que dice el documento): un contrato de 2019 escaneado hoy es de hoy para
+    este propósito. None = no contestó.
+    """
+    from datetime import UTC, datetime, timedelta
+    from urllib.parse import quote
+
+    try:
+        horas = max(1, int(horas))
+        limite = max(1, min(int(limite), TOPE_RECIENTES))
+    except (TypeError, ValueError):
+        horas, limite = 48, TOPE_RECIENTES
+    desde = (datetime.now(UTC) - timedelta(hours=horas)).isoformat(timespec="seconds")
+    datos = _pedir(
+        f"/api/documents/?added__gt={quote(desde)}&ordering=-added&page_size={limite}"
+    )
+    if datos is None:
+        return None
+    salida = []
+    for d in datos.get("results") or []:
+        fila = _resumir(d)
+        fila["texto"] = (d.get("content") or "").strip()[:TOPE_TEXTO_LIGADO]
+        salida.append(fila)
+    return salida
+
+
 def cuantos() -> int | None:
     """Cuántos documentos hay archivados en total. None = no contestó."""
     datos = _pedir("/api/documents/?page_size=1")
@@ -382,6 +428,9 @@ __all__ = [
     "archivo",
     "cuantos",
     "listar",
+    "recientes",
+    "TOPE_RECIENTES",
+    "TOPE_TEXTO_LIGADO",
     "BASE_URL",
     "ENV_LLAVE",
     "SLOT_LLAVE",

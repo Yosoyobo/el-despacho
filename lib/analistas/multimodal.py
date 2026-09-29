@@ -15,6 +15,29 @@ from __future__ import annotations
 # peso (lib.adjuntos); esto es un tope defensivo del lado del adapter.
 MAX_IMAGENES = 8
 
+# LC 2026-09-28: las APIs de visión (Anthropic, OpenAI, Gemini, MiMo) no aceptan
+# HEIC, que es lo que manda un iPhone. Se convierte aquí, en el único punto por
+# donde pasan todas las imágenes rumbo a un Chalán.
+_MIMES_HEIF = frozenset({
+    "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence",
+})
+
+
+def _heif_a_jpeg(b64: str, media: str) -> tuple[str, str]:
+    """El mismo dato como JPEG; si no se puede, se devuelve tal cual (el
+    adapter decidirá). Nunca lanza."""
+    import base64
+
+    try:
+        from lib.almacen import heif_a_jpeg_bytes
+
+        jpeg = heif_a_jpeg_bytes(base64.b64decode(b64))
+    except Exception:  # noqa: BLE001
+        jpeg = None
+    if not jpeg:
+        return b64, media
+    return base64.b64encode(jpeg).decode("ascii"), "image/jpeg"
+
 
 def normalizar_imagenes(imagenes) -> list[dict]:
     """Valida y normaliza la lista. Acepta `base64`/`data` y
@@ -27,6 +50,8 @@ def normalizar_imagenes(imagenes) -> list[dict]:
             continue
         b64 = img.get("base64") or img.get("data")
         media = (img.get("media_type") or img.get("mime_type") or "image/jpeg").lower()
+        if b64 and media in _MIMES_HEIF:
+            b64, media = _heif_a_jpeg(b64, media)
         if b64:
             out.append({"base64": b64, "media_type": media})
         if len(out) >= MAX_IMAGENES:

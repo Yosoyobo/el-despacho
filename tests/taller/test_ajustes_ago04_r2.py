@@ -397,10 +397,12 @@ def test_la_descripcion_de_la_linea_es_multilinea_y_crece():
     assert fila2, "la fila 2 debe seguir siendo proveedor · costo · descripción"
     assert float(fila2.group(3)[:-2]) > float(fila2.group(1)[:-2])
     # El que estira el campo es el componente compartido de `ui.js`; el JS del
-    # formset sólo repinta el color con lo que se escribe.
+    # formset ya NO escucha la Descripción: desde LC 2026-09-28 (Oscar, «sólo
+    # alias y catálogo») la descripción no decide el color de la tarjeta, así
+    # que escribirla no repinta nada (candado en `test_producto_sep28.py`).
     js = Path("el-taller/templates/proyectos/_form_productos_js.html").read_text(
         encoding="utf-8")
-    assert "textarea[data-crece-al-enfocar]" in js
+    assert "textarea[data-crece-al-enfocar]')) repintarColor" not in js
     ui = Path("el-taller/static/js/ui.js").read_text(encoding="utf-8")
     assert "data-crece-al-enfocar" in ui
 

@@ -1,0 +1,24 @@
+{% load forms_helpers %}
+{% comment %}
+El egreso nace de un CFDI de proveedor (S-Pendientes-Sep28). Lo incluyen el
+modal de «Nuevo egreso» y su página completa. Lleva el hidden que liga el
+egreso al comprobante al guardarlo, y dice de dónde salieron los datos.
+{% endcomment %}
+<input type="hidden" name="cfdi_entrante" value="{{ cfdi_origen.pk }}">
+<div class="rounded-xl border border-success-200 bg-success-50 p-3 text-sm dark:border-success-500/30 dark:bg-success-500/10" data-cfdi-origen>
+    <p class="text-xs font-medium uppercase tracking-wider text-success-700 dark:text-success-300">🧾 Datos leídos del CFDI</p>
+    <p class="mt-1 min-w-0 break-words text-gray-700 dark:text-gray-200">
+        <strong>{{ cfdi_origen.emisor_nombre|default:cfdi_origen.emisor_rfc }}</strong>
+        {% if cfdi_origen.referencia %} · {{ cfdi_origen.referencia }}{% endif %}
+        {% if cfdi_origen.total %} · {{ cfdi_origen.total|dinero_exacto }}{% endif %}
+        {% if cfdi_origen.iva %} (IVA {{ cfdi_origen.iva|dinero_exacto }}){% endif %}.
+        Revisa y guarda: el comprobante queda ligado a este egreso.
+    </p>
+    {% if not cfdi_proveedor %}
+    <p class="mt-1 text-gray-600 dark:text-gray-300">No encontré a «{{ cfdi_origen.emisor_nombre|default:cfdi_origen.emisor_rfc }}» en el catálogo: elígelo abajo o créalo con «+ Nuevo proveedor», que ya trae su nombre y su RFC.</p>
+    {% endif %}
+    {% if cfdi_egresos_que_casan %}
+    <p class="mt-1 font-medium text-warning-700 dark:text-warning-400">Ojo: ya hay {{ cfdi_egresos_que_casan|length }} egreso{{ cfdi_egresos_que_casan|pluralize }} que parece{{ cfdi_egresos_que_casan|pluralize:"n" }} ser éste ({% for e in cfdi_egresos_que_casan %}{{ e.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}). Si es el mismo gasto, cierra y lígalo desde CFDI recibidos.</p>
+    {% endif %}
+    {% if cfdi_error %}<p class="mt-1 font-medium text-error-600 dark:text-error-400">{{ cfdi_error }}</p>{% endif %}
+</div>

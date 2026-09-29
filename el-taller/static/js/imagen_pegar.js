@@ -255,6 +255,8 @@
   // es focusable por su `tabindex`): así escribir Backspace en cualquier campo
   // del formulario jamás borra una imagen.
   document.addEventListener("keydown", function (ev) {
+    // teclado: fuera de campos de texto — sólo actúa sobre el recuadro de la
+    // foto; si la tecla viene de un campo, se va sin tocar nada (abajo).
     if (ev.key !== "Delete" && ev.key !== "Backspace") return;
     var slot = ev.target && ev.target.closest && ev.target.closest("[data-img-slot]");
     if (!slot) return;

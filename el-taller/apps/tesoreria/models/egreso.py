@@ -34,6 +34,8 @@ ORIGEN_EGRESO = (
     ("dictado", "Dictado El Chalán"),
     ("sala_juntas", "Dictado desde Sala de Juntas"),
     ("proyecto", "Gasto de proyecto (producción)"),
+    # S-Pendientes-Sep28: el egreso nace de la factura que mandó el proveedor.
+    ("cfdi", "CFDI de proveedor"),
 )
 
 

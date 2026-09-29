@@ -119,6 +119,13 @@ def papeleo_entrante(request):
                       "Paperless en Gerencia → Papeleo"),
         }, status=503)
 
+    # Word y Excel entran como PDF (Paperless sin Office no los lee). Si el
+    # convertidor no contesta, se archiva el original y la respuesta lo dice.
+    from lib.a_pdf import preparar
+
+    preparado = preparar(contenido, nombre)
+    contenido, nombre = preparado.contenido, preparado.nombre
+
     titulo = (request.POST.get("titulo") or "").strip()
     etiquetas: list[int] = []
     try:
@@ -137,15 +144,27 @@ def papeleo_entrante(request):
         return JsonResponse({"ok": False, "error": "el archivo no aceptó el documento"},
                             status=502)
 
+    # El aviso a quien puede ver el papeleo (si está prendido en Gerencia). Va
+    # con `on_commit` + fondo: el robot no espera a Apple ni a Google.
+    from papeleo.avisos import avisar_papeleo_nuevo
+
+    avisar_papeleo_nuevo(nombre=nombre, titulo=titulo, tarea=str(tarea))
+
     # El documento AÚN NO EXISTE: Paperless devolvió el id de la tarea y su OCR
     # corre después. Por eso aquí no se puede ligar todavía —no hay texto que
-    # leer ni id que guardar— y la respuesta lo dice en lugar de prometerlo.
-    return JsonResponse({
+    # leer ni id que guardar— y la respuesta lo dice en lugar de prometerlo. El
+    # ligado lo hace el repaso de cada 15 minutos (`papeleo_ligar_pendientes`).
+    respuesta = {
         "ok": True,
         "tarea": tarea,
+        "nombre": nombre,
+        "convertido": preparado.convertido,
         "nota": ("recibido; el archivo lo va a leer en unos minutos y hasta "
                  "entonces no se puede buscar por su texto"),
-    }, status=202)
+    }
+    if preparado.aviso:
+        respuesta["aviso"] = preparado.aviso
+    return JsonResponse(respuesta, status=202)
 
 
 __all__ = ["CABECERA", "ENV_TOKEN", "MAX_ARCHIVO", "SLOT_BOVEDA", "papeleo_entrante"]

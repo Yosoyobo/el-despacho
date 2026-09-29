@@ -1,0 +1,64 @@
+{% comment %}
+La presencia de una persona: el puntito de «en línea» y su última actividad
+(sprint de pendientes 2026-09-28).
+
+DOS COPIAS SINCRONIZADAS — Taller y Gerencia (regla §18). El test
+tests/test_presencia_sep28.py exige que sean idénticas.
+
+Recibe `act` (lo que arma lib.presencia.describir vía {% actividad_de %}) y
+`modo`:
+· "punto"   — sólo el puntito, con el detalle en el title. Acepta `clase_extra`
+              para acomodarlo (p. ej. en la esquina del avatar).
+· "detalle" — el bloque completo: estado, hora, app, sección, pantalla y aparato.
+· cualquier otro (default "linea") — puntito + estado + hace cuánto + dónde, en
+              un renglón compacto.
+
+Si `act` es None no pinta NADA: quien mira no tiene el permiso de ver la
+actividad del equipo (§4 #20), y un «—» ahí diría que sí hay algo que ocultar.
+
+Los colores van escritos aquí y no calculados en Python a propósito: Tailwind
+sólo compila las clases que ve en las plantillas.
+{% endcomment %}
+{% if act %}
+{% if modo == "punto" %}
+<span class="{{ clase_extra }} inline-block h-3 w-3 shrink-0 rounded-full ring-2 ring-white dark:ring-gray-900 {% if act.estado == 'en_linea' %}bg-success-500{% elif act.estado == 'ausente' %}bg-warning-500{% else %}bg-gray-300 dark:bg-gray-600{% endif %}"
+      title="{{ act.estado_label }}{% if act.hace %} · {{ act.hace }}{% endif %}{% if act.resumen %} · {{ act.resumen }}{% endif %}"
+      aria-label="{{ act.estado_label }}"></span>
+{% elif modo == "detalle" %}
+<dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+    <div>
+        <dt class="text-xs text-gray-400 dark:text-gray-500">Estado</dt>
+        <dd class="mt-0.5 flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-100">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if act.estado == 'en_linea' %}bg-success-500{% elif act.estado == 'ausente' %}bg-warning-500{% else %}bg-gray-300 dark:bg-gray-600{% endif %}"></span>
+            {{ act.estado_label }}{% if act.hace %} <span class="font-normal text-gray-500 dark:text-gray-400">· {{ act.hace }}</span>{% endif %}
+        </dd>
+    </div>
+    {% if act.app_label %}
+    <div>
+        <dt class="text-xs text-gray-400 dark:text-gray-500">Dónde</dt>
+        <dd class="mt-0.5 font-medium text-gray-800 dark:text-gray-100">{{ act.app_label }}{% if act.seccion %} <span class="font-normal text-gray-500 dark:text-gray-400">· {{ act.seccion }}</span>{% endif %}</dd>
+    </div>
+    {% endif %}
+    {% if act.pantalla %}
+    <div class="min-w-0 sm:col-span-2">
+        <dt class="text-xs text-gray-400 dark:text-gray-500">Pantalla</dt>
+        <dd class="mt-0.5 break-words font-medium text-gray-800 dark:text-gray-100">{% if act.url %}<a href="{{ act.url }}" onclick="event.stopPropagation()" class="text-brand-600 hover:underline dark:text-brand-400">{{ act.pantalla }}</a>{% else %}{{ act.pantalla }}{% endif %}</dd>
+    </div>
+    {% endif %}
+    {% if act.dispositivo.texto %}
+    <div>
+        <dt class="text-xs text-gray-400 dark:text-gray-500">Desde</dt>
+        <dd class="mt-0.5 font-medium text-gray-800 dark:text-gray-100">{{ act.dispositivo.icono }} {{ act.dispositivo.texto }}</dd>
+    </div>
+    {% endif %}
+</dl>
+{% else %}
+<span class="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400" title="{% if act.dispositivo.texto %}{{ act.dispositivo.texto }}{% endif %}">
+    <span class="h-2 w-2 shrink-0 rounded-full {% if act.estado == 'en_linea' %}bg-success-500{% elif act.estado == 'ausente' %}bg-warning-500{% else %}bg-gray-300 dark:bg-gray-600{% endif %}"></span>
+    <span class="shrink-0 font-medium {% if act.estado == 'en_linea' %}text-success-600 dark:text-success-400{% elif act.estado == 'ausente' %}text-warning-600 dark:text-warning-400{% else %}text-gray-500 dark:text-gray-400{% endif %}">{{ act.estado_label }}</span>
+    {% if act.hace %}<span class="shrink-0">· {{ act.hace }}</span>{% endif %}
+    {% if act.resumen %}<span class="min-w-0 truncate">· {% if act.url %}<a href="{{ act.url }}" onclick="event.stopPropagation()" class="hover:text-brand-600 hover:underline dark:hover:text-brand-400">{{ act.resumen }}</a>{% else %}{{ act.resumen }}{% endif %}</span>{% endif %}
+    {% if act.dispositivo.icono %}<span class="shrink-0" aria-hidden="true">{{ act.dispositivo.icono }}</span>{% endif %}
+</span>
+{% endif %}
+{% endif %}

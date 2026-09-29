@@ -177,6 +177,22 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo, campos: {concepto?, monto? (importe FINAL con impuestos) | monto_base? (antes de impuestos), fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}. Solo en borrador; el monto deja UNA línea-concepto",
         "gating": "facturacion_editar",
     },
+    # S-Pendientes-Sep28: resolver los CFDI que llegaron por correo. Siempre
+    # propuesta — una persona confirma antes de que se registre nada.
+    {
+        "tipo": "registrar_egreso_desde_cfdi",
+        "titulo": "Registrar el egreso de un CFDI de proveedor",
+        "ejemplo": "Registra el egreso de la factura A-1234 de Simil Cuero Plymouth que llegó por correo.",
+        "payload": "cfdi (folio fiscal o serie-folio), egreso_codigo? (si ya existe un egreso de ese gasto, lígalo en vez de crear otro), crear_nuevo? (true sólo si de verdad es otro gasto), proveedor? (nombre o @accion_N si su RFC no está en el catálogo), centro_de_costo_slug?, metodo?, estado_pago?, proyecto_slug?, pagado_por_slug?, descripcion?, fecha?. El monto es el TOTAL del comprobante, con IVA; consulta `cfdi_pendientes` antes para no inventar el folio",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "ligar_cfdi_a_factura",
+        "titulo": "Ligar un CFDI nuestro a su factura",
+        "ejemplo": "El CFDI de Optimist por $1,160 que quedó pendiente es de la factura F-106.",
+        "payload": "cfdi (folio fiscal o serie-folio), factura_codigo (FAC-… o el folio F-…). El XML y el folio fiscal quedan guardados en la factura",
+        "gating": "facturacion_editar",
+    },
     {
         "tipo": "reembolsar_egreso",
         "titulo": "Reembolsar egreso",
@@ -387,6 +403,73 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo (cotización aprobada con anticipo configurado)",
         "gating": "facturacion_crear",
     },
+    # ── Sprint de pendientes 2026-09-28: los 8 comandos de la rama de julio
+    # (Olas 2 y 3 CUI, nunca mergeados), rehechos sobre el código de hoy.
+    # Facturación: facturar una cotización, cancelar, duplicar y ligar.
+    {
+        "tipo": "crear_factura_desde_cotizacion",
+        "titulo": "Facturar una cotización",
+        "ejemplo": "Genera la factura de la cotización COT-2026-0005.",
+        "payload": "codigo (de la cotización; copia sus líneas en una factura borrador, NO es CFDI)",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "cancelar_factura",
+        "titulo": "Cancelar factura",
+        "ejemplo": "Cancela la factura F-106: se capturó dos veces.",
+        "payload": ("codigo (FAC-… o folio F-###), motivo. Una factura con cobros NO "
+                    "se cancela por aquí: primero se anulan sus ingresos"),
+        "gating": "facturacion_cancelar",
+    },
+    {
+        "tipo": "duplicar_factura",
+        "titulo": "Duplicar factura",
+        "ejemplo": "Duplica la factura F-106.",
+        "payload": "codigo (FAC-… o folio F-###)",
+        "gating": "facturacion_crear",
+    },
+    {
+        "tipo": "ligar_factura_proyecto",
+        "titulo": "Ligar una factura a un proyecto",
+        "ejemplo": "Liga la factura F-106 al proyecto LC-0044.",
+        "payload": "codigo (FAC-… o folio F-###), proyecto_slug (slug, código LC-NNNN o @accion_N)",
+        "gating": "facturacion_crear",
+    },
+    # Anular del ciclo comercial-contable (los crear_* ya existen).
+    {
+        "tipo": "anular_cotizacion",
+        "titulo": "Anular cotización",
+        "ejemplo": "Anula la cotización COT-2026-0005: el cliente ya no la quiere.",
+        "payload": "codigo (COT-AAAA-NNNN), motivo",
+        "gating": "cotizaciones_anular",
+    },
+    {
+        "tipo": "anular_asiento",
+        "titulo": "Anular movimiento contable",
+        "ejemplo": "Anula el movimiento AST-2026-0012: se capturó dos veces.",
+        "payload": ("codigo (AST-AAAA-NNNN), motivo. Sólo movimientos capturados a "
+                    "mano; los automáticos se corrigen desde su documento de origen"),
+        "gating": "contaduria_anular",
+    },
+    # Editar el Catálogo (contrapartes de crear_proveedor / crear_variacion).
+    {
+        "tipo": "actualizar_proveedor",
+        "titulo": "Editar proveedor",
+        "ejemplo": "Cambia el teléfono de Telas del Norte a 555-9090.",
+        "payload": ("proveedor (su nombre actual), y sólo lo que cambia: "
+                    "razon_social_nueva? (si lo renombran), nombre_contacto?, email_contacto?, "
+                    "telefono?, rfc?, direccion?, direccion_fiscal?, notas?"),
+        "gating": "catalogo_proveedores",
+    },
+    {
+        "tipo": "actualizar_variacion",
+        "titulo": "Editar variación de un producto",
+        "ejemplo": 'Sube el costo de la variación "Talla M" de la Playera a 90.',
+        "payload": ("variacion_id | (servicio + variacion), y sólo lo que cambia: "
+                    "nombre_nuevo?, costo?, impresion_activa?, impresion_costo?, "
+                    "impresion_descripcion?, descripcion?, disponible?"),
+        "gating": "catalogo_editar",
+    },
     {
         "tipo": "crear_automatizacion",
         "titulo": "Crear una automatización nueva",
@@ -439,6 +522,15 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "archivo (clave), nombre",
         "gating": "cotizaciones_crear",
     },
+    {
+        # Sep28: los anexos de la cotización. En el chat no se sube un archivo,
+        # pero sí se trae uno que ya está en el archivo del papeleo.
+        "tipo": "anexar_a_cotizacion",
+        "titulo": "Anexar un documento del papeleo a una cotización",
+        "ejemplo": "Anéxale a la COT-2026-0044 la ficha técnica del papeleo #45.",
+        "payload": "codigo, documento_id (el número que da buscar_papeleo)",
+        "gating": "cotizaciones_anexar",
+    },
 ]
 # Mapa de gating → helper de permisos. "abierto" = todos los roles del Taller.
 def _gating_checks():
@@ -451,12 +543,18 @@ def _gating_checks():
         "catalogo": permisos.puede_crear_catalogo,
         # LC #153: editar productos del Catálogo (además de crear).
         "catalogo_editar": permisos.puede_editar_catalogo,
+        # La ficha del proveedor se edita con `catalogo.gestionar_categorias`
+        # en pantalla; dictando se pide lo mismo.
+        "catalogo_proveedores": permisos.puede_editar_proveedores,
         "finanzas": permisos.puede_ver_finanzas,
         "facturacion_emitir": permisos.puede_emitir_facturacion,
         # LC 2026-07-25: editar/sobreescribir facturas en borrador.
         "facturacion_editar": permisos.puede_editar_facturacion,
         "facturacion_cobrar": permisos.puede_cobrar_facturacion,
         "facturacion_crear": permisos.puede_crear_facturacion,
+        "facturacion_cancelar": permisos.puede_cancelar_facturacion,
+        "cotizaciones_anular": permisos.puede_anular_cotizaciones,
+        "contaduria_anular": permisos.puede_anular_contaduria,
         "cotizaciones_enviar": permisos.puede_enviar_cotizaciones,
         "cotizaciones_aprobar": permisos.puede_aprobar_cotizaciones,
         "cotizaciones_rechazar": permisos.puede_rechazar_cotizaciones,
@@ -471,6 +569,11 @@ def _gating_checks():
         "automatizacion": permisos.puede_acceder_ajustes,
         # Mandar un documento al archivo del papeleo.
         "papeleo_subir": permisos.puede_subir_papeleo,
+        # Anexar a una cotización un documento del papeleo: cambia el PDF que ve
+        # el cliente (editar cotizaciones) Y lee el archivo (ver papeleo). Con
+        # uno solo no alcanza — el ejecutor pide los dos también.
+        "cotizaciones_anexar": lambda u: (permisos.puede_editar_cotizaciones(u)
+                                          and permisos.puede_ver_papeleo(u)),
     }
 
 
@@ -497,7 +600,8 @@ COMANDOS_PROHIBIDOS: list[dict] = [
     },
     {
         "tipo": "modificar_catalogo",
-        "razon": "Servicios y variaciones se administran manualmente en El Catálogo.",
+        "razon": ("El Chalán crea productos, variaciones y proveedores y edita campos "
+                  "puntuales; borrar, archivar o reorganizar el Catálogo se hace en su pantalla."),
     },
     {
         "tipo": "modificar_tasas",
@@ -538,9 +642,12 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "detalle_proyecto", "que": "Estatus de un proyecto por código LC-NNNN o nombre."},
     {"nombre": "tareas_de_proyecto / mis_tareas / detalle_tarea", "que": "Tareas de un proyecto, tus tareas abiertas, o el detalle de una."},
     {"nombre": "tareas_de_producto", "que": "Las tareas de un producto DENTRO de un proyecto (las que se crean desde su tarjeta). Pregunta: «¿qué falta de las playeras del LC-0044?»."},
+    {"nombre": "quien_esta_en_linea", "que": "Quién del equipo está conectado ahora (en línea = últimos 5 min, ausente = 5-30), en qué pantalla anda cada uno y desde qué aparato, y cuándo fue la última vez de los que se fueron. Pregunta: «¿quién está en línea?», «¿qué está haciendo Jorge?»."},
     {"nombre": "detalle_cliente", "que": "Datos de un cliente (requiere permiso de Clientes)."},
     {"nombre": "listar_plantillas_correo", "que": "Qué plantillas de correo hay listas para mandar y de qué dirección sale cada una. Requiere permiso de Comunicación. Pregunta: «¿qué correos puedo mandar?»."},
-    {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso)."},
+    {"nombre": "detalle_factura / detalle_cotizacion / detalle_ingreso", "que": "Estatus por código (requiere permiso). La cotización dice además qué anexos lleva pegados al final del PDF. Pregunta: «¿la COT-2026-0044 ya lleva la ficha técnica?»."},
+    {"nombre": "buscar_papeleo / detalle_papeleo / papeleo_de", "que": "Busca en el archivo del papeleo por lo que dicen los documentos adentro, lee uno, o dice qué papeleo tiene un cliente, proyecto o proveedor (requiere permiso de Papeleo). Para anexar uno a una cotización se propone `anexar_a_cotizacion` con su número. Pregunta: «busca la garantía del termo» o «¿qué papeleo tiene Optimist?»."},
+    {"nombre": "Papeleo · unir y convertir", "que": "Unir varios documentos del papeleo en un solo PDF NO se pide por chat: es el botón «Unir en un PDF» de la pantalla del Papeleo (marcas las tarjetas). Convertir Word/Excel tampoco hace falta pedirlo: al subir al Papeleo o anexar a una cotización se convierten a PDF solos. El aviso de papeleo nuevo y el ligado automático corren solos (se prenden en Gerencia → Papeleo)."},
     {"nombre": "contaduria_saldo_cuenta / contaduria_balance", "que": "Saldos contables y balance (requiere permiso de Contaduría)."},
     {"nombre": "proximos_eventos", "que": "Entregas y tareas con fecha en los próximos días."},
     {"nombre": "mi_jornada_hoy / mis_horas_semana", "que": "Tu jornada de hoy (entrada/salida/retardo) y tus horas de los últimos 7 días (El Checador)."},
@@ -553,6 +660,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "rentabilidad_proyecto", "que": "La cuenta de UN proyecto: ingreso, costo, utilidad, margen y horas de mano de obra (requiere permiso de Finanzas). Pregunta: «¿cuánto dejó el proyecto de las gorras?»."},
     {"nombre": "resumen_perdidos", "que": "Lo que se perdió: cotizaciones caídas y su monto, proyectos cancelados con su motivo, propuestas enfriadas sin respuesta y trabajos que se ganaron pero dejaron pérdida (requiere permiso de Cotizaciones). Pregunta: «¿por qué estamos perdiendo trabajos?»."},
     {"nombre": "resumen_clientes", "que": "Quién deja más dinero, quién debe más, quién dejó de comprar y el ticket promedio (requiere permiso de Clientes). Pregunta: «¿cuáles son mis mejores clientes?»."},
+    {"nombre": "cfdi_pendientes", "que": "Los CFDI que llegaron por correo y esperan que alguien decida: de quién son, por cuánto, por qué no se ligaron solos, qué proveedor o factura parece ser y si ya hay un egreso que casa (requiere permiso de Finanzas). Pregunta: «¿qué facturas de proveedores faltan por registrar?». Para resolverlos, El Chalán propone `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura` y tú confirmas."},
     {"nombre": "resumen_proveedores", "que": "A quién se le compra más, cuánto se le debe y qué egresos quedaron sin proveedor (requiere permiso de Finanzas). Pregunta: «¿a quién le debemos más?»."},
     {"nombre": "resumen_equipo", "que": "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y horas de la semana — sólo de la gente que tú puedes ver. Pregunta: «¿quién está saturado?» o «¿qué se está entregando tarde?»."},
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},

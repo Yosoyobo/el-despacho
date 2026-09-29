@@ -529,6 +529,8 @@ def detalle(request, pk):
         "puede_duplicar": puede_duplicar,
         # Semáforo de estatus arriba del título (LC 2026-08-23).
         "semaforo": _ctx_semaforo(cot, request.user),
+        # Sep28: el recuadro «Anexos» (fichas técnicas al final del PDF).
+        **{k: v for k, v in _ctx_anexos(request, cot).items() if k != "cot"},
     })
 
 
@@ -1053,6 +1055,10 @@ def generar_pdf(request, pk):
     if not res.ok or not res.pdf_bytes:
         messages.error(request, f"No se pudo generar el PDF: {res.error}")
         return redirect("cotizaciones:detalle", pk=cot.pk)
+    # Un anexo que no se pudo pegar no detiene la descarga; se avisa, y el aviso
+    # se ve en la siguiente página que se abra (ésta es un archivo, no una página).
+    for aviso in getattr(res, "avisos", None) or []:
+        messages.warning(request, aviso)
     # `attachment` (no `inline`): el visor PDF de Chrome ignora el filename de
     # un `inline` y nombra la descarga según el último segmento de la URL
     # (.../pdf/). Con `attachment` + RFC 5987 el archivo se guarda SIEMPRE como
@@ -1066,3 +1072,139 @@ def generar_pdf(request, pk):
         f"filename*=UTF-8''{quote(nombre)}"
     )
     return resp
+
+
+# --- Anexos (Sep28): fichas técnicas que se pegan al final del PDF ---------
+
+def _ctx_anexos(request, cot) -> dict:
+    """El contexto del recuadro «Anexos». Uno solo para la página y para cada
+    repintado, así el permiso se decide en un lugar."""
+    return {
+        "cot": cot,
+        "anexos": list(cot.anexos.order_by("orden", "pk")),
+        "puede_editar_anexos": (puede_editar_cotizaciones(request.user)
+                                and cot.permite_editar_texto),
+    }
+
+
+def _recuadro_anexos(request, cot, mensaje: str = "", nivel: str = "success"):
+    ctx = _ctx_anexos(request, cot)
+    ctx["mensaje_anexos"] = mensaje
+    ctx["nivel_anexos"] = nivel
+    return render(request, "cotizaciones/_anexos.html", ctx)
+
+
+def _avisar_cambio(cot, usuario) -> None:
+    """El evento de «la cotización cambió». Best-effort: que El Portavoz no
+    conteste no puede impedir anexar una ficha — el anexo ya quedó guardado."""
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        services.emitir_actualizada(cot, usuario)
+
+
+def _gate_anexos(request, cot):
+    """Anexar mueve el documento que ve el cliente: pide editar cotizaciones y
+    que la cotización siga viva (el mismo criterio que el recuadro «Documento»)."""
+    if not puede_editar_cotizaciones(request.user):
+        return HttpResponseForbidden("Sin permiso para editar cotizaciones.")
+    if not cot.permite_editar_texto:
+        return HttpResponseForbidden(
+            "Esta cotización ya está cerrada: su documento no se modifica.")
+    return None
+
+
+@login_required
+@require_POST
+def anexo_subir(request, pk):
+    """Sube una o varias fichas. Word y Excel se convierten a PDF al entrar."""
+    from . import anexos
+
+    if (r := _gate_ver(request)) is not None:
+        return r
+    cot = get_object_or_404(Cotizacion, pk=pk)
+    if (r := _gate_anexos(request, cot)) is not None:
+        return r
+
+    archivos = request.FILES.getlist("archivo")
+    if not archivos:
+        return _recuadro_anexos(request, cot, "No elegiste ningún archivo.", "error")
+
+    mensajes, nivel = [], "success"
+    for f in archivos:
+        if getattr(f, "size", 0) > anexos.MAX_BYTES:
+            mensajes.append(f"«{f.name}» pesa más de 25 MB.")
+            nivel = "error"
+            continue
+        res = anexos.agregar(cot, f.read(), f.name, request.user)
+        mensajes.append(res.mensaje)
+        if res.nivel == "error" or (res.nivel == "warning" and nivel == "success"):
+            nivel = res.nivel
+    _avisar_cambio(cot, request.user)
+    return _recuadro_anexos(request, cot, " ".join(mensajes), nivel)
+
+
+@login_required
+@require_POST
+def anexo_mover(request, pk):
+    """Sube o baja un anexo un lugar."""
+    from . import anexos
+    from .models import CotizacionAnexo
+
+    if (r := _gate_ver(request)) is not None:
+        return r
+    anexo = get_object_or_404(CotizacionAnexo.objects.select_related("cotizacion"), pk=pk)
+    if (r := _gate_anexos(request, anexo.cotizacion)) is not None:
+        return r
+    anexos.mover(anexo, (request.POST.get("dir") or "").strip())
+    return _recuadro_anexos(request, anexo.cotizacion)
+
+
+@login_required
+@require_POST
+def anexo_quitar(request, pk):
+    """Quita un anexo. El archivo se queda en el almacén (puede estar en otra
+    versión o en una cotización ya enviada)."""
+    from . import anexos
+    from .models import CotizacionAnexo
+
+    if (r := _gate_ver(request)) is not None:
+        return r
+    anexo = get_object_or_404(CotizacionAnexo.objects.select_related("cotizacion"), pk=pk)
+    cot = anexo.cotizacion
+    if (r := _gate_anexos(request, cot)) is not None:
+        return r
+    nombre = anexo.nombre
+    anexos.quitar(anexo)
+    _avisar_cambio(cot, request.user)
+    return _recuadro_anexos(request, cot, f"Se quitó «{nombre}».", "success")
+
+
+@login_required
+def anexo_ver(request, pk):
+    """El anexo, para verlo. Sale de El Almacén con el permiso ya comprobado."""
+    from urllib.parse import quote
+
+    from lib import almacen
+
+    from .models import CotizacionAnexo
+
+    if (r := _gate_ver(request)) is not None:
+        return r
+    anexo = get_object_or_404(CotizacionAnexo, pk=pk)
+    try:
+        contenido, _mime, _nombre = almacen.leer(anexo.archivo_clave)
+    except Exception:  # noqa: BLE001
+        return HttpResponse("No se encontró el anexo.", status=404)
+
+    # Un original de Office que no se pudo convertir se BAJA, no se abre: el
+    # navegador no lo pinta, y servirlo como PDF sería mentir sobre lo que es.
+    tipo = "application/pdf" if anexo.es_pdf else "application/octet-stream"
+    disp = "inline" if anexo.es_pdf else "attachment"
+    ascii_ = anexo.nombre.encode("ascii", "ignore").decode() or "anexo"
+    r = HttpResponse(contenido, content_type=tipo)
+    r["Content-Disposition"] = (f'{disp}; filename="{ascii_}"; '
+                                f"filename*=UTF-8''{quote(anexo.nombre)}")
+    r["Cache-Control"] = "private, no-store"
+    r["X-Content-Type-Options"] = "nosniff"
+    return r

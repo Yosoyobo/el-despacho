@@ -85,6 +85,8 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.taller_home.middleware.ImpersonacionMiddleware",
+    # Igual que en producción: toda la suite pasa por la presencia.
+    "cuentas.middleware.PresenciaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 

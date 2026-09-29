@@ -74,6 +74,11 @@ EventoTipo = Literal[
     "factura.vencida",
     "factura.pdf_generado",
     "factura.cfdi_almacenado",
+    # S-Pendientes-Sep28: resolver los CFDI que llegaron por correo.
+    "cfdi.proveedor_asignado",
+    "cfdi.ligado_egreso",
+    "cfdi.ligado_factura",
+    "cfdi.ignorado",
     "factura.eliminada",
     "pago.recibido",
     "pago.recordatorio",
@@ -119,7 +124,11 @@ EventoTipo = Literal[
     "catalogo.servicio_actualizado",
     "catalogo.servicio_imagen",
     "catalogo.costo_propagado",
+    # LC 2026-09-28: el proveedor ★ nuevo del catálogo baja a los proyectos
+    # que el usuario confirmó en el modal «¿También en estos proyectos?».
+    "catalogo.proveedor_propagado",
     "catalogo.variacion_creada",
+    "catalogo.variacion_actualizada",
     "mandado.estado_cambiado",
     "mandado.destino_fijado",
     "sidebar.orden_actualizado",

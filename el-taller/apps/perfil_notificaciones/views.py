@@ -38,19 +38,29 @@ CATEGORIAS = [
      "Push cuando El Chalán detecta algo que conviene revisar (facturas vencidas, proyectos estancados, mandados sin avance) o te manda el resumen del día.", None),
     ("chalan_analisis", "Opiniones del negocio (El Chalán)",
      "Análisis periódico del negocio (finanzas, cobranza, ventas, márgenes). La notificación abre un modal con la opinión completa del Chalán.", None),
+    # Sep28: se ofrece por PERMISO, no por rol (§4 #20). El 5º elemento es el
+    # `(modulo, accion)` que hay que tener para ver la casilla — es el mismo que
+    # decide a quién le llega el aviso, así que nadie ve un interruptor de algo
+    # que nunca le va a llegar.
+    ("papeleo", "Papeleo nuevo",
+     "Push cuando entra un documento al archivo del papeleo por el buzón (si está prendido en Gerencia → Papeleo).",
+     None, ("papeleo", "ver")),
 ]
 
 
 def _categorias_para(user):
     # V6 Bloque 10: la comparación contra roles_visible usa los roles
     # efectivos del usuario (rol primario + roles personalizados).
-    from lib.permisos import roles_efectivos
+    from lib.permisos import puede, roles_efectivos
     roles_user = roles_efectivos(user)
     salida = []
     for entrada in CATEGORIAS:
         slug, nombre, desc = entrada[0], entrada[1], entrada[2]
         roles = entrada[3] if len(entrada) > 3 else None
+        permiso = entrada[4] if len(entrada) > 4 else None
         if roles and not (roles_user & set(roles)):
+            continue
+        if permiso and not puede(user, *permiso):
             continue
         salida.append((slug, nombre, desc))
     return salida

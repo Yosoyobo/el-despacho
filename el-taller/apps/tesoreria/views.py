@@ -93,9 +93,20 @@ def landing(request):
         "spark_egresos": spark_egresos,
         "spark_utilidad": spark_utilidad,
         "gastos_no_registrados": _conteo_gastos_no_registrados(),
+        "cfdi_pendientes": _conteo_cfdi_pendientes(),
         "periodo": periodo,
         "periodos": services.periodos_disponibles(),
     })
+
+
+def _conteo_cfdi_pendientes() -> int:
+    """Cuántos CFDI recibidos esperan que alguien decida. Defensivo."""
+    try:
+        from apps.facturacion.models import ESTADO_PENDIENTE, CfdiEntrante
+
+        return CfdiEntrante.objects.filter(estado=ESTADO_PENDIENTE).count()
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 def _conteo_gastos_no_registrados() -> dict:
@@ -460,6 +471,7 @@ def egreso_detalle(request, pk):
         {"label": "Capturado por", "value": (egreso.creado_por.nombre_completo or egreso.creado_por.email) if egreso.creado_por else "—"},
         {"label": "Capturado en", "value": egreso.creado_en.strftime("%Y-%m-%d %H:%M")},
     ]
+    info_cfdi = _info_cfdi_de(egreso)
     action_bar_meta = format_html(
         '<span class="font-mono">{}</span> <span class="text-gray-400">·</span> <span>{}</span>',
         egreso.codigo, egreso.fecha.strftime("%Y-%m-%d"),
@@ -480,6 +492,7 @@ def egreso_detalle(request, pk):
         )
     return render(request, "tesoreria/egreso_detalle.html", {
         "egreso": egreso,
+        "info_cfdi": info_cfdi,
         "info_clasificacion": info_clasificacion,
         "info_pago": info_pago,
         "info_captura": info_captura,
@@ -493,6 +506,37 @@ def egreso_detalle(request, pk):
         "back_url": reverse("tesoreria:egresos-lista"),
         "back_label": "Egresos",
     })
+
+
+def _info_cfdi_de(egreso) -> list:
+    """El CFDI que respalda el egreso, para su tarjeta del detalle."""
+    try:
+        from apps.facturacion.models import CfdiEntrante
+
+        c = CfdiEntrante.objects.filter(egreso=egreso).first()
+    except Exception:  # noqa: BLE001 — sin la tabla, el detalle se ve igual
+        return []
+    if c is None:
+        return []
+    enlaces = []
+    if c.pdf_id:
+        enlaces.append(format_html(
+            '<a href="{}?cual=pdf" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">PDF</a>',
+            reverse("tesoreria:cfdi-archivo", args=[c.pk])))
+    if c.archivo_id:
+        enlaces.append(format_html(
+            '<a href="{}?cual=xml" class="text-brand-600 hover:underline dark:text-brand-400">XML</a>',
+            reverse("tesoreria:cfdi-archivo", args=[c.pk])))
+    items = [
+        {"label": "Emisor", "value": c.emisor_nombre or c.emisor_rfc or "—"},
+        {"label": "Folio", "value": c.referencia or "—"},
+        {"label": "Folio fiscal", "value": c.uuid, "mono": True},
+    ]
+    if enlaces:
+        from django.utils.html import format_html_join
+
+        items.append({"label": "Archivos", "value_html": format_html_join(" · ", "{}", ((e,) for e in enlaces))})
+    return items
 
 
 def _procesar_comprobante_ingreso(request, ingreso) -> None:
@@ -667,6 +711,35 @@ def _vincular_ocr_log(request, egreso) -> None:
     })
 
 
+def _cfdi_para_egreso(request):
+    """El CFDI de proveedor del que nace este egreso, si lo hay.
+
+    Devuelve `(cfdi, error)`. Se exige el permiso de capturar egresos (el
+    permiso granular de Tesorería, §4 #20) además del acceso general: resolver
+    un comprobante es capturar un gasto. Y el comprobante tiene que seguir
+    libre — si otra persona ya lo ligó, crear otro egreso contaría el gasto dos
+    veces.
+    """
+    pk = (request.POST.get("cfdi_entrante") or request.GET.get("cfdi") or "").strip()
+    if not pk:
+        return None, ""
+    from apps.facturacion.models import ESTADO_PENDIENTE, CfdiEntrante
+
+    from .views_cfdi import puede_resolver_egresos
+
+    if not puede_resolver_egresos(request.user):
+        return None, "permiso"
+    c = CfdiEntrante.objects.filter(pk=pk).select_related("egreso", "factura").first() if pk.isdigit() else None
+    if c is None:
+        return None, "Ese comprobante ya no está."
+    if c.egreso_id:
+        return c, f"Ese comprobante ya respalda el egreso {c.egreso.codigo}."
+    if c.factura_id or c.estado != ESTADO_PENDIENTE:
+        return c, "Ese comprobante ya no está pendiente."
+    return c, ""
+
+
+@login_required
 def egreso_nuevo(request):
     if (r := _gate(request)) is not None:
         return r
@@ -676,8 +749,15 @@ def egreso_nuevo(request):
     es_htmx = request.headers.get("HX-Request") == "true"
     proveedor_bloqueado = None
     gasto_proyecto = False
+    # S-Pendientes-Sep28: el egreso puede nacer de un CFDI de proveedor. El
+    # formulario es el de siempre, prellenado; una persona lo revisa y lo guarda.
+    cfdi, error_cfdi = _cfdi_para_egreso(request)
+    if error_cfdi == "permiso":
+        return HttpResponseForbidden("Sin permiso para registrar egresos.")
     if request.method == "POST":
         form = EgresoForm(request.POST, request.FILES)
+        if error_cfdi:
+            form.add_error(None, error_cfdi)
         if form.is_valid():
             egreso = form.save(commit=False)
             egreso.creado_por = request.user
@@ -686,30 +766,34 @@ def egreso_nuevo(request):
             # LC 2026-07: gasto capturado desde un proyecto → origen 'proyecto'.
             if request.POST.get("es_gasto_proyecto") == "1" and egreso.proyecto_id:
                 egreso.origen = "proyecto"
-            egreso.save()
-            _vincular_proveedor_a_proyecto(egreso)
-            _vincular_ocr_log(request, egreso)
-            _procesar_comprobante(request, egreso)
-            _emitir("tesoreria.egreso_registrado", request, {
-                "egreso_id": egreso.pk, "monto": str(egreso.monto),
-                "centro_de_costo_id": egreso.centro_de_costo_id,
-                "proyecto_id": egreso.proyecto_id, "origen": egreso.origen,
-            })
-            if egreso.estado_pago == "por_reembolsar":
-                _emitir("tesoreria.reembolso_pendiente", request, {
-                    "egreso_id": egreso.pk,
-                    "pagado_por_id": egreso.pagado_por_id,
-                    "monto": str(egreso.monto),
-                })
-                notificar_reembolso_pendiente(egreso, request.user)
-            messages.success(request, f"Egreso {egreso.codigo} registrado.")
-            destino = _next_seguro(request) or reverse("tesoreria:landing")
-            if es_htmx:
-                return HttpResponse(status=204, headers={"HX-Redirect": destino})
-            return redirect(destino)
+            elif cfdi is not None:
+                egreso.origen = "cfdi"
+            if cfdi is not None:
+                _base_del_cfdi(egreso, cfdi)
+            from apps.facturacion import cfdi_recibidos
+            from django.db import transaction
+
+            try:
+                # El egreso y su liga al CFDI van juntos: si la liga falla
+                # (otra persona lo ligó mientras tanto), no queda un egreso
+                # suelto que cuente el gasto dos veces.
+                with transaction.atomic():
+                    egreso.save()
+                    if cfdi is not None:
+                        cfdi_recibidos.ligar_egreso(cfdi, egreso, request.user)
+            except cfdi_recibidos.CfdiNoResoluble as exc:
+                egreso.pk = None
+                egreso.codigo = ""
+                form.add_error(None, str(exc))
+            else:
+                return _egreso_guardado(request, egreso, es_htmx)
         # inválido → cae al render (modal si es HTMX).
     else:
         initial = {}
+        if cfdi is not None and not error_cfdi:
+            from apps.facturacion import cfdi_recibidos
+
+            initial.update(cfdi_recibidos.datos_para_egreso(cfdi))
         pk = request.GET.get("proyecto")
         if pk:
             from apps.el_catalogo.models import Proveedor
@@ -761,8 +845,72 @@ def egreso_nuevo(request):
         "desde_proyecto": _es_desde_proyecto(request) or gasto_proyecto,
         "saldo_proyecto": proy_eg.saldo_por_pagar if proy_eg else None,
     }
+    if cfdi is not None:
+        ctx.update(_ctx_cfdi(cfdi, form))
+        ctx["cfdi_error"] = error_cfdi
     tmpl = "tesoreria/_modal_nuevo_egreso.html" if es_htmx else "tesoreria/egreso_form.html"
     return render(request, tmpl, ctx)
+
+
+def _egreso_guardado(request, egreso, es_htmx):
+    """Lo que pasa después de guardar un egreso nuevo, venga de donde venga."""
+    _vincular_proveedor_a_proyecto(egreso)
+    _vincular_ocr_log(request, egreso)
+    _procesar_comprobante(request, egreso)
+    _emitir("tesoreria.egreso_registrado", request, {
+        "egreso_id": egreso.pk, "monto": str(egreso.monto),
+        "centro_de_costo_id": egreso.centro_de_costo_id,
+        "proyecto_id": egreso.proyecto_id, "origen": egreso.origen,
+    })
+    if egreso.estado_pago == "por_reembolsar":
+        _emitir("tesoreria.reembolso_pendiente", request, {
+            "egreso_id": egreso.pk,
+            "pagado_por_id": egreso.pagado_por_id,
+            "monto": str(egreso.monto),
+        })
+        notificar_reembolso_pendiente(egreso, request.user)
+    if egreso.origen == "cfdi":
+        messages.success(request, f"Egreso {egreso.codigo} registrado y ligado a su CFDI.")
+    else:
+        messages.success(request, f"Egreso {egreso.codigo} registrado.")
+    destino = _next_seguro(request) or reverse("tesoreria:landing")
+    if es_htmx:
+        return HttpResponse(status=204, headers={"HX-Redirect": destino})
+    return redirect(destino)
+
+
+def _base_del_cfdi(egreso, cfdi) -> None:
+    """Si el monto se quedó como en el CFDI, la base sin IVA sale del CFDI.
+
+    El formulario deriva la base dividiendo entre 1.16, que es exacto sólo
+    cuando no hay descuento ni retenciones. Si la persona cambió el monto, se
+    respeta su cuenta: ya no es el mismo número que dice el comprobante.
+    """
+    from apps.facturacion import cfdi_recibidos
+
+    try:
+        if cfdi.total is None or egreso.monto != Decimal(cfdi.total).quantize(Decimal("0.01")):
+            return
+    except (TypeError, ValueError):
+        return
+    base = cfdi_recibidos.base_del_gasto(cfdi)
+    if base is not None:
+        egreso.subtotal = base
+
+
+def _ctx_cfdi(cfdi, form) -> dict:  # noqa: ARG001
+    """Lo que el modal necesita para decir de dónde vienen los datos."""
+    from apps.facturacion import cfdi_recibidos
+
+    prov = cfdi_recibidos.proveedor_sugerido(cfdi)
+    return {
+        "cfdi_origen": cfdi,
+        "cfdi_proveedor": prov,
+        "cfdi_egresos_que_casan": cfdi_recibidos.egresos_que_casan(cfdi, prov),
+        # Para el alta rápida del proveedor, si no está en el catálogo.
+        "prov_prellenado_razon": "" if prov else (cfdi.emisor_nombre or "")[:200],
+        "prov_prellenado_rfc": "" if prov else (cfdi.emisor_rfc or "")[:20],
+    }
 
 
 def _vincular_proveedor_a_proyecto(egreso):

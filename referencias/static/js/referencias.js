@@ -44,6 +44,9 @@
       // en vez de seleccionar la referencia.
       this._onKeyCapture = (e) => {
         if (!this.activo || e.target !== this.textarea) return;
+        // Enter/Tab a media letra (ñ con Option+n, ´ + a) son del teclado: si
+        // aquí eligiera, reescribiría el texto y la letra se perdería.
+        if (componiendo(e)) return;
         if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(e.key)) {
           this.onKeyDown(e);
           if (e.key !== "Escape") e.stopImmediatePropagation();
@@ -53,10 +56,16 @@
       textarea.addEventListener("blur", () => setTimeout(() => this.cerrar(), 200));
     }
 
+    // Buscar sólo LEE lo escrito: no se pausa a media letra, porque en Android el
+    // teclado compone cada palabra completa y el dropdown no saldría hasta el
+    // espacio — que es justo lo que cierra el token.
     onInput() {
       const cursor = this.textarea.selectionStart;
       const texto = this.textarea.value.slice(0, cursor);
-      const m = texto.match(/(?:^|[^A-Za-z0-9_])([@#$])([A-Za-z0-9_-]{0,80})$/);
+      // LC 2026-09-28: el token acepta letras con acento y ñ. Con [A-Za-z] la ñ
+      // cerraba el dropdown («@toñ» dejaba de buscar a Toño) — el servidor ya
+      // busca por nombre, así que «toñ» sí encuentra.
+      const m = texto.match(/(?:^|[^\p{L}\p{N}_])([@#$])([\p{L}\p{M}\p{N}_-]{0,80})$/u);
       if (!m) { this.cerrar(); return; }
       this.sigil = m[1];
       this.tokenInicio = cursor - m[2].length - 1;  // posición del sigil
@@ -146,6 +155,12 @@
       this.activo = false;
       if (this.dropdown) this.dropdown.style.display = "none";
     }
+  }
+
+  // ¿El teclado está a media letra? La guarda completa vive en ui.js.
+  function componiendo(e) {
+    if (window.despachoComponiendo) return window.despachoComponiendo(e);
+    return !!(e && (e.isComposing || e.keyCode === 229));
   }
 
   function escapeHtml(s) {

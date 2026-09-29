@@ -84,4 +84,8 @@ CRON_TZ=America/Mexico_City
 # Docker arrancó antes que Tailscale. Idempotente (`up -d --no-recreate`).
 @reboot sleep 20; cd @@RAIZ@@ && ./infra/scripts/arranque_nuc.sh >> $HOME/arranque_nuc.log 2>&1
 
+# EL PAPELEO SE LIGA SOLO tras el OCR (Sep28). Al entrar, Paperless todavía no
+# leyó el documento; este repaso liga lo que llegó en las últimas 48 h y sigue
+# sin dueño, sólo cuando no hay duda. Se apaga en Gerencia → Papeleo.
+*/15 * * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py papeleo_ligar_pendientes >> /var/log/papeleo.log 2>&1
 # <<< El Despacho <<<

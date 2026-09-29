@@ -1,0 +1,61 @@
+{% comment %}Recuadro «Anexos» de la cotización (Sep28): fichas técnicas que se
+pegan AL FINAL del PDF que se descarga y se manda por correo, en este orden.
+
+Se repinta solo (`hx-target` = el propio <section>), igual que el recuadro
+«Documento». Los botones ↑/↓ no van en un <form>, así que sólo mandan su
+`hx-vals` — sin `hx-params="none"`, que se llevaría también esos valores.
+Word y Excel se convierten a PDF al subirlos.{% endcomment %}
+{% if anexos or puede_editar_anexos %}
+<section id="cot-anexos"
+         class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+         hx-target="#cot-anexos" hx-swap="outerHTML">
+    <h2 class="mb-1 text-sm font-medium text-gray-800 dark:text-gray-100">Anexos</h2>
+    <p class="mb-3 text-xs text-gray-400 dark:text-gray-500">Se pegan al final del PDF, en este orden. No aparecen en la vista rápida.</p>
+
+    {% if mensaje_anexos %}
+    <p class="mb-3 rounded-lg px-3 py-2 text-xs
+              {% if nivel_anexos == 'error' %}bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400
+              {% elif nivel_anexos == 'warning' %}bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400
+              {% else %}bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400{% endif %}">{{ mensaje_anexos }}</p>
+    {% endif %}
+
+    {% if anexos %}
+    <ol class="mb-3 space-y-1.5">
+        {% for a in anexos %}
+        <li class="flex items-center gap-2 rounded-lg border border-gray-100 px-2 py-1.5 text-sm dark:border-gray-800">
+            <span class="w-5 shrink-0 text-center text-xs text-gray-400">{{ forloop.counter }}</span>
+            <a href="{% url 'cotizaciones:anexo-ver' a.pk %}" target="_blank" rel="noopener"
+               class="min-w-0 flex-1 truncate text-gray-700 hover:underline dark:text-gray-200"
+               title="{{ a.nombre }}">{{ a.nombre }}</a>
+            {% if not a.es_pdf %}<span class="shrink-0 text-xs text-warning-600" title="Todavía no se pudo pasar a PDF; se reintenta al armar el documento.">⚠</span>{% endif %}
+            {% if puede_editar_anexos %}
+            <button type="button" class="shrink-0 px-1 text-xs text-gray-400 hover:text-gray-700 disabled:opacity-30 dark:hover:text-gray-200"
+                    title="Subir" {% if forloop.first %}disabled{% endif %}
+                    hx-post="{% url 'cotizaciones:anexo-mover' a.pk %}" hx-vals='{"dir": "arriba"}'>↑</button>
+            <button type="button" class="shrink-0 px-1 text-xs text-gray-400 hover:text-gray-700 disabled:opacity-30 dark:hover:text-gray-200"
+                    title="Bajar" {% if forloop.last %}disabled{% endif %}
+                    hx-post="{% url 'cotizaciones:anexo-mover' a.pk %}" hx-vals='{"dir": "abajo"}'>↓</button>
+            <button type="button" class="shrink-0 px-1 text-xs text-error-500 hover:text-error-700"
+                    title="Quitar anexo" hx-confirm="¿Quitar «{{ a.nombre }}» de la cotización?"
+                    hx-post="{% url 'cotizaciones:anexo-quitar' a.pk %}">✕</button>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% elif puede_editar_anexos %}
+    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Todavía no hay anexos.</p>
+    {% endif %}
+
+    {% if puede_editar_anexos %}
+    <form hx-post="{% url 'cotizaciones:anexo-subir' cot.pk %}" hx-encoding="multipart/form-data"
+          class="flex flex-wrap items-center gap-2">
+        <input type="file" name="archivo" multiple required
+               accept=".pdf,.doc,.docx,.odt,.rtf,.xls,.xlsx,.ods,.ppt,.pptx,.odp"
+               class="min-w-0 flex-1 text-xs">
+        <button type="submit" class="btn-secundario text-xs">Anexar</button>
+    </form>
+    <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">PDF, Word o Excel (se convierten a PDF). Hasta 25 MB cada uno.</p>
+    {% endif %}
+</section>
+{% endif %}

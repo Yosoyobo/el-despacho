@@ -29,14 +29,25 @@ de `overflow-y-auto` (el wrapper aquí ya lo trae con `max-h-[70vh]`).
 Si quieres que NO scrollee, pasa `sin_scroll_vertical=True`.
 
 Acciones por fila: usa _tabla_acciones.html dentro de tus filas_html.
+
+En el celular (LC 2026-09-28) la tabla se lee como TARJETAS: cada renglón es una
+tarjeta y cada celda lleva la etiqueta de su columna (`data-tabla-movil`, lo
+arman input.css + ui.js). En escritorio no cambia nada. Cada cabecera acepta
+además `movil` para decir el papel de su columna en la tarjeta: "titulo",
+"acciones", "ancho", "sin-etiqueta" u "oculta" (sin él, ui.js adivina: la
+primera columna con nombre es el título, la columna sin nombre con botones son
+las acciones). Las cabeceras que ordenan se quedan como pastillas arriba.
 {% endcomment %}
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-    <div class="overflow-x-auto {% if not sin_scroll_vertical %}max-h-[70vh] overflow-y-auto{% endif %}">
-        <table class="min-w-[640px] md:min-w-full text-sm">
+    {% comment %}El scroll vertical interno es sólo de escritorio: en el celular
+    las tarjetas corren con la página (una caja que scrollea dentro de otra que
+    también scrollea se pelea con el dedo).{% endcomment %}
+    <div class="overflow-x-auto {% if not sin_scroll_vertical %}md:max-h-[70vh] md:overflow-y-auto{% endif %}">
+        <table data-tabla-movil class="min-w-[640px] md:min-w-full text-sm">
             <thead class="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
                 <tr>
                     {% for col in cabeceras %}
-                        <th scope="col" class="px-5 py-3 text-{{ col.align|default:'left' }} {{ col.clase_th|default:'' }}">
+                        <th scope="col" data-label="{{ col.label }}"{% if col.movil %} data-movil="{{ col.movil }}"{% endif %} class="px-5 py-3 text-{{ col.align|default:'left' }} {{ col.clase_th|default:'' }}">
                             {% if col.sort_key %}
                                 {% if orden_actual == col.sort_key %}
                                     <a href="?{% if querystring_base %}{{ querystring_base }}&amp;{% endif %}orden=-{{ col.sort_key }}"

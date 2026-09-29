@@ -6,6 +6,62 @@
 //   <aside data-ta-sidebar>…</aside>              elemento controlado
 //   <button data-ta-dropdown="#perfil">…</button> abre el panel #perfil
 //   <div id="perfil" data-ta-dropdown-panel>…</div>
+
+// ===========================================================================
+// El teclado: la ñ y los acentos, con las dos formas de escribir.
+// LC 2026-09-28 (Oscar): usa la tecla ñ directa (teclado ISO) y también
+// Option+n → n. La primera es una tecla más; la segunda —como el acento ´ + a—
+// es una COMPOSICIÓN: dos pulsaciones, y entre una y otra el navegador está
+// armando la letra. Cualquier cosa que en ese hueco reescriba el campo, mueva
+// su tamaño, le robe el foco o se trague el Enter/Esc corta la letra a medias.
+//
+// Regla para todo manejador de teclado del repo:
+//   · si ESCRIBE en el campo (value, tamaño, selección, foco), o reacciona a
+//     Enter/Tab/Esc, empieza con `if (window.despachoComponiendo(e)) return;`
+//   · si sólo LEE para filtrar o buscar, NO se detiene: en Android el teclado
+//     compone cada palabra completa, y pausar ahí congelaría los buscadores y
+//     el autocompletado de @/#/$ hasta el espacio.
+// Hay un candado que lo exige: tests/taller/test_teclado_sep28.py.
+//
+// Y la garantía que lo hace posible: al terminar la composición llega SIEMPRE
+// un `input` más. Chrome manda el último `input` todavía «componiendo» y luego
+// el `compositionend`, sin otro `input` después —quien se saltó el componiendo
+// nunca vería la ñ—; Safari y Firefox sí mandan uno ya sin componer. Aquí se
+// reparte uno sintético sólo cuando el navegador no lo mandó, para que cada
+// manejador procese la letra ya armada exactamente una vez más.
+// ===========================================================================
+(function () {
+  'use strict';
+  /* ¿Está el teclado a media letra? `isComposing` es lo estándar; `keyCode 229`
+     es cómo lo avisa un `keydown` en Chrome/Android; y la marca propia cubre a
+     Safari, que en algunas versiones no pone `isComposing` en las teclas
+     muertas. */
+  window.despachoComponiendo = function (e) {
+    if (!e) return false;
+    if (e.isComposing || e.keyCode === 229) return true;
+    var t = e.target;
+    return !!(t && t.__despachoComponiendo);
+  };
+  document.addEventListener('compositionstart', function (e) {
+    if (e.target) e.target.__despachoComponiendo = true;
+  }, true);
+  document.addEventListener('compositionend', function (e) {
+    var t = e.target;
+    if (!t) return;
+    t.__despachoComponiendo = false;
+    t.__despachoFaltaInput = true;
+    setTimeout(function () {
+      if (!t.__despachoFaltaInput) return;   // el navegador ya mandó el suyo
+      t.__despachoFaltaInput = false;
+      if (t.isConnected) t.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 0);
+  }, true);
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && !window.despachoComponiendo(e)) t.__despachoFaltaInput = false;
+  }, true);
+})();
+
 (function () {
   'use strict';
 
@@ -178,6 +234,8 @@
     dropdowns.forEach(function (d) { d.panel.classList.add('hidden'); });
   });
   document.addEventListener('keydown', function (e) {
+    // Esc a media letra cancela la tecla muerta, no cierra nada (El teclado).
+    if (window.despachoComponiendo(e)) return;
     if (e.key === 'Escape') {
       dropdowns.forEach(function (d) { d.panel.classList.add('hidden'); });
       cerrarSidebar();
@@ -227,6 +285,9 @@
     if (slot && e.target === slot.firstElementChild) cerrarSlotModal();  // backdrop
   });
   document.addEventListener('keydown', function (e) {
+    // Sin esto, Esc para cancelar un acento a medias vaciaba el modal y se
+    // llevaba lo escrito (El teclado).
+    if (window.despachoComponiendo(e)) return;
     if (e.key === 'Escape') cerrarSlotModal();
   });
   document.body.addEventListener('htmx:afterRequest', function (e) {
@@ -281,6 +342,8 @@
     if (!e.target.closest('[data-campo-color]')) _cerrarPopovers(null);
   });
   document.body.addEventListener('input', function (e) {
+    // Reescribe el cuadro (mayúsculas, «#»): nunca a media letra (El teclado).
+    if (window.despachoComponiendo(e)) return;
     var campo = e.target.closest('[data-campo-color]');
     if (!campo) return;
     if (e.target.matches('[data-color-input]') || e.target.matches('[data-color-wheel]')) {
@@ -536,6 +599,7 @@
     abrirLightbox(src, lb.getAttribute('data-lightbox-alt') || lb.getAttribute('alt'));
   });
   document.addEventListener('keydown', function (e) {
+    if (window.despachoComponiendo(e)) return;   // El teclado
     if (e.key === 'Escape') { cerrarLightbox(); cerrarPopovers(); }
   });
 })();
@@ -913,7 +977,7 @@ window.abrirRickroll = function () {
     var n = document.getElementById('rickroll-overlay');
     if (n) n.remove();
   }
-  function onKey(e) { if (e.key === 'Escape') cerrar(); }
+  function onKey(e) { if (window.despachoComponiendo(e)) return; if (e.key === 'Escape') cerrar(); }
   ov.querySelector('[data-rickroll-close]').addEventListener('click', cerrar);
   document.addEventListener('keydown', onKey);
   document.body.appendChild(ov);
@@ -1344,4 +1408,151 @@ window.abrirRickroll = function () {
   });
   // Al entrar y al salir, nunca mientras se teclea — ver la nota de arriba.
   // Crecer conforme se escribe lo hace `field-sizing: content` en `input.css`.
+})();
+
+// ===========================================================================
+// Tablas anchas → tarjetas en el celular (LC 2026-09-28, Oscar).
+// «Tarjetas en móvil, todas; en escritorio no cambia nada.» La forma la da
+// `input.css` (bloque «las tablas anchas se leen como TARJETAS»); aquí sólo se
+// le dice a cada celda qué etiqueta lleva y qué papel juega en la tarjeta.
+//
+//   <table data-tabla-movil>            etiquetas del <thead>
+//   <table data-tabla-movil="A|B|C">    tabla sin <thead>: etiquetas en orden
+//   data-movil="titulo|acciones|ancho|sin-etiqueta|oculta|asa|casilla"
+//                                       en el <th> (toda la columna) o en el <td>
+//
+// No toca el contenido de ninguna celda: sólo le pone atributos. Así los
+// formularios, los botones y los scripts de cada lista siguen siendo los mismos
+// en escritorio y en el celular — nada se duplica.
+// ===========================================================================
+(function () {
+  'use strict';
+  var SEL = 'table[data-tabla-movil]';
+  var FLECHAS = /[↑↓↕⇅]/g;            // ↑ ↓ ↕ del orden
+  var CONTROL = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
+  var PICABLE = 'a[href], button, input:not([type="hidden"]), select, textarea, [data-dropdown]';
+  var LARGO = 28;   // caracteres: más que esto no cabe en media tarjeta
+
+  function texto(el) {
+    return (el.textContent || '').replace(FLECHAS, '').replace(/\s+/g, ' ').trim();
+  }
+  function sinNombre(t) { return !t || /^[\s—–\-·.]*$/.test(t); }
+
+  function columnas(tabla) {
+    var cols = [];
+    var cab = tabla.tHead;
+    if (cab && cab.rows.length) {
+      var fila = cab.rows[cab.rows.length - 1], n = 0;
+      Array.prototype.forEach.call(fila.cells, function (th) {
+        var et = th.hasAttribute('data-label') ? th.getAttribute('data-label') : texto(th);
+        var info = { etiqueta: sinNombre(et) ? '' : et, papel: th.getAttribute('data-movil') || '' };
+        for (var k = 0; k < (th.colSpan || 1); k++) cols[n++] = info;
+      });
+    } else {
+      (tabla.getAttribute('data-tabla-movil') || '').split('|').forEach(function (et, n) {
+        cols[n] = { etiqueta: et.trim(), papel: '' };
+      });
+    }
+    return cols;
+  }
+
+  // La manija y la casilla se reconocen por lo que ES la celda, no por su
+  // encabezado: la columna de la manija suele traer un «Ordenar» escondido para
+  // los lectores de pantalla, y no por eso es el título de la tarjeta.
+  function esAsa(celda) {
+    return !!celda.querySelector('[data-arr-asa]') &&
+      sinNombre(texto(celda).replace(/[\u2800-\u28FF]/g, ''));   // ⠿
+  }
+  function esCasilla(celda) {
+    return !!celda.querySelector('input[type="checkbox"]') &&
+      !celda.querySelector(CONTROL) && sinNombre(texto(celda));
+  }
+  // Papeles que no ocupan el lugar del título: la tarjeta sigue buscándolo.
+  var NO_TITULO = ['asa', 'casilla', 'acciones', 'oculta', 'sin-etiqueta'];
+
+  // El papel que la celda no trae escrito se adivina por lo que contiene.
+  function adivinar(celda, info, puedeSerTitulo) {
+    if (info.papel) return info.papel;
+    if (esAsa(celda)) return 'asa';
+    if (esCasilla(celda)) return 'casilla';
+    if (!info.etiqueta) return celda.querySelector(PICABLE) ? 'acciones' : 'sin-etiqueta';
+    if (/^acci[oó]n(es)?$/i.test(info.etiqueta) && celda.querySelector(PICABLE)) return 'acciones';
+    if (puedeSerTitulo && !celda.querySelector(CONTROL)) return 'titulo';
+    // La primera columna es un campo de captura (la edición rápida, las líneas
+    // de una factura): va a lo ancho, que en media tarjeta el nombre se corta.
+    if (puedeSerTitulo) return 'ancho';
+    if (celda.querySelector('textarea') || texto(celda).length > LARGO) return 'ancho';
+    return '';
+  }
+
+  function preparar(tabla) {
+    var cols = columnas(tabla);
+    // El título lo pone la plantilla (data-movil="titulo") o, si no dijo nada,
+    // la primera celda con nombre de cada renglón.
+    var tituloAuto = !tabla.hasAttribute('data-movil-sin-titulo') &&
+      !cols.some(function (c) { return c && c.papel === 'titulo'; });
+    var secciones = Array.prototype.slice.call(tabla.tBodies);
+    if (tabla.tFoot) secciones.push(tabla.tFoot);
+    secciones.forEach(function (sec) {
+      Array.prototype.forEach.call(sec.rows, function (tr) {
+        var unica = tr.cells.length === 1 && cols.length > 1;
+        var tituloLibre = tituloAuto;
+        var col = 0;
+        Array.prototype.forEach.call(tr.cells, function (celda) {
+          var span = celda.colSpan || 1;
+          var i = col;
+          col += span;
+          if (celda.hasAttribute('data-movil-listo')) return;
+          celda.setAttribute('data-movil-listo', '');
+          if (unica) { celda.setAttribute('data-movil-fila', ''); return; }
+          if (span > 1) {   // un aviso que abarca varias columnas: sin etiqueta
+            if (!celda.hasAttribute('data-movil')) celda.setAttribute('data-movil', 'ancho');
+            return;
+          }
+          var info = cols[i] || { etiqueta: '', papel: '' };
+          var papel = celda.getAttribute('data-movil') || adivinar(celda, info, tituloLibre);
+          // La primera celda con nombre decide: si trae un campo de captura, ese
+          // renglón se queda sin título (no se salta a la segunda columna).
+          if (info.etiqueta && NO_TITULO.indexOf(papel) === -1) tituloLibre = false;
+          if (papel && !celda.hasAttribute('data-movil')) celda.setAttribute('data-movil', papel);
+          if ((!papel || papel === 'ancho') && info.etiqueta &&
+              !celda.hasAttribute('data-label') && !celda.hasAttribute('data-sin-etiqueta')) {
+            celda.setAttribute('data-label', info.etiqueta);
+          }
+        });
+      });
+    });
+  }
+
+  // Los renglones que llegan después (HTMX, «+ Agregar línea», el arrastre) se
+  // preparan solos: cada tabla se vigila a sí misma.
+  var pendientes = [];
+  var programado = false;
+  function encolar(tabla) {
+    if (pendientes.indexOf(tabla) === -1) pendientes.push(tabla);
+    if (programado) return;
+    programado = true;
+    requestAnimationFrame(function () {
+      programado = false;
+      var lote = pendientes;
+      pendientes = [];
+      lote.forEach(preparar);
+    });
+  }
+  function vigilar(tabla) {
+    if (tabla.__tablaMovil || !window.MutationObserver) return;
+    tabla.__tablaMovil = new MutationObserver(function () { encolar(tabla); });
+    tabla.__tablaMovil.observe(tabla, { childList: true, subtree: true });
+  }
+  function escanear() {
+    document.querySelectorAll(SEL).forEach(function (t) { preparar(t); vigilar(t); });
+  }
+  window.tablaMovilPreparar = escanear;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', escanear);
+  } else {
+    escanear();
+  }
+  document.body.addEventListener('htmx:afterSettle', escanear);
 })();

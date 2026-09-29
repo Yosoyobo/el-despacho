@@ -113,6 +113,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Sprint de pendientes 2026-09-28: última actividad (quién está en línea).
+    "cuentas.middleware.PresenciaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Pre-S2b.2: redirige contador/disenador autenticados a El Taller.

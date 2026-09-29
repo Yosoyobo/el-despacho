@@ -23,6 +23,9 @@ import pytest
 pytestmark = [pytest.mark.django_db, pytest.mark.taller]
 
 TPL_CARD = Path("el-taller/templates/proyectos/_producto_card.html")
+# LC 2026-09-28: el bloque de tareas se extrajo a su propio partial (la tarea
+# rápida con @persona lo repinta entero). Los candados de abajo leen el partial.
+TPL_TAREAS = Path("el-taller/templates/proyectos/_producto_tareas.html")
 TPL_FILAS = Path("el-taller/templates/proyectos/_filas.html")
 TPL_KANBAN_COL = Path("el-taller/templates/proyectos/_kanban_columna.html")
 TPL_RESULTADOS = Path("el-taller/templates/taller_home/_kanban_resultados_fuera.html")
@@ -338,7 +341,7 @@ def test_las_tareas_de_todas_las_tarjetas_salen_en_UNA_consulta(
 def test_el_campo_de_dictado_no_viaja_en_el_autoguardado():
     """El bloque vive DENTRO del formulario del proyecto: un campo con `name`
     se posteaba en cada autoguardado. El texto se lee por id con `hx-vals`."""
-    src = TPL_CARD.read_text(encoding="utf-8")
+    src = TPL_TAREAS.read_text(encoding="utf-8")
     ini = src.index("Tareas de este producto")
     bloque = src[ini:]
     assert 'id="tareas-dictado-' in bloque
@@ -350,7 +353,7 @@ def test_el_campo_de_dictado_no_viaja_en_el_autoguardado():
 
 
 def test_los_controles_del_bloque_no_disparan_el_autoguardado():
-    src = TPL_CARD.read_text(encoding="utf-8")
+    src = TPL_TAREAS.read_text(encoding="utf-8")
     ini = src.index("Tareas de este producto")
     bloque = src[ini:]
     # Los dos botones (dictar + alta manual) filtran los parámetros para no
@@ -360,7 +363,7 @@ def test_los_controles_del_bloque_no_disparan_el_autoguardado():
 
 
 def test_una_tarjeta_sin_guardar_lo_dice_en_vez_de_ofrecer_tareas():
-    src = TPL_CARD.read_text(encoding="utf-8")
+    src = TPL_TAREAS.read_text(encoding="utf-8")
     assert "Guarda el proyecto primero; luego podrás colgarle tareas" in src
 
 
@@ -569,6 +572,7 @@ def _controles_con_vals_y_params(ruta: Path):
 
 @pytest.mark.parametrize("ruta", [
     TPL_CARD,
+    TPL_TAREAS,
     Path("el-taller/templates/proyectos/_tareas_panel.html"),
     Path("el-taller/templates/proyectos/_proveedores_panel.html"),
 ])
@@ -594,5 +598,5 @@ def test_el_selector_de_gasto_sin_proveedor_conserva_su_parametro():
 
 
 def test_el_boton_de_dictado_conserva_texto_y_producto():
-    src = TPL_CARD.read_text(encoding="utf-8")
+    src = TPL_TAREAS.read_text(encoding="utf-8")
     assert 'hx-params="texto,producto"' in src
