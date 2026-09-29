@@ -278,7 +278,13 @@ def subir(request):
     except Exception:  # noqa: BLE001 — sin etiqueta se archiva igual
         pass
 
-    tarea = paperless.subir(archivo.read(), archivo.name,
+    # Word y Excel se vuelven PDF antes de entrar (Paperless sin Office no los
+    # lee). Si el convertidor no contesta, se archiva el original y se avisa.
+    from lib.a_pdf import preparar
+
+    preparado = preparar(archivo.read(), archivo.name)
+
+    tarea = paperless.subir(preparado.contenido, preparado.nombre,
                             titulo=(request.POST.get("titulo") or "").strip(),
                             etiquetas_ids=etiquetas)
     if tarea:
@@ -286,7 +292,14 @@ def subir(request):
         messages.success(request, "Recibido. El archivo lo va a leer en unos "
                                   "minutos; hasta entonces no se puede buscar "
                                   "por su texto.")
-        _emitir("papeleo.subido", request.user, {"nombre": archivo.name})
+        if preparado.convertido:
+            messages.info(request, f"«{archivo.name}» se convirtió a PDF antes de "
+                                   f"archivarlo («{preparado.nombre}»).")
+        if preparado.aviso:
+            messages.warning(request, f"{preparado.aviso} Puede que no se "
+                                      "encuentre por lo que dice adentro.")
+        _emitir("papeleo.subido", request.user,
+                {"nombre": preparado.nombre, "convertido": preparado.convertido})
     else:
         messages.error(request, "El archivo de papeleo no aceptó el documento.")
     return redirect("papeleo-buscar")
