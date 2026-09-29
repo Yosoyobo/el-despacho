@@ -144,6 +144,27 @@ class TestElPermiso:
         assert not PermisoUsuario.objects.get(usuario=u, modulo="equipo").activo
 
     @pytest.mark.django_db
+    def test_la_migracion_lo_suma_al_json_de_cada_rol(self):
+        """«Ver como rol» lee SÓLO el JSON del rol simulado: sin el permiso ahí,
+        el super_admin vería el Dashboard sin el recuadro aunque la persona de
+        ese rol sí lo tenga. Y no pisa lo que el rol ya traía."""
+        import importlib
+
+        from django.apps import apps as registro
+
+        from cuentas.models.rol import Rol
+        mig = importlib.import_module("cuentas.migrations.0046_seed_permiso_equipo_actividad")
+        rol = Rol.objects.create(clave="rol-presencia-prueba", nombre="Rol presencia prueba",
+                                 permisos={"cartera": ["ver"]})
+
+        mig.sembrar(registro, None)
+        mig.sembrar(registro, None)
+
+        rol.refresh_from_db()
+        assert rol.permisos["equipo"] == ["ver_actividad"]
+        assert rol.permisos["cartera"] == ["ver"]
+
+    @pytest.mark.django_db
     def test_revocarlo_lo_quita(self, usuario_factory):
         from lib.permisos import puede_ver_actividad_equipo
         u = usuario_factory()
