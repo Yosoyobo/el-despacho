@@ -47,8 +47,9 @@
 # Si ninguno de los dos existe (un montaje que falta), se contesta un aviso mínimo
 # en línea: la pantalla nunca queda en blanco ni en un 404.
 #
-# `method GET` porque `file_server` contesta 405 a un POST: sin él, quien mandó un
-# formulario justo en el corte vería un error crudo en vez de la pantalla.
+# Dentro de `handle_errors`, `file_server` sirve la pantalla a CUALQUIER método
+# (medido: POST/PUT/DELETE/PATCH → 503 con la pantalla): quien mandó un
+# formulario justo en el corte la ve, no un 405. Hay candado para eso.
 (lc_failover) {
 	handle_errors {
 		@sondas path /ping /salud
@@ -63,7 +64,6 @@
 				try_files /mantenimiento-vivo/en-curso.html /mantenimiento/index.html
 			}
 			handle @pantalla {
-				method GET
 				rewrite * {file_match.relative}
 				file_server {
 					status 503

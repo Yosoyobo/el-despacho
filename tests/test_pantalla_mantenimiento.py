@@ -479,7 +479,9 @@ class TestLaMudanzaPoneYQuitaLaPantalla:
         r, log = correr(FAKE_DOCKER_RC="1")
         assert r.returncode == 0
         assert self._orden(log) == ["poner", "ssh", "quitar"]
-        assert "no tumba el deploy" in r.stdout.decode()
+        salida = r.stdout.decode()
+        assert "No se pudo poner la pantalla" in salida
+        assert "No se pudo quitar la pantalla" in salida
 
     def test_si_se_corta_la_sesion_la_quita(self, correr):
         p = correr(fondo=True, FAKE_SSH_SLEEP="30")
