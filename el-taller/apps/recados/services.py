@@ -25,10 +25,14 @@ PREFIJO_DINAMICO = "equipo-de-#"
 
 
 def _usuarios_por_rol(roles: list[str]) -> set[int]:
+    """Miembros de un grupo «por rol» (Dirección, Finanzas…): cuenta el rol
+    primario Y los asignados encima (S-Fin-Sep29, decisión de Oscar: se reconoce
+    el rol asignado). Antes sólo el primario: un Director sobre `miembro` no
+    recibía los recados de «Dirección». Vacío = todo el equipo activo."""
     from cuentas.models.usuario import Usuario
-    qs = Usuario.objects.filter(is_active=True)
-    if roles:
-        qs = qs.filter(rol__in=roles)
+    from lib.permisos import usuarios_con_rol
+
+    qs = usuarios_con_rol(*roles) if roles else Usuario.objects.filter(is_active=True)
     return set(qs.values_list("id", flat=True))
 
 
