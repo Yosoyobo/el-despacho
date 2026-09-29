@@ -216,3 +216,102 @@ class TestGoogleALaGerencia:
         assert resp.status_code == 403
         assert "gerencia · acceder" in resp.content.decode()
         assert "_auth_user_id" not in client.session
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 3. Autocompletar @#$: las sugerencias siguen a los permisos de ver
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _sugerencias(client, u, tipo):
+    client.force_login(u)
+    resp = client.get(f"/api/autocomplete/{tipo}")
+    assert resp.status_code == 200
+    return {r["slug"] for r in resp.json()["resultados"]}
+
+
+def v_clientes(u):
+    """Antes: todos veían clientes menos el rol PRIMARIO diseñador."""
+    return getattr(u, "rol", None) != "disenador"
+
+
+def v_proyectos(u):
+    """Antes: el rol PRIMARIO diseñador, sus asignados; todos los demás, todos."""
+    return "asignados" if getattr(u, "rol", None) == "disenador" else "todos"
+
+
+class TestAutocompletar:
+    def test_clientes_antes_y_despues(self, client, foto):
+        """Larry (5) deja de ver clientes: Clientes ya le daba 403 (su
+        `cartera.ver` quedó apagado en la 0047). Consecuencia aceptada."""
+        slug = foto.propio.cliente.slug
+        assert _tabla(foto, v_clientes, lambda u: slug in _sugerencias(client, u, "clientes")) == {
+            1: (True, True),
+            3: (True, True),
+            4: (True, True),
+            5: (True, False),    # ← el cambio decidido
+        }
+
+    def test_proyectos_antes_y_despues(self, client, foto):
+        """Con la misma regla, Larry tampoco ve proyectos al autocompletar: sin
+        `proyectos.ver` ni `ver_todos`, su lista de Proyectos ya salía vacía."""
+        propio, ajeno = foto.propio.slug, foto.ajeno.slug
+
+        def nueva(u):
+            vistos = _sugerencias(client, u, "proyectos") & {propio, ajeno}
+            return {frozenset({propio, ajeno}): "todos", frozenset({propio}): "asignados",
+                    frozenset(): "ninguno"}[frozenset(vistos)]
+
+        assert _tabla(foto, v_proyectos, nueva) == {
+            1: ("todos", "todos"),
+            3: ("todos", "todos"),
+            4: ("todos", "todos"),       # Alex: proyectos.ver_todos
+            5: ("todos", "ninguno"),     # ← mismo permiso que su lista de Proyectos
+        }
+
+    def test_las_sugerencias_dicen_lo_mismo_que_las_pantallas(self, client, foto):
+        """Para cada persona: sugiere un cliente sii puede ver La Cartera, y un
+        proyecto sii puede abrirlo."""
+        for uid, u in foto.u.items():
+            assert (foto.propio.cliente.slug in _sugerencias(client, u, "clientes")) \
+                == permisos.puede_ver_cartera(u), uid
+            proyectos = _sugerencias(client, u, "proyectos")
+            for p in (foto.propio, foto.ajeno):
+                assert (p.slug in proyectos) == permisos.puede_ver_proyecto(u, p), (uid, p.nombre)
+
+    def test_personas_no_cambian(self, client, foto):
+        """`@` no tiene permiso de ver que lo gatee: todos ven al mismo equipo."""
+        vistas = {uid: _sugerencias(client, u, "usuarios") for uid, u in foto.u.items()}
+        assert vistas[1] and all(v == vistas[1] for v in vistas.values()), vistas
+
+    @pytest.mark.parametrize("primario,esperado", [
+        ("disenador", "asignados"), ("contador", "todos"), ("dueno", "todos"),
+        ("super_admin", "todos"), ("miembro", "ninguno"),
+    ])
+    def test_por_rol_primario_con_sus_defaults(self, client, usuario_factory, proyecto_factory,
+                                               primario, esperado):
+        """Sin la foto: el diseñador sigue acotado a sus asignados, contador y
+        dueño ven todos, y un `miembro` sin permisos de proyectos (antes veía
+        todos) ya no ve ninguno."""
+        from apps.los_proyectos.models import ProyectoAsignacion
+
+        u = usuario_factory(rol=primario)
+        propio, ajeno = proyecto_factory(), proyecto_factory()
+        ProyectoAsignacion.objects.create(proyecto=propio, usuario=u)
+        vistos = _sugerencias(client, u, "proyectos") & {propio.slug, ajeno.slug}
+        assert vistos == {"todos": {propio.slug, ajeno.slug}, "asignados": {propio.slug},
+                          "ninguno": set()}[esperado]
+
+    def test_busqueda_inversa_de_clientes_sigue_a_cartera_ver(self, client, foto):
+        from referencias.models import Referencia
+
+        cliente = foto.propio.cliente
+        Referencia.objects.create(contenedor_tipo="recado", contenedor_id=1, tipo="cliente",
+                                  cliente_id=cliente.pk, token_original=f"${cliente.slug}",
+                                  posicion_inicio=0, posicion_fin=5)
+        totales = {}
+        for uid, u in foto.u.items():
+            client.force_login(u)
+            resp = client.get(f"/api/referencias/clientes/{cliente.pk}")
+            assert resp.status_code == 200
+            totales[uid] = resp.json()["total"]
+        assert totales == {1: 1, 3: 1, 4: 1, 5: 0}

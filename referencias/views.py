@@ -33,7 +33,13 @@ def _aplicar_filtro_y_top(qs, q: str, campos: list[str]):
 
 @login_required
 def autocomplete_usuarios(request):
-    """Todos los roles pueden ver `@usuario`. Excluye inactivos.
+    """`@usuario`: cualquiera con sesión ve al equipo activo. Excluye inactivos.
+
+    No hay permiso de «ver personas» que gatear: mencionar a un compañero es
+    para lo que existen los recados, las tareas y los comentarios, y ningún
+    permiso del catálogo esconde quién está en el equipo (la bandeja de recados
+    ya los lista a todos). Por eso esta puerta se quedó igual cuando las de
+    clientes y proyectos pasaron a permisos (2026-09-28).
 
     Sin prefijo retorna top 8 alfabético (UX Slack-style).
     """
@@ -58,17 +64,28 @@ def autocomplete_usuarios(request):
 
 @login_required
 def autocomplete_proyectos(request):
-    """Diseñador sólo ve proyectos donde está asignado.
+    """`#proyecto`: sugiere sólo los proyectos que el usuario puede ver —todos con
+    `proyectos.ver_todos`, sus asignados con `proyectos.ver`, ninguno sin los
+    dos— igual que la lista de Proyectos (`puede_ver_proyecto`).
+
+    Hasta 2026.09.05 leía el rol PRIMARIO: sólo el diseñador se acotaba a sus
+    asignados y cualquier otro veía todos. Decisión de Oscar (2026-09-28): las
+    sugerencias siguen a los permisos de ver.
 
     Sin prefijo retorna top 8 alfabético (UX Slack-style).
     """
+    from lib.permisos import puede, puede_ver_todos_proyectos
+
     q = (request.GET.get("q") or "").strip().lower()
     user = request.user
     from apps.los_proyectos.models.proyecto import Proyecto
     # No referenciar proyectos cancelados ni cerrados (ya no son accionables).
     base = Proyecto.objects.exclude(estado__in=["cancelado", "cerrado"])
-    if getattr(user, "rol", None) == "disenador":
-        base = base.filter(asignaciones__usuario_id=user.pk).distinct()
+    if not puede_ver_todos_proyectos(user):
+        if puede(user, "proyectos", "ver"):
+            base = base.filter(asignaciones__usuario_id=user.pk).distinct()
+        else:
+            base = base.none()
     qs = _aplicar_filtro_y_top(base, q, ["slug", "codigo", "nombre"])
     return JsonResponse({"resultados": [
         {
@@ -84,13 +101,19 @@ def autocomplete_proyectos(request):
 
 @login_required
 def autocomplete_clientes(request):
-    """Diseñador NO ve clientes — lista vacía silenciosa (DOC_01 §4.4).
+    """`$cliente`: sólo para quien puede ver La Cartera (`cartera.ver`); a los
+    demás, lista vacía silenciosa (DOC_01 §4.4).
+
+    Hasta 2026.09.05 sólo se le negaba al rol PRIMARIO diseñador. Decisión de
+    Oscar (2026-09-28): que decida el mismo permiso que abre Clientes — quien
+    ahí recibe 403 tampoco ve clientes al autocompletar.
 
     Sin prefijo retorna top 8 alfabético (UX Slack-style).
     """
+    from lib.permisos import puede_ver_cartera
+
     q = (request.GET.get("q") or "").strip().lower()
-    user = request.user
-    if getattr(user, "rol", None) == "disenador":
+    if not puede_ver_cartera(request.user):
         return JsonResponse({"resultados": []})
     from apps.la_cartera.models.cliente import Cliente
     qs = _aplicar_filtro_y_top(
@@ -148,6 +171,9 @@ def busqueda_inversa_proyectos(request, proyecto_id: int):
 
 @login_required
 def busqueda_inversa_clientes(request, cliente_id: int):
-    if getattr(request.user, "rol", None) == "disenador":
+    from lib.permisos import puede_ver_cartera
+
+    # Mismo permiso que el autocompletar de clientes (antes: rol primario).
+    if not puede_ver_cartera(request.user):
         return JsonResponse({"total": 0, "pagina": 1, "tam": 20, "items": []})
     return _busqueda_inversa(request, "cliente", cliente_id)

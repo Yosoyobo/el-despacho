@@ -647,13 +647,10 @@ DEUDA = {
     "el-taller/apps/el_dictado/prompt_chat.py": (2, "texto del prompt"),
 }
 
-# Puertas por rol PRIMARIO que quedaron sin convertir: su versión granular SÍ
-# cambiaría a alguien de hoy, así que las decide Oscar. Las que ya decidió
-# salieron de aquí y su CAMBIO está fijado en `tests/test_puertas_decididas.py`
-# (la sesión de La Gerencia y el SSO de Google, 2026-09-28).
-DEUDA_PUERTAS_PRIMARIO = {
-    "referencias/views.py": (3, "autocompletar @# acota al primario diseñador"),
-}
+# Las tres puertas por rol PRIMARIO que 2026.09.05 dejó sin convertir (sesión y
+# SSO de La Gerencia, autocompletar @#$) las decidió Oscar el 2026-09-28: ya no
+# hay excepción para ellas. Su CAMBIO —a propósito— está fijado persona por
+# persona en `tests/test_puertas_decididas.py`.
 
 CARPETAS_VISTAS = ("el-taller/apps", "la-gerencia/apps", "la-recepcion/apps",
                    "capacidades", "mcp_despacho", "campanas", "papeleo", "referencias",
@@ -695,7 +692,7 @@ class TestSinRolLiteral:
             literales = _literales_de_rol(ruta)
             if literales:
                 encontrados[rel] = literales
-        anotados = {**DEUDA, **DEUDA_PUERTAS_PRIMARIO}
+        anotados = dict(DEUDA)
         distintos = {
             r: v for r, v in encontrados.items()
             if len(v) != anotados.get(r, (0, ""))[0]
@@ -713,7 +710,7 @@ class TestSinRolLiteral:
         patron = re.compile(r"\b(tiene_rol|usuarios_con_rol)\(([^)]*)\)")
         malos = []
         for rel, ruta in _archivos_py():
-            if rel in DEUDA or rel in DEUDA_PUERTAS_PRIMARIO:
+            if rel in DEUDA:
                 continue
             texto = ruta.read_text(encoding="utf-8")
             for m in patron.finditer(texto):
