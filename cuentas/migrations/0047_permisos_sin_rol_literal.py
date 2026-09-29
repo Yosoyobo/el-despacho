@@ -172,7 +172,7 @@ def planear(usuarios, roles, filas):
         for rid in u["roles"]:
             for modulo, acciones in (permisos_por_rol.get(rid) or {}).items():
                 por_rol.update((modulo, a) for a in acciones)
-        for par, (regla, _efectivo_) in OBJETIVOS.items():
+        for par, (regla, _mira_efectivos) in OBJETIVOS.items():
             vieja = regla(primario, efectivos)
             fila = filas.get((u["id"], *par))
             if vieja:
