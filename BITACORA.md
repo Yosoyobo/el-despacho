@@ -13463,3 +13463,7 @@ pueda pedir. Se declara explícito (regla §10 item 6) en vez de dejarlo implíc
 ## 2026-09-28 — S-n8n-MCP · Fase 0-1
 
 n8n 1.70.1 → 2.40.7 (ensayado sobre copia de la base), puerto a 127.0.0.1 + `tailscale serve`, n8n al respaldo (API de SQLite, sin la llave), exportador de flujos al repo, `lib/n8n.py` al modelo publicar/archivar. Spec de 5 rondas en `docs/SPRINT-n8n-MCP.md`. Paso manual: `sudo bash infra/scripts/n8n_https_tailnet.sh` en el NUC. Deuda: `.env` sin respaldo.
+
+## 2026-09-28 — S-Pendientes-Sep28 · Deploy 1 (VERSION 2026.09.01)
+
+Deploy 1 del plan de 9 rondas: «Otros responsables» de las tareas ya se guardan (faltaba `save_m2m` en 3 vistas), el dinero del proyecto se memoiza por petición (231→151 consultas con 8 líneas), `puede_ver_catalogo` corregido y `analisis.ver` delegable, `_emitir_noop` robusto, Portavoz en pausa sin destino (`portavoz:sin_destino`), arranque del NUC que espera al tailnet + alarma de servicios esperados, tarifas oficiales de Grok/MiMo. La sesión anterior se cortó con 8 agentes a medias; al retomarla se encontraron **3 mutaciones de prueba aplicadas** (carpeta temporal compartida) y se restauraron. Deploys 2 y 3 quedan en sus ramas con commit `wip:` (tabla en `docs/HISTORIAL_SESIONES.md`). Pendiente operativo: vaciar `portavoz:cola` al respaldo.

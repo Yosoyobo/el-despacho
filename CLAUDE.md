@@ -375,8 +375,9 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-28:** producción en `VERSION 2026.08.50` (+ n8n 2.40.7 con MCP
-nativo en el NUC, PR #111). Stack: apps + Postgres + Redis + El Mostrador +
+**Estado al 2026-09-28:** producción en `VERSION 2026.09.01` (+ n8n 2.40.7 con MCP
+nativo en el NUC, PR #111). El Deploy 2 y 3 del sprint de pendientes quedaron
+WIP en ramas `worktree-agent-*` (tabla en el historial → S-Pendientes-Sep28). Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
 sólo la VENTANA (El Portero/Caddy, TLS + `reverse_proxy` por tailnet). Deploy:
 el CI salta por La Sede al NUC (`infra/scripts/deploy_nuc.sh`).
@@ -386,6 +387,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.09.01 | S-Pendientes-Sep28 · 1 | «Otros responsables» se guardan; memo del dinero del proyecto; Portavoz en pausa sin destino; el NUC vuelve solo tras reiniciar |
 | 2026.08.50 | S-Ajustes-Ago28 · 3 | Vista previa de cotización: genera de verdad y deshace (evento con `on_commit` dentro del `atomic`) |
 | 2026.08.48 | S-Ajustes-Ago28 · 2 | `Tarea.producto`; buscador del Inicio abarca clientes/productos/proveedores |
 | 2026.08.47 | S-Ajustes-Ago28 · 1 | Duplicar producto, markup en catálogo, un solo control de proveedores |
@@ -395,14 +397,13 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.08.43 | S-NUC-Cierre | Pantalla de automatizaciones n8n; El Chalán alcanza las 4 piezas del NUC |
 | 2026.08.42 | S-OSRM-GUI / S-Papeleo-V1 | Perillas de OSRM + tabla única; Paperless ligado a entidades |
 | 2026.08.33 | S-NUC-Servicios | Regla §4 #23 (aviso de mantenimiento); Gotenberg, OSRM, n8n, Paperless |
-| 2026.08.32 | S-Menu-Gerencia | Cartero/KPIs/Rutas/Cobranza al menú de La Gerencia |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
 - `lib.permisos.puede()` **no tiene failsafe automático de super_admin**: una acción nueva
   necesita estar en `DEFAULTS_POR_ROL["super_admin"]` + migración `seed_permisos_*`.
-- `puede_ver_catalogo` es un helper MUERTO (`catalogo.ver` no existe) — usar
-  `puede(user, "catalogo", "ver_nombres")`.
+- Acción de catálogo: `ver_nombres`/`ver_precios` (no existe `catalogo.ver`); `puede_ver_catalogo`
+  ya pregunta por `ver_nombres` (2026.09.01).
 - `app_label` reales: tareas = `pizarron`, proyectos = `proyectos`, cartera = `cartera`
   (no `el_pizarron`/`los_proyectos`/`la_cartera`) — FK por string y dependencias de migración.
 - Insertar un helper entre `@login_required` y su vista deja la vista sin candado (pasó 2 veces).
@@ -434,6 +435,8 @@ renglones, el más viejo sale al entrar uno nuevo):
   producción (footer de `/acerca/`), no la conclusión del job. Nunca `docker run` sobre
   un servicio del compose (§14 Bug J).
 - Dos sesiones en el mismo working tree se pisan: la segunda va en `git worktree`.
+- Agentes en paralelo: carpeta temporal y base de Redis PROPIAS, commit antes de mutar;
+  al retomar trabajo ajeno barrer `git diff` por `if False:` (quedaron 3 mutaciones aplicadas).
 
 ## 9. Decisiones operativas tomadas
 
