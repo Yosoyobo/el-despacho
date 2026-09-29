@@ -5,6 +5,7 @@
 
 <form method="post" class="campo-form grid grid-cols-1 gap-6 xl:grid-cols-3">
     {% csrf_token %}
+    {% include "edicion/_testigo.html" %}
     {% if form.non_field_errors %}
     <div class="xl:col-span-3 rounded-xl border border-error-300 bg-error-50 p-4 text-sm text-error-700 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">
         {{ form.non_field_errors|join:" · " }}

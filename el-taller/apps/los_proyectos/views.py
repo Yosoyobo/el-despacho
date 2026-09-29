@@ -38,6 +38,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
+from lib import edicion
 from lib.busqueda import q_texto
 from lib.permisos import (
     es_admin,
@@ -565,9 +566,18 @@ def detalle(request, pk):
     puede_ed = puede_editar_proyecto(request.user, proyecto)
     es_htmx = _es_htmx(request)
 
+    from .testigo import edicion_proyecto
+    estado_http = 200
+    ctx_edicion = None
     if request.method == "POST" and puede_ed:
         form = ProyectoForm(request.POST, instance=proyecto)
         formset = ProyectoProductoFormSetDetalle(request.POST, instance=proyecto)
+        # S-Pendientes-Sep28 (Deploy 3): ANTES de validar —y de que `is_valid()`
+        # escriba lo mandado sobre `proyecto` (§14 Bug D)— se pregunta si
+        # guardar pisaría lo que alguien más cambió desde que se abrió la
+        # pantalla. Si sí, no se guarda nada y se avisa.
+        ed_proyecto = edicion_proyecto(proyecto, form, formset)
+        choque = ed_proyecto.revisar(request)
         # S-Ajustes-Ago12-B: si hay una pestaña de versión abierta, sus tarjetas
         # viajan en el MISMO POST (prefijo `ppv`) y se guardan con el mismo
         # autoguardado — así «Guardado» nunca miente.
@@ -578,8 +588,14 @@ def detalle(request, pk):
                 proyecto, request.POST.get("ppv_cotizacion") or 0)
             if cot_version is not None:
                 formset_version = _formset_version(cot_version, request.POST)
+        if choque is not None:
+            ctx_edicion = edicion.contexto(request, testigo=choque.testigo, choque=choque)
+            if es_htmx:
+                return edicion.respuesta_choque_htmx(
+                    request, ctx_edicion, indicador_id="guardado-indicador")
+            estado_http = 409   # sin HTMX: la página vuelve con lo que mandó y el aviso
         version_ok = formset_version is None or formset_version.is_valid()
-        if form.is_valid() and formset.is_valid() and version_ok:
+        if choque is None and form.is_valid() and formset.is_valid() and version_ok:
             # Render-V2: snapshot del estado ANTES de guardar, para el Undo
             # (Redis, coalescido). Se hace sobre una instancia fresca para no
             # capturar las mutaciones que el ModelForm ya aplicó al `instance`.
@@ -619,6 +635,10 @@ def detalle(request, pk):
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"proyecto_id": proyecto.pk, "campo": "detalle_inline"},
             ))
+            # La firma del guardado: si alguien más choca con él, el aviso puede
+            # decir quién fue (ningún modelo guarda `actualizado_por`).
+            ventana = edicion.ventana_posteada(request)
+            edicion.firmar(proyecto, request.user, ventana)
             # C7: autoguardado HTMX → refresca panel económico + proveedores +
             # indicador + estado del Undo (OOB).
             if es_htmx:
@@ -626,16 +646,22 @@ def detalle(request, pk):
                        "form": ProyectoForm(instance=proyecto), "puede_editar": True,
                        **_ctx_proveedores(proyecto),
                        "pasos_undo": services_undo.pasos_disponibles(proyecto)}
+                fs_fresco = ProyectoProductoFormSetDetalle(instance=proyecto)
                 if hubo_nuevos:
                     from apps.el_catalogo.models import CategoriaServicio
-                    nuevo_fs = ProyectoProductoFormSetDetalle(instance=proyecto)
-                    _anotar_procesos(nuevo_fs)
+                    _anotar_procesos(fs_fresco)
                     ctx.update({
                         "rerender_productos": True,
-                        "formset": nuevo_fs,
+                        "formset": fs_fresco,
                         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
                         "proveedores_activos": _proveedores_activos(),
                     })
+                # El testigo nuevo viaja de regreso (OOB): lo que acabas de
+                # guardar ya es lo que hay, así que el siguiente autoguardado de
+                # esta misma ventana no choca contigo. Conserva la ventana.
+                ctx["edicion"] = edicion.contexto(
+                    request,
+                    testigo=edicion_proyecto(proyecto, ctx["form"], fs_fresco).testigo(ventana=ventana))
                 return render(request, "proyectos/_guardado_oob.html", ctx)
             messages.success(request, "Proyecto guardado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
@@ -648,9 +674,16 @@ def detalle(request, pk):
                            "form": form, "puede_editar": True,
                            "error_detalle": _primer_error(form, formset, formset_version),
                            **_ctx_proveedores(proyecto)}, status=200)
+        if ctx_edicion is None:
+            # Sin HTMX y con errores de validación: se sigue editando sobre lo
+            # que se abrió, así que el testigo es el que llegó.
+            ctx_edicion = edicion.contexto(request, testigo=ed_proyecto.testigo_para(request))
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetDetalle(instance=proyecto)
+        if puede_ed:
+            ctx_edicion = edicion.contexto(
+                request, testigo=edicion_proyecto(proyecto, form, formset).testigo())
 
     from apps.el_catalogo.models import CategoriaServicio
     from apps.el_pizarron.models.estado_tarea import EstadoTarea
@@ -708,7 +741,9 @@ def detalle(request, pk):
         "enviar_cot_pk": _cot_a_enviar(request, proyecto),
         # Recuadro «Facturas ligadas» (LC #9).
         **_ctx_facturas(proyecto, request.user),
-    })
+        # El Testigo (S-Pendientes-Sep28 · Deploy 3): el aviso de edición pisada.
+        "edicion": ctx_edicion,
+    }, status=estado_http)
 
 
 @login_required
@@ -983,19 +1018,30 @@ def editar(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not puede_editar_proyecto(request.user, proyecto):
         return HttpResponseForbidden("Solo admins pueden editar proyectos.")
+    from .testigo import edicion_proyecto
+    choque = None
     if request.method == "POST":
         form = ProyectoForm(request.POST, instance=proyecto)
         formset = ProyectoProductoFormSetEdit(request.POST, instance=proyecto)
-        if form.is_valid() and formset.is_valid():
+        # El Testigo: se revisa ANTES de validar (§14 Bug D).
+        ed_proyecto = edicion_proyecto(proyecto, form, formset)
+        choque = ed_proyecto.revisar(request)
+        if choque is None and form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
             _sync_procesos_formset(formset)
             proyecto.recalcular_monto_estimado()  # C4: estimado = Σ subtotales
+            edicion.firmar(proyecto, request.user, edicion.ventana_posteada(request))
             messages.success(request, "Proyecto actualizado.")
             return redirect("proyectos-detalle", pk=proyecto.pk)
+        ctx_edicion = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_proyecto.testigo_para(request),
+            choque=choque)
     else:
         form = ProyectoForm(instance=proyecto)
         formset = ProyectoProductoFormSetEdit(instance=proyecto)
+        ctx_edicion = edicion.contexto(
+            request, testigo=edicion_proyecto(proyecto, form, formset).testigo())
     from apps.el_catalogo.models import CategoriaServicio
     _anotar_procesos(formset)
     return render(request, "proyectos/form.html", {
@@ -1003,7 +1049,8 @@ def editar(request, pk):
         "categorias_disponibles": CategoriaServicio.objects.filter(activa=True),
         "servicios_datos_json": _servicios_datos_json(),
         "proveedores_activos": _proveedores_activos(),
-    })
+        "edicion": ctx_edicion,
+    }, status=409 if choque else 200)
 
 
 @login_required
@@ -1101,6 +1148,7 @@ def cambiar_estado(request, pk):
                 proyecto.cancelado_en = timezone.now()
                 updates.append("cancelado_en")
             proyecto.save(update_fields=updates)
+            edicion.firmar(proyecto, request.user)
             emitir(EventoPortavoz(
                 tipo="proyecto.status_cambiado",
                 actor_id=request.user.pk,
@@ -2554,6 +2602,7 @@ def deshacer(request, pk):
         return HttpResponseForbidden("Solo POST.")
     from . import services_undo
     if services_undo.deshacer(proyecto):
+        edicion.firmar(proyecto, request.user)
         emitir(EventoPortavoz(
             tipo="proyecto.actualizado",
             actor_id=request.user.pk, actor_email=request.user.email,

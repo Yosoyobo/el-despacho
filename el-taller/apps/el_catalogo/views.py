@@ -23,6 +23,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from lib import edicion
 from lib.busqueda import q_texto
 from lib.navegacion import destino_de_regreso
 from lib.permisos import puede
@@ -337,6 +338,7 @@ def servicio_celda(request, pk: int):
     else:
         return HttpResponseBadRequest("Campo no editable.")
     srv.save(update_fields=[campo, "actualizado_en"])
+    edicion.firmar(srv, request.user)
     emitir(EventoPortavoz(
         tipo="catalogo.servicio_actualizado",
         actor_id=request.user.pk,
@@ -488,6 +490,50 @@ def _navegacion_producto(request) -> dict:
     return {"breadcrumb_trail": trail, "back_url_producto": back_url}
 
 
+def _edicion_servicio(srv, form, request=None):
+    """Lo que vigila El Testigo en la ficha de un producto (S-Pendientes-Sep28
+    · Deploy 3): sus campos y lo que se guarda por fuera del form —la plantilla
+    de procesos, los insumos de la calculadora y quitar la foto—."""
+    post = request.POST if (request is not None and request.method == "POST") else None
+
+    def _procesos_posteados():
+        if post is None or "procesos_default_json" not in post:
+            return edicion.SIN_DATO
+        return edicion.lista_canonica(procesos_default.parsear(post))
+
+    def _calculadora_posteada():
+        if post is None or "calc_mano_obra" not in post:
+            return edicion.SIN_DATO
+        from apps.el_catalogo.calculadora import parsear_detalles
+        return edicion.lista_canonica(parsear_detalles(post))
+
+    quitar_foto = post is not None and post.get("imagen_quitar") == "1"
+    extras = {
+        "procesos": edicion.Extra(
+            etiqueta="Impresión y procesos adicionales",
+            actual=edicion.lista_canonica(procesos_default.normalizados(srv)),
+            posteado=_procesos_posteados,
+            legible=lambda: " · ".join(
+                f"{p.get('descripcion') or ('Impresión' if p.get('tipo') == 'impresion' else 'Proceso')} ${p.get('costo')}"
+                for p in procesos_default.parsear(post or {})) or "(ninguno)",
+        ),
+        "calculadora": edicion.Extra(
+            etiqueta="Calculadora de costos",
+            actual=edicion.lista_canonica(srv.detalles_costo or {}),
+            posteado=_calculadora_posteada,
+        ),
+        "imagen": edicion.Extra(
+            etiqueta="La foto del producto",
+            actual=srv.imagen_file_id or "",
+            posteado="" if quitar_foto else edicion.SIN_DATO,
+            legible=lambda: "La quitaste",
+        ),
+    }
+    # `proveedores_orden` es el orden de las palomitas que sale del mismo M2M:
+    # vigilar `proveedores` basta, y como campo oculto no tiene nombre que dar.
+    return edicion.Edicion(srv, form, extras=extras, ignorar=("proveedores_orden",))
+
+
 @require_http_methods(["GET", "POST"])
 def editar(request, pk: int):
     if (r := _gate(request, "editar")) is not None:
@@ -498,9 +544,13 @@ def editar(request, pk: int):
     # traían copiado del catálogo y cuáles se negociaron aparte (Bug D §14 —
     # `form.is_valid()` ya habría escrito el nuevo sobre `srv`).
     srv_costo_previo = srv.costo
+    choque = None
     if request.method == "POST":
         form = ServicioForm(request.POST, instance=srv)
-        if form.is_valid():
+        # El Testigo: antes de validar (§14 Bug D).
+        ed_srv = _edicion_servicio(srv, form, request)
+        choque = ed_srv.revisar(request)
+        if choque is None and form.is_valid():
             obj = form.save(commit=False)
             # Si no tiene editar_precios, restauramos el precio original.
             if not puede_editar_precios:
@@ -544,6 +594,7 @@ def editar(request, pk: int):
                     f"El costo nuevo se aplicó a {tocadas} línea"
                     f"{'s' if tocadas != 1 else ''} de proyectos abiertos.",
                 )
+            edicion.firmar(srv, request.user, edicion.ventana_posteada(request))
             emitir(EventoPortavoz(
                 tipo="catalogo.servicio_actualizado",
                 actor_id=request.user.pk,
@@ -558,8 +609,12 @@ def editar(request, pk: int):
             destino = reverse("catalogo-editar", args=[srv.pk])
             cola = request.META.get("QUERY_STRING", "")
             return redirect(f"{destino}?{cola}" if cola else destino)
+        ctx_edicion = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_srv.testigo_para(request),
+            choque=choque)
     else:
         form = ServicioForm(instance=srv)
+        ctx_edicion = edicion.contexto(request, testigo=_edicion_servicio(srv, form).testigo())
     # Sprint 2 UX (item 7): el detalle y la edición se unifican en este panel;
     # abajo mostramos el historial de usos (solo lectura).
     usos = (
@@ -589,7 +644,9 @@ def editar(request, pk: int):
         # LC 2026-08-22 (nota 11): navegación entre categorías desde la ficha.
         "categorias_navegacion": CategoriaServicio.objects.filter(activa=True),
         **_navegacion_producto(request),
-    })
+        # El Testigo (S-Pendientes-Sep28 · Deploy 3).
+        "edicion": ctx_edicion,
+    }, status=409 if choque else 200)
 
 
 @require_http_methods(["POST"])
@@ -1020,31 +1077,53 @@ def proveedor_detalle(request, pk: int):
     puede_editar = puede(request.user, "catalogo", "gestionar_categorias")
     es_htmx = request.headers.get("HX-Request") == "true"
 
+    choque = None
+    ctx_edicion = None
     if request.method == "POST":
         if not puede_editar:
             return HttpResponseForbidden("Sin permiso para editar proveedores.")
         form = ProveedorForm(request.POST, instance=prov, inline=True)
-        if form.is_valid():
+        # El Testigo (S-Pendientes-Sep28 · Deploy 3): antes de validar (§14 Bug D)
+        # se pregunta si guardar pisaría lo que alguien más cambió.
+        ed_prov = edicion.Edicion(prov, form)
+        choque = ed_prov.revisar(request)
+        if choque is not None:
+            ctx_edicion = edicion.contexto(request, testigo=choque.testigo, choque=choque)
+            if es_htmx:
+                return edicion.respuesta_choque_htmx(request, ctx_edicion, indicador_id="prov-guardado")
+        elif form.is_valid():
             form.save()
+            ventana = edicion.ventana_posteada(request)
+            edicion.firmar(prov, request.user, ventana)
             emitir(EventoPortavoz(
                 tipo="proveedor.actualizado",
                 actor_id=request.user.pk, actor_email=request.user.email,
                 payload={"proveedor_id": prov.pk, "campo": "detalle_inline"},
             ))
             if es_htmx:
-                return render(request, "catalogo/_proveedor_guardado_oob.html",
-                              {"proveedor": prov, "ok": True})
+                # El testigo nuevo regresa por OOB: el siguiente autoguardado de
+                # esta ventana ya no choca con lo que ella misma guardó.
+                prov.refresh_from_db()
+                fresco = edicion.Edicion(prov, ProveedorForm(instance=prov, inline=True))
+                return render(request, "catalogo/_proveedor_guardado_oob.html", {
+                    "proveedor": prov, "ok": True,
+                    "edicion": edicion.contexto(request, testigo=fresco.testigo(ventana=ventana)),
+                })
             messages.success(request, "Proveedor guardado.")
             return redirect("catalogo-proveedor-detalle", pk=prov.pk)
-        if es_htmx:
+        elif es_htmx:
             primer = next(
                 (f"{form.fields[c].label or c}: {e[0]}" for c, e in form.errors.items() if e),
                 "Revisa los campos.",
             )
             return render(request, "catalogo/_proveedor_guardado_oob.html",
                           {"proveedor": prov, "ok": False, "error_detalle": primer})
+        if ctx_edicion is None:
+            ctx_edicion = edicion.contexto(request, testigo=ed_prov.testigo_para(request))
     else:
         form = ProveedorForm(instance=prov, inline=True)
+        if puede_editar:
+            ctx_edicion = edicion.contexto(request, testigo=edicion.Edicion(prov, form).testigo())
 
     ultima_visita = None
     try:
@@ -1084,7 +1163,9 @@ def proveedor_detalle(request, pk: int):
         # Su papeleo (cotizaciones que mandó, comprobantes sin CFDI). Sale de
         # nuestra base, así que la ficha se pinta igual si el archivo está caído.
         **contexto_ficha(request.user, prov),
-    })
+        # El Testigo (S-Pendientes-Sep28 · Deploy 3).
+        "edicion": ctx_edicion,
+    }, status=409 if choque else 200)
 
 
 @require_http_methods(["GET", "POST"])
@@ -1141,10 +1222,14 @@ def proveedor_editar(request, pk: int):
     if (r := _gate(request, "gestionar_categorias")) is not None:
         return r
     prov = get_object_or_404(Proveedor, pk=pk)
+    choque = None
     if request.method == "POST":
         form = ProveedorForm(request.POST, instance=prov)
-        if form.is_valid():
+        ed_prov = edicion.Edicion(prov, form)
+        choque = ed_prov.revisar(request)   # antes de validar (§14 Bug D)
+        if choque is None and form.is_valid():
             form.save()
+            edicion.firmar(prov, request.user, edicion.ventana_posteada(request))
             emitir(EventoPortavoz(
                 tipo="proveedor.actualizado",
                 actor_id=request.user.pk, actor_email=request.user.email,
@@ -1152,9 +1237,15 @@ def proveedor_editar(request, pk: int):
             ))
             messages.success(request, "Proveedor actualizado.")
             return redirect("catalogo-proveedor-detalle", pk=prov.pk)
+        ctx_edicion = edicion.contexto(
+            request, testigo=choque.testigo if choque else ed_prov.testigo_para(request),
+            choque=choque)
     else:
         form = ProveedorForm(instance=prov)
-    return render(request, "catalogo/proveedor_form.html", {"form": form, "modo": "editar", "proveedor": prov})
+        ctx_edicion = edicion.contexto(request, testigo=edicion.Edicion(prov, form).testigo())
+    return render(request, "catalogo/proveedor_form.html",
+                  {"form": form, "modo": "editar", "proveedor": prov, "edicion": ctx_edicion},
+                  status=409 if choque else 200)
 
 
 @require_http_methods(["POST"])
