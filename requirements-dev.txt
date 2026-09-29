@@ -1,0 +1,16 @@
+# Dependencias de DESARROLLO local (el `.venv` de la Mac). No viajan a las
+# imágenes: los Dockerfiles instalan sólo `requirements.txt`.
+#
+# pytest, pytest-django, pytest-xdist, pytest-cov y openpyxl ya vienen en
+# `requirements.txt` (el CI instala sólo ese archivo para correr la suite).
+-r requirements.txt
+
+# Misma versión que el job «Ruff» de El Mensajero (`pip install ruff==…`).
+# `tests/test_requirements_dev.py` exige que coincidan: un ruff distinto marca
+# (o deja pasar) reglas distintas y el lint local deja de predecir al del CI.
+ruff==0.8.4
+
+# Para renderizar y medir pantallas en Chrome (la suite no ve layout). Usa el
+# Chrome instalado (`channel="chrome"`), así que no hace falta
+# `playwright install`. Ningún test lo importa.
+playwright==1.63.0
