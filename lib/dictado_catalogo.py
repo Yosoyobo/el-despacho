@@ -37,21 +37,21 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Crear proyecto",
         "ejemplo": 'Crea un proyecto "branding" para $noko-devs.',
         "payload": "nombre, cliente_slug, descripcion?, estado?, fecha_compromiso?, monto_estimado?, monto_cotizado?",
-        "gating": "admin",
+        "gating": "proyectos_editar",
     },
     {
         "tipo": "actualizar_proyecto",
         "titulo": "Actualizar proyecto",
         "ejemplo": "Cambia el estado de #lc-0001 a entregado.",
         "payload": "proyecto_slug, campos: {estado?, monto_cotizado?, fecha_compromiso?, descripcion?}",
-        "gating": "admin",
+        "gating": "proyectos_editar",
     },
     {
         "tipo": "asignar_usuario_proyecto",
         "titulo": "Asignar usuario a proyecto",
         "ejemplo": "Asigna a @ana como líder de #lc-0001.",
         "payload": "proyecto_slug, usuario_slug, rol_en_proyecto? (lider|disenador|produccion|revisor)",
-        "gating": "admin",
+        "gating": "proyectos_editar",
     },
     {
         "tipo": "agregar_producto_proyecto",
@@ -354,21 +354,21 @@ COMANDOS_DICTADO: list[dict] = [
         "titulo": "Duplicar proyecto",
         "ejemplo": 'Duplica #lc-0001 como "Campaña 2".',
         "payload": "proyecto_slug, nombre? (del duplicado)",
-        "gating": "admin",
+        "gating": "proyectos_editar",
     },
     {
         "tipo": "quitar_producto_proyecto",
         "titulo": "Quitar producto de un proyecto",
         "ejemplo": "Quita las playeras de #lc-0001.",
         "payload": "proyecto_slug, producto (nombre del servicio) | producto_id (pk de la línea)",
-        "gating": "admin",
+        "gating": "proyectos_editar",
     },
     {
         "tipo": "archivar_proyecto",
         "titulo": "Archivar (o restaurar) proyecto",
         "ejemplo": 'Archiva #lc-0001. O: "restaura #lc-0001".',
         "payload": "proyecto_slug, restaurar? (bool: true = desarchiva). Reversible; NO borra.",
-        "gating": "admin",
+        "gating": "proyectos_archivar",
     },
     {
         "tipo": "archivar_cliente",
@@ -538,7 +538,11 @@ def _gating_checks():
     return {
         "abierto": lambda u: True,
         # S-Chalan-Barrido: gating granular para crear entidades.
-        "admin": permisos.es_admin,
+        # S-Deuda-Permisos: antes "admin" → `es_admin` (por rol). Crear, editar,
+        # asignar y duplicar proyectos es `proyectos.editar`; archivar,
+        # `proyectos.archivar` — los mismos permisos que en pantalla.
+        "proyectos_editar": permisos.puede_gestionar_proyectos,
+        "proyectos_archivar": permisos.puede_archivar_proyecto,
         "cartera": permisos.puede_editar_cartera,
         "catalogo": permisos.puede_crear_catalogo,
         # LC #153: editar productos del Catálogo (además de crear).

@@ -153,10 +153,6 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         return self.nombre_completo.split()[0] if self.nombre_completo else self.email
 
     @property
-    def es_admin(self):
-        return self.rol in ("super_admin", "dueno")
-
-    @property
     def es_super_admin(self):
         return self.rol == "super_admin"
 

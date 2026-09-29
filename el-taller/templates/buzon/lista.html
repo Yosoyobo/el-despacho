@@ -95,7 +95,7 @@ En móvil colapsa a una columna: lista arriba, detalle abajo.{% endcomment %}
             </select>
             <button type="submit" name="accion" value="estado_destino" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">Aplicar estado</button>
         </div>
-        {% if request.user|tiene_rol:"super_admin,dueno" %}
+        {% if puede_eliminar_buzon %}
         <span class="mx-0.5 h-5 w-px bg-brand-200 dark:bg-brand-500/30"></span>
         <button type="submit" name="accion" value="eliminar" class="rounded-lg bg-error-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-error-600"
                 onclick="return confirm('¿Eliminar los mensajes seleccionados? Esta acción no se puede deshacer.');">Eliminar</button>

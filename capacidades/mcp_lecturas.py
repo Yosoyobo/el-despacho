@@ -19,12 +19,12 @@ from typing import Any
 
 from django.db.models import Q, QuerySet
 
-from lib.permisos import puede, roles_efectivos, tiene_rol
+from lib.permisos import puede, puede_ver_todos_proyectos, tiene_rol
 
 LIMITE_MAXIMO = 100
 
-# Roles con visibilidad amplia (ven todos los proyectos/tareas, no sólo los suyos).
-_ROLES_AMPLIOS = {"super_admin", "dueno", "contador"}
+# Quién ve TODOS los proyectos/tareas (no sólo los suyos) lo decide
+# `proyectos.ver_todos` (S-Deuda-Permisos; antes, un set de roles).
 
 
 def _limite(valor) -> int:
@@ -42,7 +42,7 @@ def _proyectos_visibles(usuario) -> QuerySet:
     from apps.los_proyectos.models import Proyecto
 
     qs = Proyecto.objects.select_related("cliente")
-    if roles_efectivos(usuario) & _ROLES_AMPLIOS:
+    if puede_ver_todos_proyectos(usuario):
         return qs
     return qs.filter(asignaciones__usuario=usuario).distinct()
 
@@ -51,7 +51,7 @@ def _tareas_visibles(usuario) -> QuerySet:
     from apps.el_pizarron.models import Tarea
 
     qs = Tarea.objects.select_related("proyecto", "proyecto__cliente", "asignada_a", "runner")
-    if roles_efectivos(usuario) & _ROLES_AMPLIOS:
+    if puede_ver_todos_proyectos(usuario):
         return qs
     return qs.filter(
         Q(asignada_a=usuario)

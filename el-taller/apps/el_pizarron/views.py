@@ -13,11 +13,13 @@ from django.utils.html import format_html
 
 from lib.busqueda import q_texto
 from lib.permisos import (
-    es_admin,
+    puede_comentar_interno,
+    puede_eliminar_tarea,
     puede_ver_comentario,
-    puede_ver_finanzas,
     puede_ver_proyecto,
     puede_ver_tarea,
+    puede_ver_todos_mandados,
+    puede_ver_todos_proyectos,
 )
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
@@ -171,7 +173,7 @@ def lista_tareas(request):
     from django.utils import timezone
 
     user = request.user
-    ve_todo = es_admin(user) or puede_ver_finanzas(user)
+    ve_todo = puede_ver_todos_proyectos(user)
     visibles = Tarea.objects.select_related("proyecto", "asignada_a", "proyecto__cliente")
     if not ve_todo:
         visibles = visibles.filter(
@@ -226,7 +228,7 @@ def lista_tareas(request):
 def _tareas_visibles(user):
     from django.db.models import Q
     visibles = Tarea.objects.select_related("proyecto", "asignada_a", "runner", "proyecto__cliente")
-    if not (es_admin(user) or puede_ver_finanzas(user)):
+    if not puede_ver_todos_proyectos(user):
         # S-LC-Proyecto-V2: incluye tareas donde el usuario es el runner.
         visibles = visibles.filter(
             Q(asignada_a=user) | Q(responsables=user) | Q(runner=user)
@@ -255,7 +257,7 @@ def kanban_tareas(request):
     from apps.el_pizarron.models.estado_tarea import EstadoTarea
     from django.db.models import Q
 
-    from lib.permisos import puede_ser_runner, roles_efectivos
+    from lib.permisos import puede_ser_runner, puede_ver_proyectos_asignados
 
     user = request.user
     visibles = _tareas_visibles(user)
@@ -279,11 +281,9 @@ def kanban_tareas(request):
     if cat not in {"todas", "general", "mandados"}:
         cat = "todas"
 
-    # Runner sin rol amplio: SOLO ve sus mandados (entrega/recoger asignados a él).
-    roles = roles_efectivos(user)
-    es_runner_only = puede_ser_runner(user) and not (
-        roles & {"super_admin", "dueno", "contador", "disenador"}
-    )
+    # Runner que no ve proyectos: SOLO ve sus mandados (entrega/recoger
+    # asignados a él). Antes: «runner sin ninguno de los cuatro roles».
+    es_runner_only = puede_ser_runner(user) and not puede_ver_proyectos_asignados(user)
     if es_runner_only:
         cat = "mandados"
         visibles = visibles.filter(Q(asignada_a=user) | Q(runner=user)).distinct()
@@ -541,7 +541,7 @@ def detalle_tarea(request, pk):
         tarea.comentarios.select_related("autor"),
     )
     puede_ed = puede_ver_proyecto(request.user, tarea.proyecto)
-    puede_eliminar = es_admin(request.user) or tarea.creado_por_id == request.user.pk
+    puede_eliminar = puede_eliminar_tarea(request.user, tarea)
     responsables = tarea.responsables_todos
     responsables_txt = ", ".join(u.nombre_completo for u in responsables) or "—"
     info_clasificacion = [
@@ -568,7 +568,7 @@ def detalle_tarea(request, pk):
         "comentarios": comentarios,
         "puede_editar": puede_ed,
         "puede_eliminar": puede_eliminar,
-        "es_admin": es_admin(request.user),
+        "puede_comentar_interno": puede_comentar_interno(request.user),
         "info_clasificacion": info_clasificacion,
         "info_proyecto": info_proyecto,
         "action_bar_meta": action_bar_meta,
@@ -579,9 +579,9 @@ def detalle_tarea(request, pk):
 @login_required
 def eliminar_tarea(request, pk):
     """Elimina PERMANENTEMENTE una tarea (LC 2026-07). Antes solo se archivaba
-    (completaba). Gate: admin (super_admin/dueño) o quien la creó. POST puro."""
+    (completaba). Gate: quien la creó o `pizarron.eliminar`. POST puro."""
     tarea = get_object_or_404(Tarea.objects.select_related("proyecto"), pk=pk)
-    if not (es_admin(request.user) or tarea.creado_por_id == request.user.pk):
+    if not puede_eliminar_tarea(request.user, tarea):
         return HttpResponseForbidden("Sin permiso para eliminar la tarea.")
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -748,8 +748,8 @@ def comentar_tarea(request, pk):
         c.tarea = tarea
         c.autor = request.user
         c.cuerpo = sanear_contexto(c.cuerpo)
-        # Diseñadores no pueden marcar comentarios como internos (privilegio admin/contador).
-        if not es_admin(request.user) and getattr(request.user, "rol", None) != "contador":
+        # Marcar como interno pide `pizarron.comentar_interno`.
+        if not puede_comentar_interno(request.user):
             c.es_interno = False
         c.save()
         _sincronizar_menciones_comentario(c, request.user, "comentario_tarea")
@@ -779,7 +779,7 @@ def comentar_proyecto(request, proyecto_id):
         c.proyecto = proyecto
         c.autor = request.user
         c.cuerpo = sanear_contexto(c.cuerpo)
-        if not es_admin(request.user) and getattr(request.user, "rol", None) != "contador":
+        if not puede_comentar_interno(request.user):
             c.es_interno = False
         c.save()
         _sincronizar_menciones_comentario(c, request.user, "comentario_proyecto")
@@ -841,7 +841,7 @@ def _ctx_tablero_mandados(request, *, base: str, param: str = "estado") -> dict:
         "mandados": mandados,
         "chips": chips,
         "total": len(mandados),
-        "puede_admin": es_admin(request.user),
+        "puede_admin": puede_ver_todos_mandados(request.user),
     }
 
 

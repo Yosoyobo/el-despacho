@@ -247,15 +247,16 @@ def notificar_involucrados(mandado, evento: str, *, actor=None):
 
 
 def mandados_visibles(user):
-    """Mandados que el usuario puede ver: si es admin, todos; si no, donde es
-    runner o asignado/creador de la tarea. QS con select_related listo."""
+    """Mandados que el usuario puede ver: con `pizarron.ver_todos_mandados`,
+    todos; si no, donde es runner o asignado/creador de la tarea. QS con
+    select_related listo."""
     from apps.el_pizarron.models.mandado import Mandado
 
-    from lib.permisos import es_admin
+    from lib.permisos import puede_ver_todos_mandados
     qs = Mandado.objects.select_related(
         "tarea", "tarea__proyecto", "tarea__proyecto__cliente", "tarea__runner",
     )
-    if es_admin(user):
+    if puede_ver_todos_mandados(user):
         return qs
     from django.db.models import Q
     return qs.filter(

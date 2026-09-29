@@ -26,11 +26,12 @@ def registrar(*, proyecto, tipo: str, descripcion: str, actor=None, url: str = "
 
 def feed_para(usuario, limite: int = 50):
     """Actividad de los proyectos donde el usuario es asignado (cualquier rol).
-    Para el tab Actividad de Recados. Admins ven todo."""
-    from lib.permisos import es_admin
+    Para el tab Actividad de Recados. Quien gestiona proyectos
+    (`proyectos.editar`) ve la de todos."""
+    from lib.permisos import puede_gestionar_proyectos
 
     from .models import ActividadProyecto
     qs = ActividadProyecto.objects.select_related("proyecto", "actor")
-    if not es_admin(usuario):
+    if not puede_gestionar_proyectos(usuario):
         qs = qs.filter(proyecto__asignaciones__usuario=usuario).distinct()
     return list(qs[:limite])

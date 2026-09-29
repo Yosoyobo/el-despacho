@@ -18,7 +18,7 @@ from lib.portavoz_eventos import EventoPortavoz
 from lib.site import almacen, caddy, contenedores, droplet, host, internos, postgres, redis_status
 from lib.site.registry import PLATAFORMAS, chequear
 
-from ..permissions import SoloSuperAdminOdueno
+from ..permissions import PuedeApiSite
 
 _PlatSerializer = inline_serializer(
     name="ChequeoPlataforma",
@@ -31,7 +31,7 @@ _PlatSerializer = inline_serializer(
 
 
 class SiteSnapshot(APIView):
-    permission_classes = [SoloSuperAdminOdueno]
+    permission_classes = [PuedeApiSite]
 
     @extend_schema(
         summary="Snapshot completo de El Site",
@@ -60,7 +60,7 @@ class SiteSnapshot(APIView):
 
 
 class SiteProbarPlataforma(APIView):
-    permission_classes = [SoloSuperAdminOdueno]
+    permission_classes = [PuedeApiSite]
 
     @extend_schema(
         summary="Re-chequea una plataforma",
@@ -102,7 +102,7 @@ class SiteProbarPlataforma(APIView):
 
 
 class SiteProbarTodas(APIView):
-    permission_classes = [SoloSuperAdminOdueno]
+    permission_classes = [PuedeApiSite]
 
     @extend_schema(
         summary="Re-chequea todas las plataformas",

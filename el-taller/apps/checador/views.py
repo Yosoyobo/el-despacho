@@ -273,10 +273,9 @@ def _proyectos_para(user):
     """Proyectos que el usuario puede ver (para el selector del timer)."""
     from apps.los_proyectos.models import Proyecto
 
-    from lib.permisos import roles_efectivos
-    roles = roles_efectivos(user)
+    from lib.permisos import solo_proyectos_asignados
     qs = Proyecto.objects.all()
-    if "disenador" in roles and not (roles & {"super_admin", "dueno", "contador"}):
+    if solo_proyectos_asignados(user):
         qs = qs.filter(asignaciones__usuario=user).distinct()
     return qs.order_by("codigo")
 
