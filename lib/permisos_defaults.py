@@ -68,6 +68,18 @@ TODO_ANALISIS = ["ver"]
 # supervisión (ver equipo, aprobar correcciones, configurar horarios,
 # exportar) son de admin.
 TODO_CHECADOR = ["checar", "ver_equipo", "aprobar_correcciones", "configurar_horarios", "exportar"]
+# S-Checador-V2 (2026-09-29): La Nómina interna quincenal de sueldo fijo. Va en
+# un módulo propio y no dentro de `checador` porque enseña DINERO de cada
+# persona: checar lo trae todo el staff; esto, sólo quien lleva la nómina.
+#   ver     → la lista de quincenas, los recibos de todos, el CSV y los PDF
+#   editar  → abrir/calcular/recalcular una quincena, editar recibos, préstamos
+#   cerrar  → cerrar la quincena (el saldo de los préstamos baja aquí)
+#   pagar   → marcar un recibo pagado (salda en Tesorería sus reembolsos)
+#   sueldos → capturar y cambiar el sueldo de cada quien
+# «Como hoy» (decisión Oscar): nace para super_admin, dueño y contador. La
+# migración `checador/0010_seed_permisos_nomina` lo siembra por persona.
+# Cada quien ve SUS recibos cerrados sin este permiso (Mi Checador).
+TODO_NOMINA = ["ver", "editar", "cerrar", "pagar", "sueldos"]
 # V6 Bloque 7: Comunicaciones — correos a clientes vía El Chalán y campañas
 # masivas. Default SOLO super_admin (decisión Oscar: gating 100% granular,
 # el resto lo recibe vía la grilla de permisos o roles personalizados).
@@ -165,6 +177,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # despacho. Se delega por usuario desde El Directorio.
         "analisis": list(TODO_ANALISIS),
         "checador": list(TODO_CHECADOR),
+        "nomina": list(TODO_NOMINA),
         "comunicacion": list(TODO_COMUNICACION),
         "rutas": list(TODO_RUTAS),
         "papeleo": list(TODO_PAPELEO),
@@ -204,6 +217,7 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "caja": list(TODO_CAJA),
         "chalan": list(TODO_CHALAN),
         "checador": list(TODO_CHECADOR),
+        "nomina": list(TODO_NOMINA),
         # S-LC-Feedback-V5 c5: dueno entra a La Gerencia por default.
         "gerencia": ["acceder"],
         # S-LC-Feedback-V10: dueno conserva exactamente lo que ya alcanzaba —
@@ -240,6 +254,8 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
         # no aprueba correcciones ni configura horarios.
         "checador": ["checar", "ver_equipo", "exportar"],
+        # El contador lleva la nómina (la captura y la cierra) — decisión Oscar.
+        "nomina": list(TODO_NOMINA),
         "equipo": list(TODO_EQUIPO),
     },
     "disenador": {
@@ -294,6 +310,8 @@ CATALOGO_PERMISOS: dict[str, list[str]] = {
     # S-Deuda-Sep28 por el candado que cruza los dos diccionarios.
     "analisis": list(TODO_ANALISIS),
     "checador": list(TODO_CHECADOR),
+    # La Nómina interna (sueldos, quincenas, recibos, préstamos).
+    "nomina": list(TODO_NOMINA),
     "comunicacion": list(TODO_COMUNICACION),
     # runner: ya no es default de ningún rol; se concede vía el rol "Runner"
     # (opt-in). Permanece en el catálogo para poder marcarlo en el editor de roles.
