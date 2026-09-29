@@ -1,0 +1,57 @@
+{% extends "imprenta/documento.html" %}
+{% load forms_helpers imprenta %}
+{% comment %}Estado de cuenta de un cliente (La Imprenta): las facturas con saldo,
+las pagadas recientes, los pagos y el saldo a la fecha de corte.{% endcomment %}
+{% block derecha %}
+<div style="font-weight:bold; {{ e.total }}">ESTADO DE CUENTA</div>
+<div style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">Corte al {{ corte|date:"d/m/Y" }}</div>
+{% endblock %}
+{% block cuerpo %}
+<p style="margin:0 0 8pt 0; font-weight:bold;">{{ cliente.razon_social }}{% if cliente.rfc %} · RFC {{ cliente.rfc }}{% endif %}</p>
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  <tr>
+    <td style="{{ e.th }} text-align:left; {{ e.th_letra }}">{{ r.folio }}</td>
+    <td style="{{ e.th }} width:13%; text-align:left; {{ e.th_letra }}">{{ r.emision }}</td>
+    <td style="{{ e.th }} width:13%; text-align:left; {{ e.th_letra }}">{{ r.vence }}</td>
+    <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.total }}</td>
+    <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.cobrado }}</td>
+    <td style="{{ e.th }} width:16%; text-align:right; {{ e.th_letra }}">{{ r.saldo }}</td>
+  </tr>
+  {% for x in filas %}
+  <tr style="{{ e|rayado:forloop.counter }}">
+    <td style="{{ e.td }} text-align:left;">{% firstof x.f.folio x.f.codigo %}{% if x.f.concepto %} · {{ x.f.concepto|truncatechars:40 }}{% endif %}</td>
+    <td style="{{ e.td }} text-align:left;">{{ x.f.fecha_emision|date:"d/m/Y" }}</td>
+    <td style="{{ e.td }} text-align:left;{% if x.vencida %} font-weight:bold; color:#d92d20;{% endif %}">{{ x.f.fecha_vencimiento|date:"d/m/Y" }}</td>
+    <td style="{{ e.td }} text-align:right;">{{ x.total|dinero }}</td>
+    <td style="{{ e.td }} text-align:right;">{{ x.cobrado|dinero }}</td>
+    <td style="{{ e.td }} text-align:right;">{{ x.saldo|dinero }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6" style="{{ e.td }} {{ e.suave_css }}">Sin facturas con saldo.</td></tr>
+  {% endfor %}
+</table>
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none; margin-bottom:12pt;">
+  <tr><td style="border:none; width:55%;">&nbsp;</td><td style="border:none;">
+    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; border:none;">
+      <tr><td style="border:none; padding:3pt 5pt; font-weight:bold; {{ e.total }}">{{ r.rotulo_saldo }}</td>
+          <td style="border:none; padding:3pt 5pt; text-align:right; font-weight:bold; {{ e.total }}">{{ saldo|dinero }}</td></tr>
+      {% if b.vencido and vencido %}
+      <tr><td style="border:none; padding:1pt 5pt; color:#d92d20;">Vencido</td>
+          <td style="border:none; padding:1pt 5pt; text-align:right; color:#d92d20;">{{ vencido|dinero }}</td></tr>
+      {% endif %}
+    </table>
+  </td></tr>
+</table>
+{% if b.pagos and pagos %}
+<p style="margin:0 0 4pt 0; font-size:{{ e.tabla_pt }}pt; font-weight:bold;">{{ r.rotulo_pagos }} <span style="font-weight:normal; {{ e.suave_css }}">(últimos {{ dias }} días)</span></p>
+<table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:10pt; font-size:{{ e.tabla_pt }}pt;">
+  {% for i in pagos %}
+  <tr style="{{ e|rayado:forloop.counter }}">
+    <td style="{{ e.td }} width:15%;">{{ i.fecha|date:"d/m/Y" }}</td>
+    <td style="{{ e.td }}">{{ i.descripcion }}{% if i.factura %} · {% firstof i.factura.folio i.factura.codigo %}{% endif %}</td>
+    <td style="{{ e.td }} width:18%; text-align:right;">{{ i.monto|dinero }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

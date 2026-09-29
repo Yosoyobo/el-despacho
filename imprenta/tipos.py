@@ -134,6 +134,9 @@ class Adaptador:
     ejemplos: Callable[[int], list[tuple[int, str]]]
     html: Callable[..., str]
     pagina: Callable[..., dict]
+    #: Quién puede ver documentos REALES de este tipo (la vista previa de La
+    #: Gerencia enseña montos y datos de clientes: sólo a quien ya los ve).
+    puede: Callable[[object], bool] = lambda usuario: False
 
 
 def _cot_ejemplos(limite: int = 15) -> list[tuple[int, str]]:
@@ -183,10 +186,47 @@ def _fac_pagina(pk: int, config) -> dict:
     return services.pagina_documento(Factura.objects.get(pk=pk), config=config)
 
 
+def _puede_cot(usuario) -> bool:
+    from lib import permisos
+
+    return permisos.puede_ver_cotizaciones(usuario)
+
+
+def _puede_fac(usuario) -> bool:
+    from lib import permisos
+
+    return permisos.puede_ver_facturacion(usuario)
+
+
+def _adaptador_de(doc) -> Adaptador:
+    """El adaptador de un `imprenta.documentos.base.Documento`: todos iguales."""
+    from .documentos import base
+
+    def html(pk, cfg, preview=True, **kwargs):
+        return base.dibujar(doc, doc.obtener(pk), cfg, preview=preview, **kwargs)
+
+    def pagina(pk, cfg):
+        return base.pagina(doc, doc.obtener(pk), cfg)
+
+    return Adaptador(doc.ejemplos, html, pagina, puede=lambda u: doc.puede(u, None))
+
+
+def _documentos() -> dict:
+    from .documentos.cartera import ESTADO_CUENTA
+    from .documentos.proyectos import ORDEN_TRABAJO, REMISION
+    from .documentos.tesoreria import RECIBO, REEMBOLSO
+
+    return {d.slug: d for d in (RECIBO, ESTADO_CUENTA, REMISION, ORDEN_TRABAJO, REEMBOLSO)}
+
+
+#: slug → `Documento` de los tipos nuevos (Deploy 3 en adelante).
+DOCUMENTOS = _documentos()
+
 #: slug → (definición, adaptador). El orden es el de las pestañas.
 TIPOS: dict[str, tuple[DefinicionTipo, Adaptador]] = {
-    "cotizacion": (COTIZACION, Adaptador(_cot_ejemplos, _cot_html, _cot_pagina)),
-    "factura": (FACTURA, Adaptador(_fac_ejemplos, _fac_html, _fac_pagina)),
+    "cotizacion": (COTIZACION, Adaptador(_cot_ejemplos, _cot_html, _cot_pagina, puede=_puede_cot)),
+    "factura": (FACTURA, Adaptador(_fac_ejemplos, _fac_html, _fac_pagina, puede=_puede_fac)),
+    **{slug: (doc.definicion, _adaptador_de(doc)) for slug, doc in DOCUMENTOS.items()},
 }
 
 
@@ -200,15 +240,22 @@ def adaptador(slug: str) -> Adaptador | None:
     return par[1] if par else None
 
 
-def ejemplos(slug: str, limite: int = 15) -> list[tuple[int, str]]:
-    """Documentos reales para la vista previa. [] si la app no está aquí."""
+def ejemplos(slug: str, limite: int = 15, usuario=None) -> list[tuple[int, str]]:
+    """Documentos reales para la vista previa. [] si la app no está aquí o si
+    `usuario` no puede ver documentos de ese tipo."""
     ad = adaptador(slug)
     if ad is None:
         return []
+    if usuario is not None:
+        try:
+            if not ad.puede(usuario):
+                return []
+        except Exception:  # noqa: BLE001
+            return []
     try:
         return ad.ejemplos(limite)
     except Exception:  # noqa: BLE001 — sin la app o sin tabla, no hay ejemplos
         return []
 
 
-__all__ = ["COTIZACION", "FACTURA", "NOTAS_COTIZACION", "TIPOS", "Adaptador", "adaptador", "definicion", "ejemplos"]
+__all__ = ["COTIZACION", "DOCUMENTOS", "FACTURA", "NOTAS_COTIZACION", "TIPOS", "Adaptador", "adaptador", "definicion", "ejemplos"]

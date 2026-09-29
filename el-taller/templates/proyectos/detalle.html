@@ -424,6 +424,8 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
         {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" with clase_extra="order-10 xl:order-none" %}{% endif %}
         {# ── Papeleo del proyecto (remisiones, contratos) ── #}
         {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" with clase_extra="order-11 xl:order-none" %}{% endif %}
+        {# ── Documentos del proyecto: remisión y orden de trabajo (La Imprenta) ── #}
+        {% include "proyectos/_documentos_panel.html" with clase_extra="order-12 xl:order-none" %}
     </aside>
 </form>
 
@@ -467,6 +469,8 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
         {% if permisos_modulos.facturacion %}{% include "proyectos/_facturas_panel.html" with clase_extra="order-10 xl:order-none" %}{% endif %}
         {# ── Papeleo del proyecto (remisiones, contratos) ── #}
         {% if puede_ver_papeleo %}{% include "papeleo/_recuadro.html" with clase_extra="order-11 xl:order-none" %}{% endif %}
+        {# ── Documentos del proyecto: remisión y orden de trabajo (La Imprenta) ── #}
+        {% include "proyectos/_documentos_panel.html" with clase_extra="order-12 xl:order-none" %}
     </aside>
 </div>
 {% endif %}

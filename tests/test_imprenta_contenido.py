@@ -293,3 +293,4 @@ def test_el_chalan_da_el_enlace_del_pdf(jefe, cot, fac, usuario_factory):
     miembro = usuario_factory(rol="miembro")
     r = capacidades.ejecutar("enlace_documento", {"tipo": "factura", "codigo": "F12"}, miembro)
     assert "error" in r and "permiso" in r["error"]
+    assert "pdf" not in r

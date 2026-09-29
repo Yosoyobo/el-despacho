@@ -13619,3 +13619,12 @@ diferencias. 45 KPIs nuevos (agente en paralelo). La foto diaria nunca había gu
 los KPIs de dinero (se saltaba el texto): arreglado. El Chalán: metas_kpi,
 mi_tablero_kpis, configuracion_kpi y fijar_meta_kpi; serie_kpi ya no filtra historia
 ajena. Permiso kpis.configurar sembrado «como hoy». Siguiente: el constructor (fase 3).
+
+## 2026-09-29 — S-Imprenta · Deploy 3 (VERSION 2026.09.18)
+
+Cinco documentos nuevos en PDF con el formato de La Imprenta: recibo de pago (con el
+monto en letra), estado de cuenta del cliente, remisión y orden de trabajo del
+proyecto, y comprobante de reembolso. Una sola vista en El Taller con el permiso de
+cada módulo; botones en ingreso, gasto, cliente y proyecto. Se cerró una fuga: la
+vista previa de La Gerencia ya sólo ofrece documentos de los módulos que la persona
+ve. El Chalán da el enlace de todos. Tercer deploy de 4.
