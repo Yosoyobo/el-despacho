@@ -177,6 +177,22 @@ COMANDOS_DICTADO: list[dict] = [
         "payload": "codigo, campos: {concepto?, monto? (importe FINAL con impuestos) | monto_base? (antes de impuestos), fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}. Solo en borrador; el monto deja UNA línea-concepto",
         "gating": "facturacion_editar",
     },
+    # S-Pendientes-Sep28: resolver los CFDI que llegaron por correo. Siempre
+    # propuesta — una persona confirma antes de que se registre nada.
+    {
+        "tipo": "registrar_egreso_desde_cfdi",
+        "titulo": "Registrar el egreso de un CFDI de proveedor",
+        "ejemplo": "Registra el egreso de la factura A-1234 de Simil Cuero Plymouth que llegó por correo.",
+        "payload": "cfdi (folio fiscal o serie-folio), egreso_codigo? (si ya existe un egreso de ese gasto, lígalo en vez de crear otro), crear_nuevo? (true sólo si de verdad es otro gasto), proveedor? (nombre o @accion_N si su RFC no está en el catálogo), centro_de_costo_slug?, metodo?, estado_pago?, proyecto_slug?, pagado_por_slug?, descripcion?, fecha?. El monto es el TOTAL del comprobante, con IVA; consulta `cfdi_pendientes` antes para no inventar el folio",
+        "gating": "finanzas",
+    },
+    {
+        "tipo": "ligar_cfdi_a_factura",
+        "titulo": "Ligar un CFDI nuestro a su factura",
+        "ejemplo": "El CFDI de Optimist por $1,160 que quedó pendiente es de la factura F-106.",
+        "payload": "cfdi (folio fiscal o serie-folio), factura_codigo (FAC-… o el folio F-…). El XML y el folio fiscal quedan guardados en la factura",
+        "gating": "facturacion_editar",
+    },
     {
         "tipo": "reembolsar_egreso",
         "titulo": "Reembolsar egreso",
@@ -553,6 +569,7 @@ CONSULTAS_CHAT: list[dict] = [
     {"nombre": "rentabilidad_proyecto", "que": "La cuenta de UN proyecto: ingreso, costo, utilidad, margen y horas de mano de obra (requiere permiso de Finanzas). Pregunta: «¿cuánto dejó el proyecto de las gorras?»."},
     {"nombre": "resumen_perdidos", "que": "Lo que se perdió: cotizaciones caídas y su monto, proyectos cancelados con su motivo, propuestas enfriadas sin respuesta y trabajos que se ganaron pero dejaron pérdida (requiere permiso de Cotizaciones). Pregunta: «¿por qué estamos perdiendo trabajos?»."},
     {"nombre": "resumen_clientes", "que": "Quién deja más dinero, quién debe más, quién dejó de comprar y el ticket promedio (requiere permiso de Clientes). Pregunta: «¿cuáles son mis mejores clientes?»."},
+    {"nombre": "cfdi_pendientes", "que": "Los CFDI que llegaron por correo y esperan que alguien decida: de quién son, por cuánto, por qué no se ligaron solos, qué proveedor o factura parece ser y si ya hay un egreso que casa (requiere permiso de Finanzas). Pregunta: «¿qué facturas de proveedores faltan por registrar?». Para resolverlos, El Chalán propone `registrar_egreso_desde_cfdi` o `ligar_cfdi_a_factura` y tú confirmas."},
     {"nombre": "resumen_proveedores", "que": "A quién se le compra más, cuánto se le debe y qué egresos quedaron sin proveedor (requiere permiso de Finanzas). Pregunta: «¿a quién le debemos más?»."},
     {"nombre": "resumen_equipo", "que": "Carga y cumplimiento: tareas pendientes y atrasadas por persona, y horas de la semana — sólo de la gente que tú puedes ver. Pregunta: «¿quién está saturado?» o «¿qué se está entregando tarde?»."},
     {"nombre": "resumen_ia", "que": "Cuánto cuestan Los Chalanes en 30 días, repartido por Chalán, y qué tan seguido fallan los dictados (requiere permiso de Finanzas). Pregunta: «¿cuánto llevamos gastado en IA?»."},

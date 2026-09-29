@@ -42,6 +42,7 @@ from . import (  # noqa: F401, E402 — registra ejecutores al importar
     avanzados,
     basicos,
     catalogo,
+    cfdi,
     checador,
     cui_v1,
     edicion_financiera,

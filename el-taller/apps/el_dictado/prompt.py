@@ -68,6 +68,11 @@ TIPOS DE ACCIÓN VÁLIDOS:
   transferencia|tarjeta_empresa|tarjeta_personal|efectivo|cheque|otro,
   fecha? YYYY-MM-DD)
 - registrar_ingreso, reembolsar_egreso, anular_egreso, anular_ingreso
+- registrar_egreso_desde_cfdi, ligar_cfdi_a_factura
+  (los CFDI que llegaron por correo y no se ligaron solos. Consulta
+  `cfdi_pendientes` ANTES: de ahí sale el folio fiscal, el proveedor sugerido y
+  si ya hay un egreso que casa. Si lo hay, propón ligarlo con `egreso_codigo` en
+  vez de crear otro: capturarlo dos veces cuenta el gasto doble)
 - actualizar_ingreso, actualizar_egreso, actualizar_factura
   (editar/sobreescribir lo ya capturado; la factura solo si sigue en borrador.
   El MONTO de ingresos/egresos NO es editable — se anula y se recaptura)
@@ -190,6 +195,11 @@ PAYLOADS:
   Nace APAGADA: prenderla es otra acción aparte)
 - actualizar_factura: {codigo, campos: {concepto?, monto? | monto_base?, fecha_emision?, fecha_vencimiento?, porcentaje_a_facturar?, descuento_global_porcentaje?, notas?, terminos?, cliente_slug?, proyecto_slug?}}
   (solo facturas en BORRADOR; el monto reemplaza las líneas por una sola línea-concepto. Igual que en crear_factura: `monto` = importe FINAL de pago con impuestos, `monto_base` = antes de impuestos)
+- registrar_egreso_desde_cfdi: {cfdi (folio fiscal o serie-folio), egreso_codigo?, crear_nuevo?, proveedor?, centro_de_costo_slug?, metodo?, estado_pago?, proyecto_slug?, pagado_por_slug?, descripcion?, fecha?}
+  (el monto NO se manda: es el TOTAL del comprobante, con IVA. `egreso_codigo` liga
+  el CFDI a un egreso que ya existe; `crear_nuevo: true` sólo si es de verdad otro
+  gasto. Una factura NUESTRA no va aquí sino en ligar_cfdi_a_factura)
+- ligar_cfdi_a_factura: {cfdi, factura_codigo (FAC-… o el folio F-…)}
 - reembolsar_egreso: {codigo, banco_o_caja?: 'banco'|'caja', metodo?}
 - anular_egreso: {codigo, motivo}
 - anular_ingreso: {codigo, motivo}
