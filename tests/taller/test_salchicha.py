@@ -1,4 +1,4 @@
-"""La Salchicha — easter egg de los buscadores (no se documenta en Novedades)."""
+"""La Salchicha — easter egg de los campos de texto (no se documenta en Novedades)."""
 
 from __future__ import annotations
 
