@@ -1,19 +1,24 @@
-/* La Salchicha — easter egg de los buscadores de El Taller.
+/* La Salchicha — easter egg de los campos de texto de El Taller.
  *
- * LC 2026-09-30 (Oscar): escribir «hotdog» en cualquier buscador lo vuelve una
- * salchicha dentro de su pan; al borrarlo regresa a la normalidad. Es un easter
- * egg: NO va en Novedades, en el manual ni en El Chalán.
+ * LC 2026-09-30 (Oscar): escribir «hotdog» en cualquier campo de texto
+ * (buscadores, formularios, la caja de El Chalán) lo vuelve una salchicha
+ * dentro de su pan; al borrarlo regresa a la normalidad. Es un easter egg: NO
+ * va en Novedades, en el manual ni en El Chalán.
  *
  * Todo vive aquí (estilos incluidos) para no tocar `input.css`. Escucha por
- * delegación, así que alcanza también a los buscadores que llegan por HTMX.
+ * delegación, así que alcanza también a los campos que llegan por HTMX.
  */
 (function () {
     'use strict';
 
     var PALABRAS = { hotdog: 1, hotdogs: 1, perrocaliente: 1, perroscalientes: 1 };
 
+    // Nunca contraseñas: sólo lo que se escribe a la vista.
+    var CAMPOS = 'textarea, input:not([type]), input[type="text"], input[type="search"], ' +
+        'input[type="email"], input[type="url"], input[type="tel"]';
+
     var CSS = [
-        'input.salchicha{',
+        '.salchicha{',
         '  color:#fff!important;caret-color:#fff;border-color:transparent!important;',
         '  border-radius:9999px!important;text-shadow:0 1px 1px rgba(60,15,0,.45);',
         '  background:',
@@ -31,46 +36,63 @@
         '    0 12px 18px 8px rgba(0,0,0,.18)!important;',
         '  animation:salchicha-brinca .5s cubic-bezier(.3,1.6,.5,1);',
         '}',
-        'input.salchicha::placeholder{color:rgba(255,236,224,.8)!important}',
-        'input.salchicha::-webkit-search-cancel-button{filter:brightness(0) invert(1)}',
+        // Una caja de varias líneas no cabe en una píldora: las esquinas se comerían el texto.
+        'textarea.salchicha{border-radius:1.75rem!important;padding-left:1.1rem!important;padding-right:1.1rem!important}',
+        '.salchicha::placeholder{color:rgba(255,236,224,.8)!important}',
+        '.salchicha::-webkit-search-cancel-button{filter:brightness(0) invert(1)}',
         '@keyframes salchicha-brinca{',
         '  0%{transform:scale(1)}35%{transform:scale(1.04,.9)}',
         '  65%{transform:scale(.98,1.05)}100%{transform:scale(1)}',
         '}',
-        '@media (prefers-reduced-motion:reduce){input.salchicha{animation:none}}'
+        '@media (prefers-reduced-motion:reduce){.salchicha{animation:none}}'
     ].join('\n');
 
     function esSalchicha(valor) {
         var v = (valor || '').toLowerCase().normalize('NFD')
-            .replace(/[̀-ͯ]/g, '').replace(/[\s\-_.]/g, '');
+            .replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_.]/g, '');
         return PALABRAS.hasOwnProperty(v);
     }
 
-    function revisar(input) {
-        var si = esSalchicha(input.value);
+    function revisar(campo) {
+        var si = esSalchicha(campo.value);
         if (si && !document.getElementById('salchicha-estilos')) {
             var s = document.createElement('style');
             s.id = 'salchicha-estilos';
             s.textContent = CSS;
             document.head.appendChild(s);
         }
-        input.classList.toggle('salchicha', si);
+        campo.classList.toggle('salchicha', si);
     }
 
-    function esBuscador(el) {
-        return el && el.matches && el.matches('input[type="search"]');
+    function esCampo(el) {
+        return el && el.matches && el.matches(CAMPOS);
     }
 
+    // Mientras se compone una letra (acentos, ñ) no se toca nada: se revisa al terminarla.
     document.addEventListener('input', function (e) {
-        if (esBuscador(e.target)) revisar(e.target);
+        if (esCampo(e.target) && !e.isComposing) revisar(e.target);
+    });
+    document.addEventListener('compositionend', function (e) {
+        if (esCampo(e.target)) revisar(e.target);
     });
 
-    // Un buscador que llega ya con «hotdog» (?q=hotdog) también se vuelve salchicha.
+    // Un campo que llega ya con «hotdog» (?q=hotdog) también se vuelve salchicha.
     function escanear(raiz) {
-        (raiz || document).querySelectorAll('input[type="search"]').forEach(function (i) {
-            if (i.value) revisar(i);
+        (raiz || document).querySelectorAll(CAMPOS).forEach(function (c) {
+            if (c.value) revisar(c);
         });
     }
     document.addEventListener('DOMContentLoaded', function () { escanear(); });
     document.addEventListener('htmx:afterSwap', function (e) { escanear(e.target); });
+
+    // El Chalán (y cualquier formulario) vacía la caja por código al enviar, sin
+    // disparar `input`: la salchicha se quedaría con la caja ya vacía.
+    function desenfundar() {
+        setTimeout(function () {
+            document.querySelectorAll('.salchicha').forEach(revisar);
+        }, 60);
+    }
+    ['htmx:afterRequest', 'reset', 'submit'].forEach(function (ev) {
+        document.addEventListener(ev, desenfundar, true);
+    });
 })();
