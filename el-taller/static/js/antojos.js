@@ -5,7 +5,7 @@
  *   «hotdog» → salchicha dentro de su pan
  *   «donut»  → éclair con el glaseado rosa y las chispas de la dona de los Simpson
  *   «trump»  → Modo YUGE (LC 2026-10-01, Oscar): la página dorada, letras enormes
- *              y «Make Marconi Great Again»; el campo dorado con el retrato oficial
+ *              y «Make Learning Center Great Again»; el campo dorado con el retrato oficial
  *              adentro y el copete rubio encima. Sin video (Oscar lo quitó).
  * El antojo se queda aunque se borre el texto, hasta recargar la página. Es un
  * easter egg: NO va en Novedades, en el manual ni en El Chalán.
@@ -114,6 +114,7 @@
         // Modo YUGE: toda la página dorada (una capa con mix-blend-mode, que no mueve
         // nada del layout), letras enormes y el titular.
         'html.yuge{font-size:130%!important}',
+        'html.yuge iframe[data-marco]{z-index:99985}',
         '#yuge-dorado{position:fixed;inset:0;z-index:99980;pointer-events:none;mix-blend-mode:color;',
         '  background:linear-gradient(135deg,#b8860b,#ffd700 40%,#daa520 60%,#fff2a8 80%,#b8860b);',
         '  background-size:300% 300%;animation:yuge-brillo 6s ease-in-out infinite alternate}',
@@ -142,28 +143,46 @@
     function revisar(campo) {
         var clase = antojoDe(campo.value);
         if (!clase || campo.classList.contains(clase)) return;
-        if (!document.getElementById('antojos-estilos')) {
-            var s = document.createElement('style');
-            s.id = 'antojos-estilos';
-            s.textContent = CSS;
-            document.head.appendChild(s);
-        }
+        estilos(document);
         campo.classList.remove.apply(campo.classList, CLASES);
         campo.classList.add(clase);
         if (clase === 'trump') { modoYuge(); copete(campo); }
     }
 
-    var TITULO = 'Make Marconi Great Again';
+    var TITULO = 'Make Learning Center Great Again';
+
+    function estilos(doc) {
+        if (doc.getElementById('antojos-estilos')) return;
+        var s = doc.createElement('style');
+        s.id = 'antojos-estilos';
+        s.textContent = CSS;
+        doc.head.appendChild(s);
+    }
+
+    // Dentro de una pestaña (marco de /pestanas/) la página es el contenedor: el
+    // dorado, las letras y el título también van allá, no sólo en el marco.
+    function documentosYuge() {
+        var docs = [document];
+        try {
+            if (window.self !== window.top && window.top.location.origin === location.origin) {
+                docs.push(window.top.document);
+            }
+        } catch (e) {}
+        return docs;
+    }
 
     function modoYuge() {
-        var html = document.documentElement;
-        if (!html.classList.contains('yuge')) {
-            html.classList.add('yuge');
-            var capa = document.createElement('div');
-            capa.id = 'yuge-dorado';
-            document.body.appendChild(capa);
-        }
-        document.title = TITULO;
+        documentosYuge().forEach(function (doc) {
+            estilos(doc);
+            var html = doc.documentElement;
+            if (!html.classList.contains('yuge')) {
+                html.classList.add('yuge');
+                var capa = doc.createElement('div');
+                capa.id = 'yuge-dorado';
+                doc.body.appendChild(capa);
+            }
+            doc.title = TITULO;
+        });
         if (!document.getElementById('yuge-titular')) {
             var main = document.querySelector('main') || document.body;
             var h = document.createElement('div');
