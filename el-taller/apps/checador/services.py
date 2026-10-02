@@ -194,7 +194,14 @@ def checar_entrada(usuario, *, geo=None, registrado_en=None, uuid: str = "", off
         if jornada is None:
             jornada = Jornada.objects.create(usuario=usuario, fecha=fecha)
         es_reentrada = False
-        if jornada.entrada_en and not jornada.salida_en:
+        if jornada.entrada_en and not jornada.salida_en and jornada.entrada_por_actividad:
+            # Checador por actividad: la entrada la puso la primera actividad y
+            # ahora se checa a mano → gana la checada (Oscar 2026-10-01). Las
+            # pausas medidas antes de esta entrada quedan fuera de la jornada.
+            jornada.entrada_por_actividad = False
+            if not jornada.minutos_extra:
+                jornada.pausa_min = 0
+        elif jornada.entrada_en and not jornada.salida_en:
             # Segmento abierto en curso: no se puede re-entrar sin checar salida.
             if uuid and jornada.entrada_uuid == uuid:
                 return jornada  # reintento de la misma checada
@@ -557,19 +564,35 @@ def _publicar_resolucion_en_recados(sol: SolicitudCorreccion, aprobar: bool) -> 
     transaction.on_commit(_post)
 
 
+def _ajuste_manual_completo(jornada, valor_entrada, valor_salida) -> None:
+    """Un ajuste de jornada fija horas a mano: el extremo ajustado deja de ser
+    «por actividad», y si se fijaron las DOS horas las pausas medidas ya no se
+    descuentan — quien ajusta 9:00–18:00 espera ver 9 h (Checador por actividad)."""
+    if valor_entrada:
+        jornada.entrada_por_actividad = False
+    if valor_salida:
+        jornada.salida_por_actividad = False
+    if valor_entrada and valor_salida:
+        jornada.pausa_min = 0
+
+
 def _aplicar_correccion(sol: SolicitudCorreccion) -> None:
     """Aplica el valor propuesto a la entidad y recalcula retardo/duración."""
     if sol.tipo == "entrada" and sol.jornada:
         sol.jornada.entrada_en = sol.valor_propuesto
+        sol.jornada.entrada_por_actividad = False  # lo corregido a mano gana
         sol.jornada.retardo_min = calcular_retardo(
             horario_vigente(sol.jornada.usuario, sol.jornada.fecha), sol.valor_propuesto,
         )
-        sol.jornada.save(update_fields=["entrada_en", "retardo_min", "actualizado_en"])
+        sol.jornada.save(update_fields=["entrada_en", "entrada_por_actividad", "retardo_min",
+                                        "actualizado_en"])
     elif sol.tipo == "salida" and sol.jornada:
         sol.jornada.salida_en = sol.valor_propuesto
+        sol.jornada.salida_por_actividad = False  # lo corregido a mano gana
         if sol.jornada.estado != "cerrada":
             sol.jornada.estado = "cerrada"
-        sol.jornada.save(update_fields=["salida_en", "estado", "actualizado_en"])
+        sol.jornada.save(update_fields=["salida_en", "salida_por_actividad", "estado",
+                                        "actualizado_en"])
     elif sol.tipo == "sesion" and sol.sesion:
         # V1: la corrección de sesión ajusta el `fin` y recalcula la duración.
         sol.sesion.cerrar(fin=sol.valor_propuesto)
@@ -584,6 +607,7 @@ def _aplicar_correccion(sol: SolicitudCorreccion) -> None:
             jornada, _ = Jornada.objects.get_or_create(usuario=sol.usuario, fecha=sol.fecha)
         if jornada is None:
             return
+        _ajuste_manual_completo(jornada, sol.valor_entrada, sol.valor_salida)
         if sol.valor_entrada:
             jornada.entrada_en = sol.valor_entrada
             jornada.retardo_min = calcular_retardo(
@@ -929,34 +953,59 @@ def _salida_default_compania(dia):
     return h.hora_salida if h else None
 
 
-def cerrar_jornadas_vencidas(*, ahora=None) -> int:
-    """Cierra jornadas que quedaron abiertas: si no se checó salida antes de
-    las 05:00 del día siguiente, se cierra al horario de salida default de la
-    compañía de ese día (fallback 18:00). Devuelve cuántas cerró."""
+def limite_de_cierre(jornada):
+    """Desde cuándo se puede cerrar sola una jornada abierta.
+
+    Con actividad registrada (Checador por actividad), el día corta a las 23:59:
+    se cierra en cuanto empieza el día siguiente. Sin ella, la regla de V1.2:
+    hasta las 05:00 del día siguiente, por si alguien checa salida pasada la
+    medianoche.
+    """
     import datetime as _dt
+
+    siguiente = jornada.fecha + _dt.timedelta(days=1)
+    hora = _dt.time(0, 0) if jornada.actividad_ultima_en else _dt.time(5, 0)
+    return timezone.make_aware(_dt.datetime.combine(siguiente, hora))
+
+
+def cerrar_jornadas_vencidas(*, ahora=None) -> int:
+    """Cierra jornadas que quedaron abiertas. Devuelve cuántas cerró.
+
+    - Con actividad posterior a la entrada (Checador por actividad): se cierra
+      con la hora y la ubicación de su ÚLTIMA actividad del día.
+    - Sin ella: si no se checó salida antes de las 05:00 del día siguiente, al
+      horario de salida default de la compañía de ese día (fallback 18:00).
+    """
+    import datetime as _dt
+
+    from . import actividad
 
     ahora = ahora or timezone.now()
     cerradas = 0
     abiertas = Jornada.objects.filter(entrada_en__isnull=False, salida_en__isnull=True)
     for j in abiertas:
-        limite = timezone.make_aware(
-            _dt.datetime.combine(j.fecha + _dt.timedelta(days=1), _dt.time(5, 0)),
-        )
-        if ahora < limite:
-            continue  # aún tiene hasta las 05:00 del día siguiente
-        salida_time = _salida_default_compania(j.fecha) or _dt.time(18, 0)
-        salida_dt = timezone.make_aware(_dt.datetime.combine(j.fecha, salida_time))
-        if j.entrada_en and salida_dt <= j.entrada_en:
-            salida_dt = j.entrada_en  # evita duración negativa (turno nocturno)
-        j.salida_en = salida_dt
-        j.salida_automatica = True
-        j.salida_sin_geo = True
+        if ahora < limite_de_cierre(j):
+            continue
+        por_actividad = actividad.salida_de_actividad(j)
+        if por_actividad:
+            j.salida_en = por_actividad["en"]
+            j.salida_por_actividad = True
+            j.salida_automatica = False
+            _aplicar_geo(j, "salida_", por_actividad["geo"])
+        else:
+            salida_time = _salida_default_compania(j.fecha) or _dt.time(18, 0)
+            salida_dt = timezone.make_aware(_dt.datetime.combine(j.fecha, salida_time))
+            if j.entrada_en and salida_dt <= j.entrada_en:
+                salida_dt = j.entrada_en  # evita duración negativa (turno nocturno)
+            j.salida_en = salida_dt
+            j.salida_automatica = True
+            j.salida_sin_geo = True
         if j.estado != "cerrada":
             j.estado = "cerrada"
-        j.save(update_fields=["salida_en", "salida_automatica", "salida_sin_geo",
-                              "estado", "actualizado_en"])
+        j.save()
         _emitir("checador.salida", actor=None, payload={
-            "jornada_id": j.pk, "usuario_id": j.usuario_id, "automatica": True,
+            "jornada_id": j.pk, "usuario_id": j.usuario_id,
+            "automatica": j.salida_automatica, "por_actividad": j.salida_por_actividad,
         })
         cerradas += 1
     return cerradas
@@ -999,6 +1048,7 @@ def editar_jornada_directo(*, usuario, fecha, valor_entrada=None, valor_salida=N
     jornada del día sin pasar por aprobación. Registra quién la ajustó. El admin
     asigna la sede esperada (item 3)."""
     jornada, _ = Jornada.objects.get_or_create(usuario=usuario, fecha=fecha)
+    _ajuste_manual_completo(jornada, valor_entrada, valor_salida)
     if valor_entrada is not None:
         jornada.entrada_en = valor_entrada
         jornada.retardo_min = calcular_retardo(horario_vigente(usuario, fecha), valor_entrada)

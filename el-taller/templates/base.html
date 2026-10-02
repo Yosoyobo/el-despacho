@@ -127,6 +127,11 @@ Sólo El Taller: La Gerencia conserva el suyo en el editor del menú.{% endcomme
 <script src="{% static 'js/arrastrar.js' %}" defer></script>
 <script src="{% static 'js/antojos.js' %}" data-retrato="{% static 'img/antojos/retrato-oficial.jpg' %}" defer></script>
 <script src="{% static 'js/pestanas.js' %}" defer></script>
+{% comment %}Checador por actividad (2026-10-01): sólo para quien lo tiene prendido en El
+Directorio, y nunca durante una impersonación (la ubicación es de quien está ahí).{% endcomment %}
+{% if request.user.is_authenticated and request.user.checador_por_actividad and not request.impersonador %}
+<script src="{% static 'js/checador_actividad.js' %}" data-url="{% url 'checador:api_ubicacion' %}" data-csrf="{{ csrf_token }}" defer></script>
+{% endif %}
 {% block scripts_graficas %}{# Páginas con charts cargan ApexCharts + site_charts.js #}{% endblock %}
 {% block body_extra %}{% endblock %}
 <div id="modal-slot"></div>

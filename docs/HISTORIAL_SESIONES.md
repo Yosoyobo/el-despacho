@@ -11283,3 +11283,53 @@ el proveedor, breadcrumb), #146 (imagen en el alta), #147 (in-place en el resto)
 #151 (buscar proveedor por sus productos), #152 (categorías en Gerencia + N+1 de
 la lista), #154 (archivar desde el Kanban, «Archivadas» en el proyecto), #163
 (pills en Registrar pago, minical, toggle IVA que no guarda).
+
+### S-Checador-Actividad ✅ — VERSION 2026.10.02 (2026-10-02)
+
+Pedido de Oscar: «un toggle en el directorio que cambie la forma de calcular el
+checador: a partir de la primera actividad del usuario en el taller se cuenta como
+entrada hasta la última actividad del día; el día corta a las 23:59; para la
+ubicación debe pedir ubicación para hacer el match». Decisiones por AskUserQuestion:
+actividad = cualquier clic o pantalla salvo sondeo; ubicación en entrada y salida,
+si la niega cuenta «sin ubicación»; **conviven** con los botones (lo manual gana en
+su extremo); pausas → **otro toggle**.
+
+- **Usuario** (`cuentas/0055`): `checador_por_actividad`, `checador_descontar_pausas`,
+  `checador_pausa_min` (default 60, 5–600, vacío hereda). En el `UsuarioForm` de El
+  Directorio (pestaña Datos, se pintan solos por el `{% for f in form %}`).
+- **Jornada** (`checador/0011`): `entrada_por_actividad`, `salida_por_actividad`,
+  `actividad_primera_en/ultima_en`, `actividad_lat/lng/precision` (la última
+  ubicación = la de la salida) y `pausa_min` (se resta en `minutos_trabajados`).
+  Todo vive en la misma `Jornada`: historial, balance, nómina, KPIs y CSV lo cuentan
+  sin tocarlos.
+- **`apps/checador/actividad.py`**: `registrar_actividad` (abre con retardo, alarga,
+  acumula pausas desde `max(ultima, entrada)` para no descontar dos veces la pausa
+  de una re-entrada a mano; jornada cerrada a mano → no la toca),
+  `registrar_ubicacion` (la primera llena la entrada y corre `_evaluar_geocerca`),
+  `salida_de_actividad`.
+- **Enganche**: `lib.presencia._registrar` → `_al_checador` sólo si escribió y la app
+  es `taller` (mismo criterio sin sondeo y mismo tope). También en `marcar_entrada`/
+  `marcar_salida`: el login gasta el tope de 15 s y la primera pantalla no escribía.
+- **Ubicación**: `static/js/checador_actividad.js` (sólo con el toggle y sin
+  impersonación) → `POST /checador/api/ubicacion` (sondeo en `URL_NAMES_SONDEO`),
+  cada 10 min a lo más (localStorage); negada → no insiste.
+- **Lo manual gana**: `checar_entrada` reemplaza una entrada por actividad abierta
+  (y olvida las pausas previas si no hay segmentos); las correcciones y el ajuste
+  directo limpian la marca de su extremo; ajustar las DOS horas pone `pausa_min=0`.
+- **Cierre**: `services.limite_de_cierre` → con actividad, 00:00 del día siguiente;
+  sin ella, 05:00 como antes. `cerrar_jornadas_vencidas` cierra con la última
+  actividad (`salida_por_actividad`, su geo) o con el default de la compañía. Cron
+  nuevo `5 0 * * *` (el de 05:10 se queda; correr de más no toca a nadie).
+- **UI**: tablero («por actividad», «Por actividad: última … · llevas …»), modal de
+  detalle (marcas + «Pausas descontadas»), historial/equipo («act.»), CSV (3
+  columnas al final). El Chalán/MCP: `mi_jornada_hoy` trae `por_actividad`,
+  `ultima_actividad`, `minutos_en_curso`, `pausa_min`. Prender/apagar no es por chat.
+- 29 pruebas (`tests/taller/test_checador_por_actividad.py` + 2 en
+  `tests/gerencia/test_directorio_ficha.py`); el enganche se verificó contra
+  código mutado.
+
+**Deuda diseñada**: trabajo fuera de pantalla no se ve como actividad (por eso las
+pausas van apagadas); en escritorio la ubicación es de Wi-Fi (cientos de metros);
+el recordatorio de entrada sigue avisando a quien no ha abierto El Taller (abrirlo
+ya lo checa); la vista de equipo no muestra la jornada en curso en vivo.
+

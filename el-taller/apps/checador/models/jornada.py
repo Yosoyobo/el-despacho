@@ -49,6 +49,22 @@ class Jornada(models.Model):
     minutos_extra = models.PositiveIntegerField(default=0)
     notas = models.TextField(blank=True, default="")
 
+    # Checador por actividad (2026-10-01, apps.checador.actividad). Los extremos
+    # que puso la actividad y no una checada a mano: la entrada al abrir la
+    # jornada con la primera actividad del día; la salida al cerrarla con la
+    # última. Lo checado a mano gana: una checada limpia la marca de su extremo.
+    entrada_por_actividad = models.BooleanField(default=False)
+    salida_por_actividad = models.BooleanField(default=False)
+    actividad_primera_en = models.DateTimeField(null=True, blank=True)
+    actividad_ultima_en = models.DateTimeField(null=True, blank=True)
+    # Última ubicación tomada durante la actividad: es la de la salida al cerrar.
+    actividad_lat = models.FloatField(null=True, blank=True)
+    actividad_lng = models.FloatField(null=True, blank=True)
+    actividad_precision = models.FloatField(null=True, blank=True)
+    # Minutos de huecos sin actividad mayores al umbral de la persona, sólo si
+    # tiene «Descontar pausas largas». Se restan de las horas trabajadas.
+    pausa_min = models.PositiveIntegerField(default=0)
+
     # Sede donde debió/ocurrió la jornada (S-Checador-V14). La fija el admin al
     # ajustar/registrar la jornada (o se hereda del horario); el empleado puede
     # escribirla a mano al pedir un ajuste.
@@ -87,10 +103,35 @@ class Jornada(models.Model):
         acumulado de segmentos previos; el segmento en curso no cuenta hasta
         que se checa salida."""
         extra = self.minutos_extra or 0
+        pausa = self.pausa_min or 0
         if self.entrada_en and self.salida_en:
             seg = int((self.salida_en - self.entrada_en).total_seconds() // 60)
-            return extra + max(0, seg)
-        return extra or None
+            return max(0, extra + max(0, seg) - pausa)
+        if extra:
+            return max(0, extra - pausa)
+        return None
+
+    @property
+    def por_actividad(self) -> bool:
+        """Algún extremo lo puso la actividad (no una checada a mano)."""
+        return self.entrada_por_actividad or self.salida_por_actividad
+
+    @property
+    def minutos_en_curso(self) -> int | None:
+        """Jornada por actividad aún abierta: lo que lleva hasta su última
+        actividad (descontadas las pausas). None si no aplica."""
+        if self.salida_en or not self.entrada_en or not self.actividad_ultima_en:
+            return None
+        seg = int((self.actividad_ultima_en - self.entrada_en).total_seconds() // 60)
+        return max(0, (self.minutos_extra or 0) + max(0, seg) - (self.pausa_min or 0))
+
+    @property
+    def en_curso_texto(self) -> str:
+        """«8 h 28 m» de `minutos_en_curso`; vacío si no aplica."""
+        mins = self.minutos_en_curso
+        if mins is None:
+            return ""
+        return f"{mins // 60} h {mins % 60:02d} m"
 
     @property
     def reabierta(self) -> bool:

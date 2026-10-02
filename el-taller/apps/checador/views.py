@@ -821,3 +821,34 @@ def checar(request):
         messages.error(request, str(exc))
 
     return redirect("checador:tablero")
+
+
+@login_required
+@_requiere_checar
+@require_POST
+def api_ubicacion(request):
+    """Checador por actividad: la ubicación que el navegador toma en silencio
+    mientras la persona trabaja (`static/js/checador_actividad.js`). La primera
+    del día es la de la entrada; la última, la de la salida. Sin el interruptor
+    prendido no hace nada (204). No cuenta como actividad: es sondeo."""
+    import json
+
+    from django.http import HttpResponse, JsonResponse
+
+    from . import actividad
+
+    try:
+        data = json.loads(request.body or b"{}")
+        lat = float(data["lat"])
+        lng = float(data["lng"])
+        precision = data.get("precision")
+        precision = float(precision) if precision is not None else None
+    except (ValueError, TypeError, KeyError):
+        return JsonResponse({"error": "ubicación inválida"}, status=400)
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return JsonResponse({"error": "ubicación inválida"}, status=400)
+    if getattr(request, "impersonador", None):
+        # Quien está ahí es el super_admin: su ubicación no es la de la persona.
+        return HttpResponse(status=204)
+    actividad.registrar_ubicacion(request.user, lat=lat, lng=lng, precision=precision)
+    return HttpResponse(status=204)

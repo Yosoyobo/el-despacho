@@ -850,6 +850,15 @@ def _h_mi_jornada_hoy(args: dict, usuario) -> dict:
         "salida": j.salida_en.isoformat() if j and j.salida_en else None,
         "retardo_min": (j.retardo_min if j else 0),
         "estado": (j.estado if j else "sin_checar"),
+        # Checador por actividad (2026-10-01): la jornada se arma sola de la
+        # primera a la última actividad en El Taller.
+        "por_actividad": bool(getattr(usuario, "checador_por_actividad", False)),
+        "entrada_por_actividad": bool(j and j.entrada_por_actividad),
+        "ultima_actividad": (
+            j.actividad_ultima_en.isoformat() if j and j.actividad_ultima_en else None
+        ),
+        "minutos_en_curso": (j.minutos_en_curso if j else None),
+        "pausa_min": (j.pausa_min if j else 0),
         "cronometro_activo": (
             {"proyecto": timer.proyecto.codigo} if timer else None
         ),
@@ -2290,7 +2299,7 @@ _LECTURAS: dict[str, Capacidad] = {
     ),
     "mi_jornada_hoy": Capacidad(
         nombre="mi_jornada_hoy",
-        descripcion="Tu jornada de hoy en El Checador: entrada, salida, retardo y si tienes un cronómetro de proyecto activo.",
+        descripcion="Tu jornada de hoy en El Checador: entrada, salida, retardo y si tienes un cronómetro de proyecto activo. Si tienes el Checador por actividad, también tu última actividad en El Taller y lo que llevas trabajado.",
         args_schema={},
         gating="abierto", fn=_h_mi_jornada_hoy,
     ),

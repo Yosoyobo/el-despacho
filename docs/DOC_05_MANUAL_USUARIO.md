@@ -5,6 +5,34 @@
 
 ---
 
+## Novedades — El Checador puede contar tu jornada solo, con tu actividad (2 de octubre de 2026)
+
+**Checador por actividad.** En Gerencia → El Directorio → (una persona) → Datos
+hay una casilla nueva: **«Checador por actividad»**. Prendida, esa persona ya no
+tiene que acordarse de checar: su **entrada** es la primera vez que usa El Taller
+en el día y su **salida** es la última. El día corta a las 23:59.
+
+**Cuenta lo que haces, no la pestaña abierta.** Abrir una pantalla, guardar o
+buscar cuenta. Dejar El Taller abierto sin tocarlo, no.
+
+**Pide tu ubicación.** La primera vez el navegador te pregunta si compartes tu
+ubicación. Con ella, tu entrada se compara contra las sedes igual que una
+checada. Si dices que no, tu jornada cuenta igual, marcada «sin ubicación».
+
+**Puedes seguir checando a mano.** Si checas entrada o salida con el botón, lo
+que checas a mano gana. Si no checas salida, tu jornada se cierra sola con tu
+última actividad del día.
+
+**Pausas largas, si se quiere.** Una segunda casilla, **«Descontar pausas
+largas»**, hace que no cuenten los ratos sin actividad más largos que los minutos
+que elijas (60 de entrada), como la comida. Apagada, se cuenta todo de corrido.
+
+En el tablero, el historial y el Excel del equipo verás «por actividad» junto a
+las horas que puso el sistema.
+
+Con El Chalán: «¿cómo va mi jornada de hoy?» te dice tu entrada, tu última
+actividad y cuánto llevas. Prender o apagar el modo se hace en El Directorio,
+no por chat.
 ## Novedades — Mandados que ya no se quedan pegados, contadores de clientes y las fechas del proyecto por escrito (1 de octubre de 2026)
 
 **«Mis mandados» del Inicio ya no muestra tareas que no son mandados.** Si una
@@ -6566,6 +6594,7 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 - **Recordatorio de entrada:** si ya pasó tu hora de entrada y aún no checas, recibes una **notificación** para recordártelo (una vez al día).
 - **Balance de horas del mes:** en el tablero ves si vas **a favor** o con **deuda** de horas (trabajadas vs. las esperadas según tu horario). En "Mi semana" se muestra también la columna de **horas en proyectos**. Si un día no abriste jornada pero registraste tiempo de proyecto, ese tiempo cuenta como tu jornada de ese día.
 - **Cierre automático:** si dejas tu jornada abierta, el sistema la cierra solo a las 5:00 a.m. del día siguiente, usando el horario de salida default de la empresa. Mejor ciérrala tú para que la hora sea exacta.
+- **Checador por actividad** (si te lo prendieron en El Directorio): no necesitas checar. Tu **entrada** es tu primera actividad del día en El Taller (abrir una pantalla, guardar, buscar; dejarlo abierto sin tocarlo no cuenta) y tu **salida**, la última; el día corta a las 23:59 y la jornada se cierra sola poco después de medianoche con tu última actividad. El navegador te pide tu **ubicación** para compararla con las sedes; si no la das, la jornada cuenta igual, marcada «sin ubicación». Si checas a mano, **gana lo que checaste**. En el tablero ves «Por actividad: última 17:40 · llevas 8 h 28 m», y en tu historial las horas que puso el sistema llevan la marca «act.». Si además tienen prendido «Descontar pausas largas», los ratos sin actividad más largos que el límite (60 min de entrada) no cuentan. Pregúntale a El Chalán «¿cómo va mi jornada de hoy?».
 - **Mi historial:** tus **jornadas**, **visitas** y **tiempo por proyecto**, con totales de horas y retardos. Arriba eliges el periodo: **Esta semana / Este mes / Últimos 30 días**.
 - **¿Marcaste mal o se te pasó checar?** Desde tu historial, **Ajustar** una jornada pide cambiar tu entrada y salida juntas; **Solicitar día sin checar** registra un día que olvidaste. La solicitud le llega al administrador **por Recados** (una conversación), donde la aprueba o rechaza con botones en el chat; la respuesta te llega ahí mismo y verás **quién la resolvió y cuándo**. Para una marca suelta (solo entrada o solo salida, o una sesión de proyecto) sigue estando "Corregir". **Nadie puede aprobar su propia solicitud.**
 - **Sin internet:** si checas sin señal, se guarda en tu dispositivo y se envía solo al recuperar conexión (verás "N pendientes de sincronizar"). El cronómetro sí necesita conexión.
@@ -6573,6 +6602,7 @@ Registra tu día de trabajo desde el celular o la computadora. La ubicación se 
 ### Para administradores
 
 - **Checador del equipo:** horas, retardos y visitas de todo el staff por rango de fechas; se descarga en Excel (CSV). Haz clic en una persona para ver el **detalle**: sus jornadas y visitas con el botón **📍 Mapa** de cada checada. Ahí mismo puedes **Editar** una jornada o **Registrar** una de un día sin checar **directamente** (sin pedir aprobación; queda registrado que tú la ajustaste).
+- **Checador por actividad** (Gerencia → El Directorio → la persona → Datos): casilla **«Checador por actividad»** para que su jornada se arme sola con su actividad en El Taller; **«Descontar pausas largas»** y sus **minutos** (de 5 a 600; 60 de entrada) para no contar los ratos sin actividad más largos que eso. Lo mueve quien puede editar usuarios en El Directorio. En el Excel del equipo hay tres columnas: «Entrada por actividad», «Salida por actividad» y «Pausas descontadas (min)». Si ajustas una jornada con las dos horas, ya no se le descuentan pausas.
 - **Horarios** (Gerencia → Catálogos): horario general del despacho + excepciones por persona, con tolerancia de retardo. Al crear, eliges **varios días y varios empleados a la vez** (casillas) y la hora en **formato 24 h**. Los horarios configurados son la base del **balance de horas** de cada quien. En esta misma pantalla eliges tu **Formato de hora** personal (24 h o AM/PM) para ver TODAS las horas del sistema.
 - **Correcciones:** las solicitudes te llegan **por Recados** (con botones Aprobar/Rechazar en el chat) y también las tienes en la **bandeja** de correcciones. Resuelvas donde resuelvas, la respuesta se publica en la conversación del solicitante.
 

@@ -15,6 +15,7 @@ Detalle de una jornada (chequeo) en modal HTMX. `j` = Jornada, `es_propia`.
                 <span class="flex items-center gap-2">
                     <span class="tabular-nums font-medium">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</span>
                     {% if j.retardo_min %}<span class="text-warning-600 dark:text-warning-400">retardo {{ j.retardo_min }} min</span>{% elif j.entrada_en %}<span class="text-success-600 dark:text-success-400">a tiempo</span>{% endif %}
+                    {% if j.entrada_por_actividad %}<span class="text-[11px] text-brand-500 dark:text-brand-400" title="La puso la actividad en El Taller, no una checada a mano">por actividad</span>{% endif %}
                     {% if j.entrada_en %}{% include "checador/_boton_mapa.html" with lat=j.entrada_lat lng=j.entrada_lng etiqueta="Entrada" cuando=j.entrada_en|hfmt:"D j H:i" precision=j.entrada_precision %}{% endif %}
                 </span>
             </div>
@@ -23,6 +24,7 @@ Detalle de una jornada (chequeo) en modal HTMX. `j` = Jornada, `es_propia`.
                 <span class="flex items-center gap-2">
                     <span class="tabular-nums font-medium">{{ j.salida_en|hfmt:"H:i"|default:"—" }}</span>
                     {% if j.salida_automatica %}<span class="text-[11px] text-gray-400" title="Cierre automático del sistema">auto</span>{% endif %}
+                    {% if j.salida_por_actividad %}<span class="text-[11px] text-brand-500 dark:text-brand-400" title="Se cerró con la última actividad del día en El Taller">por actividad</span>{% endif %}
                     {% if j.salida_en %}{% include "checador/_boton_mapa.html" with lat=j.salida_lat lng=j.salida_lng etiqueta="Salida" cuando=j.salida_en|hfmt:"D j H:i" precision=j.salida_precision %}{% endif %}
                 </span>
             </div>
@@ -30,6 +32,12 @@ Detalle de una jornada (chequeo) en modal HTMX. `j` = Jornada, `es_propia`.
                 <span class="text-gray-500 dark:text-gray-400">Horas trabajadas</span>
                 <span class="tabular-nums font-medium">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }} h{% if j.reabierta %} (acumuladas){% endif %}{% else %}—{% endif %}</span>
             </div>
+            {% if j.pausa_min %}
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400">Pausas descontadas</span>
+                <span class="tabular-nums font-medium">{{ j.pausa_min }} min</span>
+            </div>
+            {% endif %}
             {% if j.sede_label %}
             <div class="flex items-center justify-between gap-3">
                 <span class="text-gray-500 dark:text-gray-400">Sede esperada</span>

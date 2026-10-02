@@ -13655,3 +13655,14 @@ mandados» (#155/#165, mandado sobrante de una tarea que dejó de ser entrega, c
 migración de datos que limpia los existentes) y los arreglos chicos: contadores de
 Clientes (#130), fechas por escrito y «Creado» en el proyecto (#120), IVA por concepto
 (#157), subcategorías desactivadas que ya no se pierden (#164), textos (#128).
+
+## 2026-10-02 — S-Checador-Actividad (VERSION 2026.10.02)
+
+Toggle por persona en El Directorio: «Checador por actividad». La jornada va de la
+primera a la última actividad en El Taller (cualquier clic o pantalla, no el sondeo;
+corta 23:59, cierre con la última actividad a las 00:05), con ubicación tomada en
+silencio para medir contra las sedes. Convive con los botones: lo checado a mano
+gana. Segundo toggle para descontar pausas largas (60 min de entrada). Se engancha a
+la presencia existente en vez de inventar otro criterio. Hecho en worktree propio
+con otra sesión en paralelo.
+

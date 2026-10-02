@@ -20,6 +20,8 @@ ENCABEZADOS: dict[str, list[str]] = {
     "jornadas": [
         "Usuario", "Email", "Fecha", "Entrada", "Salida", "Horas",
         "Retardo (min)", "Sin ubicación (entrada)", "Sin ubicación (salida)", "Estado",
+        # Checador por actividad (2026-10-01): qué extremo puso la actividad.
+        "Entrada por actividad", "Salida por actividad", "Pausas descontadas (min)",
     ],
     "sesiones": [
         "Usuario", "Email", "Proyecto", "Inicio", "Fin", "Duración (min)", "Origen", "Nota",
@@ -60,6 +62,7 @@ def filas_para(vista: str, params: dict):
                 _hms(j.entrada_en), _hms(j.salida_en),
                 j.horas_trabajadas if j.horas_trabajadas is not None else "",
                 j.retardo_min, _bool(j.entrada_sin_geo), _bool(j.salida_sin_geo), j.estado,
+                _bool(j.entrada_por_actividad), _bool(j.salida_por_actividad), j.pausa_min,
             ])
     else:  # sesiones
         qs = SesionProyecto.objects.select_related("usuario", "proyecto").filter(estado="cerrada").order_by("inicio")
