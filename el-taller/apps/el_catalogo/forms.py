@@ -58,6 +58,16 @@ class ProveedorForm(forms.ModelForm):
         if inline and "activo" in self.fields:
             self.fields.pop("activo")
 
+    def clean_subcategorias(self):
+        """Buzón #164: desactivar una subcategoría la quita de las OPCIONES, no
+        de los proveedores que ya la tenían. Como el form sólo ofrece las
+        activas, guardar a un proveedor se la habría borrado en silencio; las
+        inactivas que ya traía se conservan."""
+        elegidas = list(self.cleaned_data.get("subcategorias") or [])
+        if self.instance.pk:
+            elegidas += list(self.instance.subcategorias.filter(activa=False))
+        return elegidas
+
 
 class CategoriaForm(forms.ModelForm):
     # Color opcional: si llega vacío, default gris (el partial lo pre-llena,

@@ -23,11 +23,11 @@ formset del proyecto sigue sin viajar. El botón de archivar sí puede quedarse 
     <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
         {% comment %}LC 2026-07-28 (Oscar, móvil punto 2): la tabla ya no exige 560px
         —eso forzaba scroll horizontal en el celular—. En pantalla chica se esconden
-        «Asignada a» y «Prioridad» (viven en el detalle de la tarea) y quedan las dos
+        «Asignada a» (vive en el detalle de la tarea) y quedan las dos
         columnas que se operan desde aquí: el título y el estado.{% endcomment %}
         <table data-tabla-movil class="w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-900/50 dark:text-gray-400">
-                <tr>{% if puede_editar %}<th class="w-8 px-1 py-2.5"><span class="sr-only">Ordenar</span></th>{% endif %}<th class="px-3 py-2.5 text-left sm:px-5">Tarea</th><th class="hidden px-5 py-2.5 text-left md:table-cell">Asignada a</th><th class="px-3 py-2.5 text-left sm:px-5">Estado</th><th class="hidden px-5 py-2.5 text-left sm:table-cell">Prioridad</th>{% if puede_editar %}<th class="px-2 py-2.5 text-right sm:px-3"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
+                <tr>{% if puede_editar %}<th class="w-8 px-1 py-2.5"><span class="sr-only">Ordenar</span></th>{% endif %}<th class="px-3 py-2.5 text-left sm:px-5">Tarea</th><th class="hidden px-5 py-2.5 text-left md:table-cell">Asignada a</th><th class="px-3 py-2.5 text-left sm:px-5">Estado</th>{% if puede_editar %}<th class="px-2 py-2.5 text-right sm:px-3"><span class="sr-only">Archivar</span></th>{% endif %}</tr>
             </thead>
             {% comment %}LC 2026-08-07: los `data-arr-*` prenden el arrastre
             (ver static/js/arrastrar.js). El orden es del equipo.{% endcomment %}
@@ -63,7 +63,6 @@ formset del proyecto sigue sin viajar. El botón de archivar sí puede quedarse 
                         {% include "_componentes_tailadmin/_badge_estado.html" with estado=t.estado etiqueta=t.get_estado_display %}
                         {% endif %}
                     </td>
-                    <td class="hidden px-5 py-2.5 sm:table-cell"><span class="badge {% if t.prioridad == 'alta' %}badge-error{% elif t.prioridad == 'media' %}badge-warning{% else %}badge-gray{% endif %}">{{ t.get_prioridad_display }}</span></td>
                     {% if puede_editar %}
                     <td class="px-2 py-2.5 text-right sm:px-3">
                         <button type="button" title="Archivar tarea" aria-label="Archivar tarea"
@@ -81,7 +80,7 @@ formset del proyecto sigue sin viajar. El botón de archivar sí puede quedarse 
                 {% comment %}LC 2026-07-28 (Oscar): el vacío era un bloque enorme con
                 ilustración; aquí basta un renglón — el botón de abajo ya invita a
                 crear la primera.{% endcomment %}
-                <tr><td colspan="{% if puede_editar %}6{% else %}4{% endif %}" class="px-3 py-4 text-center text-sm text-gray-400 dark:text-gray-500 sm:px-5">Sin tareas todavía.</td></tr>
+                <tr><td colspan="{% if puede_editar %}5{% else %}3{% endif %}" class="px-3 py-4 text-center text-sm text-gray-400 dark:text-gray-500 sm:px-5">Sin tareas todavía.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -11232,3 +11232,54 @@ Cierre del arco de La Imprenta. (El Deploy 3 salió a producción dentro de la
 **Deuda del arco**: el recibo de nómina conserva su plantilla propia; el PDF
 comercial de la factura se arma al pedirlo (no se guarda); la vista previa es hoja
 continua; una imagen nueva se ve al guardarla.
+
+### S-Buzon-Oct1 ✅ — VERSION 2026.10.01 (2026-10-01)
+
+Oscar pidió cruzar los tickets de El Buzón contra lo ya hecho. Había 165 tickets:
+112 en «OK» y 53 abiertos («leído»/«nuevo»), muchos ya entregados sin que nadie
+les cambiara el estado. Se verificó cada sub-punto contra el código de `main`
+(2026.09.20) con 5 agentes de solo lectura. Resultado: 30 resueltos (Oscar los
+pasó a «OK» con un guion; el clasificador no deja escribir en la base de
+producción desde la sesión), 21 a medias y 2 que eran un bug vivo. Este deploy
+ataca el bug y los arreglos chicos.
+
+- **#155/#165 — «Mis mandados» con tareas que no son mandados.** Una tarea nacida
+  como entrega y cambiada a tarea normal dejaba su `Mandado` vivo en «asignado»:
+  la señal `post_save` sólo sincronizaba los tipos de runner. Ahora
+  `mandados.soltar_mandado_sobrante` corre también para las tareas normales
+  editadas: borra el mandado que no salió (`ESTADOS_SIN_SALIR`), cancela el que
+  iba en camino y conserva el entregado. `_mis_mandados` además mira la TAREA
+  (tipo de runner, no terminal, no archivada). Migración de datos
+  `pizarron/0017_soltar_mandados_sobrantes` (sólo `RunPython`) limpia los que ya
+  había. «Tareas urgentes» del Inicio y `calendario._tareas_visibles_qs` excluyen
+  todos los estados terminales (no sólo «completada») y las archivadas.
+- **#130** — contadores de Clientes: 5 tarjetas (con proyectos activos, activos,
+  prospectos, inactivos, archivados), cada una cuenta lo que muestra su filtro
+  (`ver=inactivos`/`ver=archivados` nuevos); picar la activa quita el filtro.
+- **#120** — «Creado» en el detalle del proyecto; fecha por escrito + «hace /
+  faltan N días/semanas» arriba de los calendarios (`fechaRelativa` en
+  `_form_productos_js.html`, `[data-fecha-relativa]`); sin columna Prioridad en la
+  tabla de tareas del proyecto.
+- **#157** — cada concepto de «Ver conceptos» con su total con IVA.
+- **#164** — `ProveedorForm.clean_subcategorias` conserva las subcategorías
+  desactivadas que el proveedor ya tenía (el form sólo ofrece activas y las
+  borraba al guardar).
+- **#128** — «← Productos» en Categorías y dos mensajes del Chalán.
+- Tests: `test_mandado_sobrante_buzon155.py`, `test_cartera_contadores_buzon130.py`,
+  caso nuevo en `test_proveedor_categorias.py`; 5 mutaciones verificadas, todas caen.
+
+**Descartados con razón:** #161.3 (el recuadro de tasas manuales del régimen «IVA»
+es decisión LC #1) y #137 menor (`/mandados/` sigue como pantalla propia: es el
+destino de regreso de las acciones del reparto).
+
+**Lo que queda abierto del Buzón** (21 tickets a medias, detalle por sub-punto en
+la sesión): #63 (centro de costo por uso, colores por método/cliente), #120
+(tareas inline en el proyecto, página de Tareas por proyecto, retirar «Editar
+tarea»), #121 (Atrás contextual en todo el sitio), #135 (jornadas en la vista del
+jefe, por confirmar), #138/#150 (monto en vivo al elegir cotización), #140 (modal
+corto directo y «X» en el calendario), #141 (ícono de Equipo), #142 (versión a
+duplicar es relleno), #144 (PDF asíncrono y embebido), #145 (edición rápida desde
+el proveedor, breadcrumb), #146 (imagen en el alta), #147 (in-place en el resto),
+#151 (buscar proveedor por sus productos), #152 (categorías en Gerencia + N+1 de
+la lista), #154 (archivar desde el Kanban, «Archivadas» en el proyecto), #163
+(pills en Registrar pago, minical, toggle IVA que no guarda).

@@ -77,6 +77,19 @@
 
     // ── Calendarios inline ──────────────────────────────────────────────────
     const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    // Buzón #120: la fecha elegida, por escrito y con cuánto falta o pasó
+    // («26 Jun 2026 · hace 1 día»). Se recalcula en cada render del calendario.
+    function fechaRelativa(iso) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return 'Sin fecha';
+        const [y, m, d] = iso.split('-').map(Number);
+        const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+        const dias = Math.round((new Date(y, m - 1, d) - t0) / 86400000);
+        const n = Math.abs(dias);
+        const cuanto = n < 14 ? n + (n === 1 ? ' día' : ' días')
+            : Math.round(n / 7) + (Math.round(n / 7) === 1 ? ' semana' : ' semanas');
+        const rel = dias === 0 ? 'hoy' : (dias > 0 ? 'faltan ' + cuanto : 'hace ' + cuanto);
+        return d + ' ' + MESES[m - 1].slice(0, 3) + ' ' + y + ' · ' + rel;
+    }
     function montarCalendario(cont) {
         const input = document.getElementById(cont.getAttribute('data-calendario'));
         if (!input) return;
@@ -109,6 +122,8 @@
                 h += '<button type="button" data-iso="' + iso + '" class="' + cls + '">' + d + '</button>';
             }
             cont.innerHTML = h + '</div>';
+            const rel = document.querySelector('[data-fecha-relativa="' + cont.getAttribute('data-calendario') + '"]');
+            if (rel) rel.textContent = fechaRelativa(sel);
         }
         cont._render = render;
         render();
