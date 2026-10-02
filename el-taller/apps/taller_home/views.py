@@ -131,7 +131,13 @@ def _hero_kpis(user) -> list[dict]:
     en_produccion = Proyecto.activos.filter(estado="en_proceso_produccion")
     if solo_lo_suyo:
         en_produccion = en_produccion.filter(asignaciones__usuario=user).distinct()
-    tareas_urgentes = Tarea.objects.filter(prioridad="alta").exclude(estado="completada")
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
+    tareas_urgentes = (
+        Tarea.objects.filter(prioridad="alta", archivada=False)
+        # Todos los estados terminales (configurables en Gerencia), no sólo
+        # el literal «completada».
+        .exclude(estado__in=slugs_terminales_tarea())
+    )
     if solo_lo_suyo:
         tareas_urgentes = tareas_urgentes.filter(asignada_a=user)
 
@@ -246,12 +252,19 @@ def _es_runner(user) -> bool:
 
 
 def _mis_mandados(user):
-    """Mandados abiertos donde soy el runner (para el widget del dashboard)."""
-    from apps.el_pizarron.mandados import mandados_visibles
+    """Mandados abiertos donde soy el runner (para el widget del dashboard).
+
+    Buzón #155/#165: además del estado del reparto se mira la TAREA —que siga
+    siendo entrega/recoger, sin cerrar y sin archivar—. Si el mandado se quedó
+    atrás (la tarea cambió de tipo o se cerró por otro lado), no se cuela.
+    """
+    from apps.el_pizarron.mandados import TIPOS_RUNNER, mandados_visibles
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
     qs = (
         mandados_visibles(user)
-        .filter(tarea__runner=user)
+        .filter(tarea__runner=user, tarea__tipo__in=TIPOS_RUNNER, tarea__archivada=False)
         .exclude(estado__in=("entregado", "cancelado"))
+        .exclude(tarea__estado__in=slugs_terminales_tarea())
         .order_by("tarea__fecha_compromiso")
     )
     return list(qs[:5])

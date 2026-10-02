@@ -36,6 +36,7 @@ def _proyectos_visibles_qs(user):
 
 def _tareas_visibles_qs(user):
     from apps.el_pizarron.models import Tarea
+    from apps.el_pizarron.models.estado_tarea import slugs_terminales_tarea
     from apps.los_proyectos.models import ProyectoAsignacion
 
     from lib.permisos import solo_proyectos_asignados
@@ -43,7 +44,10 @@ def _tareas_visibles_qs(user):
     # Se acota a sus proyectos a quien ve proyectos pero no todos (antes:
     # «diseñador sin un rol amplio»).
     qs = (
-        Tarea.objects.exclude(estado="completada")
+        # Todos los estados terminales (configurables en Gerencia) y sin las
+        # archivadas: una tarea archivada no estorba en el calendario (#154).
+        Tarea.objects.exclude(estado__in=slugs_terminales_tarea())
+        .filter(archivada=False)
         # Oscar 2026-07-28: las tareas de un proyecto CANCELADO tampoco.
         .exclude(proyecto__estado=ESTADO_CANCELADO)
         .select_related("proyecto", "asignada_a")

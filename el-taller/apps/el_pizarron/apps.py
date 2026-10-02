@@ -29,8 +29,11 @@ class ElPizarronConfig(AppConfig):
         from apps.el_pizarron.mandados import TIPOS_RUNNER, sincronizar_mandado
         from apps.el_pizarron.models.tarea import Tarea
 
-        def _sync_mandado(sender, instance, **kwargs):
-            if instance.tipo in TIPOS_RUNNER:
+        def _sync_mandado(sender, instance, created=False, **kwargs):
+            # Una tarea normal recién creada no puede tener mandado; las demás
+            # pasan siempre, para soltar el que sobre si dejó de ser entrega
+            # (Buzón #155/#165).
+            if instance.tipo in TIPOS_RUNNER or not created:
                 sincronizar_mandado(instance)
 
         post_save.connect(_sync_mandado, sender=Tarea, dispatch_uid="pizarron_sync_mandado", weak=False)

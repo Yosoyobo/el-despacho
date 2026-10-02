@@ -44,8 +44,12 @@ def sincronizar_mandado(tarea):
       - en_camino: se preserva (lo marca el runner manualmente).
       - asignado: hay runner y la tarea no está terminal.
       - por_asignar: sin runner.
+
+    Si la tarea dejó de ser entrega/recoger, su mandado sobra: ver
+    `soltar_mandado_sobrante`.
     """
     if tarea.tipo not in TIPOS_RUNNER:
+        soltar_mandado_sobrante(tarea)
         return None
     from apps.el_pizarron.models.mandado import Mandado
     mandado, _ = Mandado.objects.get_or_create(tarea=tarea)
@@ -75,6 +79,30 @@ def sincronizar_mandado(tarea):
             notificar_involucrados(mandado, "entregado", actor=None)
             _avisar_entrega_al_cliente(mandado)
     return mandado
+
+
+#: Estados de un mandado que todavía no salió a la calle: no guardan historia
+#: (ni recorrido ni entrega) y se pueden borrar sin perder nada.
+ESTADOS_SIN_SALIR = ("por_asignar", "asignado", "cancelado")
+
+
+def soltar_mandado_sobrante(tarea) -> None:
+    """Quita el mandado de una tarea que dejó de ser entrega/recoger.
+
+    Buzón #155/#165: una tarea nacida como entrega y cambiada después a tarea
+    normal dejaba su Mandado vivo en «asignado» —la señal sólo sincronizaba los
+    tipos de runner—, y el Dashboard la siguió mostrando en «Mis mandados»
+    aun completada.
+
+    Un mandado que no salió se BORRA (si la tarea vuelve a ser entrega, nace
+    uno limpio); uno ya entregado se conserva, es historia de reparto. El que
+    iba en camino se cancela: tiene punto de salida y no se tira.
+    """
+    from apps.el_pizarron.models.mandado import Mandado
+    qs = Mandado.objects.filter(tarea_id=tarea.pk)
+    qs.filter(estado__in=ESTADOS_SIN_SALIR).delete()
+    for mandado in qs.filter(estado="en_camino"):
+        cancelar(mandado, motivo="la tarea dejó de ser entrega/recoger")
 
 
 # ── Transiciones manuales ─────────────────────────────────────────────────────
