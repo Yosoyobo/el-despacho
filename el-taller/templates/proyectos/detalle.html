@@ -26,6 +26,7 @@
                 {% comment %}El slug es la referencia con la que se nombra el
                 proyecto en El Chalán y con `#` en los textos (Oscar 2026-07-26).{% endcomment %}
                 <span class="font-mono text-xs text-gray-400 dark:text-gray-500" title="Con este nombre se menciona el proyecto en El Chalán y con # en los textos">#{{ proyecto.slug }}</span>
+                <span>Creado <time class="text-gray-700 dark:text-gray-200">{{ proyecto.creado_en|hfmt:"d M Y H:i" }}</time></span>
                 <span>Última actualización <time id="ult-act" class="text-gray-700 dark:text-gray-200">{{ proyecto.actualizado_en|hfmt:"d M Y H:i" }}</time></span>
                 {% include "proyectos/_guardado_indicador.html" with estado="guardado" %}
                 <span id="autosave-error-detalle" class="text-xs text-error-600 dark:text-error-400"></span>
@@ -309,7 +310,8 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
                                 {% for g in gr.unidades %}
                                 <li class="flex items-center justify-between gap-2">
                                     <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}</span>
-                                    <span class="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">{{ g.monto|dinero }}</span>
+                                    {# Buzón #157: cada concepto también con su IVA, igual que el total del proveedor. #}
+                                    <span class="shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ g.total_con_iva|dinero }} <span class="text-[10px]">({{ g.monto|dinero }} + IVA)</span></span>
                                 </li>
                                 {% endfor %}
                             </ul>

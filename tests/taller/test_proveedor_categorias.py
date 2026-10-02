@@ -138,3 +138,22 @@ def test_crud_subcategoria_crear_y_editar(client, usuario_factory):
     assert resp.status_code in (301, 302)
     sub.refresh_from_db()
     assert sub.orden == 60 and sub.activa is False
+
+
+def test_guardar_no_borra_la_subcategoria_desactivada():
+    """Buzón #164: desactivar una subcategoría no la quita de quien ya la tenía."""
+    from apps.el_catalogo.forms import ProveedorForm
+    from apps.el_catalogo.models import Proveedor, SubcategoriaProveedor
+    telas = SubcategoriaProveedor.objects.get(slug="telas")
+    bordado = SubcategoriaProveedor.objects.get(slug="bordado")
+    prov = Proveedor.objects.create(razon_social="Textiles del Sur", activo=True)
+    prov.subcategorias.add(telas, bordado)
+    SubcategoriaProveedor.objects.filter(pk=telas.pk).update(activa=False)
+
+    form = ProveedorForm({
+        "razon_social": "Textiles del Sur", "activo": "on", "fiscal_igual": "on",
+        "subcategorias": [bordado.pk],
+    }, instance=prov)
+    assert form.is_valid(), form.errors
+    form.save()
+    assert set(prov.subcategorias.values_list("slug", flat=True)) == {"telas", "bordado"}
