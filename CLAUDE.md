@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-09-29:** producción en `VERSION 2026.09.20` (+ n8n 2.40.7 con MCP
+**Estado al 2026-10-01:** producción en `VERSION 2026.10.01` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.10.01 | S-Buzon-Oct1 | Cruce del Buzón (30 tickets ya resueltos a «OK»); mandado sobrante de tarea que dejó de ser entrega (#155/#165); contadores de Clientes; fechas por escrito |
 | 2026.09.20 | S-Imprenta · 4 | Órdenes de compra a proveedores (app `compras`, permiso propio, El Testigo) con su PDF; portada de la cotización |
 | 2026.09.19 | S-KPIs-V2 · 2 | Constructor de KPIs en La Gerencia sobre el DSL v2 (entidades, porcentajes, duraciones, agrupar, comparar); KPIs custom con el permiso de su dato |
 | 2026.09.18 | S-Imprenta · 3 | Recibo de pago, estado de cuenta, remisión, orden de trabajo y reembolso en PDF (una vista `/documentos/<tipo>/<pk>/`, permiso del módulo); la vista previa filtra por permiso |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.14 | S-Portal-Llave-Documentos | La llave del portal no caduca (pide el correo; copiar/cambiar en la ficha); el cliente sube documentos; El Chalán lee la CSF y revisa su vigencia |
 | 2026.09.13 | S-KPIs-Guardar | Guardar metas de KPI y aprobar KPIs de equipo ya no dan 500 (la imagen de Gerencia no traía `taller_home`); 3 campos fantasma del DSL de KPIs custom |
 | 2026.09.12 | S-Historial-Actividad | Historial de actividad de un año (pantallas y acciones; `equipo.ver_historial` sólo dueños); Peticiones en vivo con nombre + IP vía `X-Despacho-Quien` en el log |
-| 2026.09.11 | S-Grilla-Permisos | La grilla de El Directorio reconoce el rol asignado; guardarla ya no quita permisos |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 

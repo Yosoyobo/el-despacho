@@ -5,6 +5,37 @@
 
 ---
 
+## Novedades — Mandados que ya no se quedan pegados, contadores de clientes y las fechas del proyecto por escrito (1 de octubre de 2026)
+
+**«Mis mandados» del Inicio ya no muestra tareas que no son mandados.** Si una
+tarea nació como entrega y después la cambias a tarea normal, deja de aparecer
+como mandado. Y una tarea completada ya no se queda en la lista como pendiente.
+Las que ya estaban así se limpiaron solas con esta actualización.
+
+**Los contadores de Clientes cuentan bien y todos se pican.** Arriba de la lista
+hay cinco: con proyectos activos, activos, prospectos, inactivos y archivados.
+Cada número es exactamente lo que ves al picarlo; picarlo otra vez quita el
+filtro.
+
+**Las fechas del proyecto, por escrito.** Arriba de los calendarios de Inicio y
+Entrega ves la fecha elegida y cuánto falta o cuánto pasó («26 Sep 2026 · hace 5
+días», «faltan 3 semanas»). Junto a «Última actualización» ahora también dice
+cuándo se **creó** el proyecto.
+
+**La tabla de tareas del proyecto ya no tiene la columna «Prioridad».**
+
+**«Ver conceptos» del pago a un proveedor** muestra cada concepto con su IVA,
+igual que el total.
+
+**Subcategorías de proveedores:** si desactivas una, los proveedores que ya la
+tenían la conservan aunque los vuelvas a guardar.
+
+**Más detalles:** «Tareas urgentes» del Inicio y el calendario ya no muestran
+tareas cerradas en cualquier estado final ni las archivadas; en Categorías el
+botón de regreso dice «← Productos».
+
+**Con El Chalán:** son arreglos de pantalla; no agregan nada nuevo que pedirle.
+
 ## Novedades — Órdenes de compra a proveedores y portada para las cotizaciones (29 de septiembre de 2026)
 
 **Las pestañas de Gerencia → Ajustes → Documentos ya abren.** Al picar Marca y
@@ -5980,7 +6011,7 @@ contesta de ti; de otra persona, sólo si tienes el permiso.
 
 Tus clientes B2B (restaurantes, heladerías, cafeterías, etc.).
 
-- **Lista:** filtra por nombre, ve quiénes tienen proyectos activos, marca "Mostrar archivados" para ver los inactivos. La tabla incluye una columna de **Teléfono**.
+- **Lista:** arriba hay cinco contadores que también son filtros: **con proyectos activos**, **activos**, **prospectos**, **inactivos** y **archivados**. Cada número es lo que ves al picarlo; picarlo otra vez quita el filtro. Los archivados también están en el desplegable al final de la lista. La tabla incluye una columna de **Teléfono**.
 - **Edición rápida:** el botón **"✎ Edición rápida"** de la lista te deja editar **Nombre**, **Razón social**, **Teléfono** y **Estado** (pastillas de color) de cada cliente directo en la tabla; cada cambio se guarda solo. El teléfono que capturas aquí también actualiza el del contacto principal. Se quitó el botón "Ver" (la fila entera ya abre el cliente).
 - **Eliminar archivados:** en la sección de clientes archivados hay una **✕** para borrar un cliente **permanentemente** (solo super admin; bloqueado si tiene proyectos o facturas ligadas).
 - **Nuevo cliente:** nombre, contacto, email y teléfono.
@@ -6064,7 +6095,10 @@ La página es **editable directo** (los cambios se guardan solos; verás
 - **Barra de estado** con todos los estados en colores. El actual está
   resaltado; haz clic en otro para cambiarlo al instante.
 - **Datos del proyecto:** nombre, cliente (con "+ Nuevo cliente"), descripción
-  y dos **calendarios** (Inicio y Entrega) para elegir las fechas.
+  y dos **calendarios** (Inicio y Entrega) para elegir las fechas. Arriba de
+  cada uno sale la fecha por escrito y cuánto falta o pasó («faltan 3
+  semanas»). Junto al título ves cuándo se **creó** el proyecto y su última
+  actualización.
 - **Productos involucrados:** arriba hay **pestañas**: **En edición** y una por
   cada versión de cotización que hayas generado (**v1**, **v2**, …). «En edición»
   son los productos del proyecto ahora mismo; cada **vN** te muestra los
@@ -6240,8 +6274,9 @@ amarilla** de *"N proveedor(es) por pagar · N concepto(s) sin registrar"*.
 
 Está **agrupada por proveedor**: cada renglón es un proveedor con **su total**
 (porque le pagas una sola vez, no por cada producto o proceso). El enlace **"Ver
-conceptos"** te abre el detalle de lo que entra en ese pago; las cantidades salen
-siempre como **"× 35 pz"** — el total de piezas a producir (cantidad + merma).
+conceptos"** te abre el detalle de lo que entra en ese pago, cada concepto con su
+total con IVA; las cantidades salen siempre como **"× 35 pz"** — el total de
+piezas a producir (cantidad + merma).
 
 Cada proveedor tiene su botón **"Registrar pago"**, que abre una ventana con el
 total, la lista de conceptos incluidos y los datos del pago: **fecha, proveedor

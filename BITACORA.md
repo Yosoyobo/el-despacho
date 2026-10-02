@@ -13646,3 +13646,12 @@ año, estados, El Testigo, permiso propio sembrado para quien ve el dinero, y su
 La Imprenta. Portada opcional de la cotización. El Chalán consulta las órdenes. Cierra
 el arco de 4 deploys de La Imprenta pedido por Oscar («personalizar aún más la
 generación de PDFs»), hecho de jalón en worktree propio con otra sesión en paralelo.
+
+## 2026-10-01 — S-Buzon-Oct1 (VERSION 2026.10.01)
+
+Cruce de los 53 tickets abiertos de El Buzón contra `main`: 30 ya estaban resueltos
+(Oscar los pasó a «OK»), 21 a medias, 2 eran un bug vivo. Se arregló el bug de «Mis
+mandados» (#155/#165, mandado sobrante de una tarea que dejó de ser entrega, con
+migración de datos que limpia los existentes) y los arreglos chicos: contadores de
+Clientes (#130), fechas por escrito y «Creado» en el proyecto (#120), IVA por concepto
+(#157), subcategorías desactivadas que ya no se pierden (#164), textos (#128).
