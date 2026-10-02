@@ -27,6 +27,8 @@ class UsuarioForm(forms.ModelForm):
             # S-LC-Feedback-V7: jefe directo + dirección/pin/geocerca.
             "jefe_directo", "direccion",
             "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa",
+            # Checador por actividad (Oscar 2026-10-01).
+            "checador_por_actividad", "checador_descontar_pausas", "checador_pausa_min",
         ]
         widgets = {
             "horario_inicio": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
@@ -36,6 +38,7 @@ class UsuarioForm(forms.ModelForm):
             "geo_lat": forms.NumberInput(attrs={"step": "any", "placeholder": "19.4326"}),
             "geo_lng": forms.NumberInput(attrs={"step": "any", "placeholder": "-99.1332"}),
             "geocerca_radio_m": forms.NumberInput(attrs={"min": 20, "max": 5000}),
+            "checador_pausa_min": forms.NumberInput(attrs={"min": 5, "max": 600}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -52,11 +55,23 @@ class UsuarioForm(forms.ModelForm):
         self.fields["jefe_directo"].queryset = qs
         self.fields["jefe_directo"].required = False
         self.fields["jefe_directo"].empty_label = "— Sin jefe directo —"
-        for f in ("direccion", "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa"):
+        for f in ("direccion", "geo_lat", "geo_lng", "geocerca_radio_m", "geocerca_activa",
+                  "checador_por_actividad", "checador_descontar_pausas", "checador_pausa_min"):
             self.fields[f].required = False
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()
+
+    def clean_checador_pausa_min(self):
+        # Vacío hereda el default (60); un número fuera de rango se corrige al
+        # validar en vez de guardarse: con menos de 5 min cualquier lectura de
+        # pantalla contaría como pausa.
+        v = self.cleaned_data.get("checador_pausa_min")
+        if v is None:
+            return self.instance.checador_pausa_min or 60
+        if not 5 <= v <= 600:
+            raise forms.ValidationError("Entre 5 y 600 minutos.")
+        return v
 
     def clean_modalidad(self):
         return self.cleaned_data.get("modalidad") or "presencial"

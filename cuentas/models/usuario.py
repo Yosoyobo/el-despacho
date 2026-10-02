@@ -84,6 +84,24 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     geocerca_activa = models.BooleanField(
         default=False, help_text="Activa la validación de geocerca para este empleado.")
 
+    # Checador por actividad (Oscar 2026-10-01): la jornada se arma sola de la
+    # primera a la última actividad del día en El Taller (corta a las 23:59). Se
+    # prende por persona en El Directorio; convive con el checado a mano, que
+    # gana en el extremo que se cheque. Los huecos sin actividad se descuentan
+    # sólo con el segundo interruptor. La lógica vive en apps.checador.actividad.
+    checador_por_actividad = models.BooleanField(
+        "Checador por actividad", default=False,
+        help_text="La jornada se cuenta sola: de su primera a su última actividad del día "
+                  "en El Taller (el día corta a las 23:59). Puede seguir checando a mano; "
+                  "lo que cheque a mano gana.")
+    checador_descontar_pausas = models.BooleanField(
+        "Descontar pausas largas", default=False,
+        help_text="Con el Checador por actividad: no cuenta los huecos sin actividad más "
+                  "largos que los minutos de abajo (la comida, por ejemplo).")
+    checador_pausa_min = models.PositiveIntegerField(
+        "Minutos de una pausa larga", default=60,
+        help_text="Un hueco sin actividad más largo que esto no cuenta como trabajado.")
+
     # S-Chalan-Voz-Usuario: voz/estilo personal del usuario para Los Chalanes.
     # Capa ADITIVA — se concatena DESPUÉS de la voz institucional (PromptVoz),
     # solo afecta tono en flujos conversacionales (Dictado, chat). Nunca toca

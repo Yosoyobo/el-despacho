@@ -84,6 +84,9 @@ URL_NAMES_SONDEO = frozenset({
     "interfono-offline",
     # La cola offline de El Checador se vacía sola al recuperar la señal.
     "checador:api_sync",
+    # Checador por actividad: la ubicación se manda sola al cargar la pantalla
+    # (cada 10 min a lo más). La pantalla que la pidió ya contó como actividad.
+    "checador:api_ubicacion",
     # Este mismo sistema: el recuadro «Quién está conectado» se refresca solo.
     "directorio-en-linea",
     # La ficha del proveedor pregunta cada 2 s si ya se ubicó el pin (se apaga
@@ -450,7 +453,7 @@ def _registrar(request, response) -> bool:
         return False
 
     url_name, kwargs = _resolver(ruta)
-    return _guardar(usuario, {
+    escribio = _guardar(usuario, {
         "actividad_en": ahora,
         "actividad_app": app,
         "actividad_ruta": ruta,
@@ -459,6 +462,35 @@ def _registrar(request, response) -> bool:
         "actividad_accion": accion,
         "actividad_agente": _agente(request),
     })
+    if escribio and app == "taller":
+        _al_checador(usuario, ahora)
+    return escribio
+
+
+def _al_checador_si_taller(usuario) -> None:
+    """Entrar o salir de El Taller también es actividad para el Checador: sin
+    esto, la primera pantalla tras el login cae en el tope de 15 s y la entrada
+    se anotaría hasta la siguiente actividad."""
+    if usuario and getattr(usuario, "pk", None) and app_actual() == "taller":
+        from django.utils import timezone
+
+        _al_checador(usuario, timezone.now())
+
+
+def _al_checador(usuario, ahora) -> None:
+    """Checador por actividad (2026-10-01): la misma actividad que marca a la
+    persona en línea arma su jornada si lo tiene prendido. Mismo criterio (sin
+    sondeo) y mismo tope de escritura: una vez por minuto en la misma pantalla.
+    Sólo El Taller — «la primera actividad del usuario en el taller». NUNCA lanza.
+    """
+    if not getattr(usuario, "checador_por_actividad", False):
+        return
+    try:
+        from apps.checador import actividad
+
+        actividad.registrar_actividad(usuario, ahora)
+    except Exception:  # noqa: BLE001
+        logger.warning("presencia: el checador por actividad no pudo anotar", exc_info=True)
 
 
 def _marcar(request, user, marca: str) -> None:
@@ -483,6 +515,7 @@ def _marcar(request, user, marca: str) -> None:
 def marcar_entrada(request, user) -> None:
     """Entrar al sistema ya es estar aquí."""
     _marcar(request, user, ENTRADA)
+    _al_checador_si_taller(user)
     from lib import historial_actividad
 
     historial_actividad.marcar(request, user, "entrada")
@@ -492,6 +525,7 @@ def marcar_salida(request, user) -> None:
     """Cerrar sesión es la única forma de saber que alguien se fue ANTES de los
     30 minutos. Sin esto, quien sale aparecería «en línea» cinco minutos más."""
     _marcar(request, user, SALIDA)
+    _al_checador_si_taller(user)
     from lib import historial_actividad
 
     historial_actividad.marcar(request, user, "salida")

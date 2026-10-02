@@ -49,11 +49,11 @@
                     <tr class="border-b border-gray-50 last:border-0 dark:border-gray-800/60">
                         <td class="py-2 pr-3 capitalize text-gray-700 dark:text-gray-300">{{ j.fecha|date:"D j N" }}{% if j.ajustado_por_id %}<br><span class="text-[10px] text-gray-400" title="Ajustada por {{ j.ajustado_por.nombre_completo|default:j.ajustado_por.email }}{% if j.ajustado_en %} · {{ j.ajustado_en|date:'d/m H:i' }}{% endif %}">✎ ajustada</span>{% endif %}</td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                            <span class="tabular-nums">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</span>
+                            <span class="tabular-nums">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</span>{% if j.entrada_por_actividad %} <span class="text-[10px] text-brand-500 dark:text-brand-400" title="Por actividad en El Taller">act.</span>{% endif %}
                             {% if j.entrada_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.entrada_lat lng=j.entrada_lng etiqueta="Entrada" cuando=j.entrada_en|hfmt:"D j H:i" precision=j.entrada_precision %}{% endif %}
                         </td>
                         <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                            <span class="tabular-nums">{{ j.salida_en|hfmt:"H:i"|default:"—" }}</span>
+                            <span class="tabular-nums">{{ j.salida_en|hfmt:"H:i"|default:"—" }}</span>{% if j.salida_por_actividad %} <span class="text-[10px] text-brand-500 dark:text-brand-400" title="Por actividad en El Taller">act.</span>{% endif %}
                             {% if j.salida_en %}<br>{% include "checador/_boton_mapa.html" with lat=j.salida_lat lng=j.salida_lng etiqueta="Salida" cuando=j.salida_en|hfmt:"D j H:i" precision=j.salida_precision %}{% endif %}
                         </td>
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{% if j.horas_trabajadas %}{{ j.horas_trabajadas }}{% else %}—{% endif %}</td>

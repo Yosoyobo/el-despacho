@@ -40,4 +40,5 @@ urlpatterns = [
     path("equipo/export", views.equipo_export, name="equipo_export"),
     path("equipo/<int:pk>/", views.equipo_persona, name="equipo_persona"),
     path("api/sync", views.api_sync, name="api_sync"),
+    path("api/ubicacion", views.api_ubicacion, name="api_ubicacion"),
 ]

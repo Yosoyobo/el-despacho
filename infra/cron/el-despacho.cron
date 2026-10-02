@@ -42,6 +42,8 @@ CRON_TZ=America/Mexico_City
 
 # El Checador — cierra jornadas abiertas no checadas antes de las 05:00 del día siguiente.
 10 5 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
+# El Checador por actividad — el día corta a las 23:59: poco después de medianoche cierra con su última actividad las jornadas de quien lo tiene prendido (las demás esperan a las 05:00; correr de más no las toca).
+5 0 * * * cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py cerrar_jornadas_abiertas >> /var/log/checador_cierre.log 2>&1
 
 # Pendientes CON HORA que llegan a su fecha+hora → aviso a los asignados (idempotente). Cada 15 min en horario laboral L-S.
 */15 7-20 * * 1-6 cd @@RAIZ@@ && docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T el-taller python manage.py avisar_pendientes_cumplidos >> /var/log/pendientes_cumplidos.log 2>&1

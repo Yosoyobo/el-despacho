@@ -2,7 +2,8 @@
 
 Si un empleado no checa salida antes de las 05:00 del día siguiente, su
 jornada se cierra al horario de salida default de la compañía de ese día.
-Cron diario ~05:10 (ver CLAUDE.md §10).
+Con el Checador por actividad el día corta a las 23:59 y la jornada se cierra
+con su última actividad (cron 00:05). Cron diario ~05:10 para el resto.
 
     python manage.py cerrar_jornadas_abiertas [--dry-run]
 """
@@ -25,13 +26,10 @@ class Command(BaseCommand):
         from django.utils import timezone
 
         if opts["dry_run"]:
-            import datetime as _dt
             ahora = timezone.now()
             n = 0
             for j in Jornada.objects.filter(entrada_en__isnull=False, salida_en__isnull=True):
-                limite = timezone.make_aware(
-                    _dt.datetime.combine(j.fecha + _dt.timedelta(days=1), _dt.time(5, 0)))
-                if ahora >= limite:
+                if ahora >= services.limite_de_cierre(j):
                     self.stdout.write(f"[dry] cerraría jornada {j.pk} ({j.usuario_id}, {j.fecha})")
                     n += 1
             self.stdout.write(self.style.WARNING(f"(dry-run) {n} jornada(s) por cerrar."))

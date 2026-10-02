@@ -23,6 +23,7 @@
             {% if jornada and jornada.entrada_en %}
                 <p class="text-sm text-gray-600 dark:text-gray-300">
                     Entrada: <span class="font-semibold">{{ jornada.entrada_en|hfmt:"H:i" }}</span>
+                    {% if jornada.entrada_por_actividad %}<span class="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-400" title="La puso tu primera actividad del día en El Taller">por actividad</span>{% endif %}
                     {% if jornada.retardo_min %}
                         · <span class="font-semibold text-warning-600 dark:text-warning-400">retardo {{ jornada.retardo_min }} min</span>
                     {% else %}
@@ -42,9 +43,18 @@
                     <span class="text-[11px] font-medium uppercase tracking-wide text-success-600 dark:text-success-400">Jornada corriendo</span>
                     <span data-cronometro data-inicio="{{ jornada.entrada_en|date:'c' }}" class="text-title-sm font-bold tabular-nums text-success-700 dark:text-success-300">00:00:00</span>
                 </div>
+                {% if request.user.checador_por_actividad and jornada.actividad_ultima_en %}
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Por actividad: última {{ jornada.actividad_ultima_en|hfmt:"H:i" }} · llevas {{ jornada.en_curso_texto }}{% if jornada.pausa_min %} (sin {{ jornada.pausa_min }} min de pausas){% endif %}.
+                    Si no checas salida, tu jornada se cierra con tu última actividad del día.
+                </p>
+                {% endif %}
                 {% endif %}
             {% else %}
                 <p class="text-sm text-gray-500 dark:text-gray-400">Aún no has checado entrada hoy.</p>
+                {% if request.user.checador_por_actividad %}
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tienes el Checador por actividad: tu entrada se anota sola con tu primera actividad en El Taller.</p>
+                {% endif %}
             {% endif %}
         </div>
 
