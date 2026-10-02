@@ -55,7 +55,7 @@ def _resolver_servicio(clave: str, contexto=None):
     from apps.el_catalogo.models import Servicio
     clave = _limpiar_slug((clave or "").strip())
     if not clave:
-        raise ValueError("Falta el servicio al que pertenece la variación (`servicio`).")
+        raise ValueError("Falta el producto al que pertenece la variación (`servicio`).")
     ref_id = _ref_anterior(clave, contexto, "servicio")
     if ref_id:
         srv = Servicio.objects.filter(pk=ref_id).first()
@@ -66,7 +66,7 @@ def _resolver_servicio(clave: str, contexto=None):
         or Servicio.objects.filter(nombre__icontains=clave, activo=True).first()
     )
     if not srv:
-        raise ValueError(f"Servicio `{clave}` no encontrado en el Catálogo.")
+        raise ValueError(f"Producto `{clave}` no encontrado en el Catálogo.")
     return srv
 
 

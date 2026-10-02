@@ -57,9 +57,10 @@ def lista(request):
     from django.db.models import Count
 
     q = (request.GET.get("q") or "").strip()
-    # Vista/filtro: nombre (default) · contacto · activos · con_proyectos · prospectos.
+    # Vista/filtro: nombre (default) · contacto · activos · con_proyectos ·
+    # prospectos · inactivos · archivados.
     ver = (request.GET.get("ver") or "nombre").strip()
-    if ver not in {"nombre", "contacto", "activos", "con_proyectos", "prospectos"}:
+    if ver not in {"nombre", "contacto", "activos", "con_proyectos", "prospectos", "inactivos", "archivados"}:
         ver = "nombre"
 
     # Edición rápida (mismo patrón que Productos): opt-in por ?editar=1 y gated
@@ -71,7 +72,10 @@ def lista(request):
         return qs.annotate(num_proyectos=Count("proyectos", distinct=True))
 
     # Al buscar, se busca en TODOS (incluso archivados) y se muestra el estado.
-    base = Cliente.objects.all() if q else Cliente.activos.all()
+    if ver == "archivados":
+        base = Cliente.objects.filter(activo=False)
+    else:
+        base = Cliente.objects.all() if q else Cliente.activos.all()
     qs = _anota(base.select_related())
     if q:
         qs = _buscar_clientes(qs, q)
@@ -80,6 +84,8 @@ def lista(request):
         qs = qs.filter(estado="activo")
     elif ver == "prospectos":
         qs = qs.filter(estado="prospecto")
+    elif ver == "inactivos":
+        qs = qs.filter(estado="inactivo")
     elif ver == "con_proyectos":
         qs = qs.filter(proyectos__estado__in=ESTADOS_PROYECTO_ACTIVOS).distinct()
 
@@ -92,15 +98,28 @@ def lista(request):
 
     # Clientes archivados — sección desplegable (solo cuando NO se busca).
     archivados_lista = []
-    if not q:
+    if not q and ver != "archivados":
         archivados_lista = list(_anota(Cliente.objects.filter(activo=False)).order_by("razon_social"))
 
-    # KPIs hero (3): con proyectos activos · activos · archivados.
-    activos = Cliente.activos.count()
-    archivados = Cliente.objects.filter(activo=False).count()
+    # KPIs hero (Buzón #130): cada número cuenta lo MISMO que muestra su
+    # filtro, y todos se pueden picar (picar el activo lo quita).
+    por_estado = dict(
+        Cliente.activos.order_by().values("estado").annotate(n=Count("pk")).values_list("estado", "n")
+    )
     con_proyectos_activos = Cliente.activos.filter(
         proyectos__estado__in=ESTADOS_PROYECTO_ACTIVOS
     ).distinct().count()
+    tarjetas_kpi = [
+        {"slug": slug, "titulo": titulo, "valor": valor, "color": color,
+         "activo": ver == slug, "link": "?" if ver == slug else f"?ver={slug}"}
+        for slug, titulo, valor, color in (
+            ("con_proyectos", "Con proyectos activos", con_proyectos_activos, "brand"),
+            ("activos", "Activos", por_estado.get("activo", 0), "success"),
+            ("prospectos", "Prospectos", por_estado.get("prospecto", 0), "warning"),
+            ("inactivos", "Inactivos", por_estado.get("inactivo", 0), "gray"),
+            ("archivados", "Archivados", Cliente.objects.filter(activo=False).count(), "gray"),
+        )
+    ]
 
     qs_filtros = []
     if q:
@@ -119,20 +138,16 @@ def lista(request):
         "puede_eliminar": puede_eliminar_cartera(request.user),
         "editar_inline": editar_inline,
         "estados_cliente": ESTADOS_CLIENTE,
-        "kpi_activo_con_proyectos": ver == "con_proyectos",
-        "kpi_activo_activos": ver == "activos",
+        "tarjetas_kpi": tarjetas_kpi,
         "ver_opciones": [
             ("nombre", "Nombre A-Z"),
             ("contacto", "Contacto A-Z"),
             ("activos", "Activos"),
             ("con_proyectos", "Con proyectos"),
             ("prospectos", "Prospectos"),
+            ("inactivos", "Inactivos"),
+            ("archivados", "Archivados"),
         ],
-        "kpis": {
-            "activos": activos,
-            "archivados": archivados,
-            "con_proyectos": con_proyectos_activos,
-        },
     })
 
 

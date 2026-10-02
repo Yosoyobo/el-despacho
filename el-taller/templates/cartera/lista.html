@@ -23,10 +23,10 @@
 </div>
 {% endif %}
 
-<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes con proyectos activos" valor=kpis.con_proyectos color="brand" link="?ver=con_proyectos" activo=kpi_activo_con_proyectos %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes activos" valor=kpis.activos color="success" link="?ver=activos" activo=kpi_activo_activos %}
-    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo="Clientes archivados" valor=kpis.archivados color="gray" %}
+<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    {% for k in tarjetas_kpi %}
+    {% include "_componentes_tailadmin/_kpi_card_hero.html" with titulo=k.titulo valor=k.valor color=k.color link=k.link activo=k.activo %}
+    {% endfor %}
 </div>
 
 {# Búsqueda grande — busca por nombre, contacto y proyecto (incluye archivados). #}
