@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Equipo — Checador{% endblock %}
+{% block title %}Entradas y salidas del equipo — Checador{% endblock %}
 
 {% block contenido %}
-{% include "_componentes_tailadmin/_page_header.html" with titulo="Checador del equipo" subtitulo="Horas, retardos y visitas por persona" back_url="/checador/" back_label="Checador" %}
+{% include "_componentes_tailadmin/_page_header.html" with titulo="Entradas y salidas del equipo" subtitulo="Horas, retardos y visitas por persona. Clic en un nombre para ver cada entrada y salida con su mapa." back_url="/checador/" back_label="Checador" %}
 
 <div class="mx-auto grid max-w-5xl grid-cols-1 gap-6">
 
@@ -57,7 +57,7 @@
                         <td class="py-2 pr-3 tabular-nums text-gray-700 dark:text-gray-300">{{ f.visitas }}</td>
                         <td class="py-2">{% if f.sin_geo %}<span class="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{{ f.sin_geo }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                         {% else %}
-                        <td class="py-2 pr-3 text-xs text-gray-400 dark:text-gray-500" colspan="6" title="Solo su jefe directo ve las horas trabajadas">🔒 Solo horario · ver ficha</td>
+                        <td class="py-2 pr-3 text-xs text-gray-400 dark:text-gray-500" colspan="6" title="Solo su jefe directo y los directores ven las horas trabajadas">🔒 Solo horario · ver ficha</td>
                         {% endif %}
                     </tr>
                     {% endfor %}

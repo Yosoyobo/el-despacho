@@ -136,6 +136,7 @@ def tablero(request):
         "proyectos": _proyectos_para(request.user),
         "geocerca_modo": services.modo_geocerca(),
         "sedes_mapa": sedes_mapa,
+        "puede_ver_equipo": puede_ver_equipo_checador(request.user),
     })
 
 
@@ -408,6 +409,7 @@ def historial(request):
         "mis_correcciones": mis_correcciones,
         "puede_aprobar": puede_aprobar_correcciones_checador(request.user),
         "puede_ver_equipo": puede_ver_equipo_checador(request.user),
+        "puede_exportar": puede_exportar_checador(request.user),
     })
 
 
@@ -709,8 +711,9 @@ def equipo_persona(request, pk):
 
 
 @login_required
-@_requiere_ver_equipo
 def equipo_export(request):
+    # Sólo `exportar` (2026-10-05): el contador baja el CSV para la nómina sin
+    # entrar a la pantalla del equipo, que es de quien dirige (`ver_equipo`).
     if not puede_exportar_checador(request.user):
         return HttpResponseForbidden("Sin permiso para exportar.")
     from .exports import VISTAS, responder_csv

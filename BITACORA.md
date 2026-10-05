@@ -13666,3 +13666,13 @@ gana. Segundo toggle para descontar pausas largas (60 min de entrada). Se enganc
 la presencia existente en vez de inventar otro criterio. Hecho en worktree propio
 con otra sesión en paralelo.
 
+
+
+## 2026-10-05 — S-Checador-Directores (VERSION 2026.10.03)
+
+Oscar no encontraba las entradas y salidas del equipo (existían, a dos clics y con un
+nombre que no decía nada). Ahora `checador.ver_equipo` es de los directores (dueños +
+super_admin) y abre las horas de todos; el contador conserva sólo la exportación (la
+baja desde Mi historial). La página «Actividad de <persona>» trae arriba la entrada y
+salida del día, en El Taller y en La Gerencia. Recuadro claro en el tablero del
+Checador. Migración de datos `cuentas/0056`. Hecho en worktree propio desde `main`.

@@ -32,6 +32,44 @@ podría abrirlo; si no, su genérico («un proyecto»).
     </div>
 </section>
 
+{% if checada %}
+{% comment %}Entrada y salida del día (2026-10-05). `checada` sólo llega si quien mira puede ver las horas de la persona (ella, su jefe directo o quien dirige: checador.ver_equipo); si no, la tarjeta no existe.{% endcomment %}
+{% with j=checada.jornada %}
+<section class="mb-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+    <header class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Entrada y salida</h2>
+        {% if checada.detalle_url %}<a href="{{ checada.detalle_url }}" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Todas sus entradas y salidas →</a>{% endif %}
+    </header>
+    {% if j %}
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Entrada</p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ j.entrada_en|hfmt:"H:i"|default:"—" }}</p>
+            {% if j.entrada_en %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ checada.entrada_origen }}{% if checada.entrada_mapa %} · <a href="{{ checada.entrada_mapa }}" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">📍 mapa</a>{% elif j.entrada_sin_geo %} · sin ubicación{% endif %}</p>{% endif %}
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Salida</p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{% if j.salida_en %}{{ j.salida_en|hfmt:"H:i" }}{% elif j.entrada_en %}<span class="text-sm font-medium text-success-600 dark:text-success-400">sigue trabajando</span>{% else %}—{% endif %}</p>
+            {% if j.salida_en %}<p class="text-xs text-gray-500 dark:text-gray-400">{{ checada.salida_origen }}{% if checada.salida_mapa %} · <a href="{{ checada.salida_mapa }}" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">📍 mapa</a>{% elif j.salida_sin_geo %} · sin ubicación{% endif %}</p>{% endif %}
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Horas trabajadas</p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">{% if j.horas_trabajadas is not None %}{{ j.horas_trabajadas }} h{% elif j.en_curso_texto %}{{ j.en_curso_texto }}{% else %}—{% endif %}</p>
+            {% if j.pausa_min %}<p class="text-xs text-gray-500 dark:text-gray-400">sin {{ j.pausa_min }} min de pausas</p>{% endif %}
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Llegada</p>
+            <p class="mt-1 text-lg font-semibold">{% if not j.entrada_en %}<span class="text-gray-900 dark:text-gray-100">—</span>{% elif j.retardo_min %}<span class="text-warning-600 dark:text-warning-400">{{ j.retardo_min }} min tarde</span>{% else %}<span class="text-success-600 dark:text-success-400">a tiempo</span>{% endif %}</p>
+            {% if j.ajustado_por_id %}<p class="text-xs text-gray-500 dark:text-gray-400">✎ ajustada a mano</p>{% endif %}
+        </div>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500 dark:text-gray-400">No checó entrada este día.</p>
+    {% endif %}
+</section>
+{% endwith %}
+{% endif %}
+
 <section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
     <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <p class="text-xs text-gray-500 dark:text-gray-400">Primera y última</p>

@@ -11333,3 +11333,45 @@ pausas van apagadas); en escritorio la ubicación es de Wi-Fi (cientos de metros
 el recordatorio de entrada sigue avisando a quien no ha abierto El Taller (abrirlo
 ya lo checa); la vista de equipo no muestra la jornada en curso en vivo.
 
+
+
+### S-Checador-Directores ✅ — Las entradas y salidas del equipo, para quien dirige (2026-10-05, VERSION 2026.10.03)
+
+Pedido de Oscar: «No encuentro donde ver el registro de chequeo de entrada y salida
+de los empleados. Veo su actividad, pero también debería ver ESA actividad» ·
+«Solo los directores pueden ver esa actividad» · «No se entiende tu botón de
+checador de equipo». El registro existía (`/checador/equipo/`) pero sólo se llegaba
+por Checador → Ver historial → «Checador del equipo», y la página «Actividad de
+<persona>» (2026-09-29) no traía las checadas.
+
+Decisiones (AskUserQuestion): directores = **dueños + super_admin**; el contador
+**conserva la exportación**; la tarjeta sale **en las dos apps**.
+
+- **Permiso**: `checador.ver_equipo` pasa a ser «quien dirige». Además del reporte,
+  ahora abre las horas de TODO el equipo (`puede_ver_horas_trabajadas_de`: propio ·
+  jefe directo · `ver_equipo` · super_admin). Cambia la decisión V9 («ver_equipo NO
+  alcanza las horas de no-subordinados») por decisión explícita de Oscar.
+  Migración de datos `cuentas/0056_checador_ver_equipo_directores`: siembra la fila a
+  super_admin/dueño (respeta un `activo=False` previo), borra la del contador
+  (rol primario) y ajusta el JSON de los roles del sistema. El contador sale de
+  `DEFAULTS_POR_ROL` para `ver_equipo` y se queda con `exportar`.
+- **Exportar**: `checador:equipo_export` pide sólo `exportar` (antes también
+  `ver_equipo`). El contador baja el CSV desde Mi historial («Descargar jornadas del
+  equipo», con fechas), bloque que no ve quien dirige.
+- **«Actividad de <persona>»** (`cuentas/historial_views._checada_del_dia`, partial
+  dual-copy `_historial_actividad.html`): tarjeta «Entrada y salida» del día — horas,
+  origen (a mano / por actividad / la cerró el sistema), horas trabajadas, retardo,
+  ajuste, enlace a Google Maps. Sólo si quien mira puede ver las horas. El enlace
+  «Todas sus entradas y salidas →» se resuelve con `reverse` y desaparece en La
+  Gerencia (no monta las URLs del Checador).
+- **Acceso**: recuadro «Entradas y salidas del equipo» arriba del tablero del
+  Checador (con `ver_equipo`); el botón y los títulos dejan de decir «Checador del
+  equipo». La pantalla de una persona por fin pinta «Tiempo por proyecto» (la vista
+  ya cargaba las sesiones y nadie las mostraba).
+- **Tests**: `tests/taller/test_checador_directores.py` (16), verificados contra el
+  código mutado (sin la línea del permiso fallan los del dueño).
+
+**Deuda diseñada**: la tarjeta no cubre las visitas del día (siguen en la pantalla de
+la persona); un rol personalizado que traía `ver_equipo` ahora también ve horas
+(revisar en Roles si alguno lo tenía sin intención); El Chalán no consulta jornadas
+ajenas.
