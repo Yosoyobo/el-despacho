@@ -8,6 +8,20 @@
 
 <div class="mx-auto grid max-w-3xl grid-cols-1 gap-6">
 
+    {% if puede_ver_equipo %}
+    {% comment %}2026-10-05 (Oscar: «no se entiende tu botón»): quien dirige llega a las entradas y salidas del equipo desde aquí, con un nombre que dice lo que hay detrás. Antes vivía escondido en Mi historial como «Checador del equipo».{% endcomment %}
+    <a href="{% url 'checador:equipo' %}" class="flex items-center gap-4 rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-theme-sm transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20">
+        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 dark:bg-gray-900 dark:text-brand-400">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 20v-2a4 4 0 0 0-3-3.87" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-brand-700 dark:text-brand-300">Entradas y salidas del equipo</span>
+            <span class="block text-xs text-brand-700/80 dark:text-brand-300/80">A qué hora llegó y se fue cada persona, sus horas, retardos y dónde checó.</span>
+        </span>
+        <span class="shrink-0 text-sm font-medium text-brand-600 dark:text-brand-400">Ver →</span>
+    </a>
+    {% endif %}
+
     {# ── Aviso de checadas pendientes de sincronizar (offline) ──── #}
     <div data-checador-badge style="display:none" class="flex items-center gap-2 rounded-xl border border-warning-200 bg-warning-50 px-4 py-2 text-sm text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.4 2.6" stroke-linecap="round"/><path d="M21 4v4h-4" stroke-linecap="round" stroke-linejoin="round"/></svg>

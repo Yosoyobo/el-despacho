@@ -279,9 +279,10 @@ DEFAULTS_POR_ROL: dict[str, dict[str, list[str]]] = {
         "facturacion": list(TODO_FACTURACION),
         "caja": list(TODO_CAJA),
         "chalan": list(TODO_CHALAN),
-        # Contador checa, ve al equipo y exporta (insumo para nómina/costos);
-        # no aprueba correcciones ni configura horarios.
-        "checador": ["checar", "ver_equipo", "exportar"],
+        # Contador checa y exporta (insumo para nómina/costos); no aprueba
+        # correcciones ni configura horarios. 2026-10-05: sin `ver_equipo` — las
+        # entradas y salidas del equipo son de quien dirige (decisión Oscar).
+        "checador": ["checar", "exportar"],
         # El contador lleva la nómina (la captura y la cierra) — decisión Oscar.
         "nomina": list(TODO_NOMINA),
         "equipo": list(TODO_EQUIPO),

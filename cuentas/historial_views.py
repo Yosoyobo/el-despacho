@@ -56,6 +56,54 @@ def _csv(persona, desde: date, hasta: date, viewer) -> HttpResponse:
     return resp
 
 
+def _mapa(lat, lng) -> str:
+    if lat is None or lng is None:
+        return ""
+    return f"https://www.google.com/maps?q={lat:.6f},{lng:.6f}"
+
+
+def _checada_del_dia(viewer, persona, fecha: date) -> dict | None:
+    """La entrada y salida del día para la tarjeta de arriba (2026-10-05, Oscar:
+    «veo su actividad, pero también debería ver ESA actividad»).
+
+    Sólo si quien mira puede ver las horas de la persona: ella misma, su jefe
+    directo o quien dirige (`checador.ver_equipo`). Si no, None y la tarjeta no
+    sale. El Checador nunca tumba esta página."""
+    from lib.permisos import puede_ver_horas_trabajadas_de
+
+    if not puede_ver_horas_trabajadas_de(viewer, persona):
+        return None
+    try:
+        from apps.checador.models import Jornada
+        from django.urls import NoReverseMatch, reverse
+
+        j = Jornada.objects.filter(usuario=persona, fecha=fecha).first()
+        try:
+            # Sólo El Taller monta El Checador; en La Gerencia no hay enlace.
+            detalle = reverse("checador:equipo_persona", args=[persona.pk])
+            detalle += f"?desde={fecha.isoformat()}&hasta={fecha.isoformat()}"
+        except NoReverseMatch:
+            detalle = ""
+    except Exception:  # noqa: BLE001
+        return None
+    if j is None:
+        return {"jornada": None, "detalle_url": detalle}
+
+    def _origen(por_actividad: bool, automatica: bool = False) -> str:
+        if automatica:
+            return "la cerró el sistema"
+        return "por actividad" if por_actividad else "checada a mano"
+
+    return {
+        "jornada": j,
+        "detalle_url": detalle,
+        "entrada_origen": _origen(j.entrada_por_actividad),
+        "salida_origen": _origen(j.salida_por_actividad, j.salida_automatica),
+        "entrada_mapa": _mapa(j.entrada_lat, j.entrada_lng),
+        "salida_mapa": _mapa(j.salida_lat, j.salida_lng),
+    }
+
+
 def _pagina(request, persona, plantilla: str, es_propia: bool):
     from lib import historial_actividad as ha
     from lib.permisos import puede_ver_historial_de, puede_ver_historial_equipo
@@ -92,6 +140,7 @@ def _pagina(request, persona, plantilla: str, es_propia: bool):
         "retencion_dias": ha.RETENCION_DIAS,
         # Para enlazar a otras personas desde la propia página (sólo con permiso).
         "puede_ver_otros": puede_ver_historial_equipo(request.user),
+        "checada": _checada_del_dia(request.user, persona, fecha),
     })
 
 

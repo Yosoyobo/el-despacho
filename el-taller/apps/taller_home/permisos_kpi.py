@@ -45,9 +45,9 @@ CONFIGURA_INTERFONO = ("interfono.configurar",)
 VE_SITE = ("site.ver",)                    # El Site y el fierro del NUC
 VE_CHALANES = ("chalanes.ver",)            # gasto y uso de la IA
 VE_DIRECTORIO = ("directorio.ver",)        # accesos y cuentas del equipo
-# El dato es `checador.ver_equipo`, pero ése lo trae también el contador (para
-# exportar a nómina) y estos KPIs nunca los vio: se usa la acción de quien
-# supervisa las jornadas, que es la de su audiencia.
+# El dato es `checador.ver_equipo`, que hasta 2026-10-05 traía también el
+# contador; estos KPIs nunca los vio: se usa la acción de quien supervisa las
+# jornadas, que es la de su audiencia.
 SUPERVISA_JORNADAS = ("checador.aprobar_correcciones",)
 # Los asientos descuadrados son una alarma del dueño: el contador ve TODA La
 # Contaduría y aun así este KPI nunca le salió. Ninguna acción de La Contaduría

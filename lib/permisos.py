@@ -619,19 +619,22 @@ def puede_ver_horas_trabajadas_de(viewer, empleado) -> bool:
     Las HORAS TRABAJADAS (jornadas, retardos, tiempo de proyecto) de un empleado
     solo las ve:
       • el propio empleado,
-      • su `jefe_directo`, o
+      • su `jefe_directo`,
+      • quien dirige: `checador.ver_equipo` (2026-10-05, decisión Oscar: «sólo
+        los directores pueden ver esa actividad» — de arranque super_admin y
+        dueño; el contador lo perdió y conserva sólo `exportar`), o
       • super_admin (failsafe duro).
-    Cualquier otro (incluidos admins que no son su jefe) solo ve el HORARIO
-    DECLARADO de la semana — nunca las horas reales. El permiso `ver_equipo` da
-    acceso al reporte del Checador, pero NO a las horas de quien no es tu
-    subordinado directo."""
+    Cualquier otro solo ve el HORARIO DECLARADO de la semana — nunca las horas
+    reales."""
     if viewer is None or empleado is None:
         return False
     if getattr(viewer, "pk", None) == getattr(empleado, "pk", None):
         return True
     if tiene_rol(viewer, "super_admin"):
         return True
-    return getattr(empleado, "jefe_directo_id", None) == getattr(viewer, "pk", None)
+    if getattr(empleado, "jefe_directo_id", None) == getattr(viewer, "pk", None):
+        return True
+    return puede_ver_equipo_checador(viewer)
 
 
 def puede_exportar_checador(user) -> bool:

@@ -25,7 +25,7 @@
         {% if puede_ver_equipo %}
         <a href="{% url 'checador:equipo' %}" class="inline-flex w-fit items-center gap-2 rounded-lg border border-brand-200 px-4 py-2 text-sm font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-500/30 dark:text-brand-400 dark:hover:bg-brand-500/10">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM22 20v-2a4 4 0 0 0-3-3.87" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Checador del equipo
+            Entradas y salidas del equipo
         </a>
         {% endif %}
         {% if puede_aprobar %}
@@ -35,6 +35,26 @@
         </a>
         {% endif %}
     </div>
+    {% endif %}
+
+    {% if puede_exportar and not puede_ver_equipo %}
+    {% comment %}2026-10-05: quien exporta sin dirigir (el contador, para la nómina) baja el CSV de todo el equipo desde aquí; la pantalla del equipo es de los directores.{% endcomment %}
+    <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 class="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Descargar jornadas del equipo</h2>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Para la nómina: un archivo CSV (se abre en Excel) con las entradas y salidas de todos en las fechas que elijas.</p>
+        <form method="get" action="{% url 'checador:equipo_export' %}" class="campo-form flex flex-wrap items-end gap-3">
+            <div>
+                <label for="x-desde" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Desde</label>
+                <input type="date" name="desde" id="x-desde" value="{{ desde|date:'Y-m-d' }}">
+            </div>
+            <div>
+                <label for="x-hasta" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Hasta</label>
+                <input type="date" name="hasta" id="x-hasta" value="{{ hoy|date:'Y-m-d' }}">
+            </div>
+            <button type="submit" name="vista" value="jornadas" class="btn-secundario">📄 Jornadas CSV</button>
+            <button type="submit" name="vista" value="sesiones" class="btn-secundario">📄 Sesiones CSV</button>
+        </form>
+    </section>
     {% endif %}
 
     {# ── Totales de la semana ───────────────────────────────────── #}
