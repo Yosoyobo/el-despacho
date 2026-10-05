@@ -44,7 +44,10 @@ def test_cotizacion_enviar_por_correo_adjunta_pdf(cot, monkeypatch):
     assert res.ok
     assert capt["destinatario"] == "cliente@x.com"
     assert len(capt["adjuntos"]) == 1
-    assert capt["adjuntos"][0].nombre == f"{cot.codigo}.pdf"
+    # Buzón #166: el adjunto se llama IGUAL que la descarga manual
+    # (COTIZACIÓN-CLIENTE-Proyecto-vN.pdf), no con el código.
+    assert capt["adjuntos"][0].nombre == f"{services.nombre_archivo(cot)}.pdf"
+    assert capt["adjuntos"][0].nombre.startswith("COTIZACIÓN-")
 
 
 def test_cotizacion_sin_correo_de_cliente(cot, monkeypatch):
