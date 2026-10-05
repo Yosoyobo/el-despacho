@@ -92,7 +92,8 @@ def archivar_documento(accion, usuario, contexto=None):
     if not contenido:
         raise ValueError(f"El PDF de {cot.codigo} está vacío o no se encontró.")
 
-    nombre = f"{getattr(cot, 'nombre_pdf', cot.codigo)}.pdf"
+    from apps.cotizaciones.services import nombre_archivo
+    nombre = f"{nombre_archivo(cot)}.pdf"  # el mismo que la descarga (Buzón #166)
     if not paperless.subir(contenido, nombre, titulo=nombre[:-4]):
         raise ValueError("El archivo no aceptó el documento.")
     # `subir` devuelve el id de la TAREA: el lector de texto corre después.

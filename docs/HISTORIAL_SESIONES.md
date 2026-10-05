@@ -11375,3 +11375,19 @@ Decisiones (AskUserQuestion): directores = **dueños + super_admin**; el contado
 la persona); un rol personalizado que traía `ver_equipo` ahora también ve horas
 (revisar en Roles si alguno lo tenía sin intención); El Chalán no consulta jornadas
 ajenas.
+
+### S-Buzon-166 ✅ — VERSION 2026.10.04 (2026-10-05)
+
+Flujo «depurar leyendo El Buzón» (Oscar). Ticket nuevo **#166** (Jorge): el PDF
+de la cotización que sale por correo debe llamarse igual que el que se baja
+(`COTIZACIÓN-CLIENTE-Proyecto-vN.pdf`). Causa: `services._nombre_adjunto` usaba
+el código (`COT-2026-0044`) salvo que hubiera un patrón escrito en La Gerencia;
+la descarga siempre usaba `nombre_archivo`. Se borró `_nombre_adjunto`: el correo
+y el archivo al papeleo del Chalán (`ejecutores/herramientas.py`) usan
+`services.nombre_archivo(cot)`, el mismo de la descarga (con patrón o sin él).
+El acento de «COTIZACIÓN» viaja bien: `EmailMessage.attach` lo codifica (RFC 2231).
+Candado en `test_envio_correo.py` (mutación verificada).
+
+**Estados del Buzón al día:** a «OK» #128, #130, #157, #164 (entregados en
+2026.10.01) y #160, #161 (lo que faltaba se descartó por decisión documentada);
+los 15 pendientes quedan en «leído» con su «Pendiente: …» en la nota interna.

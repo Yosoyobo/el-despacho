@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-10-05:** producción en `VERSION 2026.10.03` (+ n8n 2.40.7 con MCP
+**Estado al 2026-10-05:** producción en `VERSION 2026.10.04` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.10.04 | S-Buzon-166 | El PDF de la cotización por correo se llama igual que la descarga (`nombre_archivo`); estados del Buzón al día |
 | 2026.10.03 | S-Checador-Directores | `checador.ver_equipo` = quien dirige (super_admin/dueño) y abre las horas de todo el equipo; el contador sólo exporta; «Entrada y salida» del día en «Actividad de <persona>» (ambas apps); acceso claro en el tablero |
 | 2026.10.02 | S-Checador-Actividad | Checador por actividad por persona (El Directorio): jornada de la primera a la última actividad en El Taller (corta 23:59, cierre 00:05), ubicación silenciosa, lo manual gana, pausas opcionales |
 | 2026.10.01 | S-Buzon-Oct1 | Cruce del Buzón (30 tickets ya resueltos a «OK»); mandado sobrante de tarea que dejó de ser entrega (#155/#165); contadores de Clientes; fechas por escrito |
@@ -403,7 +404,6 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.17 | S-KPIs-V2 · 1 | Ajustes → KPIs (catálogo, tableros por rol, metas por despacho/persona/cliente proporcionales con aviso); 45 KPIs nuevos; la foto diaria por fin guarda el dinero; `kpis.configurar` |
 | 2026.09.16 | S-Imprenta · 2 | Notas editables (globales + por cotización, permiso propio), firma/aceptación, folio/vigencia/QR, marcas por estado, patrón de nombre, PDF/A; la factura en La Imprenta con PDF comercial |
 | 2026.09.15 | S-Imprenta · 1 | La Imprenta: marca, tablas, datos del despacho y bloques/rótulos por tipo con vista previa en vivo, PDF de prueba e historial; permiso `documentos` |
-| 2026.09.14 | S-Portal-Llave-Documentos | La llave del portal no caduca (pide el correo; copiar/cambiar en la ficha); el cliente sube documentos; El Chalán lee la CSF y revisa su vigencia |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
 
