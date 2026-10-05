@@ -13676,3 +13676,9 @@ super_admin) y abre las horas de todos; el contador conserva sólo la exportaci�
 baja desde Mi historial). La página «Actividad de <persona>» trae arriba la entrada y
 salida del día, en El Taller y en La Gerencia. Recuadro claro en el tablero del
 Checador. Migración de datos `cuentas/0056`. Hecho en worktree propio desde `main`.
+
+## 2026-10-05 — S-Buzon-166 (VERSION 2026.10.04)
+
+Ticket #166: el PDF de la cotización por correo ya se llama igual que la descarga
+(`COTIZACIÓN-CLIENTE-Proyecto-vN.pdf`), también el que El Chalán manda al papeleo.
+Estados del Buzón puestos al día: 6 a «OK», 15 pendientes con lo que les falta.

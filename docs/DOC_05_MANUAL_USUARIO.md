@@ -5,6 +5,17 @@
 
 ---
 
+## Novedades — La cotización que mandas por correo se llama igual que la que bajas (5 de octubre de 2026)
+
+**El PDF que le llega al cliente por correo ya lleva el nombre de siempre**, el
+mismo que cuando lo bajas tú: `COTIZACIÓN-CLIENTE-NombreDelProyecto-v2` (por
+ejemplo `COTIZACIÓN-TESSASTUDIO-BolsasHalloween-v1.pdf`). Antes el adjunto salía
+con el folio (`COT-2026-0044.pdf`). Si en La Gerencia escribiste un patrón para el
+nombre, el correo y la descarga usan ese mismo patrón.
+
+**Con El Chalán:** cuando le pides archivar una cotización en el papeleo, el
+archivo también se guarda con ese nombre.
+
 ## Novedades — Las entradas y salidas del equipo, a la vista de los directores (5 de octubre de 2026)
 
 **Dónde ver a qué hora llegó y se fue cada persona.** Si diriges el despacho, al
@@ -7323,7 +7334,8 @@ que cotizas.
 con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
 imprimir). El archivo se llama siempre igual:
 `COTIZACIÓN-CLIENTE-NombreDelProyecto-v2`, con el cliente en mayúsculas, el
-proyecto sin espacios y la versión en minúsculas.
+proyecto sin espacios y la versión en minúsculas. El PDF que se manda por correo
+al cliente lleva exactamente el mismo nombre.
 
 **En la computadora** ese botón **baja el archivo** directo, con su nombre.
 
@@ -7878,6 +7890,7 @@ trae BORRADOR, PAGADA, CANCELADA y VENCIDA. Vacío = sin marca.
 
 **El nombre del archivo.** Vacío es el de siempre (`COTIZACIÓN-CLIENTE-Proyecto-v2`,
 `FACTURA-F12-CLIENTE`). Con un patrón, p. ej. `{folio} — {cliente} — {fecha}`.
+En la cotización, el nombre vale igual para la descarga y para el correo.
 
 **Permisos.** La pantalla tiene su propio permiso, **Documentos**, con cuatro
 partes que se dan por separado desde El Directorio: *ver*, *cambiar el estilo*,
