@@ -5,6 +5,17 @@
 
 ---
 
+## Novedades — Actualizamos por dentro todo el sistema (16 de octubre de 2026)
+
+**El sistema se actualizó a sus versiones más recientes.** No cambia cómo trabajas:
+todas las pantallas y botones están donde siempre. Lo que sí vas a notar, si miras
+con atención, es que las **gráficas** (El Site, Tesorería y los tableros) ahora se
+dibujan con una versión más nueva: las barras pueden verse un poco más anchas y el
+eje de abajo muestra más marcas. Es sólo estética.
+
+Si algo se ve o se comporta distinto después de hoy, avísanos por **El Buzón** con
+la pantalla y lo que esperabas ver.
+
 ## Novedades — Las tarjetas ya no se mueven solas, pagos por partes, RESICO y más (16 de octubre de 2026)
 
 **Las tarjetas de producto ya no cambian solas.** Si en un proyecto tenías el

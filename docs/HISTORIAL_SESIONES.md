@@ -11468,3 +11468,36 @@ OT: proveedores del producto + procesos + «Otros proveedores del proyecto», fe
 - Preexistente, sin tocar: `makemigrations --check` sale sucio en `main` (AlterField de `id`,
   renombres de índices, un `Create model` en `chalanes`), y `tesoreria` tiene un `AlterField
   ingreso.metodo` pendiente de antes.
+
+### S-Deps-Oct16 ✅ — VERSION 2026.10.06 (2026-10-16)
+
+«Actualiza todo a las últimas versiones de todo» (Oscar). Se desplegó APARTE de
+S-Ajustes-Oct14 para poder revertirlo sin perder esos arreglos. Hecho por un agente con
+venv propio; base: 5384 passed/14 skipped antes, 5386/13 después (la diferencia son los 2
+tests de Chromium que dejan de saltarse). En `main` integrado: 5510 passed/15 skipped sin
+Playwright (la corrida con Chromium: 9 de navegador verdes).
+
+**Subió:** Django 5.1.4→**6.1.2**, gunicorn 23→26.2, psycopg 3.2→3.3.6, redis-py 5→8.1,
+cryptography 44→50, Pillow 11→13, pillow-heif 0.21→1.8, DRF 3.15→3.18, drf-spectacular,
+google-api-python-client/auth, mcp 1.27→1.30 (última 1.x), pytest 9, ruff 0.17, Tailwind CLI
+3.4.17→3.4.19 (CSS byte a byte idéntico salvo el encabezado), htmx 2.0.3→2.0.11, ApexCharts
+3.54→**8.3.1** (CDN), y las acciones de CI (checkout/setup-python v7, docker/* v4-v7,
+appleboy/ssh-action 1.2.5, tailscale v4). `actionlint` limpio.
+
+**NO subió (decisión explícita):** GrapesJS 0.21.13 (0.23.8 hace POST de telemetría a
+`app.grapesjs.com`: no en un CRM con LFPDPPP salvo que se desactive); DaisyUI 4.12.14 (pared
+de El Vigía; 4.12.24 cambia `.collapse/.diff/.loading`); mcp 2.x (a propósito); htmx 4 y
+Leaflet 2 (mayor/alpha); n8n 2.40.7, Paperless 2.13 y OSRM (pinned: migran datos del NUC);
+Python 3.13/3.14, Tailwind v4, Postgres 17+, Redis 8 (fuera de alcance).
+
+**Deuda / a vigilar:**
+- **Django 6.1 no es LTS** (la 5.2 LTS da soporte hasta abril 2028; la 6.1 hasta ~fin de
+  2027). Si Oscar prefiere LTS, la alternativa es 5.2.x (no se probó).
+- `forms.URLField` asume `https://` (antes `http://`) en URLs sin esquema.
+- Preexistente, NO causado por esto: `makemigrations --check` sale sucio en `main`
+  (idéntico con 5.1.4 y 6.1.2); `STATICFILES_STORAGE` quedó sin efecto desde Django 5.1
+  (hoy es `STORAGES`), así que prod ya no usa el manifest de whitenoise — activarlo
+  cambiaría `{% static %}` (archivo faltante = 500), por eso no se tocó.
+- ApexCharts 8: los 9 tipos de `site_charts.js` se pintaron bien en claro/oscuro; tooltips y
+  hover sin probar. ApexCharts y htmx vienen de unpkg sin tests automáticos.
+- `uv.lock` es un stub vacío (`requires-python >=3.13`, sin paquetes): no se tocó.
