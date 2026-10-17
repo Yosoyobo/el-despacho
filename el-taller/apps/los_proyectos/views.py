@@ -2760,6 +2760,9 @@ def _ctx_modal_pago(proyecto, *, info, accion_url, error=None):
         "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
         "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
         "iva_monto": iva, "iva_label": f"{float(tasa * 100):g}%",
+        "tasa_iva": tasa,
+        # Oscar 2026-10-14: «¿Cuánto pagas ahora?» (modal de proveedor).
+        "modos_pago": [("total", "Todo"), ("anticipo", "Anticipo 50%"), ("otro", "Otro monto")],
         "total_con_iva": (base + iva).quantize(Decimal("0.01")),
         "solicitado_por_default": lider.usuario_id if lider else None,
         "error": error,
@@ -2800,6 +2803,28 @@ def _datos_pago_post(request):
     }
 
 
+def _info_grupo(grupo) -> dict:
+    """`info` del modal «Registrar pago» de un proveedor: el hero y la lista de
+    conceptos (cada uno con su casilla y, si ya tiene abonos, lo que falta)."""
+    n = len(grupo["unidades"])
+    conceptos = []
+    for u in grupo["unidades"]:
+        eg = u.get("egreso")
+        conceptos.append({
+            "clave": f"{u['clase']}:{u['pk']}", "label": u["label"],
+            "monto": u["monto"], "monto_total": u["monto_total"],
+            "pagado_parcial": u["pagado_parcial"],
+            # Ya es cuenta por pagar («Pendiente»): se liquida completa, no se parte.
+            "indivisible": bool(eg is not None and not eg.anulado and eg.estado_pago == "pendiente"),
+        })
+    return {
+        "monto": grupo["monto"],
+        "label": f"{n} concepto{'s' if n != 1 else ''}",
+        "proveedor": grupo["proveedor"],
+        "conceptos": conceptos,
+    }
+
+
 @login_required
 def registrar_pago_proveedor_modal(request, pk, clave):
     """GET/POST modal «Registrar pago» de TODO lo pendiente de un proveedor.
@@ -2807,6 +2832,11 @@ def registrar_pago_proveedor_modal(request, pk, clave):
     LC 2026-07-26 (Oscar): «se le paga una vez a cada uno, no por cada producto o
     proceso separado». Mismo formulario que el modal de una unidad; el hero
     muestra el total del proveedor y el detalle de los conceptos incluidos.
+
+    Oscar 2026-10-14: además se puede pagar sólo una PARTE — casilla por concepto
+    (varios pedidos en una tienda) y «¿cuánto pagas ahora?»: todo, anticipo 50% u
+    otro monto (`modo` = total | anticipo | otro). Lo que no se paga sigue como pago
+    pendiente. Reglas en `gastos.registrar_pago_grupo`.
     """
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not _puede_registrar_gastos(request.user, proyecto):
@@ -2816,50 +2846,84 @@ def registrar_pago_proveedor_modal(request, pk, clave):
     grupo = gastos.grupo_pago_de(proyecto, clave)
     if grupo is None:
         return HttpResponseForbidden("Ya no hay pagos pendientes de ese proveedor.")
-    n = len(grupo["unidades"])
-    info = {
-        "monto": grupo["monto"],
-        "label": f"{n} concepto{'s' if n != 1 else ''}",
-        "proveedor": grupo["proveedor"],
-        "conceptos": [{"label": u["label"], "monto": u["monto"]} for u in grupo["unidades"]],
-    }
+    info = _info_grupo(grupo)
     accion_url = reverse("proyectos-registrar-pago-proveedor", args=[proyecto.pk, clave])
+
+    def _ctx(error=None, estado=None):
+        ctx = _ctx_modal_pago(proyecto, info=info, accion_url=accion_url, error=error)
+        ctx.update({"permite_parcial": True, "pendiente_visto": grupo["monto"],
+                    "estado_form": estado})
+        return ctx
 
     if request.method == "POST":
         datos = _datos_pago_post(request)
+        # Estado del formulario para repintarlo si hay un error (no perder lo elegido).
+        claves = request.POST.getlist("unidades")
+        modo = request.POST.get("modo") or "total"
+        estado = {"unidades": set(claves) if claves else None, "modo": modo,
+                  "monto_otro": request.POST.get("monto_otro", ""),
+                  "incluye_iva": request.POST.get("incluye_iva") == "1"}
+
+        def _error(msg):
+            return render(request, "proyectos/_modal_registrar_gasto.html",
+                          _ctx(error=msg, estado=estado), status=200)
+
         # Proveedor OBLIGATORIO (LC 2026-07). El grupo «Sin proveedor asignado»
         # se resuelve aquí: el usuario elige a quién se le paga.
         if datos["proveedor"] is None:
-            return render(
-                request, "proyectos/_modal_registrar_gasto.html",
-                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
-                                error="Elige un proveedor: todo egreso debe ir ligado a uno."),
-                status=200)
-        res = gastos.registrar_pago_grupo(
-            proyecto, clave, actor=request.user, centro=datos["centro"],
-            metodo=datos["metodo"], estado_pago=datos["estado_pago"],
-            pagado_por=datos["pagado_por"], solicitado_por=datos["solicitado_por"],
-            proveedor=datos["proveedor"], fecha=datos["fecha"],
-        )
+            return _error("Elige un proveedor: todo egreso debe ir ligado a uno.")
+
+        tasa = Decimal(str(getattr(proyecto, "iva_tasa_efectiva", 0) or 0))
+        factor = (Decimal("1") + tasa) if estado["incluye_iva"] else Decimal("1")
+        kw = {}
+        if modo == "anticipo":
+            kw.update(fraccion=Decimal("0.5"), etiqueta="Anticipo 50%")
+        elif modo == "otro":
+            try:
+                capturado = Decimal(str(estado["monto_otro"]).replace(",", "").strip())
+            except Exception:  # noqa: BLE001
+                return _error("Escribe el monto que vas a pagar ahora.")
+            if capturado <= 0:
+                return _error("El monto a pagar debe ser mayor a cero.")
+            # Lo capturado está en la base del héroe (con IVA si la casilla está
+            # marcada); el egreso guarda la base sin IVA.
+            kw.update(monto=(capturado / factor).quantize(Decimal("0.01")),
+                      etiqueta="Pago parcial")
+        elif modo != "total":
+            return _error("Elige cuánto vas a pagar ahora.")
+        visto = request.POST.get("pendiente_visto")
+        try:
+            res = gastos.registrar_pago_grupo(
+                proyecto, clave, actor=request.user, centro=datos["centro"],
+                metodo=datos["metodo"], estado_pago=datos["estado_pago"],
+                pagado_por=datos["pagado_por"], solicitado_por=datos["solicitado_por"],
+                proveedor=datos["proveedor"], fecha=datos["fecha"],
+                unidades=claves or None,
+                pendiente_visto=Decimal(visto) if visto else None, **kw,
+            )
+        except (ValueError, ArithmeticError) as e:
+            return _error(str(e))
         codigos = ([res["creado"].codigo] if res["creado"] else []) + [
             e.codigo for e in res["liquidados"]]
         if not codigos:
-            return render(
-                request, "proyectos/_modal_registrar_gasto.html",
-                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
-                                error="No se pudo registrar (revisa el centro de costo)."),
-                status=200)
-        messages.success(
-            request,
-            f"Pago de {datos['proveedor'].razon_social} registrado "
-            f"({res['unidades']} concepto(s)) en {', '.join(codigos)}.")
+            return _error("No se pudo registrar (revisa el centro de costo).")
+        if res["parcial"]:
+            queda = (res["restante"] * (Decimal("1") + tasa)).quantize(Decimal("0.01"))
+            messages.success(
+                request,
+                f"Pago parcial a {datos['proveedor'].razon_social} registrado en "
+                f"{', '.join(codigos)}. Queda pendiente ${queda:,.2f} (con IVA).")
+        else:
+            messages.success(
+                request,
+                f"Pago de {datos['proveedor'].razon_social} registrado "
+                f"({res['unidades']} concepto(s)) en {', '.join(codigos)}.")
         destino = _destino_registro(request, proyecto)
         if request.headers.get("HX-Request") == "true":
             return HttpResponse(status=204, headers={"HX-Redirect": destino})
         return redirect(destino)
 
-    return render(request, "proyectos/_modal_registrar_gasto.html",
-                  _ctx_modal_pago(proyecto, info=info, accion_url=accion_url))
+    return render(request, "proyectos/_modal_registrar_gasto.html", _ctx())
 
 
 @login_required
