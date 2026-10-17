@@ -945,6 +945,94 @@ def _nuevo_modal(request):
     return render(request, "proyectos/_modal_nuevo_proyecto.html", _ctx(form))
 
 
+def _entero_o_none(valor):
+    crudo = str(valor or "").strip()
+    return int(crudo) if crudo.isdigit() else None
+
+
+@login_required
+@require_POST
+def sugerir_descripcion(request):
+    """El botón «Generar» del campo Descripción de la tarjeta de producto.
+
+    LC 2026-10-14 (ticket 13 de Oscar): arma la descripción en el formato de
+    siempre con lo que el sistema sabe del producto. NO depende de que la línea
+    esté guardada — la tarjeta puede ser nueva o traer cambios sin autoguardar —,
+    así que recibe lo que hay en pantalla (producto, variación, cantidad, alias,
+    proveedor de impresión, texto actual) y sólo resuelve los ids.
+
+    **Propone, no aplica.** Devuelve el texto en `texto`, y si ya había algo
+    escrito también `completado` (lo suyo + lo que le faltaba). La tarjeta
+    decide qué hacer con la persona al lado; esta vista no escribe nada.
+
+    Con `ia=1` (y permiso de El Chalán) se pide una redacción a Los Analistas,
+    que sólo puede reordenar y pulir los datos —cualquier cifra que no venga de
+    ellos la descarta— y, si no hay credenciales, falla o inventa, se vuelve a la
+    plantilla. El camino sin IA es el de siempre y el que manda.
+    """
+    from django.http import JsonResponse
+
+    from apps.cotizaciones import descripcion_sugerida as ds
+    from apps.el_catalogo.models import Proveedor, Servicio, Variacion
+    from lib.permisos import puede_gestionar_proyectos, puede_usar_chalan
+
+    if not (puede_gestionar_proyectos(request.user) or puede_crear_proyecto(request.user)):
+        return JsonResponse({"ok": False, "error": "Sin permiso para editar productos."}, status=403)
+
+    post = request.POST
+    sid = _entero_o_none(post.get("servicio"))
+    servicio = Servicio.objects.filter(pk=sid).first() if sid else None
+    nombre = (post.get("nombre") or "").strip()[:150]
+    if servicio is None and not nombre:
+        return JsonResponse({"ok": False, "error": "Elige primero el producto del catálogo."})
+
+    vid = _entero_o_none(post.get("variacion"))
+    variacion = (Variacion.objects.filter(pk=vid, servicio=servicio).first()
+                 if (vid and servicio) else None)
+    pid = _entero_o_none(post.get("impresion_proveedor"))
+    proveedor = (Proveedor.objects.filter(pk=pid).prefetch_related("subcategorias").first()
+                 if pid else None)
+    cantidad = _entero_o_none(post.get("cantidad")) or 1
+    existente = (post.get("texto") or "").strip()[:2000]
+
+    propuesta = ds.sugerir(
+        cantidad=cantidad, nombre=nombre or getattr(servicio, "nombre", ""),
+        servicio=servicio, variacion=variacion, impresion_proveedor=proveedor)
+    origen, aviso = "plantilla", ""
+
+    if post.get("ia") == "1":
+        if not puede_usar_chalan(request.user):
+            aviso = "No tienes acceso a El Chalán: te dejé la plantilla."
+        else:
+            from lib.redactor_ia import redactar
+            res = redactar(
+                instruccion=(
+                    "Escribe la descripción de este elemento para una cotización, en "
+                    "el formato de siempre: un dato por renglón — «N pz», qué es, "
+                    "«Color: …», «Con <técnica>» y detalles de impresión. Usa "
+                    "ÚNICAMENTE los datos de la PLANTILLA y del texto actual; si "
+                    "falta el color, las medidas o la posición, OMITE ese renglón: "
+                    "no inventes nada ni agregues cifras. Sólo el texto, sin saludos."),
+                texto_actual=existente,
+                contexto={"PLANTILLA (datos del sistema)": propuesta},
+                usuario=request.user, estacion="cotizaciones")
+            if res.get("ok") and ds.sin_cifras_inventadas(res["texto"], propuesta, existente):
+                propuesta, origen = res["texto"], "chalan"
+            elif res.get("ok"):
+                aviso = "El Chalán metió datos que no están en el sistema: te dejé la plantilla."
+            else:
+                aviso = f"{res.get('error') or 'El Chalán no respondió'}. Te dejé la plantilla."
+
+    return JsonResponse({
+        "ok": True,
+        "texto": propuesta,
+        "completado": ds.completar(existente, propuesta) if existente else "",
+        "faltan": ds.faltantes(propuesta),
+        "origen": origen,
+        "aviso": aviso,
+    })
+
+
 @login_required
 @require_POST
 def proyecto_productos_ia_aplicar(request, pk):
