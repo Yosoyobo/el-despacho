@@ -11391,3 +11391,80 @@ Candado en `test_envio_correo.py` (mutación verificada).
 **Estados del Buzón al día:** a «OK» #128, #130, #157, #164 (entregados en
 2026.10.01) y #160, #161 (lo que faltaba se descartó por decisión documentada);
 los 15 pendientes quedan en «leído» con su «Pendiente: …» en la nota interna.
+
+### S-Ajustes-Oct14 ✅ — VERSION 2026.10.05 (2026-10-16)
+
+15 tickets de Oscar (PDF «ajustes Despacho 14oct26»), repartidos en cuatro agentes con
+worktree propio + el punto 1 hecho aparte. Fusionados en `agent/ajustes-oct14`.
+
+**#1 ALERTA — las tarjetas de producto «se flipean».** Causa medida, no adivinada:
+con el `<select>` de producto enfocado, teclear una letra (type-ahead nativo) lo cambia
+sin pasar por el panel buscable y su `change` dispara `prellenarServicio`, que copia
+costo y proveedor del catálogo sobre lo capturado (Camiseta→Hielera, costo 45→70 en
+Chromium). Arreglo en tres capas: (1) `form_widgets.js` (dual-copy, idéntico en las dos
+apps) intercepta flechas/Inicio/Fin/imprimibles de los selects protegidos y abre el panel
+con la letra como búsqueda; (2) `SelectProductoBuscable` lleva `data-select-protegido`
+(aplica con cualquier número de opciones); (3) `prellenarServicio` ignora un `change` sin
+cambio real (`dataset.servicioPrevio`). Test de navegador
+`tests/taller/test_producto_select_no_cambia_solo_navegador.py`, verificado con mutación.
+Efecto colateral deliberado: teclear en CUALQUIER select buscable abre el buscador.
+
+**#2/#3 Nuevo ingreso.** Selector IVA 16 % / RESICO con retenciones / Sin IVA
+(`lib.fiscal.base_desde_total_honorarios`; el total capturado es lo cobrado). Campo nuevo
+`Ingreso.regimen_fiscal` (`tesoreria/0010`, sólo esquema). Con 8,326.67 la base «redonda»
+8,000.00 da 8,326.66: se eligió 8,000.01 para que el total cuadre al centavo. Chip
+«Registrar lo que falta» (sólo con cobros previos) y «Factura que cubre» con hasta 2
+sugeridas; `facturacion.services.registrar_cobro` se partió en `validar_cobro` +
+`_sincronizar_cobro` + `aplicar_cobro_de_ingreso` sin cambio de comportamiento.
+
+**#4 Pagos parciales a proveedor.** `PagoGasto` (`proyectos/0040`): abono por concepto
+sin IVA; el FK `egreso` del concepto sigue significando «pagado completo». Reparto
+proporcional a lo que falta, por mayor resto en centavos. «Anticipo» y «50 %» quedaron
+como un solo botón (el `anticipo_porcentaje` del proyecto es de cobros al cliente).
+
+**#5/#9 Egresos de proyecto.** Los creaba `signals_egresos.py` (un egreso «pendiente» por
+línea/proceso al pasar a producción): ELIMINADO. Comando
+`limpiar_egresos_automaticos` (simulacro por defecto; `--aplicar`, `--detalle`,
+`--proyecto`, `--excluir`) + `ops/nuc/limpiar-egresos-automaticos.sh`. **Anula, no borra**
+(cada automático tiene su asiento `auto_egreso`; anular genera el reverso y el concepto
+vuelve a la caja amarilla). Todo egreso que registra una persona ahora lleva `creado_por`:
+esa huella es la que lo protege. **NO se ejecutó en producción: lo corre Oscar** (primero
+simulacro con `--detalle`, tras desplegar y con respaldo de `archivo.sh`).
+
+**#6 Notificaciones.** El `sw.js` hacía `clients.openWindow('/ruta')`: abre en el origen
+del propio SW, y las suscripciones hechas cuando El Taller vivía en `taller.ninomeando.com`
+conservan su SW allá. `lib/urls_canonicas.py` (mapa `DOMINIOS_HEREDADOS`), payload push
+con URL absoluta canónica, SW que normaliza hosts heredados, `TALLER_URL` normalizada en los
+3 settings, y `manage.py normalizar_urls_notificaciones` (simulacro por defecto).
+
+**#7 Mapas.** Django 5.1 manda `Referrer-Policy: same-origin`; OSM bloquea sin `Referer`.
+`SECURE_REFERRER_POLICY = strict-origin-when-cross-origin` y `static/js/mapa_tiles.js`
+(`despachoTileLayer()`, `referrerPolicy: 'origin'`, sin subdominios `{s}`) como único lugar
+con la URL; `tests/test_mapa_tiles.py` impide volver a un `L.tileLayer` suelto.
+
+**#8 Facturas.** `FacturaAdjunto` (`facturacion/0014`): el primer PDF y el primer XML son el
+CFDI, el resto «Otros archivos»; validación por archivo, tope 20 por envío. Quitar un adjunto
+borra la fila, no el archivo de El Almacén (direccionado por contenido).
+
+**#10/#13/#14/#15.** `generar_cotizacion` acepta `y_pdf` (redirige con `?bajar_cot=<pk>`; el
+PDF no se arma dentro de la transacción); `_descarga_pdf.html` con «Reintentar»; vista previa
+con «← Atrás» y «Generar y bajar PDF». `cotizaciones/descripcion_sugerida.py`: plantilla
+determinista (no inventa color/medidas) + IA opcional por Los Analistas con guardia de cifras.
+OT: proveedores del producto + procesos + «Otros proveedores del proyecto», fecha con
+`lib.fecha.fecha_larga` (sin depender del locale). **#11** cliente bajo el título del proyecto.
+**#12** «Impresión»→«Branding» sólo en la tarjeta del proyecto (testigo incluido).
+
+**Deuda diseñada / decisiones pendientes de Oscar:**
+- «Branding» NO se aplicó al Catálogo (`catalogo/form.html`), a los modelos ni a los PDFs.
+- Un egreso que Oscar registró con «Registrar» de Gastos no registrados ANTES de esta versión
+  es idéntico a uno automático (ambos con `creado_por` vacío): el simulacro los lista con
+  código y fecha; `--excluir` los libera.
+- «Otro monto» del pago parcial guarda la base sin IVA (igual que el pago completo); revisar
+  si debe guardar lo realmente pagado.
+- El ejecutor de dictado `registrar_ingreso` sigue creando sin desglose fiscal.
+- `InterfonoEnvio.url_destino` nuevo desde Gerencia con host viejo sólo lo corrige el comando.
+- JS de `_iva_campos_ingreso`, `_ligar_factura`, `_modal_registrar_gasto`, ✨ Generar y el
+  banner de descarga no tienen prueba de navegador (sí de servidor/HTML).
+- Preexistente, sin tocar: `makemigrations --check` sale sucio en `main` (AlterField de `id`,
+  renombres de índices, un `Create model` en `chalanes`), y `tesoreria` tiene un `AlterField
+  ingreso.metodo` pendiente de antes.

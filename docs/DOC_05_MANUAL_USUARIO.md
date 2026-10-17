@@ -5,6 +5,52 @@
 
 ---
 
+## Novedades — Las tarjetas ya no se mueven solas, pagos por partes, RESICO y más (16 de octubre de 2026)
+
+**Las tarjetas de producto ya no cambian solas.** Si en un proyecto tenías el
+cursor sobre el producto de una tarjeta y tecleabas algo, el producto cambiaba sin
+avisar y se copiaban encima el costo y el proveedor del catálogo. **Ya no puede
+pasar:** el producto sólo cambia cuando lo eliges tú en el buscador. Si tecleas una
+letra con el producto seleccionado, se abre el buscador con esa letra puesta. Lo
+mismo vale para los demás selectores con buscador del sistema.
+
+**Los egresos de un proyecto ya no se crean solos.** La lista de egresos de un
+proyecto **empieza vacía** y sólo muestra lo que tú registras. Lo que falta por
+pagar sigue en la caja amarilla como recordatorio.
+
+**Pagar a un proveedor por partes.** En **Registrar pago** marcas sólo los pedidos
+que pagas hoy y eliges cuánto: **Todo**, **Anticipo 50 %** u **Otro monto**. Lo que
+no pagas sigue pendiente («ya se pagó $X de $Y») para la segunda parte.
+
+**Nuevo ingreso con RESICO.** Eliges cómo se cuenta el dinero: **IVA 16 % incluido**,
+**RESICO con retenciones** (el número que escribes es lo que te depositaron) o
+**Sin IVA**, y ves el desglose antes de guardar. Si el proyecto ya tiene cobros, te
+ofrece **«Registrar lo que falta»** con el saldo exacto, y puedes **ligar el ingreso
+a la factura** que cubre (te sugiere hasta dos según el monto).
+
+**Cotizaciones en un solo paso.** En el recuadro de Cotizaciones, el botón
+principal es **«Generar v3 y descargar PDF»**: crea la versión y baja el PDF solo,
+con el mismo nombre que el que se manda por correo. La **vista previa** ahora tiene
+**← Atrás** (sales sin generar nada) y **Generar y bajar PDF** junto a «Generar».
+
+**Descripción con botón ✨ Generar.** En cada producto, el botón arma la descripción
+en el formato de siempre con los datos que ya están (piezas, color, branding…). No
+inventa medidas ni colores: te dice qué falta, y si ya escribiste algo no lo pisa.
+
+**Orden de trabajo más completa.** Los proveedores incluyen también los de
+**impresión y procesos**, y la fecha de entrega se escribe completa: «lunes 1 de
+diciembre de 2025».
+
+**Varios archivos en una factura.** Puedes subir el PDF, el XML y otros comprobantes
+al mismo tiempo; cada archivo se revisa por separado y los extra aparecen como
+«Otros archivos» en el detalle de la factura.
+
+**Más detalles.** El **cliente** aparece debajo del título del proyecto, con enlace
+a su ficha. En la tarjeta de producto, **«Impresión» ahora se llama «Branding»**.
+Las **notificaciones** siempre te llevan a la dirección actual de El Taller. Los
+**mapas del Checador** (geocerca, tablero y rutas) ya no salen con el aviso «Access
+blocked».
+
 ## Novedades — La cotización que mandas por correo se llama igual que la que bajas (5 de octubre de 2026)
 
 **El PDF que le llega al cliente por correo ya lleva el nombre de siempre**, el
@@ -6168,7 +6214,9 @@ La página es **editable directo** (los cambios se guardan solos; verás
   y dos **calendarios** (Inicio y Entrega) para elegir las fechas. Arriba de
   cada uno sale la fecha por escrito y cuánto falta o pasó («faltan 3
   semanas»). Junto al título ves cuándo se **creó** el proyecto y su última
-  actualización.
+  actualización. **Debajo del título** aparece **«Cliente: …»** con el nombre
+  del cliente; si tienes permiso para ver Clientes, es un **enlace directo a su
+  ficha**.
 - **Productos involucrados:** arriba hay **pestañas**: **En edición** y una por
   cada versión de cotización que hayas generado (**v1**, **v2**, …). «En edición»
   son los productos del proyecto ahora mismo; cada **vN** te muestra los
@@ -6252,6 +6300,19 @@ La página es **editable directo** (los cambios se guardan solos; verás
     hubiera escrito en la versión anterior de la cotización; si la dejas vacía,
     se usa la del catálogo.
 
+    **✨ Generar:** junto al campo hay un botón que **arma la descripción por
+    ti**, en el formato de siempre, con lo que ya está en la tarjeta: las piezas,
+    qué es el producto, su variación, el **color** (sólo si la variación lo
+    menciona) y la técnica de **branding** («Con bordado», «Con serigrafía»…).
+    **No inventa medidas ni colores:** lo que falta te lo dice («esto lo completas
+    tú»). Si el campo estaba vacío, escribe directo y puedes **Deshacer**. Si ya
+    habías escrito algo, **no lo pisa**: te propone el texto y eliges
+    **Reemplazar** o **Conservar lo mío y completar** (deja tu texto, actualiza
+    sólo las piezas y suma los renglones que faltaban). Si tienes El Chalán
+    habilitado, **🤖 Con El Chalán** redacta la misma descripción con IA; si no
+    hay respuesta, regresa solo a la plantilla.
+    - **Con El Chalán:** es un botón de la tarjeta, no un comando del chat.
+
     El recuadro tiene **siempre el mismo tamaño** y **se extiende cuando le
     picas** para escribir, hasta donde llegue el texto; al salir vuelve a como
     estaba. (Antes crecía tecla por tecla, y eso hacía dos cosas molestas:
@@ -6277,7 +6338,7 @@ La página es **editable directo** (los cambios se guardan solos; verás
     se ve es la del catálogo te pregunta antes, porque la ven todos los proyectos
     de ese producto (el archivo se queda en Drive, así que los documentos que ya
     mandaste no se rompen).
-  - **Impresión** (proveedor + costo) y el botón **"+ Proceso"** para sumar
+  - **Branding** (antes «Impresión»: proveedor + costo) y el botón **"+ Proceso"** para sumar
     gastos operativos sueltos (materiales, viáticos, embalaje…). Éstos **cuestan**
     (bajan tu utilidad); no se le cobran al cliente.
   - En el **costo de la Impresión puedes escribir la cuenta**: para tres bordados
@@ -6351,10 +6412,26 @@ piezas a producir (cantidad + merma).
 Cada proveedor tiene su botón **"Registrar pago"**, que abre una ventana con el
 total, la lista de conceptos incluidos y los datos del pago: **fecha, proveedor
 (obligatorio), método y estado** (Pagado por default, o Por reembolsar). Al
-confirmar se registra **un solo egreso** con la suma. Si algún concepto ya
-existía como **cuenta por pagar** (se generó solo al entrar a producción), ése se
-salda por separado — es un movimiento que ya vivía en la contabilidad. Registra
-cada pago **cuando lo realices**.
+confirmar se registra **un solo egreso**. Registra cada pago **cuando lo
+realices**.
+
+**Pagar sólo una parte.** Cada concepto trae una **casilla**: marca nada más los
+pedidos que pagas hoy (por ejemplo, uno de varios pedidos en la misma tienda).
+Debajo, **«¿Cuánto pagas ahora?»** ofrece **Todo**, **Anticipo 50 %** u **Otro
+monto** (el monto se captura con IVA si la casilla del IVA está marcada). Lo que
+no pagas **sigue apareciendo en la caja amarilla** con la leyenda «ya se pagó $X de
+$Y», para que registres la segunda parte cuando la pagues, en otro mes si hace
+falta. El sistema reparte el monto entre los conceptos marcados en proporción a
+lo que a cada uno le falta, al centavo. Si anulas un pago parcial, su monto
+**vuelve a quedar pendiente**. Un concepto que ya era una **cuenta por pagar** se
+liquida completo (no se parte).
+
+**Los egresos del proyecto ya no se crean solos.** Antes, al pasar un proyecto a
+producción, el sistema generaba un egreso por cada producto y proceso. **Ya no:**
+la lista de egresos del proyecto **empieza vacía** y sólo muestra lo que **tú
+registras**. Lo que falta por pagar sigue en la caja amarilla como recordatorio.
+- **Con El Chalán:** el pago por partes es una ventana del proyecto, no un comando
+  del chat; «registra un egreso» sigue funcionando como siempre.
 
 Abajo está la tabla de **Tareas** del Pizarrón con dos botones:
 
@@ -7239,16 +7316,22 @@ mismas fotos, mismos cortes de página. Y no queda nada guardado —ni la
 cotización, ni el número de versión, ni el folio `COT-`—, así que puedes abrirla
 las veces que quieras.
 
-Arriba de la hoja hay dos botones:
+Arriba de la hoja hay estos botones:
 
+- **← Atrás** — sales de la vista previa **sin generar nada** y regresas al
+  proyecto.
 - **Generar** — crea la versión y te regresa al proyecto.
+- **Generar y bajar PDF** — crea la versión y **baja el PDF** en el mismo paso,
+  con el nombre de siempre. Si el PDF tarda o falla, la versión ya quedó creada y
+  la pantalla te lo dice, con un botón **Reintentar**. Sólo aparece si tienes
+  permiso para ver cotizaciones.
 - **Generar y enviar** — crea la versión y te abre el correo al cliente con el
   PDF adjunto. Primero queda guardada la versión y después se abre el correo: si
   el envío falla, la cotización ya existe y la mandas desde el recuadro.
 
-En la vista previa **no** aparece «Bajar PDF». Ese archivo lo prepara Google a
-partir de una cotización guardada, y en la vista previa todavía no hay ninguna;
-en cuanto generes, el botón vuelve a estar donde siempre.
+En la vista previa misma no hay «Bajar PDF» suelto: ese archivo lo prepara Google
+a partir de una cotización guardada, y en la vista previa todavía no hay ninguna.
+Por eso existe **Generar y bajar PDF**.
 
 Para abrirla necesitas permiso de **crear** cotizaciones: es la antesala de
 generar, no una pantalla de consulta.
@@ -7329,6 +7412,13 @@ margen: en total cabe **~10% más contenido por hoja**, así que es más difíci
 el documento se vaya a una página de más por un par de renglones. Hasta abajo,
 centrado, va **1/1**; vive en el pie de la hoja, así que no le quita espacio a lo
 que cotizas.
+
+**Generar y bajar en un solo paso:** en el recuadro **Cotizaciones** del proyecto, el
+botón principal dice **«Generar v3 y descargar PDF»** (el número es el de la
+versión que sigue). Crea la versión y baja el PDF solo, con el mismo nombre que el
+que se manda por correo. Si sólo quieres crearla, usa **«Sólo generar v3»**.
+- **Con El Chalán:** «generar versión» es un botón de pantalla, no un comando; el
+  PDF ya hecho sí lo consigues pidiéndole el enlace de la cotización.
 
 **Verlo y bajarlo:** «Ver» abre la **vista previa** —el documento como una hoja
 con sus márgenes— con un botón **«⬇ Bajar PDF»** hasta arriba (y otro para
@@ -7468,6 +7558,16 @@ cantidad). El formulario se llena de arriba hacia abajo y se ayuda solo:
 8. **Vencimiento:** botones rápidos **Fin de mes · 30 días · 45 días · 60 días** además de la fecha manual.
 9. **Desglosar por producto (opcional):** si de veras necesitas itemizar por producto/cantidad, abre esta sección y captura líneas con **"+ Agregar línea"**. Mientras esté abierta, la factura usa esas líneas en lugar del monto.
 
+**Subir varios archivos a la vez.** El recuadro **«Comprobante fiscal (CFDI) y
+archivos»** deja elegir o arrastrar **varios archivos juntos** (PDF, XML, imágenes,
+Word/Excel; hasta 25 MB cada uno y 20 por vez). El **primer PDF y el primer XML**
+son el CFDI; los demás se guardan como **«Otros archivos»** de la factura, donde
+los abres o los quitas con la ✕. Cada archivo se revisa por separado: si uno falla
+te dice cuál, y **los demás sí se guardan**. Para **reemplazar** el CFDI ya cargado,
+quítalo con su ✕ y sube el nuevo en el mismo guardado (ya no se pisa en silencio).
+- **Con El Chalán:** es sólo pantalla; no hay comando para adjuntar archivos a una
+  factura.
+
 En el detalle de la factura, la sección de movimientos muestra los **ingresos ligados a la factura** (los cobros), **incluyendo los anulados** (marcados como tal) para que nunca se te "pierda" un cobro que impedía cancelar.
 
 - Estados: Borrador → Emitida → Cobrada parcial / Cobrada total / Cancelada
@@ -7548,7 +7648,11 @@ subtotal solo; apágalo si el movimiento no llevó IVA. Todo es en **pesos (MXN)
 **ingresos como en egresos** puedes **pegar** el comprobante con **Ctrl/Cmd + V**
 (o subir un archivo); se guarda en el servidor, con copia en Drive.
 
-- **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`.
+- **Ingresos:** quién pagó qué proyecto/factura, método (efectivo, banco, Stripe, MercadoPago), fecha. Código `ING-YYYY-NNNN`. En **Nuevo ingreso**:
+  - **Cómo se cuenta el dinero:** elige **IVA 16 % incluido**, **RESICO con retenciones** o **Sin IVA**. El número que escribes es **lo que realmente te depositaron**; con RESICO el sistema calcula hacia atrás el subtotal, el IVA y las retenciones, y los ves **antes de guardar**. Si abres el ingreso desde un proyecto, ya sale el esquema que usa ese proyecto. (Con RESICO el subtotal puede variar **un centavo** para que el total cuadre exacto con lo cobrado.)
+  - **Registrar lo que falta:** si el proyecto **ya tiene cobros**, aparece el botón **«Registrar lo que falta · $X»** con el saldo exacto y cuánto llevas cobrado. Sólo sale cuando hay cobros previos y saldo pendiente.
+  - **Factura que cubre:** al crear el ingreso puedes ligarlo a una factura. El sistema **sugiere hasta dos** según el monto (la que coincide con el saldo, luego la del total…) y hay un selector con las cobrables del proyecto. La factura baja su saldo y se marca como cobrada (parcial o total). No puede exceder el saldo y sólo aparece si tienes permiso de **cobrar facturas**; se liga **al crear** el ingreso.
+  - **Con El Chalán:** el esquema fiscal y el ligar a factura son pantalla. «Registra un ingreso de $X del proyecto Y» sigue funcionando, pero crea el ingreso **sin desglose fiscal** (queda «sin IVA»).
 - **Egresos:** qué gastaste, centro de costo, **proveedor (obligatorio — todo egreso va ligado a un proveedor)**, quién pagó, fecha. Código `EGR-YYYY-NNNN`. El botón **🤖 Sugerir categoría** propone el centro de costo a partir de la descripción. Un egreso **solo se registra cuando el pago se realiza**: los estados posibles son **Pagado (saldado)** o **Por reembolsar**; ya no se registran egresos "por pagar" a mano.
 - **Por cobrar (CxC):** vista unificada de facturas pendientes + anticipos por generar + proyectos legacy con saldo, ordenado por vencimiento. Se muestra el **nombre del proyecto** (con su código en chico) y es un enlace al proyecto.
 - **Por pagar (CxP):** egresos pendientes de pagar + reembolsos pendientes por empleado. Cada egreso pendiente se lee por el **nombre de su proyecto**; el código del egreso queda en la línea de detalle.
@@ -7786,6 +7890,11 @@ Push automáticos a tu navegador y/o celular cuando:
 
 En **Notificaciones** ves el historial de las que recibiste y puedes silenciar categorías individuales.
 
+Al tocar una notificación siempre llegas a **El Taller en su dirección actual**
+(`taller.learningcenter.mx`). Si algún aviso viejo todavía te lleva a una dirección
+anterior (`ninomeando`), entra a **/perfil/notificaciones/**, **desactiva** las
+notificaciones y vuelve a **activarlas**: así tu navegador se suscribe de nuevo.
+
 ---
 
 ## Ajustes (super admin)
@@ -7858,7 +7967,7 @@ rótulos y datos.
 | Recibo de pago | El ingreso (Tesorería) | Recibimos de…, la cantidad con letra, el concepto y la factura | Quien ve finanzas |
 | Estado de cuenta | La ficha del cliente | Facturas, lo pagado, lo que debe, lo vencido y los pagos de los últimos 90 días | Quien ve facturación |
 | Remisión | El proyecto → «Documentos» | Qué se entrega y cuánto; «recibí de conformidad». Con precios si los enciendes | Quien ve el proyecto |
-| Orden de trabajo | El proyecto → «Documentos» | Producto, cantidad, merma, proveedor, procesos y fecha de entrega. Sin precios | Quien ve el proyecto |
+| Orden de trabajo | El proyecto → «Documentos» | Producto, cantidad, merma, proveedores (el del producto **y** los de impresión/procesos, cada uno con su rol), «Otros proveedores del proyecto», procesos y fecha de entrega **escrita completa** («lunes 1 de diciembre de 2025»). Sin precios | Quien ve el proyecto |
 | Comprobante de reembolso | El gasto pagado con tarjeta o efectivo personal | A quién se le devuelve, cuánto y por qué; dos firmas | Quien ve finanzas |
 | Orden de compra | Finanzas → Compras | Qué se le pide al proveedor, cuánto, a qué precio y para cuándo; firma de quien la autoriza | Quien ve compras |
 

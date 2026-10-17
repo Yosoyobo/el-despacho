@@ -13682,3 +13682,16 @@ Checador. Migración de datos `cuentas/0056`. Hecho en worktree propio desde `ma
 Ticket #166: el PDF de la cotización por correo ya se llama igual que la descarga
 (`COTIZACIÓN-CLIENTE-Proyecto-vN.pdf`), también el que El Chalán manda al papeleo.
 Estados del Buzón puestos al día: 6 a «OK», 15 pendientes con lo que les falta.
+
+## 2026-10-16 — S-Ajustes-Oct14 (VERSION 2026.10.05)
+
+Los 15 tickets del PDF de Oscar del 14-oct. El punto 1 (las tarjetas de producto «se
+flipean») se reprodujo en Chromium: una letra tecleada con el selector de producto
+enfocado lo cambiaba y copiaba costo y proveedor del catálogo; ahora el selector sólo
+cambia eligiendo en el buscador. Los egresos de proyecto dejan de crearse solos (con un
+comando de limpieza que Oscar corre en simulacro primero), pagos parciales a proveedor,
+ingreso con RESICO + «registrar lo que falta» + ligar a factura, cotización con «Generar y
+descargar PDF», descripción con ✨ Generar, OT con proveedores de impresión y fecha larga,
+facturas con varios archivos, mapas sin 403, notificaciones siempre al dominio vigente.
+Hecho con cuatro agentes en worktrees propios + integración; las dependencias van en un
+deploy aparte (2026.10.06).
