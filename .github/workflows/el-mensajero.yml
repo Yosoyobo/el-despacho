@@ -34,8 +34,8 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -64,8 +64,8 @@ jobs:
     name: Ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install ruff==0.17.1
@@ -94,7 +94,7 @@ jobs:
           - app: recepcion
             dockerfile: la-recepcion/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Owner en minúsculas (GHCR exige)
         id: lc
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')" >> $GITHUB_OUTPUT
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Preparar .env mínimo
         run: |
           cat > .env <<EOF
@@ -242,7 +242,7 @@ jobs:
       contents: write
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/login-action@v3
@@ -319,7 +319,7 @@ jobs:
       # runner, con el checkout de este commit: el de La Sede lo pone al día el job
       # `ventana`, que corre en paralelo, y a esta hora todavía puede ser el viejo.
       # Si algo falla aquí el deploy sigue: sólo se queda la pantalla corta.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 🪧 Armar la pantalla de mantenimiento con el roadmap de este deploy
         id: pantalla
         continue-on-error: true
