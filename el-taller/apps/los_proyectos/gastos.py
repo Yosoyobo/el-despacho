@@ -67,6 +67,15 @@ def desglose_iva(proyecto, pendientes: list[dict]) -> dict:
     }
 
 
+def _quien(actor):
+    """El usuario que registró el egreso (None si lo hizo el sistema).
+
+    Importa: `creado_por` vacío es la huella con la que `limpiar_egresos_automaticos`
+    reconoce los egresos que generaba solo el sistema (hasta 2026-10-14). Todo
+    egreso que registra una persona lleva su nombre y queda a salvo de la limpieza."""
+    return actor if getattr(actor, "pk", None) else None
+
+
 def _registrado(egreso) -> bool:
     return egreso is not None and not egreso.anulado
 
@@ -299,6 +308,7 @@ def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
                 proyecto=proyecto, estado_pago=estado_pago or "pagado",
                 metodo=metodo or "transferencia", pagado_por=pagado_por,
                 solicitado_por=solicitado_por, origen="proyecto",
+                creado_por=_quien(actor),
             )
             for u in a_crear:
                 obj = _obj_de(proyecto, u["clase"], u["pk"])
@@ -410,6 +420,7 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
             centro_de_costo=centro, proyecto=proyecto,
             estado_pago=estado_pago or "pendiente", metodo=metodo or "transferencia",
             pagado_por=pagado_por, solicitado_por=solicitado_por, origen="proyecto",
+            creado_por=_quien(actor),
         )
         obj.egreso = egreso
         obj.save(update_fields=["egreso"])
