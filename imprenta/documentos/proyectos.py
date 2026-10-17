@@ -144,21 +144,74 @@ ORDEN_TRABAJO_DEF = DefinicionTipo(
 )
 
 
+def _rol_del_proceso(proceso) -> str:
+    """Cómo se nombra a un proveedor que entra por un proceso del producto."""
+    return "impresión" if proceso.tipo == proceso.TIPO_IMPRESION else "proceso"
+
+
+def proveedores_de_la_linea(pp, procesos) -> list[dict]:
+    """Todos los proveedores que tocan esta línea, con su rol y sin repetirse.
+
+    LC 2026-10-14 (Oscar): «en los proveedores quiero que incluya los de
+    impresión etc». La columna sólo decía el proveedor del producto; el de la
+    impresión o el de otros procesos (bordado, ponchado…) no salía, y es justo
+    a quien el taller tiene que mandarle el trabajo.
+
+    Orden: primero el del producto, luego los de los procesos en el orden de la
+    tarjeta. Si un mismo proveedor hace varias cosas se junta en UN renglón con
+    todos sus roles («Bordados Mx · producto, impresión»), no aparece dos veces.
+    """
+    vistos: dict[int, dict] = {}
+
+    def _sumar(proveedor, rol: str) -> None:
+        if proveedor is None:
+            return
+        previo = vistos.get(proveedor.pk)
+        if previo is None:
+            vistos[proveedor.pk] = {"nombre": proveedor.razon_social, "roles": [rol]}
+        elif rol not in previo["roles"]:
+            previo["roles"].append(rol)
+
+    _sumar(pp.proveedor, "producto")
+    for pr in procesos:
+        _sumar(pr.proveedor, _rol_del_proceso(pr))
+    return list(vistos.values())
+
+
+def _otros_proveedores(p, filas) -> list[dict]:
+    """Los proveedores asignados al PROYECTO (no a un producto) que ninguna
+    línea ya nombra: a quién más se le encargó algo."""
+    en_filas = {x["nombre"] for f in filas for x in f["proveedores"]}
+    otros = []
+    for a in p.proveedores_asignados.select_related("proveedor").order_by("compromiso", "pk"):
+        nombre = a.proveedor.razon_social
+        if nombre in en_filas or any(o["nombre"] == nombre for o in otros):
+            continue
+        otros.append({"nombre": nombre, "tipo": a.get_tipo_display().lower()})
+    return otros
+
+
 def _ot_contexto(p, cfg) -> dict:
     filas = []
+    con_proveedores = cfg.bloque("proveedores")
     for pp in _lineas(p, todas=True):
         if not pp.incluir_en_calculo:
             continue
+        # Los procesos se leen también para el bloque de proveedores: el de la
+        # impresión sale ahí aunque el bloque «Procesos» esté apagado.
         procesos = list(pp.procesos.select_related("proveedor").order_by("orden", "pk")) \
-            if cfg.bloque("procesos") else []
-        filas.append({"pp": pp, "procesos": procesos,
+            if (cfg.bloque("procesos") or con_proveedores) else []
+        filas.append({"pp": pp,
+                      "procesos": procesos if cfg.bloque("procesos") else [],
+                      "proveedores": proveedores_de_la_linea(pp, procesos) if con_proveedores else [],
                       "foto": _foto(pp) if cfg.bloque("fotos") else ""})
     responsables = []
     if cfg.bloque("responsables"):
         for a in p.asignaciones.select_related("usuario").order_by("pk"):
             nombre = (getattr(a.usuario, "nombre_completo", "") or "").strip() or a.usuario.email
             responsables.append(f"{nombre} ({a.get_rol_en_proyecto_display().lower()})")
-    return {"p": p, "filas": filas, "responsables": responsables}
+    return {"p": p, "filas": filas, "responsables": responsables,
+            "otros_proveedores": _otros_proveedores(p, filas) if con_proveedores else []}
 
 
 ORDEN_TRABAJO = Documento(

@@ -79,12 +79,38 @@ El dropdown usa peer-checked (CSS puro, sin JS) → sobrevive a los swaps HTMX.
     así que ninguna cotización salía nunca de «Generada» y no había forma de
     saber desde cuándo el cliente no contesta. Ahora abre el envío real (correo
     con el PDF) y, al lado, la constancia para cuando se manda por fuera.{% endcomment %}
-    <div class="mt-4 grid grid-cols-2 gap-2">
+    {% comment %}LC 2026-10-14 (Oscar, ticket 10): «necesito mejor la opción generar
+    v3 y descargar pdf». Era lo que más se hacía y se hacía en dos tiempos (generar,
+    luego abrir la versión y bajar el PDF). Ahora es UN botón, el principal: genera
+    la versión y el detalle arranca la descarga del PDF con su nombre de siempre y
+    su estado de carga (`_descarga_pdf.html`). «Sólo generar» queda aparte para
+    cuando no se quiere el archivo.
+
+    El POST responde 204 + HX-Redirect (ver `views.generar_cotizacion`); mientras
+    tanto el botón se apaga y dice «Generando…», y si el servidor falla se
+    restaura con el motivo en vez de quedarse mudo. `hx-vals` no se pisa con
+    `hx-params` (trampa del CLAUDE.md §8).{% endcomment %}
+    {% if ver_cotizaciones %}
+    <div class="mt-4">
+        <button type="button" data-cot-pdf-btn
+                hx-post="{% url 'proyectos-generar-cotizacion' proyecto.pk %}"
+                hx-vals='{"y_pdf": "1"}'
+                hx-swap="none"
+                hx-disabled-elt="this"
+                title="Crea la v{{ cot_next_version }} con los productos actuales y baja su PDF"
+                hx-on::before-request="this.dataset.txt = this.textContent; this.textContent = 'Generando v{{ cot_next_version }}…'; var e = this.parentElement.querySelector('[data-cot-pdf-error]'); if (e) e.classList.add('hidden')"
+                hx-on::after-request="if (!event.detail.successful) { this.textContent = this.dataset.txt; var e = this.parentElement.querySelector('[data-cot-pdf-error]'); if (e) e.classList.remove('hidden'); }"
+                class="btn-primario w-full">Generar v{{ cot_next_version }} y descargar PDF</button>
+        <p data-cot-pdf-error role="alert" class="mt-1.5 hidden text-xs text-error-600 dark:text-error-400">No se pudo generar la versión. Revisa tu conexión o tus permisos e inténtalo de nuevo.</p>
+    </div>
+    {% endif %}
+    <div class="mt-2 grid grid-cols-2 gap-2">
         <button type="button"
                 hx-post="{% url 'proyectos-generar-cotizacion' proyecto.pk %}"
                 hx-target="#cotizaciones-panel-{{ proyecto.pk }}"
                 hx-swap="outerHTML"
-                class="btn-secundario">Generar v{{ cot_next_version }}</button>
+                hx-disabled-elt="this"
+                class="btn-secundario">Sólo generar v{{ cot_next_version }}</button>
         {% if cot_latest_pk %}
         <button type="button"
                 hx-get="{% url 'cotizaciones:enviar' cot_latest_pk %}"

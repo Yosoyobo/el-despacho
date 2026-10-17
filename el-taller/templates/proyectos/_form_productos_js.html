@@ -1430,3 +1430,125 @@ el Enter que CREA la tarea.
     });
 })();
 </script>
+{% comment %}LC 2026-10-14 (Oscar, ticket 13): el «Generar» del campo Descripción de la
+tarjeta de producto. Manda lo que HAY EN PANTALLA (la tarjeta puede ser nueva o traer
+cambios sin autoguardar), recibe una propuesta y deja decidir: con el campo vacío la
+aplica directo (con «Deshacer»); si ya había algo escrito, ofrece «Reemplazar» o
+«Conservar lo mío y completar» y nunca escribe sin que se pida. Delegación de eventos:
+funciona en tarjetas nuevas clonadas del `<template>` sin re-enlazar nada.{% endcomment %}
+<script>
+(function () {
+    const URL_SUGERIR = '{% url "proyectos-descripcion-sugerida" %}';
+
+    function csrf() {
+        const t = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return t ? t.value : '';
+    }
+    function valor(card, sel) { const e = card.querySelector(sel); return e ? e.value : ''; }
+
+    function mostrar(bloque, datos) {
+        const panel = bloque.querySelector('[data-desc-propuesta]');
+        const aviso = bloque.querySelector('[data-desc-aviso]');
+        const texto = bloque.querySelector('[data-desc-texto]');
+        const faltan = bloque.querySelector('[data-desc-faltan]');
+        panel.classList.remove('hidden');
+        aviso.classList.toggle('hidden', !datos.aviso);
+        aviso.textContent = datos.aviso || '';
+        texto.textContent = datos.texto || '';
+        faltan.classList.toggle('hidden', !(datos.faltan && datos.faltan.length));
+        faltan.textContent = (datos.faltan && datos.faltan.length)
+            ? 'Esto lo completas tú (el sistema no lo sabe): ' + datos.faltan.join(', ') + '.' : '';
+        bloque.querySelector('[data-desc-aplicar="reemplazar"]').classList.toggle('hidden', !!datos.aplicado);
+        bloque.querySelector('[data-desc-aplicar="completar"]').classList.toggle('hidden', !datos.completado || !!datos.aplicado);
+        bloque.querySelector('[data-desc-deshacer]').classList.toggle('hidden', !datos.aplicado);
+        bloque._desc = datos;
+    }
+    function error(bloque, msg) {
+        mostrar(bloque, { texto: '', aviso: msg, faltan: [] });
+        bloque.querySelector('[data-desc-aplicar="reemplazar"]').classList.add('hidden');
+        bloque.querySelector('[data-desc-aviso]').className = 'mb-1 text-error-600 dark:text-error-400';
+    }
+    function escribir(bloque, texto) {
+        const ta = bloque.querySelector('textarea');
+        if (!ta) return;
+        ta.value = texto;
+        // Que el autoguardado y el resto de la tarjeta se enteren como si se hubiera tecleado.
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        ta.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest) return;
+        const gen = e.target.closest('[data-desc-generar]');
+        if (gen) {
+            const card = gen.closest('[data-card]');
+            const bloque = gen.closest('[data-desc-bloque]');
+            if (!card || !bloque) return;
+            const ta = bloque.querySelector('textarea');
+            const previo = ta ? ta.value : '';
+            const usaIA = gen.hasAttribute('data-desc-ia');
+            const etiqueta = gen.textContent;
+            bloque.querySelectorAll('[data-desc-generar]').forEach(function (b) { b.disabled = true; });
+            gen.textContent = usaIA ? 'Redactando…' : 'Generando…';
+            const cuerpo = new URLSearchParams();
+            cuerpo.set('servicio', valor(card, 'select[name$="-servicio"]'));
+            cuerpo.set('variacion', valor(card, '[name$="-variacion"]'));
+            cuerpo.set('cantidad', valor(card, 'input[name$="-cantidad"]'));
+            cuerpo.set('nombre', valor(card, '[data-alias-input]'));
+            cuerpo.set('impresion_proveedor', valor(card, '.imp-proveedor'));
+            cuerpo.set('texto', previo);
+            if (usaIA) cuerpo.set('ia', '1');
+            fetch(URL_SUGERIR, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: cuerpo,
+            }).then(function (r) {
+                if (r.status === 403) throw new Error('No tienes permiso para generar descripciones.');
+                return r.json().catch(function () { throw new Error('El servidor no pudo armar la descripción. Inténtalo de nuevo.'); });
+            }).then(function (d) {
+                if (!d.ok) { error(bloque, d.error || 'No se pudo generar la descripción.'); return; }
+                bloque.querySelector('[data-desc-aviso]').className = 'mb-1 hidden text-warning-700 dark:text-warning-300';
+                if (!previo.trim()) {
+                    // Campo vacío: no hay nada que pisar, se escribe directo (con «Deshacer»).
+                    d.aplicado = true;
+                    d.previo = previo;
+                    escribir(bloque, d.texto);
+                }
+                mostrar(bloque, d);
+            }).catch(function (err) {
+                error(bloque, (err && err.message) || 'No se pudo generar la descripción.');
+            }).finally(function () {
+                gen.textContent = etiqueta;
+                bloque.querySelectorAll('[data-desc-generar]').forEach(function (b) { b.disabled = false; });
+            });
+            return;
+        }
+        const apl = e.target.closest('[data-desc-aplicar]');
+        if (apl) {
+            const bloque = apl.closest('[data-desc-bloque]');
+            const d = bloque && bloque._desc;
+            if (!d) return;
+            const ta = bloque.querySelector('textarea');
+            d.previo = ta ? ta.value : '';
+            escribir(bloque, apl.getAttribute('data-desc-aplicar') === 'completar' ? d.completado : d.texto);
+            d.aplicado = true;
+            mostrar(bloque, d);
+            return;
+        }
+        const des = e.target.closest('[data-desc-deshacer]');
+        if (des) {
+            const bloque = des.closest('[data-desc-bloque]');
+            const d = bloque && bloque._desc;
+            if (!d) return;
+            escribir(bloque, d.previo || '');
+            bloque.querySelector('[data-desc-propuesta]').classList.add('hidden');
+            return;
+        }
+        const cer = e.target.closest('[data-desc-cerrar]');
+        if (cer) {
+            const bloque = cer.closest('[data-desc-bloque]');
+            if (bloque) bloque.querySelector('[data-desc-propuesta]').classList.add('hidden');
+        }
+    });
+})();
+</script>
