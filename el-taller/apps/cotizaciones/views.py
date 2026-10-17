@@ -10,6 +10,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseForbidden,
     HttpResponseNotAllowed,
+    JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1113,6 +1114,13 @@ def generar_pdf(request, pk):
     cot = get_object_or_404(Cotizacion, pk=pk)
     res = services.generar_pdf(cot, request.user)
     if not res.ok or not res.pdf_bytes:
+        if request.headers.get("X-LC-Descarga"):
+            # «Generar y bajar PDF» (proyectos/_descarga_pdf.html) lo pide con
+            # fetch: un redirect con mensaje se perdería ahí. Se contesta con el
+            # motivo para que la pantalla lo muestre y ofrezca reintentar.
+            return JsonResponse(
+                {"error": f"No se pudo generar el PDF: {res.error or 'sin detalle'}."},
+                status=502)
         messages.error(request, f"No se pudo generar el PDF: {res.error}")
         return redirect("cotizaciones:detalle", pk=cot.pk)
     # Un anexo que no se pudo pegar no detiene la descarga; se avisa, y el aviso

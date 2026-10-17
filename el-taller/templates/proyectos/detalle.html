@@ -104,6 +104,10 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
      hx-target="#modal-slot" hx-swap="innerHTML"></div>
 {% endif %}
 
+{% comment %}LC 2026-10-14: «Generar y bajar PDF» confirma la versión y manda aquí
+con `?bajar_cot=`; la descarga arranca sola y muestra su estado.{% endcomment %}
+{% if bajar_cot %}{% include "proyectos/_descarga_pdf.html" %}{% endif %}
+
 {# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
 
 {% if puede_editar %}

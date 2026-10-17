@@ -779,6 +779,9 @@ def detalle(request, pk):
         # «Generar y enviar» de la vista previa vuelve aquí con `?enviar_cot=`
         # para que se abra el modal de envío (LC 2026-08-29).
         "enviar_cot_pk": _cot_a_enviar(request, proyecto),
+        # «Generar y bajar PDF» (panel y vista previa) vuelve aquí con
+        # `?bajar_cot=` para arrancar la descarga al cargar (LC 2026-10-14).
+        "bajar_cot": _cot_a_bajar(request, proyecto),
         # Recuadro «Facturas ligadas» (LC #9).
         **_ctx_facturas(proyecto, request.user),
         # El Testigo (S-Pendientes-Sep28 · Deploy 3): el aviso de edición pisada.
@@ -2155,6 +2158,40 @@ def _cot_a_enviar(request, proyecto):
             .first())
 
 
+def _cot_a_bajar(request, proyecto):
+    """La cotización cuyo PDF hay que bajar al cargar, o None.
+
+    Sale de `?bajar_cot=`, que es lo que deja «Generar y bajar PDF». Mismas
+    razones que `_cot_a_enviar`: el valor viene de la barra de direcciones, así
+    que se valida aquí (número, de ESTE proyecto, y quien pide puede ver
+    cotizaciones, que es lo que exige el PDF) y no en la plantilla.
+
+    Devuelve `{"pk", "url", "nombre", "version"}`. El `nombre` sale de
+    `services.nombre_archivo`, la MISMA función con la que se nombra el adjunto
+    del correo (#166): el archivo que se baja aquí y el que se manda se llaman
+    igual por construcción, no por casualidad.
+    """
+    from lib.permisos import puede_ver_cotizaciones
+
+    crudo = (request.GET.get("bajar_cot") or "").strip()
+    if not crudo.isdigit() or not puede_ver_cotizaciones(request.user):
+        return None
+    from apps.cotizaciones import services as cot_services
+    from apps.cotizaciones.models import Cotizacion
+
+    cot = (Cotizacion.objects
+           .select_related("cliente", "proyecto")
+           .filter(pk=int(crudo), proyecto=proyecto).first())
+    if cot is None:
+        return None
+    return {
+        "pk": cot.pk,
+        "url": reverse("cotizaciones:pdf", args=[cot.pk]),
+        "nombre": f"{cot_services.nombre_archivo(cot)}.pdf",
+        "version": cot.version_label,
+    }
+
+
 @login_required
 def previsualizar_cotizacion(request, pk):
     """Enseña el documento de la versión que se generaría, SIN generarla.
@@ -2199,7 +2236,7 @@ def previsualizar_cotizacion(request, pk):
 
     from apps.cotizaciones import services as cot_services
 
-    from lib.permisos import puede_enviar_cotizaciones
+    from lib.permisos import puede_enviar_cotizaciones, puede_ver_cotizaciones
 
     url_generar = reverse("proyectos-generar-cotizacion", args=[proyecto.pk])
     acciones = [{
@@ -2208,6 +2245,17 @@ def previsualizar_cotizacion(request, pk):
         "clase": "lc-btn",
         "hidden": {},
     }]
+    if puede_ver_cotizaciones(request.user):
+        # LC 2026-10-14 (Oscar): «generar y bajar pdf». Mismo POST de «Generar»
+        # con `y_pdf`: confirma la versión y de ahí arranca la descarga en el
+        # detalle del proyecto. Sin permiso de ver cotizaciones no se ofrece:
+        # el PDF lo exige.
+        acciones.append({
+            "url": url_generar,
+            "label": "Generar y bajar PDF",
+            "clase": "lc-btn",
+            "hidden": {"y_pdf": "1"},
+        })
     if puede_enviar_cotizaciones(request.user):
         acciones.append({
             "url": url_generar,
@@ -2229,6 +2277,11 @@ def previsualizar_cotizacion(request, pk):
             # se va a deshacer: el botón daría 404.
             descargable=False,
             aviso=f"Vista previa de {cot.version_label} · todavía no se genera",
+            # LC 2026-10-14 (Oscar): «un botón de atrás o salir». Vuelve al
+            # proyecto sin haber generado nada (la versión se deshace al
+            # terminar esta vista).
+            volver_url=reverse("proyectos-detalle", args=[proyecto.pk]),
+            volver_label="Atrás",
         )
         transaction.set_rollback(True)
     return HttpResponse(html)
@@ -2255,16 +2308,28 @@ def generar_cotizacion(request, pk):
     from apps.cotizaciones import services as cot_services
     cot = cot_services.generar_desde_proyecto(proyecto, request.user)
     messages.success(request, f"Cotización {cot.version_label} generada ({cot.codigo}).")
-    if request.POST.get("y_enviar"):
-        from lib.permisos import puede_enviar_cotizaciones
-        if puede_enviar_cotizaciones(request.user):
-            # El modal de envío es HTMX y vive en el detalle del proyecto, así
-            # que se pide al recargar — el mismo camino del `?motivo=1` de la
-            # cancelación (LC 2026-08-07).
-            destino = f"{_redir_detalle(proyecto)}?enviar_cot={cot.pk}"
-            if _es_htmx(request):
-                return HttpResponse(status=204, headers={"HX-Redirect": destino})
-            return redirect(destino)
+    # Qué hay que hacer al volver al detalle. Se decide DESPUÉS de confirmar la
+    # versión y, para cada cosa, sólo si el usuario puede: pedir «enviar» o
+    # «bajar PDF» sin el permiso no rompe, se queda en «sólo generar».
+    #
+    # · `y_enviar` (vista previa) abre el envío por correo. El modal es HTMX y
+    #   vive en el detalle del proyecto, así que se pide al recargar — el mismo
+    #   camino del `?motivo=1` de la cancelación (LC 2026-08-07).
+    # · `y_pdf` (recuadro del proyecto y vista previa) baja el PDF. La descarga
+    #   no vive aquí: la arma Google y tarda segundos, y mezclarla con la
+    #   transacción de la versión es el estado intermedio que no queremos. El
+    #   detalle la pide al cargar (`?bajar_cot=`) y le da su estado de carga.
+    from lib.permisos import puede_enviar_cotizaciones, puede_ver_cotizaciones
+    pedidas = []
+    if request.POST.get("y_enviar") and puede_enviar_cotizaciones(request.user):
+        pedidas.append(f"enviar_cot={cot.pk}")
+    if request.POST.get("y_pdf") and puede_ver_cotizaciones(request.user):
+        pedidas.append(f"bajar_cot={cot.pk}")
+    if pedidas:
+        destino = f"{_redir_detalle(proyecto)}?{'&'.join(pedidas)}"
+        if _es_htmx(request):
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
     if _es_htmx(request):
         ctx = _ctx_cotizaciones(proyecto, request.user)
         html = render_to_string("proyectos/_cotizaciones_panel.html", ctx, request=request)

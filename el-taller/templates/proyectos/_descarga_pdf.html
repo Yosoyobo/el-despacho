@@ -1,0 +1,73 @@
+{% comment %}
+Descarga del PDF de una cotización recién generada (LC 2026-10-14, tickets 10 y
+14 de Oscar: «Generar y bajar PDF»).
+
+Entra con `?bajar_cot=<pk>` (ver `views._cot_a_bajar`). El PDF lo arma Google y
+tarda segundos, así que se baja con `fetch` en vez de navegar: el usuario ve
+«Preparando…», y si algo falla ve POR QUÉ y un enlace para reintentar, en lugar
+de una pantalla en blanco o un error de servidor. Con el archivo en memoria se
+guarda con el nombre que manda el servidor, que es el mismo del adjunto del
+correo (`services.nombre_archivo`).
+
+La cabecera `X-LC-Descarga` le dice a `cotizaciones.views.generar_pdf` que quien
+pide es este script: si falla contesta 502 con `{"error": …}` en vez de un
+redirect con mensaje (el mensaje se perdería en el fetch).
+
+`bajar_cot`: {pk, url, nombre, version}.
+Es un fragmento de la página del proyecto: el script se rootea por ID.
+{% endcomment %}
+<div id="cot-descarga-pdf" role="status" aria-live="polite"
+     data-url="{{ bajar_cot.url }}" data-nombre="{{ bajar_cot.nombre }}"
+     class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300">
+    <svg data-descarga-giro class="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" stroke-linecap="round"/></svg>
+    <span data-descarga-texto class="min-w-0 flex-1">{{ bajar_cot.version }} generada. Preparando el PDF… tarda unos segundos.</span>
+    <a data-descarga-reintento href="{{ bajar_cot.url }}" class="hidden shrink-0 rounded-lg border border-current px-2.5 py-1 text-xs font-medium">Reintentar</a>
+</div>
+<script>
+(function () {
+  var caja = document.getElementById('cot-descarga-pdf');
+  if (!caja || caja.dataset.iniciada) return;
+  caja.dataset.iniciada = '1';
+  var texto = caja.querySelector('[data-descarga-texto]');
+  var giro = caja.querySelector('[data-descarga-giro]');
+  var reintento = caja.querySelector('[data-descarga-reintento]');
+  var url = caja.dataset.url, nombre = caja.dataset.nombre || 'cotizacion.pdf';
+
+  // Quita ?bajar_cot de la barra: si recargan la página no se vuelve a bajar.
+  try {
+    var u = new URL(window.location.href); u.searchParams.delete('bajar_cot');
+    window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+  } catch (e) { /* da igual */ }
+
+  function fallo(msg) {
+    if (giro) giro.classList.add('hidden');
+    caja.className = 'mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-sm '
+      + 'border-error-200 bg-error-50 text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300';
+    texto.textContent = msg + ' La versión ya quedó generada: pulsa «Reintentar» o bájala desde «Ver →».';
+    if (reintento) { reintento.classList.remove('hidden'); reintento.classList.add('inline-block'); }
+  }
+
+  function guardar(blob) {
+    var a = document.createElement('a');
+    var obj = URL.createObjectURL(blob);
+    a.href = obj; a.download = nombre; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(obj); a.remove(); }, 4000);
+    if (giro) giro.classList.add('hidden');
+    texto.textContent = 'Listo: se bajó ' + nombre + '.';
+  }
+
+  fetch(url, { credentials: 'same-origin', headers: { 'X-LC-Descarga': '1' } })
+    .then(function (r) {
+      var tipo = r.headers.get('Content-Type') || '';
+      if (r.ok && tipo.indexOf('pdf') !== -1) return r.blob().then(guardar);
+      if (r.status === 403) throw new Error('No tienes permiso para bajar el PDF.');
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        throw new Error(d.error || 'No se pudo armar el PDF ahora mismo.');
+      });
+    })
+    .catch(function (e) {
+      fallo(e && e.message ? e.message : 'No se pudo bajar el PDF.');
+    });
+})();
+</script>
