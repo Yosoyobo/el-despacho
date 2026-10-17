@@ -1,13 +1,13 @@
-Django==5.1.4
-gunicorn==23.0.0
-psycopg[binary]==3.2.3
-redis==5.2.0
-hiredis==3.0.0
-cryptography==44.0.0
+Django==6.1.2
+gunicorn==26.2.0
+psycopg[binary]==3.3.6
+redis==8.1.0
+hiredis==3.5.0
+cryptography==50.0.2
 httpx==0.28.1
-python-dotenv==1.0.1
-whitenoise==6.8.2
-pillow==11.0.0
+python-dotenv==1.2.4
+whitenoise==6.12.0
+pillow==13.0.0
 # HEIC/HEIF de iPhone. `lib.almacen.hay_decodificador_heic()` lo registra en
 # Pillow de forma suave, así que basta con estar instalado. Sin esto, una foto
 # tomada con un iPhone se acepta (el MIME está en la whitelist), se guarda, y
@@ -15,33 +15,33 @@ pillow==11.0.0
 # Trae sus propias ruedas manylinux — no necesita paquetes del sistema.
 # Desde 2026-09-28 además convierte el HEIC a JPEG AL GUARDARLO
 # (`lib.almacen._heif_a_jpeg`), así el original también se ve en todos lados.
-pillow-heif==0.21.0
-markdown==3.7
+pillow-heif==1.8.1
+markdown==3.11.1
 # La Imprenta: el código QR de los documentos (pura Python, sin dependencias;
 # se dibuja como SVG dentro del PDF).
 segno==1.6.6
-pywebpush==2.0.0
+pywebpush==2.5.0
 # MCP oficial. Se fija a la rama estable v1 antes de la llegada de v2.
-mcp==1.27.2
-djangorestframework==3.15.2
-drf-spectacular==0.27.2
-drf-spectacular-sidecar==2024.12.1
+mcp==1.30.0
+djangorestframework==3.18.3
+drf-spectacular==0.30.0
+drf-spectacular-sidecar==2026.10.1
 # S2b.1.5 — andamiaje Google Drive. NO operativo todavía (slot vacío en La
 # Bóveda). Las libs sólo se importan cuando `lib.google_drive.drive.service`
 # se accede, así que tenerlas instaladas es inocuo.
-google-api-python-client==2.155.0
-google-auth==2.36.0
+google-api-python-client==2.201.0
+google-auth==2.62.0
 # S-Carga-Contable: genera la plantilla de carga contable y lee la llena y los
 # estados de cuenta en Excel. Python puro, sin paquetes del sistema.
 openpyxl==3.1.5
 # Portal de clientes (2026-09-29): saca el texto de la Constancia de Situación
 # Fiscal en PDF para que El Chalán la lea. Python puro, sin paquetes del sistema.
-pypdf==6.19.0
+pypdf==6.21.0
 # Tests
-pytest==8.3.4
-pytest-django==4.9.0
-pytest-cov==6.0.0
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-cov==7.1.0
 # Reparte la suite entre procesos. Cada worker levanta su propia base SQLite
 # `:memory:`, así que no se pisan; la suite no tiene tests con
 # `transaction=True` que obliguen a serializar.
-pytest-xdist==3.6.1
+pytest-xdist==3.8.0
