@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 
 
-class Capability(str, Enum):
+class Capability(str, Enum):  # noqa: UP042 — StrEnum cambiaría `str()`/`format()`; no se toca
     TEXTO = "texto"
     VISION = "vision"
     FUNCTION_CALLING = "function_calling"

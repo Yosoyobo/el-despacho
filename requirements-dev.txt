@@ -8,9 +8,9 @@
 # Misma versión que el job «Ruff» de El Mensajero (`pip install ruff==…`).
 # `tests/test_requirements_dev.py` exige que coincidan: un ruff distinto marca
 # (o deja pasar) reglas distintas y el lint local deja de predecir al del CI.
-ruff==0.8.4
+ruff==0.17.1
 
 # Para renderizar y medir pantallas en Chrome (la suite no ve layout). Usa el
 # Chrome instalado (`channel="chrome"`), así que no hace falta
 # `playwright install`. Ningún test lo importa.
-playwright==1.63.0
+playwright==1.64.0

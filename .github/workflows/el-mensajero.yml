@@ -34,8 +34,8 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -64,11 +64,11 @@ jobs:
     name: Ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install ruff==0.8.4
+      - run: pip install ruff==0.17.1
       - run: ruff check .
 
   build:
@@ -94,18 +94,18 @@ jobs:
           - app: recepcion
             dockerfile: la-recepcion/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Owner en minúsculas (GHCR exige)
         id: lc
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')" >> $GITHUB_OUTPUT
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Build & push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Preparar .env mínimo
         run: |
           cat > .env <<EOF
@@ -158,7 +158,7 @@ jobs:
       # el smoke test daba verde sobre unas imágenes y a producción viajaban
       # OTRAS —las del job `build`—; nunca se probaba el artefacto que ship*ea*.
       # Ahora se bajan las recién publicadas y se prueba exactamente eso.
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -242,10 +242,10 @@ jobs:
       contents: write
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -319,7 +319,7 @@ jobs:
       # runner, con el checkout de este commit: el de La Sede lo pone al día el job
       # `ventana`, que corre en paralelo, y a esta hora todavía puede ser el viejo.
       # Si algo falla aquí el deploy sigue: sólo se queda la pantalla corta.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 🪧 Armar la pantalla de mantenimiento con el roadmap de este deploy
         id: pantalla
         continue-on-error: true
@@ -332,7 +332,7 @@ jobs:
           echo "b64_portal=$(base64 -w0 en-curso-portal.html)" >> "$GITHUB_OUTPUT"
           echo "Pantallas listas: $(wc -c < en-curso.html) y $(wc -c < en-curso-portal.html) bytes."
       - name: SSH a La Sede y deploy al NUC por el tailnet
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           NUC_HOST: ${{ secrets.NUC_HOST }}
           NUC_USER: ${{ secrets.NUC_USER }}
@@ -413,7 +413,7 @@ jobs:
       # La ventana es un droplet con IP pública: el runner la alcanza directo, sin
       # tailnet. Corre UN contenedor (El Portero) y su única config es el Caddyfile.
       - name: SSH a La Sede y aplicar la ventana
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SEDE_HOST }}
           username: ${{ secrets.SEDE_USER }}

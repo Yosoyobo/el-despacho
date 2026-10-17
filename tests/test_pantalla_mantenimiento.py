@@ -502,7 +502,7 @@ def _script_de_la_mudanza() -> str:
 class TestLaMudanzaPoneYQuitaLaPantalla:
     def test_el_runner_arma_la_pantalla_y_se_la_pasa_a_la_sede(self):
         job = _job("mudanza")
-        assert "uses: actions/checkout@v4" in job
+        assert re.search(r"uses: actions/checkout@v\d+", job)
         armar = job.index("python3 infra/scripts/pantalla_mantenimiento.py")
         assert armar < job.index("uses: appleboy/ssh-action")
         assert "continue-on-error: true" in job[:armar], "si no se arma, el deploy sigue"
