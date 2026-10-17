@@ -325,7 +325,7 @@ con `?bajar_cot=`; la descarga arranca sola y muestra su estado.{% endcomment %}
                             <ul class="mt-1 space-y-0.5 pl-3 text-xs">
                                 {% for g in gr.unidades %}
                                 <li class="flex items-center justify-between gap-2">
-                                    <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}</span>
+                                    <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}{% if g.pagado_parcial %} <span class="text-[10px] text-success-600 dark:text-success-400">· ya se pagó {{ g.pagado_parcial|dinero }} de {{ g.monto_total|dinero }}</span>{% endif %}</span>
                                     {# Buzón #157: cada concepto también con su IVA, igual que el total del proveedor. #}
                                     <span class="shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ g.total_con_iva|dinero }} <span class="text-[10px]">({{ g.monto|dinero }} + IVA)</span></span>
                                 </li>

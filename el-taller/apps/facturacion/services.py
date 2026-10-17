@@ -651,14 +651,7 @@ def registrar_cobro(
     `folio` se guarda en `referencia_externa`; `nota` se anexa a la descripción
     (sección "Referencia" del modal de cobro, ticket LC 2026-06-29).
     """
-    if fac.estado not in {"emitida", "cobrada_parcial"}:
-        raise ValueError("Solo se puede cobrar una factura emitida o parcialmente cobrada.")
-    monto = Decimal(str(monto)).quantize(Decimal("0.01"))
-    if monto <= 0:
-        raise ValueError("El monto del cobro debe ser mayor a cero.")
-    saldo = fac.saldo_pendiente
-    if monto > saldo + Decimal("0.01"):
-        raise ValueError(f"El monto del cobro ({monto}) excede el saldo pendiente ({saldo}).")
+    monto = validar_cobro(fac, monto)
 
     from apps.tesoreria.models import Ingreso
 
@@ -678,19 +671,113 @@ def registrar_cobro(
             proyecto=fac.proyecto,
             creado_por=actor if getattr(actor, "is_authenticated", False) else None,
         )
-        recalcular_monto_cobrado(fac)
-        total = fac.calcular_totales()["total"]
-        if fac.monto_cobrado + Decimal("0.01") >= total:
-            fac.estado = "cobrada_total"
-        elif fac.monto_cobrado > 0:
-            fac.estado = "cobrada_parcial"
-        fac.save(update_fields=["estado", "monto_cobrado", "actualizado_en"])
+        _sincronizar_cobro(fac)
 
+    _avisar_cobro(fac, monto, actor)
+    return fac
+
+
+ESTADOS_COBRABLES = ("emitida", "cobrada_parcial")
+
+
+def validar_cobro(fac: Factura, monto) -> Decimal:
+    """Reglas para cobrar una factura (una sola fuente: el modal de cobro de la
+    factura y el ingreso de Tesorería ligado a una factura las comparten).
+    Devuelve el monto cuantizado o lanza ValueError con el motivo."""
+    if fac.estado not in ESTADOS_COBRABLES:
+        raise ValueError("Solo se puede cobrar una factura emitida o parcialmente cobrada.")
+    monto = Decimal(str(monto)).quantize(Decimal("0.01"))
+    if monto <= 0:
+        raise ValueError("El monto del cobro debe ser mayor a cero.")
+    saldo = fac.saldo_pendiente
+    if monto > saldo + Decimal("0.01"):
+        raise ValueError(f"El monto del cobro ({monto}) excede el saldo pendiente ({saldo}).")
+    return monto
+
+
+def _sincronizar_cobro(fac: Factura) -> None:
+    """Recalcula lo cobrado y mueve el estado a cobrada_parcial / cobrada_total.
+    Llamar dentro de la transacción que creó el Ingreso ligado."""
+    recalcular_monto_cobrado(fac)
+    total = fac.calcular_totales()["total"]
+    if fac.monto_cobrado + Decimal("0.01") >= total:
+        fac.estado = "cobrada_total"
+    elif fac.monto_cobrado > 0:
+        fac.estado = "cobrada_parcial"
+    fac.save(update_fields=["estado", "monto_cobrado", "actualizado_en"])
+
+
+def _avisar_cobro(fac: Factura, monto: Decimal, actor) -> None:
     if fac.estado == "cobrada_total":
         _emitir("factura.cobrada_total", fac, actor, {"monto": float(monto)})
     else:
         _emitir("factura.cobrada_parcial", fac, actor, {"monto": float(monto)})
-    return fac
+
+
+def aplicar_cobro_de_ingreso(fac: Factura, monto, actor) -> None:
+    """Un `Ingreso` de Tesorería ya quedó ligado a `fac` (monto = `monto`):
+    actualiza lo cobrado, el estado y avisa. Es lo que `registrar_cobro` hace
+    después de crear su propio ingreso, para el ingreso que se captura en
+    «Nuevo ingreso» con la factura elegida."""
+    with transaction.atomic():
+        _sincronizar_cobro(fac)
+    _avisar_cobro(fac, Decimal(str(monto)).quantize(Decimal("0.01")), actor)
+
+
+def facturas_cobrables(*, proyecto=None, cliente=None):
+    """Facturas que todavía admiten cobro, de ese proyecto (o, sin proyecto, de ese
+    cliente), con su saldo. [] si no se da ni proyecto ni cliente."""
+    qs = Factura.objects.filter(estado__in=ESTADOS_COBRABLES)
+    if proyecto is not None:
+        qs = qs.filter(proyecto=proyecto)
+    elif cliente is not None:
+        qs = qs.filter(cliente=cliente)
+    else:
+        return []
+    salida = []
+    for fac in qs.select_related("proyecto").order_by("fecha_emision", "pk"):
+        saldo = fac.saldo_pendiente
+        if saldo > Decimal("0.01"):
+            salida.append({"factura": fac, "saldo": saldo,
+                           "total": fac.calcular_totales()["total"]})
+    return salida
+
+
+def facturas_sugeridas(*, proyecto=None, cliente=None, monto=None, limite=2) -> list[dict]:
+    """Hasta `limite` facturas SUGERIDAS para un cobro de `monto` (Oscar 2026-10-14).
+
+    Sólo entre las cobrables (misma regla que `validar_cobro`: el monto no puede
+    exceder el saldo). Orden de preferencia, con su razón en español:
+      1. el monto es EXACTAMENTE el saldo pendiente → «Cubre justo lo que falta»;
+      2. es el total de la factura → «Es el total de la factura»;
+      3. es la mitad del total → «Es el 50% de la factura»;
+      4. cabe en el saldo → «Cabe en su saldo», la de saldo más ajustado primero.
+    Sin monto (vacío o 0) se sugieren las 2 más antiguas pendientes.
+    """
+    centavo = Decimal("0.01")
+    candidatas = facturas_cobrables(proyecto=proyecto, cliente=cliente)
+    try:
+        monto = Decimal(str(monto)).quantize(centavo) if monto not in (None, "") else None
+    except Exception:  # noqa: BLE001
+        monto = None
+    if not monto or monto <= 0:
+        return [{**c, "razon": "Pendiente más antigua"} for c in candidatas[:limite]]
+    ranqueadas = []
+    for c in candidatas:
+        saldo, total = c["saldo"], c["total"]
+        if monto > saldo + centavo:
+            continue  # excedería el saldo: no se puede ligar
+        if abs(saldo - monto) <= centavo:
+            rango, razon = 0, "Cubre justo lo que falta"
+        elif abs(total - monto) <= centavo:
+            rango, razon = 1, "Es el total de la factura"
+        elif abs(total / 2 - monto) <= centavo:
+            rango, razon = 2, "Es el 50% de la factura"
+        else:
+            rango, razon = 3, "Cabe en su saldo"
+        ranqueadas.append((rango, saldo - monto, c["factura"].pk, {**c, "razon": razon}))
+    ranqueadas.sort(key=lambda t: t[:3])
+    return [t[3] for t in ranqueadas[:limite]]
 
 
 def recalcular_monto_cobrado(fac: Factura) -> Decimal:

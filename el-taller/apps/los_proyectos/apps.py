@@ -8,10 +8,11 @@ class LosProyectosConfig(AppConfig):
     verbose_name = "Proyectos"
 
     def ready(self):
-        from apps.los_proyectos import (
-            signals_correo,  # noqa: F401
-            signals_egresos,  # noqa: F401
-        )
+        # OJO (Oscar, 2026-10-14): ya NO hay signal que genere Egresos al pasar a
+        # producción. Los egresos de un proyecto sólo existen si alguien los
+        # registra a mano (modal «Registrar pago» / «Nuevo egreso»); lo que falta
+        # por pagar lo sugiere la sección amarilla (`gastos.pagos_pendientes_de`).
+        from apps.los_proyectos import signals_correo  # noqa: F401
         from apps.los_proyectos.models.estado import EstadoProyecto
         from apps.los_proyectos.templatetags.proyectos_extras import (
             invalidar_mapa_estados,

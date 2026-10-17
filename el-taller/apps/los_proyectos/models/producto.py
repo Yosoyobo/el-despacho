@@ -112,10 +112,10 @@ class ProyectoProducto(models.Model):
     # sobre éste (ver `color_efectivo`). La descripción ya no decide (2026-09-28).
     color = models.CharField(max_length=7, blank=True, default="")
 
-    # B (2026-06-07): Egreso generado en Tesorería cuando el proyecto pasa a
-    # producción. Marca de idempotencia — una línea con egreso no vuelve a
-    # generar. SET_NULL: si el egreso se borra físicamente, la línea queda sin
-    # marca (podría regenerarse). Ver apps.los_proyectos.signals_egresos.
+    # Egreso ligado a esta línea cuando alguien registra su pago (modal «Registrar
+    # pago»). Desde 2026-10-14 NADA lo genera solo al pasar a producción; antes lo
+    # hacía un signal (retirado, ver `limpiar_egresos_automaticos`). SET_NULL: si
+    # el egreso se borra físicamente, la línea vuelve a salir como pago pendiente.
     egreso = models.ForeignKey(
         "tesoreria.Egreso",
         on_delete=models.SET_NULL,

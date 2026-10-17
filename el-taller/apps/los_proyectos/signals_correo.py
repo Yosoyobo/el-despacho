@@ -5,7 +5,7 @@ dejaría al cliente con un correo de algo que nunca pasó. Y el aviso es
 best-effort de punta a punta — `lib.reglas_correo.disparar` no lanza, así que
 guardar el proyecto no puede fallar por culpa del correo.
 
-Se separa de `signals_egresos` a propósito: son dos reglas de negocio distintas
+Se separó del antiguo `signals_egresos` (retirado 2026-10-14) a propósito: son dos reglas de negocio distintas
 sobre la misma transición, y mezclarlas haría que un fallo de una arrastre a la
 otra.
 """

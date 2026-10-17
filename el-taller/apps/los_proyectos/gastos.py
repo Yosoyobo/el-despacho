@@ -12,6 +12,29 @@ un Egreso registrado. Unidades de gasto:
 Un gasto está **registrado** si tiene un Egreso vigente (no anulado). Los que no,
 salen como alerta en el proyecto y como "gastos no registrados" en Tesorería,
 con un botón para registrarlos (crea el Egreso y lo liga).
+
+**Pagos parciales (Oscar 2026-10-14).** «Registrar pago» de un proveedor permite
+(a) elegir QUÉ conceptos se pagan (casilla por concepto: varios pedidos en una
+tienda) y (b) CUÁNTO se paga ahora (todo, el 50% como anticipo, u otro monto).
+Reglas, para no tener que adivinarlas leyendo el código:
+
+* Cada concepto sigue teniendo un solo `egreso` (FK) = «ya se pagó completo».
+  Lo parcial vive en `PagoGasto` (egreso + concepto + monto abonado, base sin IVA).
+  Pendiente de un concepto = su costo − Σ abonos de egresos vigentes ya pagados.
+* Un pago parcial crea UN egreso por el monto pagado y NO toca el FK de los
+  conceptos que quedan a medias; sólo el concepto que ese pago termina de cubrir
+  recibe el FK. Lo que falta sigue saliendo en la sección amarilla con su
+  `monto` = lo pendiente (por eso IVA, totales y «gastos no registrados» cuadran).
+* El monto parcial se reparte entre los conceptos elegidos **en proporción a lo
+  que a cada uno le falta**, por el método del mayor resto en centavos
+  (`repartir_proporcional`): la suma da exactamente el monto y ningún concepto
+  recibe más de lo que le falta.
+* Un concepto que ya es cuenta por pagar («pendiente») no se parte: se liquida
+  completo o no se incluye. Un pago parcial que lo incluya se rechaza.
+* Anular el egreso de un abono devuelve ese monto a «pendiente» sin más pasos.
+* Lo que se captura en el modal está en la misma base que muestra el héroe (con IVA
+  si la casilla está marcada); el egreso guarda la base sin IVA, igual que el pago
+  completo de siempre (el IVA del modal es informativo, ver HISTORIAL «#163»).
 """
 
 from __future__ import annotations
@@ -67,6 +90,15 @@ def desglose_iva(proyecto, pendientes: list[dict]) -> dict:
     }
 
 
+def _quien(actor):
+    """El usuario que registró el egreso (None si lo hizo el sistema).
+
+    Importa: `creado_por` vacío es la huella con la que `limpiar_egresos_automaticos`
+    reconoce los egresos que generaba solo el sistema (hasta 2026-10-14). Todo
+    egreso que registra una persona lleva su nombre y queda a salvo de la limpieza."""
+    return actor if getattr(actor, "pk", None) else None
+
+
 def _registrado(egreso) -> bool:
     return egreso is not None and not egreso.anulado
 
@@ -112,37 +144,66 @@ def _label_proceso(proc, pp) -> str:
     return f"{_nombre_base(pp)} · {proc.etiqueta}{suf}"
 
 
+TOLERANCIA = Decimal("0.01")
+
+
+def _abonado(obj) -> Decimal:
+    """Σ de los abonos (`PagoGasto`) del concepto cuyo egreso sigue vigente y ya se
+    pagó (pagado o por reembolsar). Un egreso anulado devuelve su monto a pendiente."""
+    total = CERO
+    for ab in obj.pagos_gasto.all():
+        eg = ab.egreso
+        if not eg.anulado and eg.estado_pago in ("pagado", "por_reembolsar"):
+            total += ab.monto
+    return total
+
+
+def _restante(egreso, monto_total: Decimal, abonado: Decimal) -> tuple[bool, Decimal]:
+    """(pagado, restante) de un concepto. Pagado = su egreso vigente ya se saldó, o
+    los abonos cubren todo su costo. `restante` = lo que falta por pagar."""
+    if _pagado(egreso):
+        return True, CERO
+    restante = (monto_total - abonado).quantize(Decimal("0.01"))
+    if restante < TOLERANCIA:
+        return True, CERO
+    return False, restante
+
+
+def _unidad(clase, obj, tipo, label, monto_total, proveedor):
+    egreso = obj.egreso
+    abonado = _abonado(obj)
+    pagado, restante = _restante(egreso, monto_total, abonado)
+    return {
+        "clase": clase, "pk": obj.pk, "tipo": tipo, "label": label,
+        # `monto` = lo que FALTA por pagar (el costo completo si no hay abonos).
+        "monto": monto_total if pagado else restante,
+        "monto_total": monto_total,
+        "pagado_parcial": CERO if pagado else abonado,
+        "proveedor": proveedor, "egreso": egreso,
+        "registrado": _registrado(egreso),
+        "pagado": pagado,
+    }
+
+
 def iter_unidades(proyecto):
     """Genera dicts de unidad de gasto del proyecto (solo con monto > 0)."""
     lineas = (
         proyecto.productos
         .filter(incluir_en_calculo=True)
         .select_related("proveedor", "servicio", "variacion", "egreso")
-        .prefetch_related("procesos", "procesos__proveedor", "procesos__egreso")
+        .prefetch_related("procesos", "procesos__proveedor", "procesos__egreso",
+                          "pagos_gasto__egreso", "procesos__pagos_gasto__egreso")
     )
     for pp in lineas:
         monto = Decimal(str(pp.costo_total_linea)).quantize(Decimal("0.01"))
         if monto > 0:
-            yield {
-                "clase": "producto", "pk": pp.pk, "tipo": "producto",
-                "label": _label_produccion(pp), "monto": monto,
-                "proveedor": pp.proveedor, "egreso": pp.egreso,
-                "registrado": _registrado(pp.egreso),
-                "pagado": _pagado(pp.egreso),
-            }
+            yield _unidad("producto", pp, "producto", _label_produccion(pp), monto, pp.proveedor)
         for proc in pp.procesos.all():
             c = _monto_proceso(proc, pp)
             if c <= 0:
                 continue
-            yield {
-                "clase": "proceso", "pk": proc.pk, "tipo": proc.tipo,
-                "label": _label_proceso(proc, pp), "monto": c,
-                # Ticket UX 2026-07: los operativos pueden ligar proveedor (@).
-                "proveedor": proc.proveedor,
-                "egreso": proc.egreso,
-                "registrado": _registrado(proc.egreso),
-                "pagado": _pagado(proc.egreso),
-            }
+            # Ticket UX 2026-07: los operativos pueden ligar proveedor (@).
+            yield _unidad("proceso", proc, proc.tipo, _label_proceso(proc, pp), c, proc.proveedor)
 
 
 def pendientes_de(proyecto) -> list[dict]:
@@ -221,33 +282,101 @@ def grupo_pago_de(proyecto, clave: int) -> dict | None:
     return None
 
 
+def repartir_proporcional(monto: Decimal, restantes: list[Decimal]) -> list[Decimal]:
+    """Reparte `monto` entre conceptos EN PROPORCIÓN a lo que a cada uno le falta.
+
+    Método del mayor resto, en centavos enteros: cada concepto recibe el piso de su
+    parte exacta y los centavos que sobran se dan, de uno en uno, a quienes tienen
+    el resto más grande (a igualdad, el primero de la lista). Garantías: la suma da
+    EXACTAMENTE `monto` y ningún concepto recibe más de lo que le falta. Si `monto`
+    cubre todo, cada uno recibe lo que le falta.
+    """
+    centavos = int((Decimal(str(monto)) * 100).to_integral_value())
+    faltan = [int((Decimal(str(r)) * 100).to_integral_value()) for r in restantes]
+    total = sum(faltan)
+    if centavos >= total:
+        return [Decimal(f) / 100 for f in faltan]
+    base = [centavos * f // total for f in faltan]
+    resto = [centavos * f % total for f in faltan]
+    sobran = centavos - sum(base)
+    for i in sorted(range(len(faltan)), key=lambda k: (-resto[k], k))[:sobran]:
+        base[i] += 1
+    return [Decimal(b) / 100 for b in base]
+
+
+def _clave_unidad(u) -> str:
+    return f"{u['clase']}:{u['pk']}"
+
+
 def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
                          metodo="transferencia", estado_pago="pagado",
                          pagado_por=None, solicitado_por=None, proveedor=None,
-                         fecha=None) -> dict:
-    """Registra de una sola vez el pago de TODAS las unidades de un proveedor.
+                         fecha=None, unidades=None, monto=None, fraccion=None,
+                         etiqueta="", pendiente_visto=None) -> dict:
+    """Registra el pago de lo pendiente de un proveedor: TODO o una parte.
 
-    Crea **un solo Egreso** con la suma de las unidades que aún no tienen uno y
-    liga todas a ese egreso (el FK es muchos-a-uno, así que varias unidades
-    pueden compartirlo). Las unidades que ya traían un egreso «Pendiente»
-    —la cuenta por pagar que se auto-generó al entrar a producción— se LIQUIDAN:
-    esos egresos ya existen en contabilidad y no se pueden fusionar.
+    Sin `unidades` ni `monto` es el pago completo de siempre: **un solo Egreso**
+    con la suma de las unidades que aún no tienen uno, ligadas a él (el FK es
+    muchos-a-uno). Las que ya traían un egreso «Pendiente» —la cuenta por pagar
+    que se auto-generaba— se LIQUIDAN: esos egresos ya existen en contabilidad y
+    no se pueden fusionar.
 
-    Devuelve `{creado, liquidados, unidades}` para armar el mensaje.
+    Parcial (Oscar 2026-10-14; reglas completas en el docstring del módulo):
+
+    * `unidades`: lista de «clase:pk» (o tuplas) = los conceptos que se pagan
+      ahora; None = todos los pendientes del proveedor.
+    * `monto`: cuánto se paga AHORA, sin IVA (misma base que el concepto). None, o
+      un monto que cubre todo lo elegido (con un centavo de tolerancia), = pago
+      completo. Menor = pago parcial, repartido con `repartir_proporcional`.
+    * `fraccion`: alternativa a `monto`, una parte de lo elegido (0.5 = el anticipo
+      del 50%); se calcula sobre lo que falta de los conceptos elegidos.
+    * `pendiente_visto`: lo pendiente del proveedor que vio quien abrió el modal; si
+      cambió (otro pago en medio, doble clic) se rechaza en vez de pagar dos veces.
+
+    Lanza ValueError (con mensaje para mostrar) si la petición no es válida.
+    Devuelve `{creado, liquidados, unidades, parcial, restante}`.
     """
     from apps.tesoreria.models import CentroDeCosto, Egreso
     from apps.tesoreria.services import liquidar_egreso_pendiente
 
+    from .models import PagoGasto
+
+    vacio = {"creado": None, "liquidados": [], "unidades": 0, "parcial": False,
+             "restante": CERO}
     grupo = grupo_pago_de(proyecto, clave)
     if grupo is None:
-        return {"creado": None, "liquidados": [], "unidades": 0}
+        return vacio
+    if pendiente_visto is not None and \
+            abs(Decimal(str(pendiente_visto)) - grupo["monto"]) > TOLERANCIA:
+        raise ValueError(
+            "Lo pendiente de este proveedor cambió (alguien registró otro pago). "
+            "Revisa los montos y vuelve a intentarlo.")
+
+    elegidas = grupo["unidades"]
+    if unidades is not None:
+        claves = {u if isinstance(u, str) else f"{u[0]}:{u[1]}" for u in unidades}
+        elegidas = [u for u in grupo["unidades"] if _clave_unidad(u) in claves]
+        if not elegidas:
+            raise ValueError("Elige al menos un concepto para pagar.")
+    por_pagar = sum((Decimal(str(u["monto"])) for u in elegidas), CERO)
+
+    if fraccion is not None:
+        monto = (por_pagar * Decimal(str(fraccion))).quantize(Decimal("0.01"))
+    parcial = False
+    if monto is not None:
+        monto = Decimal(str(monto)).quantize(Decimal("0.01"))
+        if monto <= 0:
+            raise ValueError("El monto a pagar debe ser mayor a cero.")
+        if monto > por_pagar + TOLERANCIA:
+            raise ValueError("El monto excede lo que falta por pagar de los conceptos elegidos.")
+        parcial = monto < por_pagar - TOLERANCIA
 
     if centro is None:
         centro = CentroDeCosto.objects.filter(slug=CENTRO_SLUG).first()
     if centro is None:
         logger.warning("proyecto=%s: centro '%s' ausente — no se registra el pago.",
                        proyecto.pk, CENTRO_SLUG)
-        return {"creado": None, "liquidados": [], "unidades": 0}
+        return vacio
 
     if proveedor is None:
         proveedor = grupo["proveedor"]
@@ -257,12 +386,18 @@ def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
     banco_o_caja = "caja" if metodo == "efectivo" else "banco"
 
     a_liquidar, a_crear = [], []
-    for u in grupo["unidades"]:
+    for u in elegidas:
         eg = u.get("egreso")
         if eg is not None and not eg.anulado and eg.estado_pago == "pendiente":
             a_liquidar.append((u, eg))
         else:
             a_crear.append(u)
+
+    if parcial and a_liquidar:
+        nombres = ", ".join(u["label"] for u, _eg in a_liquidar[:2])
+        raise ValueError(
+            f"«{nombres}» ya está registrado como cuenta por pagar y se liquida "
+            "completo: desmárcalo o paga todo.")
 
     liquidados = []
     for _u, eg in a_liquidar:
@@ -283,13 +418,25 @@ def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
         )
         liquidados.append(eg)
 
+    # Cuánto abona este pago a cada concepto (sin IVA). Completo = lo que le falta.
+    restantes = [Decimal(str(u["monto"])) for u in a_crear]
+    abonos = repartir_proporcional(monto, restantes) if parcial else restantes
+    monto_nuevo = sum(abonos, CERO)
+
     creado = None
-    monto_nuevo = sum((Decimal(str(u["monto"])) for u in a_crear), CERO)
     if a_crear and monto_nuevo > 0:
         etiquetas = [u["label"] for u in a_crear]
         detalle = " · ".join(etiquetas[:3])
         if len(etiquetas) > 3:
             detalle += f" · +{len(etiquetas) - 3} más"
+        if parcial:
+            prefijo = (etiqueta or "Pago parcial").strip()
+        elif any(Decimal(str(u.get("pagado_parcial") or 0)) > 0 for u in a_crear):
+            prefijo = "Liquidación"
+        else:
+            prefijo = ""
+        if prefijo:
+            detalle = f"{prefijo} · {detalle}"
         descripcion = f"Proyecto {proyecto.codigo} · {proveedor_nombre} · {detalle}"[:300]
         with transaction.atomic():
             creado = Egreso.objects.create(
@@ -299,14 +446,23 @@ def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
                 proyecto=proyecto, estado_pago=estado_pago or "pagado",
                 metodo=metodo or "transferencia", pagado_por=pagado_por,
                 solicitado_por=solicitado_por, origen="proyecto",
+                creado_por=_quien(actor),
             )
-            for u in a_crear:
+            for u, abono, falta in zip(a_crear, abonos, restantes, strict=True):
+                if abono <= 0:
+                    continue
                 obj = _obj_de(proyecto, u["clase"], u["pk"])
                 if obj is None:
                     continue
-                obj.egreso = creado
-                obj.save(update_fields=["egreso"])
+                PagoGasto.objects.create(
+                    egreso=creado, monto=abono,
+                    **{"producto" if u["clase"] == "producto" else "proceso": obj})
+                if abono >= falta:  # este pago termina de cubrirlo → queda «pagado»
+                    obj.egreso = creado
+                    obj.save(update_fields=["egreso"])
 
+    en_cxp = sum((Decimal(str(u["monto"])) for u, _eg in a_liquidar), CERO)
+    restante = max(CERO, (por_pagar - monto_nuevo - en_cxp).quantize(Decimal("0.01")))
     with contextlib.suppress(Exception):
         from lib.portavoz import emitir
         from lib.portavoz_eventos import EventoPortavoz
@@ -317,13 +473,13 @@ def registrar_pago_grupo(proyecto, clave: int, *, actor=None, centro=None,
             payload={"proyecto_id": proyecto.pk, "codigo": proyecto.codigo,
                      "agrupado_por_proveedor": True,
                      "proveedor": proveedor_nombre,
-                     "unidades": len(grupo["unidades"]),
+                     "unidades": len(elegidas), "parcial": parcial,
                      "monto": float(monto_nuevo),
                      "egreso_codigo": creado.codigo if creado else "",
                      "liquidados": [e.codigo for e in liquidados]},
         ))
     return {"creado": creado, "liquidados": liquidados,
-            "unidades": len(grupo["unidades"])}
+            "unidades": len(elegidas), "parcial": parcial, "restante": restante}
 
 
 def _obj_de(proyecto, clase: str, pk: int):
@@ -345,6 +501,9 @@ def _datos_egreso(proyecto, clase: str, obj):
         monto = _monto_proceso(obj, obj.producto)
         proveedor = obj.proveedor  # impresión u operativo con proveedor (@)
         etiqueta = _label_proceso(obj, obj.producto)
+    # Un concepto con abonos parciales sólo registra lo que le FALTA (si no, el
+    # egreso duplicaría lo ya pagado).
+    monto = max(CERO, (monto - _abonado(obj)).quantize(Decimal("0.01")))
     proveedor_nombre = (proveedor.razon_social if proveedor else "Gasto de proyecto")[:200]
     descripcion = f"Proyecto {proyecto.codigo} · {etiqueta}"[:300]
     return monto, proveedor, proveedor_nombre, descripcion
@@ -410,6 +569,7 @@ def registrar_egreso(proyecto, clase: str, pk: int, *, actor=None,
             centro_de_costo=centro, proyecto=proyecto,
             estado_pago=estado_pago or "pendiente", metodo=metodo or "transferencia",
             pagado_por=pagado_por, solicitado_por=solicitado_por, origen="proyecto",
+            creado_por=_quien(actor),
         )
         obj.egreso = egreso
         obj.save(update_fields=["egreso"])

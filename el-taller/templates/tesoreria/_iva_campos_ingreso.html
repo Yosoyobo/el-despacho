@@ -1,0 +1,109 @@
+{% comment %}
+Captura de monto del INGRESO con esquema fiscal (Oscar 2026-10-14): IVA 16%
+incluido / RESICO con retenciones / sin IVA. El número que se escribe es lo que
+se COBRÓ (total). El desglose en vivo lo calcula el servidor
+(`tesoreria:api-desglose-ingreso` → `forms.desglosar_ingreso`, la MISMA función
+que guarda), así que lo que se ve es lo que se guarda. Espera `form` de
+IngresoForm. El egreso sigue usando `_iva_campos.html` (sólo IVA).
+{% endcomment %}
+<div data-iva-block data-desglose-url="{% url 'tesoreria:api-desglose-ingreso' %}" class="md:col-span-2">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div class="campo-form">
+            <label for="{{ form.subtotal.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Monto cobrado</label>
+            {{ form.subtotal }}
+            {% for e in form.subtotal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Lo que realmente entró, ya con impuestos y retenciones.</p>
+        </div>
+        <div class="sm:self-end">
+            <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Esquema fiscal</span>
+            <div class="flex flex-col gap-1.5" data-regimen-group>
+                {% for val, etiqueta in form.regimen_fiscal.field.choices %}
+                <label class="cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                    <input type="radio" name="regimen_fiscal" value="{{ val }}" class="sr-only" data-regimen-radio {% if form.regimen_fiscal.value|default:'iva' == val %}checked{% endif %}>
+                    {{ etiqueta }}
+                </label>
+                {% endfor %}
+            </div>
+            {% for e in form.regimen_fiscal.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+        </div>
+    </div>
+    <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Subtotal (antes de impuestos)</span>
+            <span data-iva-base class="font-bold tabular-nums text-gray-900 dark:text-gray-100">$0.00</span>
+        </div>
+        <div class="mt-1 flex items-center justify-between text-gray-600 dark:text-gray-300" data-fila-iva>
+            <span data-iva-label>IVA 16%</span>
+            <span data-iva-monto class="font-semibold tabular-nums">$0.00</span>
+        </div>
+        <div class="mt-1 hidden items-center justify-between text-gray-600 dark:text-gray-300" data-fila-ret>
+            <span><span data-ret-isr-label>Ret. ISR</span> <span class="text-xs text-gray-400">(se descuenta)</span></span>
+            <span data-ret-isr class="font-semibold tabular-nums">−$0.00</span>
+        </div>
+        <div class="mt-1 hidden items-center justify-between text-gray-600 dark:text-gray-300" data-fila-ret>
+            <span><span data-ret-iva-label>Ret. IVA</span> <span class="text-xs text-gray-400">(se descuenta)</span></span>
+            <span data-ret-iva class="font-semibold tabular-nums">−$0.00</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
+            <span class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Total cobrado</span>
+            <span data-iva-total class="font-bold tabular-nums text-gray-900 dark:text-gray-100">$0.00</span>
+        </div>
+    </div>
+    <div data-iva-ribbon class="mt-2 hidden items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+        <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Sin IVA — se registra como <strong>efectivo</strong> (operación informal). Recuérdalo para efectos contables y fiscales.</span>
+    </div>
+</div>
+<script>
+{% comment %}Rooteado por selector (no `currentScript`) para funcionar también
+inyectado por HTMX en un modal. Marca cada bloque para no re-inicializar.{% endcomment %}
+(() => {
+  document.querySelectorAll("[data-iva-block][data-desglose-url]:not([data-iva-listo])").forEach((block) => {
+    block.dataset.ivaListo = "1";
+    const inp = block.closest("form")?.querySelector('[name="subtotal"]') || document.querySelector('[name="subtotal"]');
+    const radios = block.querySelectorAll("[data-regimen-radio]");
+    const $ = (s) => block.querySelector(s);
+    const fmt = (n) => "$" + (parseFloat(n) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const regimen = () => { const r = [...radios].find((x) => x.checked); return r ? r.value : "iva"; };
+    const pintar = (d) => {
+      const hon = d.regimen === "honorarios", ex = d.regimen === "exento";
+      $("[data-iva-base]").textContent = fmt(d.subtotal);
+      $("[data-iva-monto]").textContent = fmt(d.iva);
+      $("[data-iva-label]").textContent = d.iva_label || "IVA 16%";
+      $("[data-ret-isr]").textContent = "−" + fmt(d.ret_isr);
+      $("[data-ret-iva]").textContent = "−" + fmt(d.ret_iva);
+      $("[data-ret-isr-label]").textContent = d.ret_isr_label || "Ret. ISR";
+      $("[data-ret-iva-label]").textContent = d.ret_iva_label || "Ret. IVA";
+      $("[data-iva-total]").textContent = fmt(d.monto);
+      block.querySelectorAll("[data-fila-ret]").forEach((f) => { f.classList.toggle("hidden", !hon); f.classList.toggle("flex", hon); });
+      $("[data-fila-iva]").classList.toggle("hidden", ex);
+      $("[data-iva-ribbon]").classList.toggle("hidden", !ex);
+      $("[data-iva-ribbon]").classList.toggle("flex", ex);
+    };
+    let t = null, ctl = null;
+    const recalc = () => {
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        if (ctl) ctl.abort();
+        ctl = new AbortController();
+        const total = (inp && inp.value) || "0";
+        try {
+          const r = await fetch(block.dataset.desgloseUrl + "?total=" + encodeURIComponent(total) +
+                                "&regimen=" + encodeURIComponent(regimen()), {signal: ctl.signal});
+          if (r.ok) pintar(await r.json());
+        } catch (e) { /* abortado o sin red: se queda el último desglose */ }
+      }, 120);
+    };
+    if (inp) inp.addEventListener("input", recalc);
+    // Un clic a mano en el esquema: ya no lo cambia el autollenado del proyecto/factura.
+    radios.forEach((r) => r.addEventListener("change", () => { recalc(); }));
+    radios.forEach((r) => r.addEventListener("click", () => { block.dataset.regimenManual = "1"; }));
+    block.setRegimen = (valor, auto) => {
+      if (auto && block.dataset.regimenManual === "1") return;
+      radios.forEach((r) => { r.checked = (r.value === valor); });
+      recalc();
+    };
+    recalc();
+  });
+})();
+</script>

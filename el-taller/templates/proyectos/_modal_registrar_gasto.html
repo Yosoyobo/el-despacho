@@ -5,7 +5,12 @@ Líder por default. Wave 5 (HTMX → #modal-slot).
 
 LC 2026-07-26: el mismo modal sirve para UNA unidad de gasto y para TODO lo
 pendiente de un proveedor. Lo único que cambia es `accion_url` (a dónde postea) y
-que el grupo trae `info.conceptos` para enlistar lo que se está pagando.{% endcomment %}
+que el grupo trae `info.conceptos` para enlistar lo que se está pagando.
+
+Oscar 2026-10-14: con `permite_parcial` (modal de proveedor) cada concepto lleva su
+casilla (se pagan sólo los marcados) y «¿Cuánto pagas ahora?» ofrece Todo / Anticipo
+50% / Otro monto. Lo que no se paga queda como pago pendiente. El servidor repite
+todas las cuentas (`gastos.registrar_pago_grupo`): el JS sólo las muestra.{% endcomment %}
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-gray-900/50" data-modal-slot-close></div>
     <div class="relative z-10 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900">
@@ -15,34 +20,65 @@ que el grupo trae `info.conceptos` para enlistar lo que se está pagando.{% endc
         </div>
 
         {# Hero: monto grande + toggle IVA con recálculo en vivo (informativo). #}
-        <div id="rg-hero" data-base="{{ info.monto|stringformat:'.2f' }}" data-iva="{{ iva_monto|stringformat:'.2f' }}"
+        <div id="rg-hero" data-base="{{ info.monto|stringformat:'.2f' }}" data-iva="{{ iva_monto|stringformat:'.2f' }}" data-tasa="{{ tasa_iva|stringformat:'.4f' }}"
              class="mb-5 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 text-center dark:border-gray-800 dark:bg-gray-800/40">
             <p class="truncate text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ info.label }}{% if info.proveedor %} · {{ info.proveedor.razon_social }}{% endif %}</p>
             <p id="rg-total" class="mt-1 text-3xl font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ total_con_iva|dinero }}</p>
             {% if iva_monto %}
             <label class="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <input type="checkbox" id="rg-iva-toggle" checked class="h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30"> Incluir IVA ({{ iva_label }})
+                <input type="checkbox" id="rg-iva-toggle" name="incluye_iva" value="1" form="rg-form" {% if estado_form and not estado_form.incluye_iva %}{% else %}checked{% endif %} class="h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30"> Incluir IVA ({{ iva_label }})
             </label>
             <p id="rg-desglose" class="mt-1 text-xs text-gray-400 dark:text-gray-500">Subtotal {{ info.monto|dinero }} + IVA {{ iva_monto|dinero }}</p>
             {% endif %}
+            {% if permite_parcial %}<p id="rg-resumen" class="mt-2 hidden text-xs font-medium text-brand-700 dark:text-brand-300"></p>{% endif %}
         </div>
 
         {% if error %}<div class="mb-3 rounded-lg border border-error-300 bg-error-50 p-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300">{{ error }}</div>{% endif %}
 
         {% if info.conceptos %}
-        {% comment %}Detalle de lo que entra en este pago (modal agrupado por proveedor).{% endcomment %}
-        <ul class="mb-4 max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100 text-sm dark:divide-gray-800 dark:border-gray-800">
+        {% comment %}Detalle de lo que entra en este pago (modal agrupado por proveedor). Con
+        `permite_parcial`, una casilla por concepto: se paga sólo lo marcado.{% endcomment %}
+        {% if permite_parcial %}<p class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Conceptos a pagar ahora <span class="font-normal">(desmarca los que no)</span></p>{% endif %}
+        <ul id="rg-conceptos" class="mb-4 max-h-44 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100 text-sm dark:divide-gray-800 dark:border-gray-800">
             {% for c in info.conceptos %}
-            <li class="flex items-center justify-between gap-2 px-3 py-1.5">
-                <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ c.label }}</span>
-                <span class="shrink-0 tabular-nums text-gray-700 dark:text-gray-200">{{ c.monto|dinero }}</span>
+            <li class="px-3 py-1.5">
+                <label class="flex items-center justify-between gap-2 {% if permite_parcial %}cursor-pointer{% endif %}">
+                    <span class="flex min-w-0 items-center gap-2">
+                        {% if permite_parcial %}<input type="checkbox" name="unidades" value="{{ c.clave }}" form="rg-form" data-rg-concepto data-monto="{{ c.monto|stringformat:'.2f' }}" data-indivisible="{% if c.indivisible %}1{% else %}0{% endif %}" {% if not estado_form or not estado_form.unidades or c.clave in estado_form.unidades %}checked{% endif %} class="h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">{% endif %}
+                        <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ c.label }}</span>
+                    </span>
+                    <span class="shrink-0 tabular-nums text-gray-700 dark:text-gray-200">{{ c.monto|dinero }}</span>
+                </label>
+                {% if c.pagado_parcial %}<p class="pl-6 text-[11px] text-gray-500 dark:text-gray-400">Ya se pagó {{ c.pagado_parcial|dinero }} de {{ c.monto_total|dinero }} · aquí lo que falta</p>{% endif %}
+                {% if c.indivisible and permite_parcial %}<p class="pl-6 text-[11px] text-warning-700 dark:text-warning-400">Ya es cuenta por pagar: se liquida completa (no se paga por partes).</p>{% endif %}
             </li>
             {% endfor %}
         </ul>
         {% endif %}
 
-        <form hx-post="{{ accion_url }}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form space-y-4">
+        <form id="rg-form" hx-post="{{ accion_url }}" hx-target="#modal-slot" hx-swap="innerHTML" class="campo-form space-y-4">
             {% csrf_token %}
+            {% if permite_parcial %}<input type="hidden" name="pendiente_visto" value="{{ pendiente_visto|stringformat:'.2f' }}">{% endif %}
+
+            {% if permite_parcial %}
+            {# ¿Cuánto pagas ahora? — todo, anticipo 50% u otro monto (Oscar 2026-10-14). #}
+            <div>
+                <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">¿Cuánto pagas ahora?</span>
+                <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Cuánto pagas ahora" data-rg-modos>
+                    {% for v, l in modos_pago %}
+                    <label class="cursor-pointer rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition
+                                  has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700
+                                  dark:border-gray-700 dark:text-gray-300 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:text-brand-300">
+                        <input type="radio" name="modo" value="{{ v }}" {% if v == estado_form.modo|default:'total' %}checked{% endif %} class="sr-only">{{ l }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div id="rg-otro" class="mt-2 {% if estado_form.modo != 'otro' %}hidden{% endif %}">
+                    <input type="number" name="monto_otro" id="rg-monto-otro" step="0.01" min="0.01" inputmode="decimal" value="{{ estado_form.monto_otro }}" placeholder="Monto que pagas ahora" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm tabular-nums dark:border-gray-700 dark:bg-gray-900">
+                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">En la misma base que el total de arriba (con IVA si la casilla está marcada).</p>
+                </div>
+            </div>
+            {% endif %}
 
             {# Proveedor: solo lectura si el gasto ya lo trae (LC #16). #}
             {% if info.proveedor %}
@@ -144,18 +180,56 @@ que el grupo trae `info.conceptos` para enlistar lo que se está pagando.{% endc
     var slot = document.getElementById('modal-slot');
     if (!slot) return;
 
-    // Toggle IVA: recalcula el hero en vivo (informativo).
+    // Hero en vivo (informativo; el servidor repite las cuentas). Con `rg-conceptos`
+    // y modos de pago: suma sólo los conceptos marcados y muestra «pagas ahora» y lo
+    // que queda por pagar. Sin ellos (modal de un solo gasto): el toggle de siempre.
     var hero = slot.querySelector('#rg-hero');
     var toggle = slot.querySelector('#rg-iva-toggle');
     var totalEl = slot.querySelector('#rg-total');
+    var desgloseEl = slot.querySelector('#rg-desglose');
+    var resumen = slot.querySelector('#rg-resumen');
+    var otroWrap = slot.querySelector('#rg-otro');
+    var otroInp = slot.querySelector('#rg-monto-otro');
     function money(n) {
         return '$' + (Math.round(n * 100) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    if (hero && toggle && totalEl) {
-        var base = parseFloat(hero.getAttribute('data-base') || '0') || 0;
-        var iva = parseFloat(hero.getAttribute('data-iva') || '0') || 0;
+    var conceptos = slot.querySelectorAll('[data-rg-concepto]');
+    if (hero && totalEl && conceptos.length) {
+        var tasa = parseFloat(hero.getAttribute('data-tasa') || '0') || 0;
+        var modo = function () { var r = slot.querySelector('[data-rg-modos] input:checked'); return r ? r.value : 'total'; };
+        var actualizar = function () {
+            var base = 0;
+            conceptos.forEach(function (c) { if (c.checked) base += parseFloat(c.getAttribute('data-monto') || '0') || 0; });
+            var factor = (toggle && toggle.checked) ? 1 + tasa : 1;
+            var total = base * factor, ahora = total, m = modo();
+            if (m === 'anticipo') ahora = total * 0.5;
+            if (m === 'otro') ahora = parseFloat(otroInp && otroInp.value) || 0;
+            if (otroWrap) otroWrap.classList.toggle('hidden', m !== 'otro');
+            totalEl.textContent = money(ahora);
+            if (desgloseEl && toggle) {
+                var b = base * (m === 'anticipo' ? 0.5 : 1);
+                desgloseEl.textContent = m === 'otro' ? ('De un total de ' + money(total))
+                    : ('Subtotal ' + money(b) + ' + IVA ' + money(toggle.checked ? b * tasa : 0));
+            }
+            if (resumen) {
+                var queda = Math.max(0, total - ahora);
+                resumen.classList.toggle('hidden', !(queda > 0.005) && base > 0);
+                resumen.textContent = base <= 0 ? 'Marca al menos un concepto.'
+                    : (ahora > total + 0.01 ? 'El monto excede lo que falta por pagar.'
+                    : 'Pagas ahora ' + money(ahora) + ' · queda por pagar ' + money(queda));
+                if (base <= 0 || ahora > total + 0.01) resumen.classList.remove('hidden');
+            }
+        };
+        conceptos.forEach(function (c) { c.addEventListener('change', actualizar); });
+        slot.querySelectorAll('[data-rg-modos] input').forEach(function (r) { r.addEventListener('change', actualizar); });
+        if (toggle) toggle.addEventListener('change', actualizar);
+        if (otroInp) otroInp.addEventListener('input', actualizar);
+        actualizar();
+    } else if (hero && toggle && totalEl) {
+        var base1 = parseFloat(hero.getAttribute('data-base') || '0') || 0;
+        var iva1 = parseFloat(hero.getAttribute('data-iva') || '0') || 0;
         toggle.addEventListener('change', function () {
-            totalEl.textContent = money(base + (toggle.checked ? iva : 0));
+            totalEl.textContent = money(base1 + (toggle.checked ? iva1 : 0));
         });
     }
 

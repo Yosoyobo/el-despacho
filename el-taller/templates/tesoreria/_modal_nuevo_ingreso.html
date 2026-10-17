@@ -30,8 +30,8 @@ IVA, mini-calendario, método en pills y comprobante. El script está rooteado e
                 <div>
                     <h3 class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                        {% include "tesoreria/_iva_campos.html" with form=form %}
-                        {% include "tesoreria/_monto_rapido.html" with saldo=saldo_proyecto %}
+                        {% include "tesoreria/_iva_campos_ingreso.html" with form=form %}
+                        {% include "tesoreria/_monto_rapido.html" with saldo=saldo_proyecto cobrado=cobrado_proyecto %}
                         {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
                         <div class="sm:col-span-2" data-metodo-group>
                             <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Método</span>
@@ -63,6 +63,7 @@ IVA, mini-calendario, método en pills y comprobante. El script está rooteado e
                         <a href="{% url 'proyectos-nuevo' %}" target="_blank" rel="noopener" class="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">+ Nuevo proyecto (otra pestaña) →</a>
                         {% endif %}
                     </div>
+                    {% include "tesoreria/_ligar_factura.html" %}
                 </div>
 
                 {# Notas (sistema fijo en MXN — sin selector de moneda, LC Fase 2). #}
@@ -119,7 +120,7 @@ IVA, mini-calendario, método en pills y comprobante. El script está rooteado e
             const pk = proyectoSel.value;
             if (!pk) {
                 clearAuto(descInput); clearAuto(subInput);
-                if (mrBox) mrBox.dataset.saldo = "";
+                if (mrBox) { mrBox.dataset.cobrado = ""; mrBox.dataset.saldo = ""; }
                 return;
             }
             try {
@@ -128,7 +129,13 @@ IVA, mini-calendario, método en pills y comprobante. El script está rooteado e
                 const data = await resp.json();
                 setIfFree(descInput, data.descripcion_sugerida);
                 if (parseFloat(data.monto_pendiente) > 0) setIfFree(subInput, data.monto_pendiente);
-                if (mrBox) mrBox.dataset.saldo = data.saldo_por_cobrar || "";
+                if (mrBox) {
+                    mrBox.dataset.cobrado = data.total_cobrado || "";
+                    mrBox.dataset.saldo = data.saldo_por_cobrar || "";
+                }
+                // Esquema fiscal del proyecto (RESICO / IVA / exento), salvo que ya se eligiera a mano.
+                const ivaBlock = root.querySelector("[data-iva-block][data-desglose-url]");
+                if (ivaBlock && ivaBlock.setRegimen && data.regimen_fiscal) ivaBlock.setRegimen(data.regimen_fiscal, true);
             } catch (e) { /* el usuario teclea a mano */ }
         });
     }

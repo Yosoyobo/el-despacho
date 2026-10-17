@@ -56,6 +56,12 @@ class Ingreso(models.Model):
     # informales (la mayoría en LC) incluye_iva=False y se trata como efectivo.
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     incluye_iva = models.BooleanField(default=False)
+    # Esquema fiscal con el que se desglosó el cobro (Oscar 2026-10-14): «iva» =
+    # IVA 16% incluido; «honorarios» = RESICO con retenciones (el total cobrado ya
+    # es neto de ISR/IVA retenidos); «exento» = sin IVA. Vacío = registro anterior
+    # al selector: se deduce de `incluye_iva` (`regimen_efectivo`). Es sólo el
+    # desglose informativo: a Contaduría siempre entra `monto` (lo que se cobró).
+    regimen_fiscal = models.CharField(max_length=12, blank=True, default="")
     moneda = models.CharField(max_length=3, default="MXN")
     fecha = models.DateField()
 
@@ -114,6 +120,11 @@ class Ingreso(models.Model):
 
     def __str__(self):
         return f"{self.codigo} · ${self.monto}"
+
+    @property
+    def regimen_efectivo(self) -> str:
+        """«iva» / «honorarios» / «exento»; los registros viejos salen de `incluye_iva`."""
+        return self.regimen_fiscal or ("iva" if self.incluye_iva else "exento")
 
     def save(self, *args, **kwargs):
         if not self.codigo:

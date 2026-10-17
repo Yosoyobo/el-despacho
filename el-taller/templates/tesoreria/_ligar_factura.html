@@ -1,0 +1,106 @@
+{% load forms_helpers l10n %}
+{% comment %}
+Liga el ingreso a una FACTURA (Oscar 2026-10-14). Sólo si el form trae el campo
+`factura` (se crea el ingreso y la persona puede cobrar facturas). Muestra hasta 2
+facturas SUGERIDAS según el monto capturado (`tesoreria:api-facturas-sugeridas`,
+reglas de `facturacion.services.facturas_sugeridas`) y un selector con todas las
+cobrables del proyecto. Al guardar se aplican las reglas del cobro de la factura
+(el monto no puede exceder su saldo). Script rooteado por selector + flag, para
+funcionar inyectado por HTMX.
+{% endcomment %}
+{% if form.factura %}
+<div data-ligar-factura data-url="{% url 'tesoreria:api-facturas-sugeridas' %}" class="campo-form mt-4 min-w-0 sm:col-span-2 md:col-span-2">
+    <label for="id_factura" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Factura que cubre <span class="font-normal text-gray-400">(opcional)</span></label>
+    <div data-fac-sugeridas class="mb-2 hidden flex-wrap items-center gap-1.5">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Sugeridas:</span>
+    </div>
+    <select name="factura" id="id_factura" class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+        <option value="">— Sin factura —</option>
+        {% for o in facturas_opciones %}
+        <option value="{{ o.id }}" data-regimen="{{ o.regimen }}" data-saldo="{{ o.saldo|unlocalize }}" {% if form.factura.value|stringformat:"s" == o.id|stringformat:"s" %}selected{% endif %}>{{ o.codigo }}{% if o.concepto %} · {{ o.concepto|truncatechars:34 }}{% endif %} · saldo {{ o.saldo|dinero }}</option>
+        {% endfor %}
+    </select>
+    {% for e in form.factura.errors %}<p class="mt-1 text-xs text-error-600 dark:text-error-400">{{ e }}</p>{% endfor %}
+    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Al ligarla, este cobro descuenta el saldo de la factura y la marca como cobrada (parcial o total).</p>
+</div>
+<script>
+(() => {
+  document.querySelectorAll("[data-ligar-factura]:not([data-lf-listo])").forEach((box) => {
+    box.dataset.lfListo = "1";
+    const form = box.closest("form") || document;
+    const sel = box.querySelector("#id_factura");
+    const chips = box.querySelector("[data-fac-sugeridas]");
+    const inp = form.querySelector('[name="subtotal"]');
+    const proy = form.querySelector("#id_proyecto");
+    const cli = form.querySelector("#id_cliente");
+    const fmt = (n) => "$" + (parseFloat(n) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const ivaBlock = () => form.querySelector("[data-iva-block][data-desglose-url]");
+    let t = null, ctl = null;
+    const elegir = (id, regimen) => {
+      sel.value = String(id);
+      // Sin monto capturado, el de la factura es lo que falta de ella.
+      const op = sel.selectedOptions[0];
+      if (inp && !inp.value && op && op.dataset.saldo) {
+        inp.value = (Math.round(parseFloat(op.dataset.saldo) * 100) / 100).toFixed(2);
+        inp.dispatchEvent(new Event("input"));
+      }
+      const b = ivaBlock();
+      if (b && b.setRegimen && regimen) b.setRegimen(regimen, true);
+      refrescar(true);
+    };
+    const pintarChips = (sugeridas) => {
+      chips.querySelectorAll("button").forEach((b) => b.remove());
+      chips.classList.toggle("hidden", !sugeridas.length);
+      chips.classList.toggle("flex", !!sugeridas.length);
+      sugeridas.forEach((f) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        const activo = sel.value === String(f.id);
+        b.className = "rounded-full border px-3 py-1 text-xs font-medium transition " + (activo
+          ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+          : "border-gray-200 bg-gray-50 text-gray-600 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300");
+        b.textContent = f.codigo + " · " + f.razon + " · saldo " + fmt(f.saldo);
+        b.addEventListener("click", () => elegir(f.id, f.regimen));
+        chips.appendChild(b);
+      });
+    };
+    const refrescar = (soloChips) => {
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        if (ctl) ctl.abort();
+        ctl = new AbortController();
+        const q = new URLSearchParams({
+          proyecto: (proy && proy.value) || "", cliente: (cli && cli.value) || "",
+          monto: (inp && inp.value) || ""});
+        try {
+          const r = await fetch(box.dataset.url + "?" + q.toString(), {signal: ctl.signal});
+          if (!r.ok) return;
+          const d = await r.json();
+          if (!soloChips) {
+            const actual = sel.value;
+            sel.querySelectorAll("option:not([value=''])").forEach((o) => o.remove());
+            d.opciones.forEach((o) => {
+              const op = document.createElement("option");
+              op.value = o.id; op.dataset.regimen = o.regimen; op.dataset.saldo = o.saldo;
+              op.textContent = o.codigo + (o.concepto ? " · " + o.concepto.slice(0, 34) : "") + " · saldo " + fmt(o.saldo);
+              sel.appendChild(op);
+            });
+            sel.value = d.opciones.some((o) => String(o.id) === actual) ? actual : "";
+          }
+          pintarChips(d.sugeridas);
+        } catch (e) { /* abortado o sin red: quedan las opciones que ya había */ }
+      }, 200);
+    };
+    if (inp) inp.addEventListener("input", () => refrescar(true));
+    if (proy) proy.addEventListener("change", () => refrescar(false));
+    if (cli) cli.addEventListener("change", () => refrescar(false));
+    sel.addEventListener("change", () => {
+      const op = sel.selectedOptions[0];
+      if (sel.value) elegir(sel.value, op && op.dataset.regimen);
+      else refrescar(true);
+    });
+    refrescar(true);
+  });
+})();
+</script>
+{% endif %}
