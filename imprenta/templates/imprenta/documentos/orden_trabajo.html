@@ -11,7 +11,8 @@ Nunca lleva precios de venta; los costos, sólo si se encienden.{% endcomment %}
       {% if b.responsables and responsables %}<div>{{ r.rotulo_responsables }}: {{ responsables|join:", " }}</div>{% endif %}
     </td>
     <td style="border:none; vertical-align:top; text-align:right;">
-      {% if b.compromiso and p.fecha_compromiso %}<div style="font-weight:bold; {{ e.total }}">{{ r.rotulo_compromiso }} {{ p.fecha_compromiso|date:"d/m/Y" }}</div>{% endif %}
+      {% comment %}LC 2026-10-14 (Oscar): la fecha de entrega con todas sus letras —«lunes 1 de diciembre de 2025»—, con los nombres de `lib.fecha` y no los del idioma del servidor.{% endcomment %}
+      {% if b.compromiso and p.fecha_compromiso %}<div style="font-weight:bold; {{ e.total }}">{{ r.rotulo_compromiso }} {{ p.fecha_compromiso|fecha_larga }}</div>{% endif %}
     </td>
   </tr>
 </table>
@@ -34,11 +35,14 @@ Nunca lleva precios de venta; los costos, sólo si se encienden.{% endcomment %}
     </td>
     <td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.cantidad }}</td>
     {% if b.merma %}<td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.merma }}</td>{% endif %}
-    {% if b.proveedores %}<td style="{{ e.td }} text-align:left; vertical-align:top;">{% if x.pp.proveedor %}{{ x.pp.proveedor.razon_social }}{% else %}—{% endif %}</td>{% endif %}
+    {% if b.proveedores %}<td style="{{ e.td }} text-align:left; vertical-align:top;">{% comment %}LC 2026-10-14 (Oscar): también los proveedores de impresión y de otros procesos, cada uno con su rol (ver `proveedores_de_la_linea`).{% endcomment %}{% for v in x.proveedores %}<div>{{ v.nombre }}{% if x.proveedores|length > 1 or v.roles|join:"," != "producto" %} <span style="font-size:{{ e.notas_pt }}pt; {{ e.suave_css }}">({{ v.roles|join:", " }})</span>{% endif %}</div>{% empty %}—{% endfor %}</td>{% endif %}
     {% if b.costos %}<td style="{{ e.td }} text-align:right; vertical-align:top;">{{ x.pp.costo_unitario|dinero }}</td>{% endif %}
   </tr>
   {% empty %}
   <tr><td colspan="5" style="{{ e.td }} {{ e.suave_css }}">Sin productos.</td></tr>
   {% endfor %}
 </table>
+{% if b.proveedores and otros_proveedores %}
+<p style="margin:0 0 8pt 0; font-size:{{ e.notas_pt }}pt;">Otros proveedores del proyecto: {% for o in otros_proveedores %}{{ o.nombre }} ({{ o.tipo }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+{% endif %}
 {% endblock %}

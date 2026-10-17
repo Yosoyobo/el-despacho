@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load proyectos_extras forms_helpers %}
+{% load proyectos_extras forms_helpers permisos %}
 {% block title %}{{ proyecto.codigo }} — {{ proyecto.nombre }}{% endblock %}
 {% block contenido %}
 
@@ -21,6 +21,18 @@
                 <span class="rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-semibold tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ proyecto.codigo }}</span>
                 {% if proyecto.archivado %}<span class="rounded-lg bg-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">Archivado</span>{% endif %}
             </div>
+            {% comment %}Cliente justo debajo del título, con liga a su ficha sólo si el
+            usuario puede ver Clientes (mismo criterio que la vista cartera-detalle).{% endcomment %}
+            {% if proyecto.cliente %}
+            <p class="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm text-gray-500 dark:text-gray-400" data-proyecto-cliente>
+                <span>Cliente:</span>
+                {% if request.user|es_super_admin or request.user|puede:"cartera.ver" %}
+                <a href="{% url 'cartera-detalle' proyecto.cliente.pk %}" class="min-w-0 break-words font-medium text-brand-600 hover:underline dark:text-brand-400" title="Ver la ficha de {{ proyecto.cliente.razon_social }}">{{ proyecto.cliente.razon_social }}</a>
+                {% else %}
+                <span class="min-w-0 break-words font-medium text-gray-700 dark:text-gray-200">{{ proyecto.cliente.razon_social }}</span>
+                {% endif %}
+            </p>
+            {% endif %}
             {# Metadata + Resumir actividad, justo debajo del título. #}
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
                 {% comment %}El slug es la referencia con la que se nombra el
@@ -103,6 +115,10 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
 <div hx-get="{% url 'cotizaciones:enviar' enviar_cot_pk %}" hx-trigger="load"
      hx-target="#modal-slot" hx-swap="innerHTML"></div>
 {% endif %}
+
+{% comment %}LC 2026-10-14: «Generar y bajar PDF» confirma la versión y manda aquí
+con `?bajar_cot=`; la descarga arranca sola y muestra su estado.{% endcomment %}
+{% if bajar_cot %}{% include "proyectos/_descarga_pdf.html" %}{% endif %}
 
 {# LC 2026-07: la alerta de pagos pendientes se movió ABAJO, al recuadro de egresos. #}
 
@@ -309,7 +325,7 @@ se pide al recargar. Mismo camino que el `?motivo=1` de arriba.{% endcomment %}
                             <ul class="mt-1 space-y-0.5 pl-3 text-xs">
                                 {% for g in gr.unidades %}
                                 <li class="flex items-center justify-between gap-2">
-                                    <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}</span>
+                                    <span class="min-w-0 truncate text-gray-600 dark:text-gray-300">{{ g.label }}{% if g.pagado_parcial %} <span class="text-[10px] text-success-600 dark:text-success-400">· ya se pagó {{ g.pagado_parcial|dinero }} de {{ g.monto_total|dinero }}</span>{% endif %}</span>
                                     {# Buzón #157: cada concepto también con su IVA, igual que el total del proveedor. #}
                                     <span class="shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ g.total_con_iva|dinero }} <span class="text-[10px]">({{ g.monto|dinero }} + IVA)</span></span>
                                 </li>

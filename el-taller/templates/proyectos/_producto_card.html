@@ -290,10 +290,41 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
                 {{ f.costo_unitario }}
                 <span data-costo-suma class="mt-0.5 block text-[10px] tabular-nums text-gray-500 dark:text-gray-400"></span>
             </div>
-            <div>
-                <label for="{{ f.nota.id_for_label }}" class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                       title="Sale en la cotización, debajo del nombre del concepto.">Descripción</label>
+            <div data-desc-bloque>
+                {% comment %}LC 2026-10-14 (Oscar, ticket 13): «un botón de generar que
+                tome la info disponible, legible, y la escriba siguiendo el formato que
+                siempre uso». Plantilla local (`cotizaciones.descripcion_sugerida`); el
+                botón de El Chalán sólo sale con permiso y NUNCA pisa lo escrito: propone
+                y deja aplicar. Ver `_form_productos_js.html` (data-desc-*).{% endcomment %}
+                <div class="mb-1 flex items-center justify-between gap-2">
+                    <label for="{{ f.nota.id_for_label }}" class="block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                           title="Sale en la cotización, debajo del nombre del concepto.">Descripción</label>
+                    {% if not solo_lectura_foto %}
+                    <span class="flex shrink-0 items-center gap-1">
+                        <button type="button" data-desc-generar
+                                title="Escribe la descripción con los datos del producto (piezas, catálogo, variación, impresión) en el formato de siempre. No inventa medidas ni colores."
+                                class="rounded-md border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 transition hover:bg-gray-50 hover:text-brand-600 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.04] dark:hover:text-brand-400">✨ Generar</button>
+                        {% if permisos_modulos.chalan %}
+                        <button type="button" data-desc-generar data-desc-ia="1"
+                                title="Que El Chalán la redacte con los mismos datos. Sólo usa lo que el sistema sabe; si no puede, te deja la plantilla."
+                                class="rounded-md border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 transition hover:bg-gray-50 hover:text-brand-600 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/[0.04] dark:hover:text-brand-400">🤖 Con El Chalán</button>
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
                 {{ f.nota }}
+                {% comment %}La propuesta, abajo del campo. Oculta hasta que hay una.{% endcomment %}
+                <div data-desc-propuesta role="status" class="mt-1.5 hidden rounded-lg border border-dashed border-brand-300 bg-white/70 p-2 text-[11px] leading-snug dark:border-brand-500/40 dark:bg-gray-900/60">
+                    <p data-desc-aviso class="mb-1 hidden text-warning-700 dark:text-warning-300"></p>
+                    <pre data-desc-texto class="mb-1.5 whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-100"></pre>
+                    <p data-desc-faltan class="mb-1.5 hidden text-gray-500 dark:text-gray-400"></p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button type="button" data-desc-aplicar="reemplazar" class="rounded-md bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-brand-600">Reemplazar</button>
+                        <button type="button" data-desc-aplicar="completar" class="hidden rounded-md border border-brand-300 px-2 py-0.5 text-[10px] font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">Conservar lo mío y completar</button>
+                        <button type="button" data-desc-deshacer class="hidden rounded-md border border-gray-300 px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">Deshacer</button>
+                        <button type="button" data-desc-cerrar class="rounded-md px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:underline dark:text-gray-400">Descartar</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -301,9 +332,9 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
         <div data-procesos>
             <div class="grid grid-cols-2 gap-2.5 md:grid-cols-[2.6fr_minmax(120px,0.68fr)_auto_auto] md:items-end" data-impresion>
                 <div>
-                    <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impresión</label>
+                    <label class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Branding</label>
                     <select class="imp-proveedor w-full" data-select-buscable>
-                        <option value="">— Sin impresión —</option>
+                        <option value="">— Sin branding —</option>
                         {% for prov in proveedores_activos %}
                         <option value="{{ prov.pk }}" {% if f.proc_impresion and f.proc_impresion.proveedor_id == prov.pk %}selected{% endif %}>{{ prov.razon_social }}</option>
                         {% endfor %}
@@ -328,7 +359,7 @@ sigue repintando la tarjeta cambiando UNA variable.{% endcomment %}
                     </label>
                 </div>
                 <div class="flex items-end gap-1.5">
-                    <button type="button" class="imp-reset inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-400 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-error-500/10" title="Quitar impresión (dejar «Sin impresión»)" aria-label="Quitar impresión">
+                    <button type="button" class="imp-reset inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-400 hover:bg-error-50 hover:text-error-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-error-500/10" title="Quitar branding (dejar «Sin branding»)" aria-label="Quitar branding">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
                     </button>
                     <button type="button" class="proceso-add inline-flex h-9 items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]" title="Agrega un gasto de producción de este producto (materiales, viáticos…). Suma al costo, no al precio. «Por pieza» lo multiplica por las piezas producidas.">+ Proceso</button>

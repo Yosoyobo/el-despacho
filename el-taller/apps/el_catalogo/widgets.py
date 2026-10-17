@@ -85,7 +85,10 @@ class SelectProductoBuscable(forms.Select):
     que se ha vendido en proyectos."""
 
     def __init__(self, attrs=None, choices=(), alias=None):
-        base = {"data-select-buscable": "1"}
+        # `data-select-protegido`: el producto sólo cambia eligiendo en el panel,
+        # jamás con una tecla de rebote (ver `form_widgets.js`). Al cambiar copia
+        # costo/proveedor del catálogo sobre lo capturado en la tarjeta.
+        base = {"data-select-buscable": "1", "data-select-protegido": "1"}
         base.update(attrs or {})
         # Se calcula UNA vez por widget (no por opción).
         self.alias = alias if alias is not None else mapa_alias()

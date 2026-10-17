@@ -404,6 +404,16 @@
         setTimeout(() => { if (window.__sincronizarOrdenProductos) window.__sincronizarOrdenProductos(); }, 0);
         const card = sel.closest('[data-card]'); if (!card) return;
         actualizarEnlaceFicha(card);
+        // Un `change` que NO cambia el producto (el mismo valor otra vez) no
+        // copia nada del catálogo: pisaría el costo y el proveedor capturados.
+        // Ticket de Oscar 2026-10-14: «los valores de las tarjetas se flipean;
+        // esto NUNCA puede pasar». El valor de referencia es el que la tarjeta
+        // traía al abrirse (`defaultSelected`) o el último que sí se eligió.
+        const previo = sel.dataset.servicioPrevio !== undefined
+            ? sel.dataset.servicioPrevio
+            : (Array.from(sel.options).find(o => o.defaultSelected) || { value: '' }).value;
+        if (previo === sel.value) { recalcular(card); return; }
+        sel.dataset.servicioPrevio = sel.value;
         const datos = SERVICIOS_DATOS[sel.value];
         if (datos) {
             const precio = card.querySelector('input[name$="-precio_unitario"]');
@@ -715,9 +725,9 @@
                 '<input type="text" inputmode="text" autocomplete="off" class="esc-costo w-full" placeholder="hereda" title="Costo por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (15.75*100).">' + hint('data-esc-costo-suma')) +
           celda('Precio unit.',
                 '<input type="text" inputmode="text" autocomplete="off" class="esc-precio w-full" placeholder="hereda" title="Precio por pieza de esta opción. Vacío = el de la Opción A. Acepta una cuenta (2400/12).">' + hint('data-esc-precio-suma')) +
-          '<div class="col-span-2 min-w-0 md:col-span-1">' + eti('Impresión') +
+          '<div class="col-span-2 min-w-0 md:col-span-1">' + eti('Branding') +
             '<div class="flex min-w-0 flex-wrap items-center gap-1.5">' +
-              '<input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda" title="Costo de impresión de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">' +
+              '<input type="text" inputmode="text" autocomplete="off" class="esc-imp w-full min-w-[72px] flex-1" placeholder="hereda" title="Costo de branding de esta opción. Vacío = el de la Opción A. El proveedor es el mismo.">' +
               '<label class="inline-flex shrink-0 cursor-pointer items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-300" title="Multiplica el costo por las piezas a producir de esta opción"><input type="checkbox" class="esc-imp-pp h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30">/p</label>' +
               '<span class="esc-extras flex min-w-0 flex-wrap items-center gap-1.5"></span>' +
               '<button type="button" class="esc-extra-add inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm leading-none text-gray-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-gray-600" title="Agrega otro costo a esta opción, en el mismo renglón" aria-label="Agregar costo a la escala">+</button>' +
@@ -1417,6 +1427,128 @@ el Enter que CREA la tarea.
         var campo = document.getElementById('tareas-dictado-' + pendiente);
         pendiente = '';
         if (campo) campo.focus();
+    });
+})();
+</script>
+{% comment %}LC 2026-10-14 (Oscar, ticket 13): el «Generar» del campo Descripción de la
+tarjeta de producto. Manda lo que HAY EN PANTALLA (la tarjeta puede ser nueva o traer
+cambios sin autoguardar), recibe una propuesta y deja decidir: con el campo vacío la
+aplica directo (con «Deshacer»); si ya había algo escrito, ofrece «Reemplazar» o
+«Conservar lo mío y completar» y nunca escribe sin que se pida. Delegación de eventos:
+funciona en tarjetas nuevas clonadas del `<template>` sin re-enlazar nada.{% endcomment %}
+<script>
+(function () {
+    const URL_SUGERIR = '{% url "proyectos-descripcion-sugerida" %}';
+
+    function csrf() {
+        const t = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return t ? t.value : '';
+    }
+    function valor(card, sel) { const e = card.querySelector(sel); return e ? e.value : ''; }
+
+    function mostrar(bloque, datos) {
+        const panel = bloque.querySelector('[data-desc-propuesta]');
+        const aviso = bloque.querySelector('[data-desc-aviso]');
+        const texto = bloque.querySelector('[data-desc-texto]');
+        const faltan = bloque.querySelector('[data-desc-faltan]');
+        panel.classList.remove('hidden');
+        aviso.classList.toggle('hidden', !datos.aviso);
+        aviso.textContent = datos.aviso || '';
+        texto.textContent = datos.texto || '';
+        faltan.classList.toggle('hidden', !(datos.faltan && datos.faltan.length));
+        faltan.textContent = (datos.faltan && datos.faltan.length)
+            ? 'Esto lo completas tú (el sistema no lo sabe): ' + datos.faltan.join(', ') + '.' : '';
+        bloque.querySelector('[data-desc-aplicar="reemplazar"]').classList.toggle('hidden', !!datos.aplicado);
+        bloque.querySelector('[data-desc-aplicar="completar"]').classList.toggle('hidden', !datos.completado || !!datos.aplicado);
+        bloque.querySelector('[data-desc-deshacer]').classList.toggle('hidden', !datos.aplicado);
+        bloque._desc = datos;
+    }
+    function error(bloque, msg) {
+        mostrar(bloque, { texto: '', aviso: msg, faltan: [] });
+        bloque.querySelector('[data-desc-aplicar="reemplazar"]').classList.add('hidden');
+        bloque.querySelector('[data-desc-aviso]').className = 'mb-1 text-error-600 dark:text-error-400';
+    }
+    function escribir(bloque, texto) {
+        const ta = bloque.querySelector('textarea');
+        if (!ta) return;
+        ta.value = texto;
+        // Que el autoguardado y el resto de la tarjeta se enteren como si se hubiera tecleado.
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        ta.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest) return;
+        const gen = e.target.closest('[data-desc-generar]');
+        if (gen) {
+            const card = gen.closest('[data-card]');
+            const bloque = gen.closest('[data-desc-bloque]');
+            if (!card || !bloque) return;
+            const ta = bloque.querySelector('textarea');
+            const previo = ta ? ta.value : '';
+            const usaIA = gen.hasAttribute('data-desc-ia');
+            const etiqueta = gen.textContent;
+            bloque.querySelectorAll('[data-desc-generar]').forEach(function (b) { b.disabled = true; });
+            gen.textContent = usaIA ? 'Redactando…' : 'Generando…';
+            const cuerpo = new URLSearchParams();
+            cuerpo.set('servicio', valor(card, 'select[name$="-servicio"]'));
+            cuerpo.set('variacion', valor(card, '[name$="-variacion"]'));
+            cuerpo.set('cantidad', valor(card, 'input[name$="-cantidad"]'));
+            cuerpo.set('nombre', valor(card, '[data-alias-input]'));
+            cuerpo.set('impresion_proveedor', valor(card, '.imp-proveedor'));
+            cuerpo.set('texto', previo);
+            if (usaIA) cuerpo.set('ia', '1');
+            fetch(URL_SUGERIR, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: cuerpo,
+            }).then(function (r) {
+                if (r.status === 403) throw new Error('No tienes permiso para generar descripciones.');
+                return r.json().catch(function () { throw new Error('El servidor no pudo armar la descripción. Inténtalo de nuevo.'); });
+            }).then(function (d) {
+                if (!d.ok) { error(bloque, d.error || 'No se pudo generar la descripción.'); return; }
+                bloque.querySelector('[data-desc-aviso]').className = 'mb-1 hidden text-warning-700 dark:text-warning-300';
+                if (!previo.trim()) {
+                    // Campo vacío: no hay nada que pisar, se escribe directo (con «Deshacer»).
+                    d.aplicado = true;
+                    d.previo = previo;
+                    escribir(bloque, d.texto);
+                }
+                mostrar(bloque, d);
+            }).catch(function (err) {
+                error(bloque, (err && err.message) || 'No se pudo generar la descripción.');
+            }).finally(function () {
+                gen.textContent = etiqueta;
+                bloque.querySelectorAll('[data-desc-generar]').forEach(function (b) { b.disabled = false; });
+            });
+            return;
+        }
+        const apl = e.target.closest('[data-desc-aplicar]');
+        if (apl) {
+            const bloque = apl.closest('[data-desc-bloque]');
+            const d = bloque && bloque._desc;
+            if (!d) return;
+            const ta = bloque.querySelector('textarea');
+            d.previo = ta ? ta.value : '';
+            escribir(bloque, apl.getAttribute('data-desc-aplicar') === 'completar' ? d.completado : d.texto);
+            d.aplicado = true;
+            mostrar(bloque, d);
+            return;
+        }
+        const des = e.target.closest('[data-desc-deshacer]');
+        if (des) {
+            const bloque = des.closest('[data-desc-bloque]');
+            const d = bloque && bloque._desc;
+            if (!d) return;
+            escribir(bloque, d.previo || '');
+            bloque.querySelector('[data-desc-propuesta]').classList.add('hidden');
+            return;
+        }
+        const cer = e.target.closest('[data-desc-cerrar]');
+        if (cer) {
+            const bloque = cer.closest('[data-desc-bloque]');
+            if (bloque) bloque.querySelector('[data-desc-propuesta]').classList.add('hidden');
+        }
     });
 })();
 </script>

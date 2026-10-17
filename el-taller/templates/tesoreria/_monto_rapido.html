@@ -2,18 +2,24 @@
 {% comment %}
 Botones rápidos de monto (S-Finanzas-UX): [100%] [50%] [Otro] que llenan el
 Monto (input [name=subtotal]) con base en el saldo del proyecto.
-Params: `saldo` = número (saldo por cobrar/pagar) o None. Si no hay saldo (>0),
+Params: `saldo` = número (saldo por cobrar/pagar) o None; `cobrado` = lo ya
+cobrado/pagado antes (opcional): si es > 0 y hay saldo aparece «Registrar lo que
+falta» (Oscar 2026-10-14), que llena el Monto con TODO el saldo pendiente. Si no hay saldo (>0),
 el bloque arranca oculto; los modales lo activan actualizando `data-saldo` tras
 el fetch del proyecto (MutationObserver repinta). Script rooteado por selector
 + flag `data-mr-listo` → swap-safe dentro de #modal-slot.
 {% endcomment %}
 {# unlocalize: el número queda "1000.00" (no "1,000.00") para parseFloat/asserts. #}
-<div data-monto-rapido data-saldo="{{ saldo|default_if_none:''|unlocalize }}"
+<div data-monto-rapido data-saldo="{{ saldo|default_if_none:''|unlocalize }}" data-cobrado="{{ cobrado|default_if_none:''|unlocalize }}"
      class="md:col-span-2 -mt-2 {% if not saldo %}hidden{% endif %}">
     <div class="flex flex-wrap items-center gap-2">
         <span class="text-xs text-gray-500 dark:text-gray-400">Saldo del proyecto:
             <span data-mr-saldo class="font-semibold tabular-nums text-gray-700 dark:text-gray-200">$0.00</span>
         </span>
+        <span data-mr-cobrado-wrap class="hidden text-xs text-gray-500 dark:text-gray-400">· ya cobrado
+            <span data-mr-cobrado class="font-semibold tabular-nums text-gray-700 dark:text-gray-200">$0.00</span>
+        </span>
+        <button type="button" data-mr-falta class="hidden rounded-lg border border-brand-300 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 transition hover:border-brand-500 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300" title="Llena el monto con todo lo que falta por cobrar">Registrar lo que falta · <span data-mr-falta-monto class="tabular-nums">$0.00</span></button>
         <button type="button" data-mr-pct="100" class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">100%</button>
         <button type="button" data-mr-pct="50" class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">50%</button>
         <button type="button" data-mr-otro class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/50">Otro</button>
@@ -28,10 +34,24 @@ el fetch del proyecto (MutationObserver repinta). Script rooteado por selector
     const saldoOut = box.querySelector('[data-mr-saldo]');
     const fmt = (n) => '$' + (n || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     const saldo = () => parseFloat(box.dataset.saldo) || 0;
+    const cobrado = () => parseFloat(box.dataset.cobrado) || 0;
     const pintar = () => {
-      const s = saldo();
+      const s = saldo(), c = cobrado();
       box.classList.toggle('hidden', !(s > 0));
       if (saldoOut) saldoOut.textContent = fmt(s);
+      // «Registrar lo que falta»: sólo si ya hubo ingresos y todavía queda saldo.
+      // Es lo mismo que el 100% del saldo, así que lo reemplaza mientras se muestre.
+      const hayFalta = c > 0 && s > 0;
+      const falta = box.querySelector('[data-mr-falta]');
+      if (falta) falta.classList.toggle('hidden', !hayFalta);
+      const faltaMonto = box.querySelector('[data-mr-falta-monto]');
+      if (faltaMonto) faltaMonto.textContent = fmt(s);
+      const p100 = box.querySelector('[data-mr-pct="100"]');
+      if (p100) p100.classList.toggle('hidden', hayFalta);
+      const cw = box.querySelector('[data-mr-cobrado-wrap]');
+      if (cw) cw.classList.toggle('hidden', !(c > 0));
+      const co = box.querySelector('[data-mr-cobrado]');
+      if (co) co.textContent = fmt(c);
     };
     const set = (v) => {
       if (!inp) return;
@@ -40,12 +60,14 @@ el fetch del proyecto (MutationObserver repinta). Script rooteado por selector
     };
     box.querySelectorAll('[data-mr-pct]').forEach((b) =>
       b.addEventListener('click', () => set(saldo() * (parseFloat(b.dataset.mrPct) / 100))));
+    const faltaBtn = box.querySelector('[data-mr-falta]');
+    if (faltaBtn) faltaBtn.addEventListener('click', () => set(saldo()));
     const otro = box.querySelector('[data-mr-otro]');
     if (otro) otro.addEventListener('click', () => {
       if (inp) { inp.value = ''; inp.focus(); inp.dispatchEvent(new Event('input')); }
     });
     // Los modales cambian data-saldo tras el fetch del proyecto → repintar.
-    new MutationObserver(pintar).observe(box, {attributes: true, attributeFilter: ['data-saldo']});
+    new MutationObserver(pintar).observe(box, {attributes: true, attributeFilter: ['data-saldo', 'data-cobrado']});
     pintar();
   });
 })();

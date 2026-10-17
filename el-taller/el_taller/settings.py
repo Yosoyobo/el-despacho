@@ -180,7 +180,10 @@ LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 # URL pública de El Taller. La usa `lib.almacen` para armar los enlaces
 # absolutos de las imágenes que Google baja al convertir un PDF (no hay
 # `request` en el generador del documento). Mismo patrón que en La Gerencia.
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+from lib.urls_canonicas import normalizar_url_heredada  # noqa: E402
+
+# Un `.env` con el dominio retirado (*.ninomeando.com) se corrige solo.
+TALLER_URL = normalizar_url_heredada(os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/"))
 
 # El Almacén (S-Medios-V1): carpeta donde viven los medios en disco. El
 # contenedor la monta desde `./data/media` del host; mudarla a otro disco es
@@ -189,6 +192,10 @@ MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Django manda `same-origin` por defecto y con ésa el navegador no envía Referer a
+# otros orígenes: los mosaicos de OpenStreetMap contestan 403 «Access blocked».
+# Cross-origin sale sólo el origen (nunca la ruta). Ver `static/js/mapa_tiles.js`.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 # SAMEORIGIN y no DENY desde S-Pendientes-Sep28: las pestañas de El Taller son
 # marcos de la misma página, y con DENY el navegador no pinta ninguno. Otro sitio
 # sigue sin poder incrustar El Taller (el clickjacking queda igual de cerrado).

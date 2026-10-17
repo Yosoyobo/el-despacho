@@ -18,6 +18,38 @@ def a_mx(dt: datetime) -> datetime:
     return dt.astimezone(TZ_MX)
 
 
+# ── Fecha en lenguaje completo (LC 2026-10-14) ──────────────────────────────
+# «lunes 1 de diciembre de 2025». Los nombres van aquí, en español, y NO vienen
+# del locale del servidor ni del `|date:"l"` de Django: éste depende del idioma
+# activo y del paquete de traducciones, y un contenedor mal configurado imprime
+# «Monday» en un documento que ve el cliente. Fuente única para cualquier lugar
+# que escriba una fecha «con todas sus letras».
+DIAS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+MESES_ES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+            "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
+
+def fecha_larga(valor, *, con_dia: bool = True) -> str:
+    """«lunes 1 de diciembre de 2025» (o «1 de diciembre de 2025» con `con_dia=False`).
+
+    Acepta `date`, `datetime` (aware se pasa a hora de México antes de tomar el
+    día, para que las 11 pm del domingo no salgan como lunes) o un texto ISO
+    «2025-12-01». Lo que no se pueda leer devuelve "" — mejor un hueco que una
+    fecha inventada en un documento.
+    """
+    if isinstance(valor, str):
+        try:
+            valor = date.fromisoformat(valor.strip()[:10])
+        except ValueError:
+            return ""
+    if isinstance(valor, datetime):
+        valor = a_mx(valor).date() if valor.tzinfo is not None else valor.date()
+    if not isinstance(valor, date):
+        return ""
+    base = f"{valor.day} de {MESES_ES[valor.month - 1]} de {valor.year}"
+    return f"{DIAS_ES[valor.weekday()]} {base}" if con_dia else base
+
+
 # ── Fechas escritas en español (LC 2026-09-28) ──────────────────────────────
 # La tarea rápida de la tarjeta de producto («@jorge revisar el bordado el
 # viernes») se crea SIN IA, así que la fecha la saca esto: un reconocedor chico,

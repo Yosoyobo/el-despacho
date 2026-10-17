@@ -110,7 +110,10 @@ siempre; el interlineado de la hoja general ahora SÍ se aplica.{% endcomment %}
 {% if preview %}
 {% if not sin_barra %}
 <div class="lc-barra">
-  <span>{% if aviso %}{{ aviso }}{% else %}Vista previa · <strong>{{ nombre_archivo }}</strong>{% endif %}</span>
+  <span>
+    {% if volver_url %}<a class="lc-btn-sec" id="lc-atras" href="{{ volver_url }}" style="margin-right: 8px;">&larr; {{ volver_label }}</a>{% endif %}
+    {% if aviso %}{{ aviso }}{% else %}Vista previa · <strong>{{ nombre_archivo }}</strong>{% endif %}
+  </span>
   <span>
     {% if url_descargar %}
     <a class="lc-btn" id="lc-bajar" href="{{ url_descargar }}" download="{{ nombre_archivo }}.pdf"
@@ -122,7 +125,7 @@ siempre; el interlineado de la hoja general ahora SÍ se aplica.{% endcomment %}
     contexto porque `render_to_string` va sin request y el tag `{% templatetag openblock %} csrf_token {% templatetag closeblock %}`
     no tendría de dónde sacarlo.{% endcomment %}
     {% for a in acciones %}
-    <form method="post" action="{{ a.url }}" style="display: inline;">
+    <form method="post" action="{{ a.url }}" style="display: inline;" data-lc-accion>
       <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
       {% for campo, valor in a.hidden.items %}
       <input type="hidden" name="{{ campo }}" value="{{ valor }}">
@@ -133,6 +136,32 @@ siempre; el interlineado de la hoja general ahora SÍ se aplica.{% endcomment %}
     <button type="button" class="lc-btn-sec" onclick="window.print()">Imprimir</button>
   </span>
 </div>
+{% if acciones %}
+{% comment %}Estado de carga de las acciones (LC 2026-10-14): generar tarda y un
+segundo clic crearía OTRA versión. Al enviar, se apagan todos los botones de
+acción y el que se pulsó dice «Generando…». Los formularios son clásicos, así
+que la página se va a recargar sola al terminar.{% endcomment %}
+<script>
+(function () {
+  var forms = document.querySelectorAll('form[data-lc-accion]');
+  Array.prototype.forEach.call(forms, function (f) {
+    f.addEventListener('submit', function () {
+      var este = f.querySelector('button[type=submit]');
+      // Se difiere para no quitar el botón antes de que el navegador arme el envío.
+      setTimeout(function () {
+        Array.prototype.forEach.call(forms, function (o) {
+          var b = o.querySelector('button[type=submit]');
+          if (b) { b.disabled = true; b.style.opacity = '0.6'; b.style.cursor = 'wait'; }
+        });
+        if (este) este.textContent = 'Generando…';
+        var atras = document.getElementById('lc-atras');
+        if (atras) { atras.style.pointerEvents = 'none'; atras.style.opacity = '0.6'; }
+      }, 0);
+    });
+  });
+})();
+</script>
+{% endif %}
 {% if url_descargar %}
 {% comment %}LC 2026-07-28 (Oscar, punto 6): «en móvil pico bajar PDF, me lo abre
 y no lo puedo guardar; tengo que imprimir y ahí se le mete un footer con la URL

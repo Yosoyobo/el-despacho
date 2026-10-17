@@ -113,7 +113,9 @@ def test_gasto_proceso_por_pieza_monto(proyecto_factory, catalogo):
 
 
 def test_egreso_impresion_por_pieza_monto(proyecto_factory, catalogo):
-    """Al pasar a producción, el egreso de la impresión por pieza es 47.75 × 45."""
+    """Al REGISTRAR el pago a mano, el egreso de la impresión por pieza es 47.75 × 45
+    (ya no se genera solo al pasar a producción — Oscar 2026-10-14)."""
+    from apps.los_proyectos import gastos
     from apps.los_proyectos.models import ProyectoProductoProceso
     from apps.tesoreria.models import Egreso
     p = proyecto_factory(estado="en_proceso_diseno")
@@ -124,6 +126,8 @@ def test_egreso_impresion_por_pieza_monto(proyecto_factory, catalogo):
     )
     p.estado = "en_proceso_produccion"
     p.save()
+    assert Egreso.objects.filter(proyecto=p, origen="proyecto").count() == 0
+    gastos.registrar_pendientes(p)
     montos = sorted(float(e.monto) for e in Egreso.objects.filter(proyecto=p, origen="proyecto"))
     assert montos == [2148.75, 6525.0]
 

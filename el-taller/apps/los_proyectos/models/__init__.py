@@ -18,6 +18,7 @@ from .motivo_cancelacion import (  # noqa: F401
     MotivoCancelacion,
     motivos_activos,
 )
+from .pago_gasto import PagoGasto  # noqa: F401
 from .proceso import ProyectoProductoProceso  # noqa: F401
 from .producto import ProyectoProducto  # noqa: F401
 from .producto_version import ProyectoProductoVersion  # noqa: F401

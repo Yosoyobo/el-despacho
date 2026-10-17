@@ -105,3 +105,31 @@ def desglose_honorarios(base, cfg=None) -> dict:
         "total": total,
         "impuestos_detalle": impuestos_detalle,
     }
+
+
+def base_desde_total_honorarios(total, cfg=None) -> Decimal:
+    """Base (importe antes de impuestos) cuyo desglose RESICO/honorarios da `total`.
+
+    Se captura lo que REALMENTE se cobró (total neto, ya con IVA y retenciones) y se
+    invierte el cálculo: base = total ÷ (1 + IVA − ret. ISR − ret. IVA). Como cada
+    impuesto se redondea por separado (Anexo 20), la división sola puede quedar a
+    uno o dos centavos: se prueban las bases vecinas y se queda la que más se acerca
+    al total (si hay empate, la menor). Ejemplo verificado: total 8,326.67 → base
+    8,000.00; total 16,653.33 → base 16,000.00.
+    """
+    cfg = cfg or _config()
+    objetivo = q2(total)
+    if objetivo <= 0:
+        return Decimal("0.00")
+    ret_iva_tasa = cfg.ret_iva_honorarios or Decimal("10.6667")
+    divisor = (CIEN + cfg.iva_tasa - cfg.ret_isr_honorarios - ret_iva_tasa) / CIEN
+    base0 = q2(objetivo / divisor)
+    mejor, mejor_dif = base0, None
+    for paso in range(-3, 4):
+        base = base0 + CENT * paso
+        if base <= 0:
+            continue
+        dif = abs(desglose_honorarios(base, cfg)["total"] - objetivo)
+        if mejor_dif is None or dif < mejor_dif or (dif == mejor_dif and base < mejor):
+            mejor, mejor_dif = base, dif
+    return q2(mejor)

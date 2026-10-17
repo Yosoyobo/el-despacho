@@ -780,11 +780,11 @@ def test_la_sub_fila_conserva_sus_etiquetas_en_el_celular():
     # Cada campo trae su etiqueta pegada arriba.
     for etiqueta, clase in (("Cantidad", "esc-cant"), ("Merma", "esc-merma"),
                             ("Precio unit.", "esc-precio"),
-                            ("Costo unit.", "esc-costo"), ("Impresión", "esc-imp")):
+                            ("Costo unit.", "esc-costo"), ("Branding", "esc-imp")):
         i = tpl.index(f">{etiqueta}")
         assert clase in tpl[i:i + 700], (etiqueta, clase)
     js = TPL_JS.read_text(encoding="utf-8")
     plantilla = js[js.index("function plantillaEscala"):js.index("function agregarEscala")]
     assert "hidden gap-2" not in plantilla
-    for etiqueta in ("Cantidad", "Merma", "Precio unit.", "Costo unit.", "Impresión"):
+    for etiqueta in ("Cantidad", "Merma", "Precio unit.", "Costo unit.", "Branding"):
         assert etiqueta in plantilla, etiqueta

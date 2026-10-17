@@ -9,6 +9,8 @@ urlpatterns = [
     path("cancelaciones/", views.cancelaciones, name="proyectos-cancelaciones"),
     path("<int:pk>/motivo-cancelacion", views.motivo_cancelacion, name="proyectos-motivo-cancelacion"),
     path("nuevo", views.nuevo, name="proyectos-nuevo"),
+    # LC 2026-10-14: el «Generar» del campo Descripción de la tarjeta de producto.
+    path("descripcion-sugerida", views.sugerir_descripcion, name="proyectos-descripcion-sugerida"),
     path("cliente-nuevo/", views.cliente_inline, name="proyectos-cliente-inline"),
     path("<int:pk>/", views.detalle, name="proyectos-detalle"),
     path("<int:pk>/editar", views.editar, name="proyectos-editar"),

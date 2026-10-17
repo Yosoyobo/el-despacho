@@ -382,7 +382,7 @@ ElDespacho/
 > decisiones durables, la deuda diseñada y los gotchas de cada sprint.
 > El cierre detallado por sesión sigue en `BITACORA.md`.
 
-**Estado al 2026-10-05:** producción en `VERSION 2026.10.04` (+ n8n 2.40.7 con MCP
+**Estado al 2026-10-16:** producción en `VERSION 2026.10.05` (+ n8n 2.40.7 con MCP
 nativo en el NUC, PR #111). Sprint de pendientes cerrado (3 deploys): pestañas,
 edición pisada y app Android (TWA) incluidas. Stack: apps + Postgres + Redis + El Mostrador +
 Gotenberg/OSRM/n8n/Paperless en el **NUC** (`/mnt/el-despacho`); **La Sede** es
@@ -394,6 +394,7 @@ renglones, el más viejo sale al entrar uno nuevo):
 
 | VERSION | Sprint | Qué |
 |---|---|---|
+| 2026.10.05 | S-Ajustes-Oct14 | El producto de una tarjeta ya no cambia solo con el teclado (select `data-select-protegido`); egresos de proyecto NUNCA automáticos (+ `limpiar_egresos_automaticos`); pagos parciales a proveedor (`PagoGasto`); ingreso con RESICO, «lo que falta» y ligar a factura; «Generar vN y descargar PDF», «Atrás», ✨ Generar descripción; OT con proveedores de impresión y fecha larga; facturas con varios archivos; mapas OSM sin 403; URLs de notificación canónicas |
 | 2026.10.04 | S-Buzon-166 | El PDF de la cotización por correo se llama igual que la descarga (`nombre_archivo`); estados del Buzón al día |
 | 2026.10.03 | S-Checador-Directores | `checador.ver_equipo` = quien dirige (super_admin/dueño) y abre las horas de todo el equipo; el contador sólo exporta; «Entrada y salida» del día en «Actividad de <persona>» (ambas apps); acceso claro en el tablero |
 | 2026.10.02 | S-Checador-Actividad | Checador por actividad por persona (El Directorio): jornada de la primera a la última actividad en El Taller (corta 23:59, cierre 00:05), ubicación silenciosa, lo manual gana, pausas opcionales |
@@ -403,9 +404,15 @@ renglones, el más viejo sale al entrar uno nuevo):
 | 2026.09.18 | S-Imprenta · 3 | Recibo de pago, estado de cuenta, remisión, orden de trabajo y reembolso en PDF (una vista `/documentos/<tipo>/<pk>/`, permiso del módulo); la vista previa filtra por permiso |
 | 2026.09.17 | S-KPIs-V2 · 1 | Ajustes → KPIs (catálogo, tableros por rol, metas por despacho/persona/cliente proporcionales con aviso); 45 KPIs nuevos; la foto diaria por fin guarda el dinero; `kpis.configurar` |
 | 2026.09.16 | S-Imprenta · 2 | Notas editables (globales + por cotización, permiso propio), firma/aceptación, folio/vigencia/QR, marcas por estado, patrón de nombre, PDF/A; la factura en La Imprenta con PDF comercial |
-| 2026.09.15 | S-Imprenta · 1 | La Imprenta: marca, tablas, datos del despacho y bloques/rótulos por tipo con vista previa en vivo, PDF de prueba e historial; permiso `documentos` |
 
 **Trampas transversales que ya mordieron** (una línea c/u; el porqué en el historial):
+
+- Un `<select>` enfocado cambia de valor con el TECLADO (una letra = type-ahead) y dispara `change`
+  sin pasar por el panel buscable: si su `change` copia datos (costo/proveedor del catálogo),
+  pisa lo capturado. Los selects así llevan `data-select-protegido` (`form_widgets.js`, dual-copy).
+  Probarlo en Chromium (`tests/taller/test_producto_select_no_cambia_solo_navegador.py`).
+- Mosaicos de OSM: Django manda `Referrer-Policy: same-origin` por defecto y OSM bloquea (403) a
+  quien no manda `Referer`. Todo mapa pasa por `despachoTileLayer()` (`static/js/mapa_tiles.js`).
 
 - `lib.permisos.puede()` **no tiene failsafe automático de super_admin**: una acción nueva
   necesita estar en `DEFAULTS_POR_ROL["super_admin"]` + migración `seed_permisos_*`.

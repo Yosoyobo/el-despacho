@@ -53,6 +53,8 @@ def construir_html_pdf(
     aviso: str = "",
     config=None,
     sin_barra: bool = False,
+    volver_url: str = "",
+    volver_label: str = "Atrás",
 ) -> str:
     """Renderiza el HTML imprimible de la cotización (template `pdf.html`).
 
@@ -82,6 +84,8 @@ def construir_html_pdf(
       una cotización guardada. En la vista previa esa cotización se deshace al
       terminar, así que el botón daría 404 — se apaga.
     - `aviso`: reemplaza el rótulo de la barra para decir qué se está mirando.
+    - `volver_url` / `volver_label` (LC 2026-10-14): enlace «Atrás» al inicio de
+      la barra, para salir de la vista previa sin generar nada.
 
     `config` (La Imprenta, 2026-09-29): con qué ajustes se dibuja — marca,
     tablas, bloques, rótulos. Sin él, los guardados en La Gerencia; la vista
@@ -192,6 +196,8 @@ def construir_html_pdf(
         "acciones": acciones or [],
         "csrf_token": csrf_token,
         "aviso": aviso,
+        "volver_url": volver_url,
+        "volver_label": volver_label,
         # La vista previa de La Gerencia enseña la hoja sin la barra de acciones
         # (no hay nada que bajar ni imprimir de un documento sin guardar).
         "sin_barra": sin_barra,

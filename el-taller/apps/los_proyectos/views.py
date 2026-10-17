@@ -779,6 +779,9 @@ def detalle(request, pk):
         # «Generar y enviar» de la vista previa vuelve aquí con `?enviar_cot=`
         # para que se abra el modal de envío (LC 2026-08-29).
         "enviar_cot_pk": _cot_a_enviar(request, proyecto),
+        # «Generar y bajar PDF» (panel y vista previa) vuelve aquí con
+        # `?bajar_cot=` para arrancar la descarga al cargar (LC 2026-10-14).
+        "bajar_cot": _cot_a_bajar(request, proyecto),
         # Recuadro «Facturas ligadas» (LC #9).
         **_ctx_facturas(proyecto, request.user),
         # El Testigo (S-Pendientes-Sep28 · Deploy 3): el aviso de edición pisada.
@@ -940,6 +943,94 @@ def _nuevo_modal(request):
         if primero:
             form.fields["estado"].initial = primero[0]
     return render(request, "proyectos/_modal_nuevo_proyecto.html", _ctx(form))
+
+
+def _entero_o_none(valor):
+    crudo = str(valor or "").strip()
+    return int(crudo) if crudo.isdigit() else None
+
+
+@login_required
+@require_POST
+def sugerir_descripcion(request):
+    """El botón «Generar» del campo Descripción de la tarjeta de producto.
+
+    LC 2026-10-14 (ticket 13 de Oscar): arma la descripción en el formato de
+    siempre con lo que el sistema sabe del producto. NO depende de que la línea
+    esté guardada — la tarjeta puede ser nueva o traer cambios sin autoguardar —,
+    así que recibe lo que hay en pantalla (producto, variación, cantidad, alias,
+    proveedor de impresión, texto actual) y sólo resuelve los ids.
+
+    **Propone, no aplica.** Devuelve el texto en `texto`, y si ya había algo
+    escrito también `completado` (lo suyo + lo que le faltaba). La tarjeta
+    decide qué hacer con la persona al lado; esta vista no escribe nada.
+
+    Con `ia=1` (y permiso de El Chalán) se pide una redacción a Los Analistas,
+    que sólo puede reordenar y pulir los datos —cualquier cifra que no venga de
+    ellos la descarta— y, si no hay credenciales, falla o inventa, se vuelve a la
+    plantilla. El camino sin IA es el de siempre y el que manda.
+    """
+    from apps.cotizaciones import descripcion_sugerida as ds
+    from apps.el_catalogo.models import Proveedor, Servicio, Variacion
+    from django.http import JsonResponse
+
+    from lib.permisos import puede_gestionar_proyectos, puede_usar_chalan
+
+    if not (puede_gestionar_proyectos(request.user) or puede_crear_proyecto(request.user)):
+        return JsonResponse({"ok": False, "error": "Sin permiso para editar productos."}, status=403)
+
+    post = request.POST
+    sid = _entero_o_none(post.get("servicio"))
+    servicio = Servicio.objects.filter(pk=sid).first() if sid else None
+    nombre = (post.get("nombre") or "").strip()[:150]
+    if servicio is None and not nombre:
+        return JsonResponse({"ok": False, "error": "Elige primero el producto del catálogo."})
+
+    vid = _entero_o_none(post.get("variacion"))
+    variacion = (Variacion.objects.filter(pk=vid, servicio=servicio).first()
+                 if (vid and servicio) else None)
+    pid = _entero_o_none(post.get("impresion_proveedor"))
+    proveedor = (Proveedor.objects.filter(pk=pid).prefetch_related("subcategorias").first()
+                 if pid else None)
+    cantidad = _entero_o_none(post.get("cantidad")) or 1
+    existente = (post.get("texto") or "").strip()[:2000]
+
+    propuesta = ds.sugerir(
+        cantidad=cantidad, nombre=nombre or getattr(servicio, "nombre", ""),
+        servicio=servicio, variacion=variacion, impresion_proveedor=proveedor)
+    origen, aviso = "plantilla", ""
+
+    if post.get("ia") == "1":
+        if not puede_usar_chalan(request.user):
+            aviso = "No tienes acceso a El Chalán: te dejé la plantilla."
+        else:
+            from lib.redactor_ia import redactar
+            res = redactar(
+                instruccion=(
+                    "Escribe la descripción de este elemento para una cotización, en "
+                    "el formato de siempre: un dato por renglón — «N pz», qué es, "
+                    "«Color: …», «Con <técnica>» y detalles de impresión. Usa "
+                    "ÚNICAMENTE los datos de la PLANTILLA y del texto actual; si "
+                    "falta el color, las medidas o la posición, OMITE ese renglón: "
+                    "no inventes nada ni agregues cifras. Sólo el texto, sin saludos."),
+                texto_actual=existente,
+                contexto={"PLANTILLA (datos del sistema)": propuesta},
+                usuario=request.user, estacion="cotizaciones")
+            if res.get("ok") and ds.sin_cifras_inventadas(res["texto"], propuesta, existente):
+                propuesta, origen = res["texto"], "chalan"
+            elif res.get("ok"):
+                aviso = "El Chalán metió datos que no están en el sistema: te dejé la plantilla."
+            else:
+                aviso = f"{res.get('error') or 'El Chalán no respondió'}. Te dejé la plantilla."
+
+    return JsonResponse({
+        "ok": True,
+        "texto": propuesta,
+        "completado": ds.completar(existente, propuesta) if existente else "",
+        "faltan": ds.faltantes(propuesta),
+        "origen": origen,
+        "aviso": aviso,
+    })
 
 
 @login_required
@@ -2155,6 +2246,40 @@ def _cot_a_enviar(request, proyecto):
             .first())
 
 
+def _cot_a_bajar(request, proyecto):
+    """La cotización cuyo PDF hay que bajar al cargar, o None.
+
+    Sale de `?bajar_cot=`, que es lo que deja «Generar y bajar PDF». Mismas
+    razones que `_cot_a_enviar`: el valor viene de la barra de direcciones, así
+    que se valida aquí (número, de ESTE proyecto, y quien pide puede ver
+    cotizaciones, que es lo que exige el PDF) y no en la plantilla.
+
+    Devuelve `{"pk", "url", "nombre", "version"}`. El `nombre` sale de
+    `services.nombre_archivo`, la MISMA función con la que se nombra el adjunto
+    del correo (#166): el archivo que se baja aquí y el que se manda se llaman
+    igual por construcción, no por casualidad.
+    """
+    from lib.permisos import puede_ver_cotizaciones
+
+    crudo = (request.GET.get("bajar_cot") or "").strip()
+    if not crudo.isdigit() or not puede_ver_cotizaciones(request.user):
+        return None
+    from apps.cotizaciones import services as cot_services
+    from apps.cotizaciones.models import Cotizacion
+
+    cot = (Cotizacion.objects
+           .select_related("cliente", "proyecto")
+           .filter(pk=int(crudo), proyecto=proyecto).first())
+    if cot is None:
+        return None
+    return {
+        "pk": cot.pk,
+        "url": reverse("cotizaciones:pdf", args=[cot.pk]),
+        "nombre": f"{cot_services.nombre_archivo(cot)}.pdf",
+        "version": cot.version_label,
+    }
+
+
 @login_required
 def previsualizar_cotizacion(request, pk):
     """Enseña el documento de la versión que se generaría, SIN generarla.
@@ -2199,7 +2324,7 @@ def previsualizar_cotizacion(request, pk):
 
     from apps.cotizaciones import services as cot_services
 
-    from lib.permisos import puede_enviar_cotizaciones
+    from lib.permisos import puede_enviar_cotizaciones, puede_ver_cotizaciones
 
     url_generar = reverse("proyectos-generar-cotizacion", args=[proyecto.pk])
     acciones = [{
@@ -2208,6 +2333,17 @@ def previsualizar_cotizacion(request, pk):
         "clase": "lc-btn",
         "hidden": {},
     }]
+    if puede_ver_cotizaciones(request.user):
+        # LC 2026-10-14 (Oscar): «generar y bajar pdf». Mismo POST de «Generar»
+        # con `y_pdf`: confirma la versión y de ahí arranca la descarga en el
+        # detalle del proyecto. Sin permiso de ver cotizaciones no se ofrece:
+        # el PDF lo exige.
+        acciones.append({
+            "url": url_generar,
+            "label": "Generar y bajar PDF",
+            "clase": "lc-btn",
+            "hidden": {"y_pdf": "1"},
+        })
     if puede_enviar_cotizaciones(request.user):
         acciones.append({
             "url": url_generar,
@@ -2229,6 +2365,11 @@ def previsualizar_cotizacion(request, pk):
             # se va a deshacer: el botón daría 404.
             descargable=False,
             aviso=f"Vista previa de {cot.version_label} · todavía no se genera",
+            # LC 2026-10-14 (Oscar): «un botón de atrás o salir». Vuelve al
+            # proyecto sin haber generado nada (la versión se deshace al
+            # terminar esta vista).
+            volver_url=reverse("proyectos-detalle", args=[proyecto.pk]),
+            volver_label="Atrás",
         )
         transaction.set_rollback(True)
     return HttpResponse(html)
@@ -2255,16 +2396,28 @@ def generar_cotizacion(request, pk):
     from apps.cotizaciones import services as cot_services
     cot = cot_services.generar_desde_proyecto(proyecto, request.user)
     messages.success(request, f"Cotización {cot.version_label} generada ({cot.codigo}).")
-    if request.POST.get("y_enviar"):
-        from lib.permisos import puede_enviar_cotizaciones
-        if puede_enviar_cotizaciones(request.user):
-            # El modal de envío es HTMX y vive en el detalle del proyecto, así
-            # que se pide al recargar — el mismo camino del `?motivo=1` de la
-            # cancelación (LC 2026-08-07).
-            destino = f"{_redir_detalle(proyecto)}?enviar_cot={cot.pk}"
-            if _es_htmx(request):
-                return HttpResponse(status=204, headers={"HX-Redirect": destino})
-            return redirect(destino)
+    # Qué hay que hacer al volver al detalle. Se decide DESPUÉS de confirmar la
+    # versión y, para cada cosa, sólo si el usuario puede: pedir «enviar» o
+    # «bajar PDF» sin el permiso no rompe, se queda en «sólo generar».
+    #
+    # · `y_enviar` (vista previa) abre el envío por correo. El modal es HTMX y
+    #   vive en el detalle del proyecto, así que se pide al recargar — el mismo
+    #   camino del `?motivo=1` de la cancelación (LC 2026-08-07).
+    # · `y_pdf` (recuadro del proyecto y vista previa) baja el PDF. La descarga
+    #   no vive aquí: la arma Google y tarda segundos, y mezclarla con la
+    #   transacción de la versión es el estado intermedio que no queremos. El
+    #   detalle la pide al cargar (`?bajar_cot=`) y le da su estado de carga.
+    from lib.permisos import puede_enviar_cotizaciones, puede_ver_cotizaciones
+    pedidas = []
+    if request.POST.get("y_enviar") and puede_enviar_cotizaciones(request.user):
+        pedidas.append(f"enviar_cot={cot.pk}")
+    if request.POST.get("y_pdf") and puede_ver_cotizaciones(request.user):
+        pedidas.append(f"bajar_cot={cot.pk}")
+    if pedidas:
+        destino = f"{_redir_detalle(proyecto)}?{'&'.join(pedidas)}"
+        if _es_htmx(request):
+            return HttpResponse(status=204, headers={"HX-Redirect": destino})
+        return redirect(destino)
     if _es_htmx(request):
         ctx = _ctx_cotizaciones(proyecto, request.user)
         html = render_to_string("proyectos/_cotizaciones_panel.html", ctx, request=request)
@@ -2760,6 +2913,9 @@ def _ctx_modal_pago(proyecto, *, info, accion_url, error=None):
         "usuarios": Usuario.objects.filter(is_active=True).order_by("nombre_completo"),
         "proveedores": Proveedor.objects.filter(activo=True).order_by("razon_social"),
         "iva_monto": iva, "iva_label": f"{float(tasa * 100):g}%",
+        "tasa_iva": tasa,
+        # Oscar 2026-10-14: «¿Cuánto pagas ahora?» (modal de proveedor).
+        "modos_pago": [("total", "Todo"), ("anticipo", "Anticipo 50%"), ("otro", "Otro monto")],
         "total_con_iva": (base + iva).quantize(Decimal("0.01")),
         "solicitado_por_default": lider.usuario_id if lider else None,
         "error": error,
@@ -2800,6 +2956,28 @@ def _datos_pago_post(request):
     }
 
 
+def _info_grupo(grupo) -> dict:
+    """`info` del modal «Registrar pago» de un proveedor: el hero y la lista de
+    conceptos (cada uno con su casilla y, si ya tiene abonos, lo que falta)."""
+    n = len(grupo["unidades"])
+    conceptos = []
+    for u in grupo["unidades"]:
+        eg = u.get("egreso")
+        conceptos.append({
+            "clave": f"{u['clase']}:{u['pk']}", "label": u["label"],
+            "monto": u["monto"], "monto_total": u["monto_total"],
+            "pagado_parcial": u["pagado_parcial"],
+            # Ya es cuenta por pagar («Pendiente»): se liquida completa, no se parte.
+            "indivisible": bool(eg is not None and not eg.anulado and eg.estado_pago == "pendiente"),
+        })
+    return {
+        "monto": grupo["monto"],
+        "label": f"{n} concepto{'s' if n != 1 else ''}",
+        "proveedor": grupo["proveedor"],
+        "conceptos": conceptos,
+    }
+
+
 @login_required
 def registrar_pago_proveedor_modal(request, pk, clave):
     """GET/POST modal «Registrar pago» de TODO lo pendiente de un proveedor.
@@ -2807,6 +2985,11 @@ def registrar_pago_proveedor_modal(request, pk, clave):
     LC 2026-07-26 (Oscar): «se le paga una vez a cada uno, no por cada producto o
     proceso separado». Mismo formulario que el modal de una unidad; el hero
     muestra el total del proveedor y el detalle de los conceptos incluidos.
+
+    Oscar 2026-10-14: además se puede pagar sólo una PARTE — casilla por concepto
+    (varios pedidos en una tienda) y «¿cuánto pagas ahora?»: todo, anticipo 50% u
+    otro monto (`modo` = total | anticipo | otro). Lo que no se paga sigue como pago
+    pendiente. Reglas en `gastos.registrar_pago_grupo`.
     """
     proyecto = get_object_or_404(Proyecto, pk=pk)
     if not _puede_registrar_gastos(request.user, proyecto):
@@ -2816,50 +2999,84 @@ def registrar_pago_proveedor_modal(request, pk, clave):
     grupo = gastos.grupo_pago_de(proyecto, clave)
     if grupo is None:
         return HttpResponseForbidden("Ya no hay pagos pendientes de ese proveedor.")
-    n = len(grupo["unidades"])
-    info = {
-        "monto": grupo["monto"],
-        "label": f"{n} concepto{'s' if n != 1 else ''}",
-        "proveedor": grupo["proveedor"],
-        "conceptos": [{"label": u["label"], "monto": u["monto"]} for u in grupo["unidades"]],
-    }
+    info = _info_grupo(grupo)
     accion_url = reverse("proyectos-registrar-pago-proveedor", args=[proyecto.pk, clave])
+
+    def _ctx(error=None, estado=None):
+        ctx = _ctx_modal_pago(proyecto, info=info, accion_url=accion_url, error=error)
+        ctx.update({"permite_parcial": True, "pendiente_visto": grupo["monto"],
+                    "estado_form": estado})
+        return ctx
 
     if request.method == "POST":
         datos = _datos_pago_post(request)
+        # Estado del formulario para repintarlo si hay un error (no perder lo elegido).
+        claves = request.POST.getlist("unidades")
+        modo = request.POST.get("modo") or "total"
+        estado = {"unidades": set(claves) if claves else None, "modo": modo,
+                  "monto_otro": request.POST.get("monto_otro", ""),
+                  "incluye_iva": request.POST.get("incluye_iva") == "1"}
+
+        def _error(msg):
+            return render(request, "proyectos/_modal_registrar_gasto.html",
+                          _ctx(error=msg, estado=estado), status=200)
+
         # Proveedor OBLIGATORIO (LC 2026-07). El grupo «Sin proveedor asignado»
         # se resuelve aquí: el usuario elige a quién se le paga.
         if datos["proveedor"] is None:
-            return render(
-                request, "proyectos/_modal_registrar_gasto.html",
-                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
-                                error="Elige un proveedor: todo egreso debe ir ligado a uno."),
-                status=200)
-        res = gastos.registrar_pago_grupo(
-            proyecto, clave, actor=request.user, centro=datos["centro"],
-            metodo=datos["metodo"], estado_pago=datos["estado_pago"],
-            pagado_por=datos["pagado_por"], solicitado_por=datos["solicitado_por"],
-            proveedor=datos["proveedor"], fecha=datos["fecha"],
-        )
+            return _error("Elige un proveedor: todo egreso debe ir ligado a uno.")
+
+        tasa = Decimal(str(getattr(proyecto, "iva_tasa_efectiva", 0) or 0))
+        factor = (Decimal("1") + tasa) if estado["incluye_iva"] else Decimal("1")
+        kw = {}
+        if modo == "anticipo":
+            kw.update(fraccion=Decimal("0.5"), etiqueta="Anticipo 50%")
+        elif modo == "otro":
+            try:
+                capturado = Decimal(str(estado["monto_otro"]).replace(",", "").strip())
+            except Exception:  # noqa: BLE001
+                return _error("Escribe el monto que vas a pagar ahora.")
+            if capturado <= 0:
+                return _error("El monto a pagar debe ser mayor a cero.")
+            # Lo capturado está en la base del héroe (con IVA si la casilla está
+            # marcada); el egreso guarda la base sin IVA.
+            kw.update(monto=(capturado / factor).quantize(Decimal("0.01")),
+                      etiqueta="Pago parcial")
+        elif modo != "total":
+            return _error("Elige cuánto vas a pagar ahora.")
+        visto = request.POST.get("pendiente_visto")
+        try:
+            res = gastos.registrar_pago_grupo(
+                proyecto, clave, actor=request.user, centro=datos["centro"],
+                metodo=datos["metodo"], estado_pago=datos["estado_pago"],
+                pagado_por=datos["pagado_por"], solicitado_por=datos["solicitado_por"],
+                proveedor=datos["proveedor"], fecha=datos["fecha"],
+                unidades=claves or None,
+                pendiente_visto=Decimal(visto) if visto else None, **kw,
+            )
+        except (ValueError, ArithmeticError) as e:
+            return _error(str(e))
         codigos = ([res["creado"].codigo] if res["creado"] else []) + [
             e.codigo for e in res["liquidados"]]
         if not codigos:
-            return render(
-                request, "proyectos/_modal_registrar_gasto.html",
-                _ctx_modal_pago(proyecto, info=info, accion_url=accion_url,
-                                error="No se pudo registrar (revisa el centro de costo)."),
-                status=200)
-        messages.success(
-            request,
-            f"Pago de {datos['proveedor'].razon_social} registrado "
-            f"({res['unidades']} concepto(s)) en {', '.join(codigos)}.")
+            return _error("No se pudo registrar (revisa el centro de costo).")
+        if res["parcial"]:
+            queda = (res["restante"] * (Decimal("1") + tasa)).quantize(Decimal("0.01"))
+            messages.success(
+                request,
+                f"Pago parcial a {datos['proveedor'].razon_social} registrado en "
+                f"{', '.join(codigos)}. Queda pendiente ${queda:,.2f} (con IVA).")
+        else:
+            messages.success(
+                request,
+                f"Pago de {datos['proveedor'].razon_social} registrado "
+                f"({res['unidades']} concepto(s)) en {', '.join(codigos)}.")
         destino = _destino_registro(request, proyecto)
         if request.headers.get("HX-Request") == "true":
             return HttpResponse(status=204, headers={"HX-Redirect": destino})
         return redirect(destino)
 
-    return render(request, "proyectos/_modal_registrar_gasto.html",
-                  _ctx_modal_pago(proyecto, info=info, accion_url=accion_url))
+    return render(request, "proyectos/_modal_registrar_gasto.html", _ctx())
 
 
 @login_required

@@ -1,3 +1,4 @@
+from .adjunto import FacturaAdjunto
 from .cfdi_entrante import (
     ESTADO_IGNORADO,
     ESTADO_LIGADO,
@@ -21,6 +22,7 @@ __all__ = [
     "ESTADO_LIGADO",
     "ESTADO_IGNORADO",
     "Factura",
+    "FacturaAdjunto",
     "FacturaItem",
     "FacturaImpuesto",
     "RecordatorioCobranza",
