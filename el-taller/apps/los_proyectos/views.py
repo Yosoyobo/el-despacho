@@ -970,10 +970,10 @@ def sugerir_descripcion(request):
     ellos la descarta— y, si no hay credenciales, falla o inventa, se vuelve a la
     plantilla. El camino sin IA es el de siempre y el que manda.
     """
-    from django.http import JsonResponse
-
     from apps.cotizaciones import descripcion_sugerida as ds
     from apps.el_catalogo.models import Proveedor, Servicio, Variacion
+    from django.http import JsonResponse
+
     from lib.permisos import puede_gestionar_proyectos, puede_usar_chalan
 
     if not (puede_gestionar_proyectos(request.user) or puede_crear_proyecto(request.user)):

@@ -94,9 +94,8 @@ def test_bajar_pdf_y_enviar_pueden_ir_juntos(client, entorno):
 def test_el_detalle_arranca_la_descarga_con_el_nombre_del_correo(client, entorno):
     """La descarga se llama IGUAL que el adjunto del correo (#166): el nombre
     sale de `services.nombre_archivo`, la misma función de `enviar_por_correo`."""
-    from django.utils.html import escape
-
     from apps.cotizaciones import services
+    from django.utils.html import escape
 
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
     client.force_login(entorno["admin"])
@@ -140,6 +139,7 @@ def test_si_el_pdf_falla_el_fetch_recibe_el_motivo(client, entorno, monkeypatch)
     """Con la cabecera del script, un PDF que no se pudo armar contesta 502 con
     el motivo (un redirect con mensaje se perdería dentro del fetch)."""
     from apps.cotizaciones import services
+
     from lib.documentos import ResultadoPdf
 
     cot = services.generar_desde_proyecto(entorno["p"], entorno["admin"])
