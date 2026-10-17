@@ -122,12 +122,10 @@ espera a `load`. Si no cargó (sin red), el mapa se queda vacío y la lista de
 paradas —que es lo que de verdad se usa en la calle— sigue sirviendo.
 {% endcomment %}
 window.addEventListener('load', function () {
-    if (typeof L === 'undefined') return;
+    if (typeof L === 'undefined' || !window.despachoTileLayer) return;
     var datos = JSON.parse(document.getElementById('datos-mapa').textContent);
     var mapa = L.map('mapa-rutas');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19, attribution: '&copy; OpenStreetMap'
-    }).addTo(mapa);
+    despachoTileLayer().addTo(mapa);
     var todos = [];
     datos.lineas.forEach(function (linea) {
         L.polyline(linea.coords, { color: linea.color, weight: 4, opacity: 0.8 })

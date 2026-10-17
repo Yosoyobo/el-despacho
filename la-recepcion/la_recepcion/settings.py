@@ -172,7 +172,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Dónde vive El Taller (los botones de pago de La Caja apuntan allá) y La
 # Recepción misma (el enlace que va en los correos).
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+from lib.urls_canonicas import normalizar_url_heredada  # noqa: E402
+
+# Un `.env` con el dominio retirado (*.ninomeando.com) se corrige solo.
+TALLER_URL = normalizar_url_heredada(os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/"))
 RECEPCION_URL = os.environ.get("RECEPCION_URL", "https://recepcion.learningcenter.mx")
 MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 

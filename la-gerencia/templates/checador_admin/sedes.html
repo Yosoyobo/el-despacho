@@ -69,14 +69,12 @@
 <script>
 (function () {
   var el = document.getElementById('mapa-sedes');
-  if (!el || typeof L === 'undefined') { if (el) setTimeout(arguments.callee, 200); return; }
+  if (!el || typeof L === 'undefined' || !window.despachoTileLayer) { if (el) setTimeout(arguments.callee, 200); return; }
   var sedes = [];
   try { sedes = JSON.parse(el.getAttribute('data-sedes') || '[]'); } catch (e) {}
   if (!sedes.length) return;
   var map = L.map(el);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19,
-  }).addTo(map);
+  despachoTileLayer().addTo(map);
   var grupo = [];
   sedes.forEach(function (s) {
     var color = s.a ? '#12b76a' : '#98a2b3';

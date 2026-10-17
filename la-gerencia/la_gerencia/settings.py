@@ -191,7 +191,10 @@ LOGIN_URL = "/sign-in"
 
 # Pre-S2b.2: destino de redirección para roles operativos. Override en tests
 # con `@override_settings(TALLER_URL="http://testserver/")`.
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+from lib.urls_canonicas import normalizar_url_heredada  # noqa: E402
+
+# Un `.env` con el dominio retirado (*.ninomeando.com) se corrige solo.
+TALLER_URL = normalizar_url_heredada(os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/"))
 
 # El Almacén (S-Medios-V1): la misma carpeta que monta El Taller. La Gerencia
 # también sirve medios (los adjuntos del Buzón admin). Ver `lib/almacen.py`.
@@ -239,6 +242,10 @@ LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 # Headers de seguridad básicos
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Django manda `same-origin` por defecto y con ésa el navegador no envía Referer a
+# otros orígenes: los mosaicos de OpenStreetMap contestan 403 «Access blocked».
+# Cross-origin sale sólo el origen (nunca la ruta). Ver `static/js/mapa_tiles.js`.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000

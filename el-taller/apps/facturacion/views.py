@@ -33,7 +33,7 @@ from .forms import (
     ItemFormSet,
     RegistrarCobroForm,
 )
-from .models import Factura, FacturaImpuesto
+from .models import Factura, FacturaAdjunto, FacturaImpuesto
 
 ORDEN_PERMITIDO = {"folio", "codigo", "fecha_emision", "fecha_vencimiento", "estado", "creado_en"}
 # Máx. de filas fantasma a inyectar por huecos de folio (defensa anti-runaway).
@@ -192,29 +192,30 @@ def _ctx_form(form, formset, *, modo: str, fac: Factura | None = None,
 
 
 def _procesar_cfdi(request, fac: Factura):
-    """Adjunta / borra el CFDI (PDF + XML) desde el propio form de la factura
-    (LC revisión buzón — sin modal aparte). Un solo campo multi-archivo:
-    clasifica cada archivo por extensión. Best-effort; nunca tumba el guardado."""
+    """Adjunta / borra los archivos de la factura desde el propio form
+    (LC revisión buzón — sin modal aparte). Un solo campo multi-archivo
+    (`cfdi_archivos`): el primer PDF y el primer XML van al CFDI si su ranura
+    está libre y TODO lo demás queda como adjunto (S-Tickets-Oct14: antes el
+    segundo archivo del mismo tipo se descartaba en silencio). Quitar un archivo
+    del CFDI y subir otro en el mismo guardado lo reemplaza. Best-effort; nunca
+    tumba el guardado."""
     if request.POST.get("cfdi_borrar_pdf") and fac.pdf_file_id:
         services.borrar_cfdi_archivo(fac, "pdf")
     if request.POST.get("cfdi_borrar_xml") and fac.xml_file_id:
         services.borrar_cfdi_archivo(fac, "xml")
-    pdf_file = xml_file = None
-    for f in request.FILES.getlist("cfdi_archivos"):
-        nombre = (getattr(f, "name", "") or "").lower()
-        if nombre.endswith(".xml") and xml_file is None:
-            xml_file = f
-        elif nombre.endswith(".pdf") and pdf_file is None:
-            pdf_file = f
+    for pk in request.POST.getlist("adjunto_borrar"):
+        if pk.isdigit():
+            adj = fac.adjuntos.filter(pk=int(pk)).first()
+            if adj:
+                services.borrar_adjunto(adj)
+    archivos = request.FILES.getlist("cfdi_archivos")
     uuid = (request.POST.get("cfdi_uuid") or "").strip()
-    if pdf_file or xml_file or uuid:
-        res = services.almacenar_cfdi(
-            fac, pdf_file=pdf_file, xml_file=xml_file, cfdi_uuid=uuid, actor=request.user,
-        )
+    if archivos or uuid:
+        res = services.almacenar_archivos(fac, archivos, cfdi_uuid=uuid, actor=request.user)
         if res["guardados"]:
-            messages.success(request, "CFDI: " + ", ".join(res["guardados"]) + " almacenado(s).")
+            messages.success(request, "Archivos guardados: " + ", ".join(res["guardados"]) + ".")
         if res["errores"]:
-            messages.warning(request, "CFDI: " + " · ".join(res["errores"]))
+            messages.warning(request, "Archivos: " + " · ".join(res["errores"]))
 
 
 def _persistir_impuestos(fac: Factura, ids_seleccionadas: list[int]):
@@ -645,6 +646,8 @@ def detalle(request, pk):
         "cobros": cobros,
         "movimientos_ligados": movimientos_ligados,
         "recordatorios": list(fac.recordatorios.order_by("-enviado_en")[:10]),
+        "adjuntos": list(fac.adjuntos.all()),
+        "puede_quitar_archivos": puede_emitir_facturacion(request.user),
         "info_cliente": info_cliente,
         "info_fechas": info_fechas,
         "info_totales": info_totales,
@@ -987,6 +990,28 @@ def descargar_xml(request, pk):
 
 
 @login_required
+def descargar_adjunto(request, pk, adjunto_pk):
+    """Sirve un adjunto de la factura desde El Almacén (proxy autenticado)."""
+    if (r := _gate_ver(request)) is not None:
+        return r
+    adj = get_object_or_404(FacturaAdjunto, pk=adjunto_pk, factura_id=pk)
+    return _servir_archivo(adj.archivo_id, adj.nombre)
+
+
+@login_required
+@require_http_methods(["POST"])
+def eliminar_adjunto(request, pk, adjunto_pk):
+    """Quita un adjunto de la factura (mismo permiso que cargar el CFDI)."""
+    if not puede_emitir_facturacion(request.user):
+        return HttpResponseForbidden("Sin permiso para quitar archivos de la factura.")
+    adj = get_object_or_404(FacturaAdjunto, pk=adjunto_pk, factura_id=pk)
+    nombre = adj.nombre
+    services.borrar_adjunto(adj)
+    messages.success(request, f"«{nombre}» se quitó de la factura.")
+    return redirect("facturacion:detalle", pk=pk)
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def almacenar_cfdi(request, pk):
     """Carga/reemplaza el CFDI del PAC (PDF + XML + folio fiscal). Modal HTMX
@@ -1004,6 +1029,13 @@ def almacenar_cfdi(request, pk):
             cfdi_uuid=request.POST.get("cfdi_uuid", ""),
             actor=request.user,
         )
+        # «Otros archivos»: varios a la vez, quedan como adjuntos de la factura.
+        otros = request.FILES.getlist("otros")
+        if otros:
+            extra = services.almacenar_archivos(fac, otros, actor=request.user)
+            res["guardados"] += extra["guardados"]
+            res["errores"] += extra["errores"]
+            res["ok"] = res["ok"] or extra["ok"]
         if res["guardados"] or res["ok"]:
             if res["guardados"]:
                 messages.success(request, "CFDI almacenado: " + ", ".join(res["guardados"]) + ".")

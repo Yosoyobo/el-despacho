@@ -130,7 +130,7 @@ def _legible(form, campo, normalizar, renglon):
 
 
 def _renglon_proceso(d) -> str:
-    nombre = d.get("descripcion") or ("Impresión" if d.get("tipo") == "impresion" else "Proceso")
+    nombre = d.get("descripcion") or ("Branding" if d.get("tipo") == "impresion" else "Proceso")
     return f"{nombre} ${d.get('costo')}"
 
 
