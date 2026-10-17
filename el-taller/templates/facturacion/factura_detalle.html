@@ -91,6 +91,24 @@
             {% else %}
             <p class="text-sm text-gray-500 dark:text-gray-400">Aún no se ha cargado el CFDI (PDF + XML) que emite el contador/PAC. Usa <strong>«Cargar CFDI»</strong> en la barra de acciones.</p>
             {% endif %}
+            {% if adjuntos %}
+            <h3 class="mb-2 mt-5 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Otros archivos ({{ adjuntos|length }})</h3>
+            <ul class="space-y-1.5">
+                {% for a in adjuntos %}
+                <li class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700">
+                    <span aria-hidden="true">{% if a.es_imagen %}🖼{% elif a.es_pdf %}📄{% else %}📎{% endif %}</span>
+                    <a href="{% url 'facturacion:adjunto' fac.pk a.pk %}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate text-gray-700 hover:text-brand-600 dark:text-gray-200" title="{{ a.nombre }}">{{ a.nombre }}</a>
+                    <span class="shrink-0 text-xs text-gray-400">{{ a.tamano_bytes|filesizeformat }}</span>
+                    {% if puede_quitar_archivos %}
+                    <form method="post" action="{% url 'facturacion:adjunto-quitar' fac.pk a.pk %}" onsubmit="return confirm('¿Quitar «{{ a.nombre|escapejs }}» de la factura?');">
+                        {% csrf_token %}
+                        <button type="submit" class="text-gray-400 hover:text-error-600" title="Quitar {{ a.nombre }}" aria-label="Quitar {{ a.nombre }}">✕</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
         </section>
 
         {% if movimientos_ligados %}

@@ -350,6 +350,83 @@ def almacenar_cfdi(fac: Factura, *, pdf_file=None, xml_file=None,
     }
 
 
+MAX_ARCHIVOS_POR_ENVIO = 20
+
+
+def almacenar_archivos(fac: Factura, archivos, *, cfdi_uuid: str = "", actor=None) -> dict:
+    """Guarda VARIOS archivos a la vez en una factura (S-Tickets-Oct14).
+
+    Cada archivo se clasifica solo: el primer PDF y el primer XML van a la
+    ranura del CFDI **si esa ranura está libre**; todo lo demás (otro PDF, otro
+    XML, imágenes, ofimática) queda como adjunto de la factura. Nada se pisa en
+    silencio: para reemplazar el CFDI hay que quitar el anterior (`✕`) o usar
+    `almacenar_cfdi`, que sí reemplaza.
+
+    Cada archivo se valida por separado (tipo y 25 MB, `lib.adjuntos`) y **un
+    archivo malo no tumba a los demás**: sus errores vuelven por nombre.
+    Devuelve `{"ok", "guardados": [...], "errores": [...]}`; nunca lanza.
+    """
+    from lib.adjuntos import subir
+
+    from .models import FacturaAdjunto
+
+    archivos = list(archivos or [])
+    errores: list[str] = []
+    if len(archivos) > MAX_ARCHIVOS_POR_ENVIO:
+        errores.append(
+            f"Se subieron {len(archivos)} archivos; sólo caben {MAX_ARCHIVOS_POR_ENVIO} "
+            "por vez. Los demás quedaron fuera."
+        )
+        archivos = archivos[:MAX_ARCHIVOS_POR_ENVIO]
+
+    pdf = xml = None
+    extras = []
+    for f in archivos:
+        nombre = (getattr(f, "name", "") or "").lower()
+        if nombre.endswith(".xml") and xml is None and not fac.xml_file_id:
+            xml = f
+        elif nombre.endswith(".pdf") and pdf is None and not fac.pdf_file_id:
+            pdf = f
+        else:
+            extras.append(f)
+
+    guardados: list[str] = []
+    cfdi_uuid = (cfdi_uuid or "").strip()
+    if pdf is not None or xml is not None or cfdi_uuid:
+        res = almacenar_cfdi(fac, pdf_file=pdf, xml_file=xml, cfdi_uuid=cfdi_uuid, actor=actor)
+        guardados += [f"{g} del CFDI" for g in res["guardados"]]
+        errores += res["errores"]
+
+    for f in extras:
+        nombre = getattr(f, "name", "archivo") or "archivo"
+        try:
+            res = subir(f, subcarpeta="Facturas")
+            if not (res.ok and res.data):
+                errores.append(res.error or f"«{nombre}»: no se pudo guardar.")
+                continue
+            FacturaAdjunto.objects.create(
+                factura=fac,
+                archivo_id=res.data.get("id", ""),
+                nombre=(res.data.get("name") or nombre)[:255],
+                mime_type=(res.data.get("mimeType") or getattr(f, "content_type", "") or "")[:120],
+                tamano_bytes=int(res.data.get("size") or getattr(f, "size", 0) or 0),
+                subido_por=actor if getattr(actor, "pk", None) else None,
+            )
+            guardados.append(nombre)
+        except Exception as exc:  # noqa: BLE001 — un archivo malo no tumba a los demás
+            logger.warning("factura %s: adjunto %r falló: %r", fac.pk, nombre, exc)
+            errores.append(f"«{nombre}»: no se pudo guardar.")
+
+    return {"ok": bool(guardados) and not errores, "guardados": guardados, "errores": errores}
+
+
+def borrar_adjunto(adjunto) -> None:
+    """Quita el adjunto de la factura. El archivo en El Almacén se queda: está
+    direccionado por su contenido y otra pantalla podría apuntar a la misma
+    huella (misma regla que las fotos de producto)."""
+    adjunto.delete()
+
+
 def crear_desde_cotizacion(cotizacion, actor) -> Factura:
     """Clona items+impuestos+vínculo, hereda datos comerciales. Estado
     borrador. Vencimiento por default 30 días desde hoy."""

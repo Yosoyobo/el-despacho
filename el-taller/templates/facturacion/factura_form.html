@@ -278,8 +278,8 @@
         {% comment %}CFDI del PAC en el propio form (LC revisión buzón: sin modal
         aparte, un solo campo multi-archivo PDF+XML con lista de estatus).{% endcomment %}
         <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900" data-cfdi>
-            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante fiscal (CFDI)</h3>
-            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sube el PDF y el XML timbrados por el PAC. Un solo campo acepta ambos; se guardan al presionar «Guardar».</p>
+            <h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante fiscal (CFDI) y archivos</h3>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Sube el PDF y el XML timbrados por el PAC, y los archivos que necesites (complemento de pago, orden de compra, otro PDF…). Puedes elegir o arrastrar <strong>varios a la vez</strong>; se guardan al presionar «Guardar». El primer PDF y el primer XML son el CFDI; los demás quedan como adjuntos. Para reemplazar el CFDI, quita el anterior con ✕.</p>
 
             <ul class="mt-3 space-y-1.5" data-cfdi-lista>
                 {% if fac and fac.pdf_file_id %}
@@ -296,13 +296,20 @@
                     <button type="button" data-cfdi-del="xml" class="text-gray-400 hover:text-error-600" title="Quitar XML" aria-label="Quitar XML">✕</button>
                 </li>
                 {% endif %}
+                {% if fac %}{% for a in fac.adjuntos.all %}
+                <li data-adj-stored="{{ a.pk }}" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700">
+                    <span class="text-success-500">✓</span>
+                    <a href="{% url 'facturacion:adjunto' fac.pk a.pk %}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate text-gray-700 hover:text-brand-600 dark:text-gray-200" title="{{ a.nombre }}">{{ a.nombre }} <span class="text-xs text-success-600 dark:text-success-400">· adjunto</span></a>
+                    <button type="button" data-adj-del="{{ a.pk }}" class="text-gray-400 hover:text-error-600" title="Quitar {{ a.nombre }}" aria-label="Quitar {{ a.nombre }}">✕</button>
+                </li>
+                {% endfor %}{% endif %}
             </ul>
 
             <label class="mt-3 flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-brand-700 dark:hover:bg-brand-500/5">
                 <svg class="h-7 w-7 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 4v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Subir PDF y XML</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">Click o arrastra los archivos (.pdf, .xml)</span>
-                <input type="file" name="cfdi_archivos" multiple accept=".pdf,application/pdf,.xml,text/xml,application/xml" class="sr-only" data-cfdi-input>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Subir archivos</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">Click o arrastra varios a la vez (PDF, XML, imágenes, Word/Excel; máx. 25 MB c/u)</span>
+                <input type="file" name="cfdi_archivos" multiple accept=".pdf,application/pdf,.xml,text/xml,application/xml,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt" class="sr-only" data-cfdi-input>
             </label>
 
             <label for="fac-cfdi-uuid" class="mt-3 block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Folio fiscal (UUID) <span class="normal-case text-gray-400">— opcional</span></label>
@@ -323,7 +330,7 @@
             function pintar() {
                 lista.querySelectorAll('[data-cfdi-pend]').forEach(function (li) { li.remove(); });
                 pend.forEach(function (f, i) {
-                    var badge = /\.xml$/i.test(f.name) ? 'XML' : (/\.pdf$/i.test(f.name) ? 'PDF' : '?');
+                    var badge = /\.xml$/i.test(f.name) ? 'XML' : (/\.pdf$/i.test(f.name) ? 'PDF' : 'archivo');
                     var li = document.createElement('li');
                     li.setAttribute('data-cfdi-pend', '');
                     li.className = 'flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700';
@@ -352,6 +359,18 @@
                 sync();
             }
             input.addEventListener('change', function () { agregar(input.files); });
+            box.querySelectorAll('[data-adj-del]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var id = b.getAttribute('data-adj-del');
+                    var li = b.closest('li');
+                    var h = box.querySelector('input[name="adjunto_borrar"][value="' + id + '"]');
+                    if (h) { h.remove(); } else {
+                        h = document.createElement('input'); h.type = 'hidden'; h.name = 'adjunto_borrar'; h.value = id;
+                        box.appendChild(h);
+                    }
+                    if (li) { li.classList.toggle('opacity-40', !!h.parentNode); li.classList.toggle('line-through', !!h.parentNode); }
+                });
+            });
             box.querySelectorAll('[data-cfdi-del]').forEach(function (b) {
                 b.addEventListener('click', function () {
                     var tipo = b.getAttribute('data-cfdi-del');
