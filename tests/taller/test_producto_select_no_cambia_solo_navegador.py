@@ -54,6 +54,16 @@ def navegador(live_server, usuario_factory, settings, monkeypatch):
         pag.errores = []
         pag.on("pageerror", lambda e: pag.errores.append(str(e)))
         yield pag, live_server.url
+        # Elegir un producto dispara el autoguardado del detalle (700 ms después):
+        # si esa petición cae mientras Django vacía la base, el cierre truena con
+        # «pop from empty list». Se deja la página en blanco y se espera a que el
+        # servidor termine lo que tenga en curso antes de soltar la base.
+        try:
+            pag.goto("about:blank")
+            pag.wait_for_timeout(1200)
+        except Exception:  # noqa: BLE001 — el navegador ya se cerró
+            pass
+        ctx.close()
         nav.close()
     finders.get_finder.cache_clear()
     os.environ.pop("DJANGO_ALLOW_ASYNC_UNSAFE", None)
