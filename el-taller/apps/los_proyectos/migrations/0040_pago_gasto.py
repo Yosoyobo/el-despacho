@@ -29,8 +29,8 @@ class Migration(migrations.Migration):
                 'constraints': [
                     models.CheckConstraint(
                         condition=models.Q(
-                            models.Q(('producto__isnull', False), ('proceso__isnull', True)),
-                            models.Q(('producto__isnull', True), ('proceso__isnull', False)),
+                            models.Q(('proceso__isnull', True), ('producto__isnull', False)),
+                            models.Q(('proceso__isnull', False), ('producto__isnull', True)),
                             _connector='OR',
                         ),
                         name='pago_gasto_un_solo_gasto',
