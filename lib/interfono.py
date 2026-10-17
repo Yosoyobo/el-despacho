@@ -94,10 +94,14 @@ def enviar_a_suscripcion(
     private_key = InterfonoConfig.vapid_private_key()
     claims = InterfonoConfig.vapid_claims()
 
+    from lib.urls_canonicas import url_absoluta_taller
+
     payload = {
         "title": titulo,
         "body": cuerpo,
-        "url": url,
+        # Absoluta y canónica: un service worker viejo (registrado en el dominio
+        # retirado) abriría la ruta relativa en SU origen.
+        "url": url_absoluta_taller(url),
         "icon": "/static/branding/Logo_LC-192.png",
         "badge": "/static/branding/Logo_LC-64.png",
     }
@@ -166,6 +170,11 @@ def enviar_a_usuario(
 
     totales = {"entregadas": 0, "fallidas": 0, "invalidadas": 0, "entrega_id": 0}
 
+    from lib.urls_canonicas import normalizar_url_heredada
+
+    # En base se guarda la ruta tal cual (relativa); sólo se corrige un dominio
+    # viejo si alguien pasó una URL absoluta.
+    url = normalizar_url_heredada(url)
     entrega = InterfonoEntrega.objects.create(
         usuario=usuario,
         titulo=titulo[:200],

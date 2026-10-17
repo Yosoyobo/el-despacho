@@ -16,6 +16,8 @@ import json
 
 from django.http import HttpRequest, HttpResponse
 
+from lib.urls_canonicas import DOMINIOS_HEREDADOS
+
 # Assets del shell a precachear (S4 — caché offline). Se resuelven con
 # `static()` (hasheados en prod). Cada uno va guardado con try/except: un asset
 # ausente en una app (p. ej. Gerencia no tiene checador.js) NO rompe el SW.
@@ -64,10 +66,27 @@ self.addEventListener('push', function(event) {
     event.waitUntil(tareas);
 });
 
+// Dominios retirados (DESPACHO_DOMINIOS_HEREDADOS, inyectado por el servidor).
+// Un enlace que apunte a uno de ellos —o una ruta relativa abierta desde un
+// service worker que quedó registrado en uno— se lleva al dominio vigente.
+function despachoNormalizarUrl(crudo) {
+    let u;
+    try { u = new URL(crudo || '/', self.location.origin); } catch (e) { return '/'; }
+    const host = u.hostname.toLowerCase();
+    for (const viejo in DESPACHO_DOMINIOS_HEREDADOS) {
+        if (host === viejo || host.endsWith('.' + viejo)) {
+            u.hostname = host.slice(0, host.length - viejo.length) + DESPACHO_DOMINIOS_HEREDADOS[viejo];
+            u.port = '';
+            break;
+        }
+    }
+    return u.href;
+}
+
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     const data = event.notification.data || {};
-    const url = data.url || '/';
+    const url = despachoNormalizarUrl(data.url || '/');
     const entregaId = data.entrega_id;
     const marcar = entregaId
         ? fetch('/perfil/notificaciones/' + entregaId + '/clickeado', {
@@ -175,6 +194,7 @@ def _cabecera() -> str:
     return (
         f'const DESPACHO_CACHE = "despacho-shell-{VERSION}";\n'
         f'const DESPACHO_OFFLINE = "/offline/";\n'
+        f"const DESPACHO_DOMINIOS_HEREDADOS = {json.dumps(DOMINIOS_HEREDADOS)};\n"
         f"const DESPACHO_PRECACHE = {json.dumps(assets)};\n\n"
     )
 

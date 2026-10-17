@@ -180,7 +180,10 @@ LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 # URL pública de El Taller. La usa `lib.almacen` para armar los enlaces
 # absolutos de las imágenes que Google baja al convertir un PDF (no hay
 # `request` en el generador del documento). Mismo patrón que en La Gerencia.
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+from lib.urls_canonicas import normalizar_url_heredada  # noqa: E402
+
+# Un `.env` con el dominio retirado (*.ninomeando.com) se corrige solo.
+TALLER_URL = normalizar_url_heredada(os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/"))
 
 # El Almacén (S-Medios-V1): carpeta donde viven los medios en disco. El
 # contenedor la monta desde `./data/media` del host; mudarla a otro disco es

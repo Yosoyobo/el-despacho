@@ -191,7 +191,10 @@ LOGIN_URL = "/sign-in"
 
 # Pre-S2b.2: destino de redirección para roles operativos. Override en tests
 # con `@override_settings(TALLER_URL="http://testserver/")`.
-TALLER_URL = os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/")
+from lib.urls_canonicas import normalizar_url_heredada  # noqa: E402
+
+# Un `.env` con el dominio retirado (*.ninomeando.com) se corrige solo.
+TALLER_URL = normalizar_url_heredada(os.environ.get("TALLER_URL", "https://taller.learningcenter.mx/"))
 
 # El Almacén (S-Medios-V1): la misma carpeta que monta El Taller. La Gerencia
 # también sirve medios (los adjuntos del Buzón admin). Ver `lib/almacen.py`.
