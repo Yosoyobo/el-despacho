@@ -18,7 +18,7 @@
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
             <h3 class="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Dinero</h3>
             <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {% include "tesoreria/_iva_campos.html" with form=form %}
+                {% include "tesoreria/_iva_campos_ingreso.html" with form=form %}
 
                 {% include "tesoreria/_fecha_minical.html" with valor=form.fecha.value nombre="fecha" label="Fecha" %}
 

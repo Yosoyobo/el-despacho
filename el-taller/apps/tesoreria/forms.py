@@ -29,6 +29,50 @@ def _desglosar_total(capturado: Decimal, incluye_iva: bool) -> tuple[Decimal, De
     base = (total / IVA_FACTOR).quantize(Decimal("0.01")) if incluye_iva else total
     return total, base
 
+# Esquemas fiscales que ofrece «Nuevo ingreso» (Oscar 2026-10-14: «está sólo
+# calculando con el 16% de IVA — no con RESICO retenciones»). Mismas llaves que
+# `lib.fiscal.REGIMENES_FISCALES` / `Proyecto.regimen_fiscal`.
+REGIMENES_INGRESO = (
+    ("iva", "IVA 16% incluido"),
+    ("honorarios", "RESICO · con retenciones"),
+    ("exento", "Sin IVA"),
+)
+_CERO = Decimal("0.00")
+
+
+def desglosar_ingreso(capturado, regimen: str) -> dict:
+    """Desglose de lo que se COBRÓ (el total capturado) según el esquema fiscal.
+
+    Fuente única: el guardado del form y el cálculo en vivo del modal
+    (`api_desglose_ingreso`) llaman a ESTA función, así que lo que se ve es
+    exactamente lo que se guarda. `monto` siempre es lo cobrado (lo que entra a
+    Contaduría); `subtotal` es la base antes de impuestos.
+
+    - iva        → subtotal = total ÷ 1.16 (el IVA va incluido).
+    - honorarios → RESICO: el total ya es NETO (base + IVA − ret. ISR − ret. IVA).
+                   Se invierte con `lib.fiscal.base_desde_total_honorarios`.
+    - exento     → sin impuestos: subtotal = total.
+    """
+    from lib import fiscal
+
+    total = (capturado or _CERO)
+    total = Decimal(str(total)).quantize(Decimal("0.01"))
+    if regimen == "honorarios":
+        base = fiscal.base_desde_total_honorarios(total)
+        d = fiscal.desglose_honorarios(base)
+        return {"regimen": regimen, "monto": total, "subtotal": base, "iva": d["iva"],
+                "ret_isr": d["ret_isr"], "ret_iva": d["ret_iva"],
+                "retenciones": d["retenciones"], "detalle": d["impuestos_detalle"]}
+    if regimen == "iva":
+        monto, base = _desglosar_total(total, True)
+        return {"regimen": regimen, "monto": monto, "subtotal": base,
+                "iva": (monto - base).quantize(Decimal("0.01")),
+                "ret_isr": _CERO, "ret_iva": _CERO, "retenciones": _CERO, "detalle": []}
+    monto, base = _desglosar_total(total, False)
+    return {"regimen": "exento", "monto": monto, "subtotal": base, "iva": _CERO,
+            "ret_isr": _CERO, "ret_iva": _CERO, "retenciones": _CERO, "detalle": []}
+
+
 CSS_INPUT = (
     "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm "
     "text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none "
@@ -49,13 +93,19 @@ class IngresoForm(forms.ModelForm):
         max_digits=12, decimal_places=2, min_value=Decimal("0.01"),
         label="Monto",
     )
+    # Oscar 2026-10-14: IVA 16% / RESICO con retenciones / sin IVA. Vacío (forms
+    # viejos que sólo mandan `incluye_iva`) → se deduce de ese checkbox.
+    regimen_fiscal = forms.ChoiceField(
+        choices=REGIMENES_INGRESO, required=False, label="Esquema fiscal",
+        widget=forms.RadioSelect,
+    )
 
     class Meta:
         model = Ingreso
         # LC Fase 2: `moneda` sale del form (sistema fijo en MXN; el modelo la
         # deja por default). Los registros existentes conservan la suya.
         fields = [
-            "fecha", "subtotal", "incluye_iva", "descripcion",
+            "fecha", "subtotal", "incluye_iva", "regimen_fiscal", "descripcion",
             "cliente", "proyecto", "metodo", "referencia_externa",
         ]
         widgets = {
@@ -87,6 +137,12 @@ class IngresoForm(forms.ModelForm):
             self.initial["subtotal"] = self.instance.monto
         if not self.instance.pk and "incluye_iva" not in self.initial:
             self.initial["incluye_iva"] = True
+        # Esquema fiscal: al editar, el del registro; al crear, el que mande la
+        # vista (el del proyecto) o IVA 16% como siempre.
+        if self.instance.pk:
+            self.initial["regimen_fiscal"] = self.instance.regimen_efectivo
+        elif not self.initial.get("regimen_fiscal"):
+            self.initial["regimen_fiscal"] = "iva"
         # LC Fase 2: cliente/proyecto con buscador integrado (combobox).
         for campo in ("cliente", "proyecto"):
             self.fields[campo].widget.attrs["data-select-buscable"] = ""
@@ -101,10 +157,20 @@ class IngresoForm(forms.ModelForm):
             "focus:ring-brand-500/30 dark:border-gray-600 dark:bg-gray-800"
         )
 
+    def clean(self):
+        cleaned = super().clean()
+        # El esquema manda; sin él (forms viejos) decide el checkbox de IVA.
+        reg = cleaned.get("regimen_fiscal") or ("iva" if cleaned.get("incluye_iva") else "exento")
+        cleaned["regimen_fiscal"] = reg
+        cleaned["incluye_iva"] = reg != "exento"
+        return cleaned
+
     def save(self, commit=True):
         obj = super().save(commit=False)
-        obj.monto, obj.subtotal = _desglosar_total(
-            self.cleaned_data["subtotal"], self.cleaned_data.get("incluye_iva"))
+        d = desglosar_ingreso(self.cleaned_data["subtotal"], self.cleaned_data["regimen_fiscal"])
+        obj.monto, obj.subtotal = d["monto"], d["subtotal"]
+        obj.regimen_fiscal = d["regimen"]
+        obj.incluye_iva = d["regimen"] != "exento"
         # Sprint 2 UX (item 5): el cliente se HEREDA del proyecto elegido (el
         # selector de cliente se retiró de la captura). Solo cuando no se eligió
         # a mano — respeta un cliente ya puesto (form full-page / edición).
