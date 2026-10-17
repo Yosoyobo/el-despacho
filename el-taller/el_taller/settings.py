@@ -192,6 +192,10 @@ MEDIOS_DIR = os.environ.get("MEDIOS_DIR", "/app/medios")
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Django manda `same-origin` por defecto y con ésa el navegador no envía Referer a
+# otros orígenes: los mosaicos de OpenStreetMap contestan 403 «Access blocked».
+# Cross-origin sale sólo el origen (nunca la ruta). Ver `static/js/mapa_tiles.js`.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 # SAMEORIGIN y no DENY desde S-Pendientes-Sep28: las pestañas de El Taller son
 # marcos de la misma página, y con DENY el navegador no pinta ninguno. Otro sitio
 # sigue sin poder incrustar El Taller (el clickjacking queda igual de cerrado).

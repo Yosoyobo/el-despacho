@@ -214,7 +214,7 @@
         var tienePin = lat0 !== null && lng0 !== null;
         var centro = tienePin ? [lat0, lng0] : [19.4326, -99.1332];  // CDMX por defecto
         map = L.map(mapaEl).setView(centro, tienePin ? zoom : 11);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+        window.despachoTileLayer().addTo(map);  // mapa_tiles.js: único lugar con el proveedor de mosaicos
         map.on("click", function (e) { setCoords(e.latlng.lat, e.latlng.lng, false); reverse(e.latlng.lat, e.latlng.lng); });
         if (radioI) radioI.addEventListener("input", function () { if (circ) circ.setRadius(radioVal()); });
         setTimeout(function () { map.invalidateSize(); if (tienePin) pintar(lat0, lng0, true); }, 120);

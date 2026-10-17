@@ -242,6 +242,10 @@ LOGIN_RATELIMIT = {"limite": 5, "ventana_seg": 60 * 15}
 # Headers de seguridad básicos
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Django manda `same-origin` por defecto y con ésa el navegador no envía Referer a
+# otros orígenes: los mosaicos de OpenStreetMap contestan 403 «Access blocked».
+# Cross-origin sale sólo el origen (nunca la ruta). Ver `static/js/mapa_tiles.js`.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000

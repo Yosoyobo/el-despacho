@@ -269,15 +269,13 @@
 (function init() {
   var cont = document.getElementById('mapa-checar');
   if (!cont) return;
-  if (typeof L === 'undefined') { setTimeout(init, 200); return; }
+  if (typeof L === 'undefined' || !window.despachoTileLayer) { setTimeout(init, 200); return; }
   var sedes = [];
   try { sedes = JSON.parse(document.getElementById('sedes-checar-data').textContent || '[]'); } catch (e) {}
   var estado = document.querySelector('[data-mapa-estado]');
 
   var map = L.map(cont, { zoomControl: true }).setView([19.4326, -99.1332], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19,
-  }).addTo(map);
+  despachoTileLayer().addTo(map);
 
   sedes.forEach(function (s) {
     L.circle([s.lat, s.lng], { radius: s.r, color: '#12b76a', fillColor: '#12b76a', fillOpacity: 0.10, weight: 2 })
