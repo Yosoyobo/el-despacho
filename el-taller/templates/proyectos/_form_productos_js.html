@@ -404,6 +404,16 @@
         setTimeout(() => { if (window.__sincronizarOrdenProductos) window.__sincronizarOrdenProductos(); }, 0);
         const card = sel.closest('[data-card]'); if (!card) return;
         actualizarEnlaceFicha(card);
+        // Un `change` que NO cambia el producto (el mismo valor otra vez) no
+        // copia nada del catálogo: pisaría el costo y el proveedor capturados.
+        // Ticket de Oscar 2026-10-14: «los valores de las tarjetas se flipean;
+        // esto NUNCA puede pasar». El valor de referencia es el que la tarjeta
+        // traía al abrirse (`defaultSelected`) o el último que sí se eligió.
+        const previo = sel.dataset.servicioPrevio !== undefined
+            ? sel.dataset.servicioPrevio
+            : (Array.from(sel.options).find(o => o.defaultSelected) || { value: '' }).value;
+        if (previo === sel.value) { recalcular(card); return; }
+        sel.dataset.servicioPrevio = sel.value;
         const datos = SERVICIOS_DATOS[sel.value];
         if (datos) {
             const precio = card.querySelector('input[name$="-precio_unitario"]');

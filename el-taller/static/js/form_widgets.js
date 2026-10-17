@@ -144,11 +144,24 @@ function fwComponiendo(e) {
     return CANONICOS.test(sel.name || '') || CANONICOS.test(sel.id || '');
   }
 
+  // `data-select-protegido` (el producto de una tarjeta de proyecto): el valor SOLO
+  // cambia eligiendo en el panel, sea cual sea el número de opciones. Lo que el
+  // select dispara al cambiar (copiar costo y proveedor del catálogo) pisa lo
+  // capturado, así que un cambio «de rebote» —una letra tecleada con el select
+  // enfocado— no puede ocurrir. Ticket de Oscar, 14-oct-2026.
   function aplica(sel) {
     return sel && sel.tagName === 'SELECT' && !sel.disabled && !sel.multiple &&
       !sel.hasAttribute('data-sin-buscar') &&
       (sel.hasAttribute('data-select-buscable') || canonico(sel)) &&
-      sel.options.length >= UMBRAL;
+      (sel.options.length >= UMBRAL || sel.hasAttribute('data-select-protegido'));
+  }
+
+  // Teclas con las que un <select> cerrado cambia de valor SIN abrirse: las
+  // flechas hacia arriba, Inicio/Fin, Re/Av Pág y cualquier carácter imprimible
+  // («type-ahead»). Se interceptan: abren el panel (con la letra como búsqueda).
+  var TECLAS_QUE_CAMBIAN = { ArrowUp: 1, ArrowDown: 1, Home: 1, End: 1, PageUp: 1, PageDown: 1 };
+  function imprimible(e) {
+    return e.key && e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey;
   }
 
   function cerrar() {
@@ -161,7 +174,7 @@ function fwComponiendo(e) {
     a.select.classList.remove('ring-2', 'ring-brand-500/40');
   }
 
-  function abrir(select) {
+  function abrir(select, semilla) {
     cerrar();
     var panel = document.createElement('div');
     panel.className = 'sb-panel z-[80] rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-900';
@@ -260,9 +273,14 @@ function fwComponiendo(e) {
 
     document.body.appendChild(panel);
     repos();
-    pintar('');
+    // La letra que abrió el panel es lo primero que se busca (no se pierde).
+    if (semilla) input.value = semilla;
+    pintar(semilla || '');
     select.classList.add('ring-2', 'ring-brand-500/40');
-    setTimeout(function () { input.focus(); }, 0);
+    setTimeout(function () {
+      input.focus();
+      if (semilla) input.setSelectionRange(input.value.length, input.value.length);
+    }, 0);
 
     function onDoc(e) { if (!panel.contains(e.target) && e.target !== select) cerrar(); }
     document.addEventListener('pointerdown', onDoc, true);
@@ -286,11 +304,10 @@ function fwComponiendo(e) {
     if (fwComponiendo(e)) return;
     var sel = document.activeElement;
     if (!aplica(sel)) return;
-    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') &&
-        !(abierto && abierto.select === sel)) {
-      e.preventDefault();
-      abrir(sel);
-    }
+    var cambia = TECLAS_QUE_CAMBIAN[e.key] || e.key === 'Enter' || e.key === ' ' || imprimible(e);
+    if (!cambia) return;           // Tab, Esc, Mayús…: el navegador hace lo suyo
+    e.preventDefault();            // el select NUNCA cambia solo con el teclado
+    if (!(abierto && abierto.select === sel)) abrir(sel, imprimible(e) ? e.key : '');
   }, true);
 })();
 
