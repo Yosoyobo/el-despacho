@@ -38,4 +38,5 @@ urlpatterns = [
     # API JSON para autocompletar
     path("api/proyecto/<int:pk>/datos/", views.api_proyecto_datos, name="api-proyecto-datos"),
     path("api/desglose-ingreso/", views.api_desglose_ingreso, name="api-desglose-ingreso"),
+    path("api/facturas-sugeridas/", views.api_facturas_sugeridas, name="api-facturas-sugeridas"),
 ]

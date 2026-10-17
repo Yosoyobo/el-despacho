@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import (
     Http404,
     HttpResponse,
@@ -24,7 +25,7 @@ from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
 from lib.busqueda import q_texto
-from lib.permisos import puede_ver_finanzas
+from lib.permisos import puede_cobrar_facturacion, puede_ver_finanzas
 from lib.portavoz import emitir
 from lib.portavoz_eventos import EventoPortavoz
 
@@ -264,6 +265,18 @@ def _proyecto_desde_request(request):
     return Proyecto.objects.filter(pk=pk).first()
 
 
+def _facturas_opciones(proyecto, cliente=None) -> list[dict]:
+    """Facturas cobrables del proyecto (o del cliente) para el selector de factura."""
+    from apps.facturacion import services as fact
+    return [
+        {"id": c["factura"].pk, "codigo": c["factura"].codigo,
+         "concepto": c["factura"].concepto or c["factura"].titulo or "",
+         "saldo": c["saldo"], "total": c["total"],
+         "regimen": c["factura"].regimen_fiscal}
+        for c in fact.facturas_cobrables(proyecto=proyecto, cliente=cliente)
+    ]
+
+
 def _regimen_de_proyecto(proyecto) -> str:
     """Esquema fiscal del proyecto en las llaves de «Nuevo ingreso»
     (mismas reglas que `Proyecto.desglose_fiscal`: el flag `iva_exento` gana)."""
@@ -298,12 +311,19 @@ def ingreso_nuevo(request):
     # Revisión buzón R2: form-in-modal si es HTMX (#modal-slot); POST HTMX → 204
     # + HX-Redirect. La página full queda de fallback.
     es_htmx = request.headers.get("HX-Request") == "true"
+    puede_ligar = puede_cobrar_facturacion(request.user)
     if request.method == "POST":
-        form = IngresoForm(request.POST)
+        form = IngresoForm(request.POST, puede_ligar_factura=puede_ligar)
         if form.is_valid():
             ingreso = form.save(commit=False)
             ingreso.creado_por = request.user
-            ingreso.save()
+            with transaction.atomic():
+                ingreso.save()
+                # Ligado a una factura: se actualiza lo cobrado y su estado con
+                # las mismas reglas del modal «Registrar cobro» de la factura.
+                if ingreso.factura_id:
+                    from apps.facturacion import services as fact
+                    fact.aplicar_cobro_de_ingreso(ingreso.factura, ingreso.monto, request.user)
             _procesar_comprobante_ingreso(request, ingreso)
             _emitir("tesoreria.ingreso_registrado", request, {
                 "ingreso_id": ingreso.pk, "monto": str(ingreso.monto),
@@ -325,15 +345,23 @@ def ingreso_nuevo(request):
             _p = _proyecto_desde_request(request)
             if _p is not None:
                 initial["regimen_fiscal"] = _regimen_de_proyecto(_p)
-        form = IngresoForm(initial=initial)
+        form = IngresoForm(initial=initial, puede_ligar_factura=puede_ligar)
     # S-Finanzas-UX: si se abre desde un proyecto, ocultamos el cliente y damos
     # el saldo por cobrar para los botones rápidos [100%]/[50%].
     desde_proyecto = _es_desde_proyecto(request)
     proy = _proyecto_desde_request(request) if desde_proyecto else None
+    # Oscar 2026-10-14: el proyecto de origen (aunque no venga «desde proyecto»,
+    # p.ej. al re-render por error) da el saldo, lo ya cobrado y sus facturas.
+    proy_ctx = proy or _proyecto_desde_request(request)
+    cobrado = proy_ctx.total_cobrado_ingresos if proy_ctx else Decimal("0.00")
     ctx = {
         "form": form, "modo": "nuevo", "next_url": _next_seguro(request),
         "desde_proyecto": desde_proyecto,
         "saldo_proyecto": proy.saldo_por_cobrar if proy else None,
+        # «Registrar lo que falta»: sólo tiene sentido si ya hay ingresos previos.
+        "cobrado_proyecto": cobrado if cobrado > 0 else None,
+        "puede_ligar_factura": puede_ligar,
+        "facturas_opciones": _facturas_opciones(proy_ctx) if puede_ligar else [],
         **_ingreso_pickers(request),
     }
     tmpl = "tesoreria/_modal_nuevo_ingreso.html" if es_htmx else "tesoreria/ingreso_form.html"
@@ -1181,6 +1209,38 @@ def egreso_sugerir_categoria(request):
 # ── API JSON para autocompletar ingreso ──────────────────────────────────
 
 @login_required
+def api_facturas_sugeridas(request):
+    """Facturas para ligar un ingreso (Oscar 2026-10-14).
+
+    GET /tesoreria/api/facturas-sugeridas/?proyecto=<pk>&cliente=<pk>&monto=8326.67
+    → {opciones: [...cobrables], sugeridas: [≤2 con su razón]}. Sólo lectura, y sólo
+    para quien puede cobrar facturas (la misma puerta que ligar el ingreso)."""
+    if (r := _gate(request)) is not None:
+        return r
+    if not puede_cobrar_facturacion(request.user):
+        return HttpResponseForbidden("Sin permiso para ligar cobros a facturas.")
+    from apps.facturacion import services as fact
+    from apps.la_cartera.models import Cliente
+    from apps.los_proyectos.models import Proyecto
+    proyecto = Proyecto.objects.filter(pk=request.GET.get("proyecto") or 0).first()
+    cliente = None
+    if proyecto is None:
+        cliente = Cliente.objects.filter(pk=request.GET.get("cliente") or 0).first()
+    opciones = _facturas_opciones(proyecto, cliente)
+    sugeridas = fact.facturas_sugeridas(
+        proyecto=proyecto, cliente=cliente, monto=request.GET.get("monto"))
+
+    def _fila(o):
+        return {k: (str(v) if isinstance(v, Decimal) else v) for k, v in o.items()}
+    por_id = {o["id"]: o for o in opciones}
+    return JsonResponse({
+        "opciones": [_fila(o) for o in opciones],
+        "sugeridas": [{**_fila(por_id[x["factura"].pk]), "razon": x["razon"]}
+                      for x in sugeridas if x["factura"].pk in por_id],
+    })
+
+
+@login_required
 def api_desglose_ingreso(request):
     """Cálculo en vivo del modal «Nuevo ingreso» (Oscar 2026-10-14).
 
@@ -1243,4 +1303,6 @@ def api_proyecto_datos(request, pk):
         "saldo_por_pagar": str(saldo_pagar if saldo_pagar > 0 else 0),
         "descripcion_sugerida": f"Cobro de {proyecto.codigo} · {proyecto.nombre}",
         "regimen_fiscal": _regimen_de_proyecto(proyecto),
+        # Lo ya cobrado: habilita «Registrar lo que falta» en el modal de ingreso.
+        "total_cobrado": str(proyecto.total_cobrado_ingresos),
     })

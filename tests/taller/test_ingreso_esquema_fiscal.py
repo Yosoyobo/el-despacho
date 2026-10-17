@@ -31,6 +31,7 @@ def admin(client, usuario_factory):
 
 def test_desglose_resico_invierte_el_calculo_de_honorarios():
     from apps.tesoreria.forms import desglosar_ingreso
+
     from lib.fiscal import desglose_honorarios
     # 16,653.33 es el total real de una base de 16,000 (docstring de lib/fiscal)
     d = desglosar_ingreso(D("16653.33"), "honorarios")

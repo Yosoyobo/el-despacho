@@ -106,17 +106,27 @@ class IngresoForm(forms.ModelForm):
         # deja por default). Los registros existentes conservan la suya.
         fields = [
             "fecha", "subtotal", "incluye_iva", "regimen_fiscal", "descripcion",
-            "cliente", "proyecto", "metodo", "referencia_externa",
+            "cliente", "proyecto", "metodo", "referencia_externa", "factura",
         ]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "descripcion": forms.TextInput(attrs={"maxlength": 300}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, puede_ligar_factura=False, **kwargs):
         super().__init__(*args, **kwargs)
+        from apps.facturacion.models import Factura
         from apps.la_cartera.models import Cliente
         from apps.los_proyectos.models import Proyecto
+        # Oscar 2026-10-14: ligar el ingreso a una factura (sólo al CREAR y sólo
+        # quien puede cobrar facturas: `facturacion.cobrar`, la misma puerta del
+        # modal «Registrar cobro» de la factura). Se valida contra las cobrables.
+        if puede_ligar_factura and not self.instance.pk:
+            self.fields["factura"].queryset = Factura.objects.filter(estado__in=("emitida", "cobrada_parcial"))
+            self.fields["factura"].required = False
+            self.fields["factura"].label = "Factura que cubre"
+        else:
+            del self.fields["factura"]
         self.fields["cliente"].queryset = Cliente.activos.all()
         proyectos_mgr = getattr(Proyecto, "activos", Proyecto.objects)
         self.fields["proyecto"].queryset = proyectos_mgr.exclude(estado__in=["cancelado", "cerrado"])
@@ -163,7 +173,27 @@ class IngresoForm(forms.ModelForm):
         reg = cleaned.get("regimen_fiscal") or ("iva" if cleaned.get("incluye_iva") else "exento")
         cleaned["regimen_fiscal"] = reg
         cleaned["incluye_iva"] = reg != "exento"
+        self._validar_factura(cleaned)
         return cleaned
+
+    def _validar_factura(self, cleaned) -> None:
+        """Si se ligó a una factura, aplica las MISMAS reglas que su modal de
+        cobro (`facturacion.services.validar_cobro`) y que sea del mismo proyecto."""
+        fac = cleaned.get("factura") if "factura" in self.fields else None
+        if fac is None:
+            return
+        from apps.facturacion import services as fact
+        proyecto = cleaned.get("proyecto")
+        if proyecto is not None and fac.proyecto_id and fac.proyecto_id != proyecto.pk:
+            self.add_error("factura", f"{fac.codigo} es de otro proyecto.")
+            return
+        total = cleaned.get("subtotal")
+        if total is None:
+            return
+        try:
+            fact.validar_cobro(fac, total)
+        except ValueError as e:
+            self.add_error("factura", str(e))
 
     def save(self, commit=True):
         obj = super().save(commit=False)
@@ -176,6 +206,14 @@ class IngresoForm(forms.ModelForm):
         # a mano — respeta un cliente ya puesto (form full-page / edición).
         if obj.proyecto_id and not obj.cliente_id:
             obj.cliente = obj.proyecto.cliente
+        # Ligado a una factura: el cliente/proyecto salen de ella si faltan.
+        fac = self.cleaned_data.get("factura") if "factura" in self.fields else None
+        if fac is not None:
+            obj.factura = fac
+            if not obj.cliente_id:
+                obj.cliente = fac.cliente
+            if not obj.proyecto_id and fac.proyecto_id:
+                obj.proyecto = fac.proyecto
         if commit:
             obj.save()
         return obj
