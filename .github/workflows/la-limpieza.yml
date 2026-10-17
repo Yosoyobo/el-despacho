@@ -37,13 +37,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: 🔌 Entrar al tailnet (el NUC solo existe ahí)
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
       - name: 🛡️ Pre-flight — verificar que el stack está running
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.NUC_HOST }}
           username: ${{ secrets.NUC_USER }}
@@ -63,7 +63,7 @@ jobs:
             echo "✅ Pre-flight OK: los 7 servicios están running."
 
       - name: 🧹 Limpiar Docker + logs + apt + tmp + backups
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.NUC_HOST }}
           username: ${{ secrets.NUC_USER }}
@@ -128,7 +128,7 @@ jobs:
             echo "✅ Limpieza completada"
 
       - name: 🩺 Post-flight — verificar que el stack sigue healthy
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.NUC_HOST }}
           username: ${{ secrets.NUC_USER }}

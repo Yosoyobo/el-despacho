@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Tailwind CLI standalone (sin Node), igual que El Taller y La Gerencia.
-ARG TAILWIND_VERSION=v3.4.17
+ARG TAILWIND_VERSION=v3.4.19
 RUN curl -fsSL -o /usr/local/bin/tailwindcss \
     "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" \
     && chmod +x /usr/local/bin/tailwindcss

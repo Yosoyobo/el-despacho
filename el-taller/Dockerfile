@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-ARG TAILWIND_VERSION=v3.4.17
+ARG TAILWIND_VERSION=v3.4.19
 RUN curl -fsSL -o /usr/local/bin/tailwindcss \
     "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" \
     && chmod +x /usr/local/bin/tailwindcss

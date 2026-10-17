@@ -13695,3 +13695,11 @@ descargar PDF», descripción con ✨ Generar, OT con proveedores de impresión 
 facturas con varios archivos, mapas sin 403, notificaciones siempre al dominio vigente.
 Hecho con cuatro agentes en worktrees propios + integración; las dependencias van en un
 deploy aparte (2026.10.06).
+
+## 2026-10-16 — S-Deps-Oct16 (VERSION 2026.10.06)
+
+Todo a las últimas versiones que pasan la suite (Django 6.1.2, gunicorn 26, psycopg 3.3,
+cryptography 50, Pillow 13, ApexCharts 8, htmx 2.0.11, Tailwind CLI 3.4.19 y las acciones
+del CI), en un deploy aparte del de los 15 tickets para poder revertirlo solo. Lo que no se
+subió (GrapesJS por telemetría, n8n/Paperless/OSRM por migraciones, Python/Tailwind/Postgres
+mayores) y por qué quedó en el historial.
